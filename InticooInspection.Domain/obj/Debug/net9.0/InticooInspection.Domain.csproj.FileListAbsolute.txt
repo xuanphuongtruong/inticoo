@@ -10,3 +10,4 @@ D:\Source\InticooApp\InticooInspection\InticooInspection.Domain\obj\Debug\net9.0
 D:\Source\InticooApp\InticooInspection\InticooInspection.Domain\obj\Debug\net9.0\InticooInspection.Domain.pdb
 D:\Source\InticooApp\InticooInspection\InticooInspection.Domain\obj\Debug\net9.0\ref\InticooInspection.Domain.dll
 D:\Source\InticooApp\InticooInspection\InticooInspection.Domain\obj\Debug\net9.0\InticooInspection.Domain.csproj.AssemblyReference.cache
+D:\Source\InticooApp\InticooInspection\InticooInspection.Domain\obj\Debug\net9.0\InticooInspection.Domain.sourcelink.json

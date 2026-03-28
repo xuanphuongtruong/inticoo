@@ -164,10 +164,5 @@ D:\Source\InticooApp\InticooInspection\InticooInspection.API\obj\Debug\net9.0\rj
 D:\Source\InticooApp\InticooInspection\InticooInspection.API\obj\Debug\net9.0\rjsmcshtml.dswa.cache.json
 D:\Source\InticooApp\InticooInspection\InticooInspection.API\obj\Debug\net9.0\staticwebassets.build.json.cache
 D:\Source\InticooApp\InticooInspection\InticooInspection.API\obj\Debug\net9.0\swae.build.ex.cache
-D:\Source\InticooApp\InticooInspection\InticooInspection.API\obj\Debug\net9.0\staticwebassets\msbuild.InticooInspection.API.Microsoft.AspNetCore.StaticWebAssets.props
-D:\Source\InticooApp\InticooInspection\InticooInspection.API\obj\Debug\net9.0\staticwebassets\msbuild.InticooInspection.API.Microsoft.AspNetCore.StaticWebAssetEndpoints.props
-D:\Source\InticooApp\InticooInspection\InticooInspection.API\obj\Debug\net9.0\staticwebassets\msbuild.build.InticooInspection.API.props
-D:\Source\InticooApp\InticooInspection\InticooInspection.API\obj\Debug\net9.0\staticwebassets\msbuild.buildMultiTargeting.InticooInspection.API.props
-D:\Source\InticooApp\InticooInspection\InticooInspection.API\obj\Debug\net9.0\staticwebassets\msbuild.buildTransitive.InticooInspection.API.props
-D:\Source\InticooApp\InticooInspection\InticooInspection.API\obj\Debug\net9.0\staticwebassets.pack.json
-D:\Source\InticooApp\InticooInspection\InticooInspection.API\obj\Debug\net9.0\staticwebassets.upToDateCheck.txt
+D:\Source\InticooApp\InticooInspection\InticooInspection.API\bin\Debug\net9.0\dotnet-tools.json
+D:\Source\InticooApp\InticooInspection\InticooInspection.API\obj\Debug\net9.0\InticooInspection.API.sourcelink.json

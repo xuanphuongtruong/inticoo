@@ -1,7 +1,7 @@
 {
   "mainAssemblyName": "InticooInspection.Client",
   "resources": {
-    "hash": "sha256-hLT+NC+1wGmpyq48mPvhNtDuaiWpfM9LpxCK6p44k10=",
+    "hash": "sha256-Up992PWDOVOhJa9BP3JjwLibUt7WyIa3gl68Dzy+yz8=",
     "fingerprinting": {
       "Blazored.LocalStorage.12n6dz54qr.wasm": "Blazored.LocalStorage.wasm",
       "Blazored.SessionStorage.34xr2ein7y.wasm": "Blazored.SessionStorage.wasm",
@@ -198,23 +198,23 @@
       "netstandard.d82br99ghv.wasm": "netstandard.wasm",
       "System.Private.CoreLib.wejp19zmu1.wasm": "System.Private.CoreLib.wasm",
       "dotnet.js": "dotnet.js",
-      "dotnet.native.hvg7u8bimp.js": "dotnet.native.js",
-      "dotnet.native.3c4wvb350q.wasm": "dotnet.native.wasm",
-      "dotnet.runtime.cymp1amu5g.js": "dotnet.runtime.js",
+      "dotnet.native.l1ds2rhypd.js": "dotnet.native.js",
+      "dotnet.native.etgrtk5jba.wasm": "dotnet.native.wasm",
+      "dotnet.runtime.2hocyfcbj2.js": "dotnet.runtime.js",
       "icudt_CJK.tjcz0u77k5.dat": "icudt_CJK.dat",
       "icudt_EFIGS.tptq2av103.dat": "icudt_EFIGS.dat",
       "icudt_no_CJK.lfu7j35m59.dat": "icudt_no_CJK.dat",
-      "InticooInspection.Client.q9nym0353g.wasm": "InticooInspection.Client.wasm",
-      "InticooInspection.Client.ctujsanjn4.pdb": "InticooInspection.Client.pdb"
+      "InticooInspection.Client.vpiqng723u.wasm": "InticooInspection.Client.wasm",
+      "InticooInspection.Client.ixy28sa176.pdb": "InticooInspection.Client.pdb"
     },
     "jsModuleNative": {
-      "dotnet.native.hvg7u8bimp.js": "sha256-LX9rFEWGVxhkOkAVPG0w5RxPwzPBlEUz6dQNjWS7M+M="
+      "dotnet.native.l1ds2rhypd.js": "sha256-CU8oL4L0VAwGe3hCyxZDy7keJq9dcsWED0JKqrvlUb4="
     },
     "jsModuleRuntime": {
-      "dotnet.runtime.cymp1amu5g.js": "sha256-dCmS9Zx4egtLYSUgTI3R6gMS+Yg8MkzxW1CgEMJKAEw="
+      "dotnet.runtime.2hocyfcbj2.js": "sha256-5oRcSUQSLbUYyq9jPgwB6domrDHYrvLX+53QxY+0y48="
     },
     "wasmNative": {
-      "dotnet.native.3c4wvb350q.wasm": "sha256-89jyB8DlCnV2BPMV477jOe1Sm0WXwVf8RuoSPsj4Ym8="
+      "dotnet.native.etgrtk5jba.wasm": "sha256-HlUDSN0oXsH1WmjLNtyyvh9W0WQWWPGv3SJsHPJAwTE="
     },
     "icu": {
       "icudt_CJK.tjcz0u77k5.dat": "sha256-SZLtQnRc0JkwqHab0VUVP7T3uBPSeYzxzDnpxPpUnHk=",
@@ -418,10 +418,10 @@
       "WindowsBase.5lai2eowco.wasm": "sha256-GcDi5293y2A7oSiFYTbBTUe0d+ISbvgeel4ZNd8KkPM=",
       "mscorlib.wzkfrp7u5k.wasm": "sha256-9PjsU0gaxxz5Vyw++p9DeYUWLsaXbaMS2RbX6wmTUmk=",
       "netstandard.d82br99ghv.wasm": "sha256-DS8keXxU4eQpa1kIoiFxOA2Ii2g9hoNWSaVi8F8AnIE=",
-      "InticooInspection.Client.q9nym0353g.wasm": "sha256-TvDDchL/YTEVWjvDaFJ02U+scpGZW72i9MChJZCTeoA="
+      "InticooInspection.Client.vpiqng723u.wasm": "sha256-vXd01N+M2iT9VauRoedZvrirnjJgcShKhjjvCeDXWjU="
     },
     "pdb": {
-      "InticooInspection.Client.ctujsanjn4.pdb": "sha256-QKn50rC1JsCHpl2EKL0/O0w080uGFBF0PKSVMwL5n9M="
+      "InticooInspection.Client.ixy28sa176.pdb": "sha256-VvVs8/agwGtoigw+Vl9jlFTZjMW5NQixfQLfNHlC8JM="
     }
   },
   "cacheBootResources": true,

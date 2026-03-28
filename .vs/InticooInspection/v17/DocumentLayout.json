@@ -3,6 +3,10 @@
   "WorkspaceRootPath": "D:\\Source\\InticooApp\\InticooInspection\\",
   "Documents": [
     {
+      "AbsoluteMoniker": "D:0:0:{514889BA-16E1-429E-A610-36FB21F46717}|InticooInspection.API\\InticooInspection.API.csproj|d:\\source\\inticooapp\\inticooinspection\\inticooinspection.api\\appsettings.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}",
+      "RelativeMoniker": "D:0:0:{514889BA-16E1-429E-A610-36FB21F46717}|InticooInspection.API\\InticooInspection.API.csproj|solutionrelative:inticooinspection.api\\appsettings.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}"
+    },
+    {
       "AbsoluteMoniker": "D:0:0:{94E11A47-77F2-4AF4-B99B-3A5F25341E95}|InticooInspection.Client\\InticooInspection.Client.csproj|d:\\source\\inticooapp\\inticooinspection\\inticooinspection.client\\components\\pages\\inspectionnew.razor||{40D31677-CBC0-4297-A9EF-89D907823A98}",
       "RelativeMoniker": "D:0:0:{94E11A47-77F2-4AF4-B99B-3A5F25341E95}|InticooInspection.Client\\InticooInspection.Client.csproj|solutionrelative:inticooinspection.client\\components\\pages\\inspectionnew.razor||{40D31677-CBC0-4297-A9EF-89D907823A98}"
     },
@@ -30,15 +34,24 @@
       "DocumentGroups": [
         {
           "DockedWidth": 200,
-          "SelectedChildIndex": 2,
+          "SelectedChildIndex": 0,
           "Children": [
             {
-              "$type": "Bookmark",
-              "Name": "ST:0:0:{1c4feeaa-4718-4aa9-859d-94ce25d182ba}"
+              "$type": "Document",
+              "DocumentIndex": 0,
+              "Title": "appsettings.json",
+              "DocumentMoniker": "D:\\Source\\InticooApp\\InticooInspection\\InticooInspection.API\\appsettings.json",
+              "RelativeDocumentMoniker": "InticooInspection.API\\appsettings.json",
+              "ToolTip": "D:\\Source\\InticooApp\\InticooInspection\\InticooInspection.API\\appsettings.json",
+              "RelativeToolTip": "InticooInspection.API\\appsettings.json",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAIAAACvAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001642|",
+              "WhenOpened": "2026-03-28T09:59:48.669Z",
+              "EditorCaption": ""
             },
             {
               "$type": "Document",
-              "DocumentIndex": 1,
+              "DocumentIndex": 2,
               "Title": "FileController.cs",
               "DocumentMoniker": "D:\\Source\\InticooApp\\InticooInspection\\InticooInspection.API\\Controllers\\FileController.cs",
               "RelativeDocumentMoniker": "InticooInspection.API\\Controllers\\FileController.cs",
@@ -50,7 +63,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 0,
+              "DocumentIndex": 1,
               "Title": "InspectionNew.razor",
               "DocumentMoniker": "D:\\Source\\InticooApp\\InticooInspection\\InticooInspection.Client\\Components\\Pages\\InspectionNew.razor",
               "RelativeDocumentMoniker": "InticooInspection.Client\\Components\\Pages\\InspectionNew.razor",
@@ -63,7 +76,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 2,
+              "DocumentIndex": 3,
               "Title": "InspectionController.cs",
               "DocumentMoniker": "D:\\Source\\InticooApp\\InticooInspection\\InticooInspection.API\\Controllers\\InspectionController.cs",
               "RelativeDocumentMoniker": "InticooInspection.API\\Controllers\\InspectionController.cs",
@@ -75,7 +88,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 3,
+              "DocumentIndex": 4,
               "Title": "Login.razor",
               "DocumentMoniker": "D:\\Source\\InticooApp\\InticooInspection\\InticooInspection.Client\\Components\\Pages\\Login.razor",
               "RelativeDocumentMoniker": "InticooInspection.Client\\Components\\Pages\\Login.razor",
@@ -87,7 +100,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 4,
+              "DocumentIndex": 5,
               "Title": "Home.razor",
               "DocumentMoniker": "D:\\Source\\InticooApp\\InticooInspection\\InticooInspection.Client\\Components\\Pages\\Home.razor",
               "RelativeDocumentMoniker": "InticooInspection.Client\\Components\\Pages\\Home.razor",

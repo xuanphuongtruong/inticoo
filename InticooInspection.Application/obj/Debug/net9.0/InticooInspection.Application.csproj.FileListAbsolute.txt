@@ -13,3 +13,4 @@ D:\Source\InticooApp\InticooInspection\InticooInspection.Application\obj\Debug\n
 D:\Source\InticooApp\InticooInspection\InticooInspection.Application\obj\Debug\net9.0\refint\InticooInspection.Application.dll
 D:\Source\InticooApp\InticooInspection\InticooInspection.Application\obj\Debug\net9.0\InticooInspection.Application.pdb
 D:\Source\InticooApp\InticooInspection\InticooInspection.Application\obj\Debug\net9.0\ref\InticooInspection.Application.dll
+D:\Source\InticooApp\InticooInspection\InticooInspection.Application\obj\Debug\net9.0\InticooInspection.Application.sourcelink.json

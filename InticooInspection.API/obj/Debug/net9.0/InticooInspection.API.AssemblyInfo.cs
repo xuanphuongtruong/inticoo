@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("InticooInspection.API")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+884ec43a05bde00d8a7ec27c1c271296690745b2")]
 [assembly: System.Reflection.AssemblyProductAttribute("InticooInspection.API")]
 [assembly: System.Reflection.AssemblyTitleAttribute("InticooInspection.API")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

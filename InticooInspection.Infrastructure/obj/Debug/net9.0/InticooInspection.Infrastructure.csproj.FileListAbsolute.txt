@@ -17,3 +17,4 @@ D:\Source\InticooApp\InticooInspection\InticooInspection.Infrastructure\obj\Debu
 D:\Source\InticooApp\InticooInspection\InticooInspection.Infrastructure\obj\Debug\net9.0\ref\InticooInspection.Infrastructure.dll
 D:\Source\InticooApp\InticooInspection\InticooInspection.Infrastructure\bin\Debug\net9.0\InticooInspection.Infrastructure.runtimeconfig.json
 D:\Source\InticooApp\InticooInspection\InticooInspection.Infrastructure\obj\Debug\net9.0\InticooInspection.Infrastructure.genruntimeconfig.cache
+D:\Source\InticooApp\InticooInspection\InticooInspection.Infrastructure\obj\Debug\net9.0\InticooInspection.Infrastructure.sourcelink.json
