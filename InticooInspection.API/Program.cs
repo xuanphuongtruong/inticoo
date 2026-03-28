@@ -59,7 +59,8 @@ builder.Services.AddCors(options =>
             // Cho phép tất cả localhost (mọi port) trong môi trường dev
             var uri = new Uri(origin);
             return uri.Host == "localhost" || uri.Host == "127.0.0.1" ||
-                   uri.Host.EndsWith("azurewebsites.net");
+                   uri.Host.EndsWith("azurewebsites.net") ||
+                   uri.Host.EndsWith("azurestaticapps.net");
         })
               .AllowAnyHeader()
               .AllowAnyMethod()
