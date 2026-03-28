@@ -11,7 +11,8 @@ builder.RootComponents.Add<HeadOutlet>("head::after");
 
 builder.Services.AddSingleton(new HttpClient
 {
-    BaseAddress = new Uri("http://localhost:5034/")
+    //BaseAddress = new Uri("http://localhost:5034/")
+    BaseAddress = new Uri(builder.HostEnvironment.BaseAddress)
 });
 
 builder.Services.AddBlazoredLocalStorage();
