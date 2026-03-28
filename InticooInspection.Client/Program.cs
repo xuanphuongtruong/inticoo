@@ -1,4 +1,4 @@
-using Blazored.LocalStorage;
+﻿using Blazored.LocalStorage;
 using Blazored.SessionStorage;
 using InticooInspection.Client.Services;
 using Microsoft.AspNetCore.Components.Authorization;
@@ -9,9 +9,19 @@ var builder = WebAssemblyHostBuilder.CreateDefault(args);
 builder.RootComponents.Add<InticooInspection.Client.App>("#app");
 builder.RootComponents.Add<HeadOutlet>("head::after");
 
+//builder.Services.AddSingleton(new HttpClient
+//{
+//    BaseAddress = new Uri("https://inticoo-e4hrerayb4b7h4fk.southeastasia-01.azurewebsites.net/")
+//});
+
+// Trong Program.cs của dự án Client
+string apiBaseUrl = builder.HostEnvironment.IsDevelopment()
+    ? "https://inticoo-e4hrerayb4b7h4fk.southeastasia-01.azurewebsites.net/" // Local gọi thẳng API
+    : "https://black-grass-002608310.2.azurestaticapps.net/"; // Production dùng Proxy của Azure
+
 builder.Services.AddSingleton(new HttpClient
 {
-    BaseAddress = new Uri("https://inticoo-e4hrerayb4b7h4fk.southeastasia-01.azurewebsites.net/")
+    BaseAddress = new Uri(apiBaseUrl)
 });
 
 builder.Services.AddBlazoredLocalStorage();
