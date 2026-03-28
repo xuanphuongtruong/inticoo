@@ -11,8 +11,7 @@ builder.RootComponents.Add<HeadOutlet>("head::after");
 
 builder.Services.AddSingleton(new HttpClient
 {
-    //BaseAddress = new Uri("http://localhost:5034/")
-    BaseAddress = new Uri(builder.HostEnvironment.BaseAddress)
+    BaseAddress = new Uri("https://black-grass-002608310.2.azurestaticapps.net/")
 });
 
 builder.Services.AddBlazoredLocalStorage();
