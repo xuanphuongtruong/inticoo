@@ -1,0 +1,141 @@
+@page "/"
+@attribute [Authorize]
+@inject HttpClient Http
+@inject AuthenticationStateProvider AuthStateProvider
+
+<PageTitle>Dashboard — Inticoo</PageTitle>
+
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Dashboard</h1>
+        <p class="page-sub">Overview of your inspection activities</p>
+    </div>
+</div>
+
+@if (_loading)
+{
+    <div class="loading-state">
+        <div class="spinner-lg"></div>
+        <p>Loading dashboard...</p>
+    </div>
+}
+else if (_dashboard != null)
+{
+    <!-- Stats -->
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-icon" style="background:rgba(58,180,242,0.15);color:#3ab4f2">🔍</div>
+            <div class="stat-value">@_dashboard.TotalInspections</div>
+            <div class="stat-label">Total Inspections</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon" style="background:rgba(255,193,7,0.15);color:#ffc107">⏳</div>
+            <div class="stat-value">@_dashboard.PendingInspections</div>
+            <div class="stat-label">Pending</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon" style="background:rgba(33,150,243,0.15);color:#2196f3">🔄</div>
+            <div class="stat-value">@_dashboard.InProgressInspections</div>
+            <div class="stat-label">In Progress</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon" style="background:rgba(76,175,80,0.15);color:#4caf50">✅</div>
+            <div class="stat-value">@_dashboard.CompletedInspections</div>
+            <div class="stat-label">Completed</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon" style="background:rgba(156,39,176,0.15);color:#9c27b0">📊</div>
+            <div class="stat-value">@_dashboard.CompletionRate%</div>
+            <div class="stat-label">Completion Rate</div>
+        </div>
+    </div>
+
+    <!-- Recent Inspections -->
+    <div class="section">
+        <div class="section-header">
+            <h2 class="section-title">Recent Inspections</h2>
+            <a href="/inspections" class="btn-link">View all →</a>
+        </div>
+        <div class="table-wrap">
+            <table class="data-table">
+                <thead>
+                    <tr><th>Title</th><th>Status</th><th>Progress</th><th>Created</th></tr>
+                </thead>
+                <tbody>
+                    @foreach (var item in _dashboard.RecentInspections)
+                    {
+                        <tr @onclick="() => GoTo(item.Id)" class="table-row">
+                            <td>@item.Title</td>
+                            <td><span class="badge badge-@item.Status.ToLower()">@item.Status</span></td>
+                            <td>
+                                <div class="progress-wrap">
+                                    <div class="progress-bar">
+                                        <div class="progress-fill" style="width:@(item.TotalSteps > 0 ? (item.CompletedSteps * 100 / item.TotalSteps) : 0)%"></div>
+                                    </div>
+                                    <span>@item.CompletedSteps/@item.TotalSteps</span>
+                                </div>
+                            </td>
+                            <td>@item.CreatedAt.ToString("MMM dd, yyyy")</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}
+
+@inject NavigationManager Navigation
+
+@code {
+    private DashboardDto? _dashboard;
+    private bool _loading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            _dashboard = await Http.GetFromJsonAsync<DashboardDto>("api/inspections/dashboard");
+        }
+        catch { }
+        finally { _loading = false; }
+    }
+
+    private void GoTo(int id) => Navigation.NavigateTo($"/inspections/{id}");
+}
+
+<style>
+    .page-header { display:flex;align-items:center;justify-content:space-between;margin-bottom:32px; }
+    .page-title { font-family:'Sora',sans-serif;font-size:24px;font-weight:700;margin-bottom:4px; }
+    .page-sub { font-size:14px;color:rgba(255,255,255,0.4); }
+    .stats-grid { display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:16px;margin-bottom:32px; }
+    .stat-card { background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:16px;padding:20px;transition:transform .2s; }
+    .stat-card:hover { transform:translateY(-2px); }
+    .stat-icon { width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:20px;margin-bottom:12px; }
+    .stat-value { font-family:'Sora',sans-serif;font-size:26px;font-weight:700;margin-bottom:4px; }
+    .stat-label { font-size:12px;color:rgba(255,255,255,0.4); }
+    .section { background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:16px;padding:24px; }
+    .section-header { display:flex;align-items:center;justify-content:space-between;margin-bottom:20px; }
+    .section-title { font-family:'Sora',sans-serif;font-size:16px;font-weight:600; }
+    .btn-link { font-size:13px;color:#3ab4f2;text-decoration:none; }
+    .table-wrap { overflow-x:auto; }
+    .data-table { width:100%;border-collapse:collapse; }
+    .data-table th { text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:rgba(255,255,255,0.3);padding:0 16px 12px; }
+    .data-table td { padding:12px 16px;font-size:14px;border-top:1px solid rgba(255,255,255,0.06); }
+    .table-row { cursor:pointer;transition:background .15s; }
+    .table-row:hover td { background:rgba(255,255,255,0.04); }
+    .badge { padding:4px 10px;border-radius:20px;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.04em; }
+    .badge-pending    { background:rgba(255,193,7,0.15);color:#ffc107; }
+    .badge-inprogress { background:rgba(33,150,243,0.15);color:#2196f3; }
+    .badge-completed  { background:rgba(76,175,80,0.15);color:#4caf50; }
+    .badge-cancelled  { background:rgba(244,67,54,0.15);color:#f44336; }
+    .progress-wrap { display:flex;align-items:center;gap:10px; }
+    .progress-bar { flex:1;height:6px;background:rgba(255,255,255,0.08);border-radius:3px;max-width:100px; }
+    .progress-fill { height:100%;background:linear-gradient(90deg,#1e90d6,#3ab4f2);border-radius:3px;transition:width .3s; }
+    .loading-state { display:flex;flex-direction:column;align-items:center;gap:16px;padding:60px;color:rgba(255,255,255,0.4); }
+    .spinner-lg { width:36px;height:36px;border:3px solid rgba(255,255,255,0.1);border-top-color:#3ab4f2;border-radius:50%;animation:spin .7s linear infinite; }
+    @keyframes spin { to { transform:rotate(360deg); } }
+</style>
+
+@using InticooInspection.Application.DTOs
+@using Microsoft.AspNetCore.Authorization
+@using System.Net.Http.Json

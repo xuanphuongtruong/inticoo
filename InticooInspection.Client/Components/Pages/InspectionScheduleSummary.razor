@@ -1,0 +1,1101 @@
+@page "/inspection-schedule"
+@using System.Globalization
+@using System.Net.Http.Json
+@using System.Text.Json
+@inject HttpClient Http
+@inject NavigationManager Navigation
+
+<div class="iss-page">
+
+    <!-- ═══════════════════════ LOADING ═══════════════════════ -->
+    @if (_loading)
+    {
+        <div class="iss-loading">
+            <div class="iss-spinner"></div>
+            <span>Loading schedule…</span>
+        </div>
+    }
+    else if (_view == View.JobDetail && _selectedJob != null)
+    {
+        <!-- ═══════════════════════ JOB DETAIL ═══════════════════════ -->
+        <div class="iss-detail-wrap">
+            <button class="iss-back-btn" @onclick="GoBack">
+                <svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor"
+                     stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M12 15l-5-5 5-5"/>
+                </svg>
+                Back
+            </button>
+
+            <div class="iss-detail-card">
+                <div class="iss-detail-badge @GetStatusClass(_selectedJob.Status)">@_selectedJob.Status</div>
+
+                <div class="iss-field-group">
+                    <div class="iss-field"><span class="iss-fl">Job No</span><span class="iss-fv">@(_selectedJob.JobNumber ?? "—")</span></div>
+                    <div class="iss-field"><span class="iss-fl">Customer Name</span><span class="iss-fv">@_selectedJob.CustomerName</span></div>
+                    <div class="iss-field"><span class="iss-fl">Category</span><span class="iss-fv">@(_selectedJob.ProductCategory ?? "—")</span></div>
+                    <div class="iss-field"><span class="iss-fl">Product Type</span><span class="iss-fv">@(_selectedJob.ProductType ?? "—")</span></div>
+                    <div class="iss-field"><span class="iss-fl">Inspection Type</span><span class="iss-fv">@_selectedJob.InspectionType</span></div>
+                    <div class="iss-field"><span class="iss-fl">Vendor Name</span><span class="iss-fv">@_selectedJob.VendorName</span></div>
+                    <div class="iss-field"><span class="iss-fl">Vendor Address</span><span class="iss-fv">@(_selectedJob.VendorAddress ?? "—")</span></div>
+                </div>
+
+                @if (!string.IsNullOrEmpty(_selectedJob.InspectorName))
+                {
+                    <div class="iss-vendor-section">
+                        <div class="iss-vendor-title">Inspector Information</div>
+                        <div class="iss-vi-row">
+                            <span class="iss-vi-dot">•</span>
+                            <span class="iss-vi-label">Name</span>
+                            <span class="iss-vi-val">@_selectedJob.InspectorName</span>
+                        </div>
+                    </div>
+                }
+            </div>
+
+            <button class="iss-start-btn" @onclick="() => StartInspection(_selectedJob)">
+                <svg width="18" height="18" viewBox="0 0 20 20" fill="currentColor"><path d="M6 4l12 6-12 6V4z"/></svg>
+                Start Inspection
+            </button>
+        </div>
+    }
+    else
+    {
+        <!-- ═══════════════════════ SUMMARY ═══════════════════════ -->
+
+        <!-- HEADER -->
+        <div class="iss-header-card">
+            <div class="iss-header-top">
+                <div class="iss-logo">
+                    <svg width="28" height="28" viewBox="0 0 32 32" fill="none">
+                        <polygon points="16,2 28,9 28,23 16,30 4,23 4,9" fill="#2D7DD2" opacity="0.85"/>
+                        <polygon points="16,6 25,11 25,21 16,26 7,21 7,11" fill="#1a5fa8"/>
+                        <rect x="13" y="10" width="6" height="12" rx="1" fill="white" opacity="0.9"/>
+                        <rect x="10" y="13" width="12" height="6" rx="1" fill="white" opacity="0.6"/>
+                    </svg>
+                    <span class="iss-logo-text">inticoo</span>
+                </div>
+                <div class="iss-year-badge">@DateTime.Now.Year</div>
+            </div>
+
+            <div class="iss-month-header">
+                <span class="iss-month-title">Total Job</span>
+                <span class="iss-month-total">@_completedCount completed</span>
+            </div>
+            <div class="iss-month-grid">
+                @foreach (var m in _monthSummary)
+                {
+                    <div class="iss-month-cell @(m.Count > 0 ? "has-jobs" : "")">
+                        <span class="iss-m-name">@m.ShortName</span>
+                        @if (m.Count > 0)
+                        {
+                            <span class="iss-m-count">@m.Count</span>
+                        }
+                    </div>
+                }
+            </div>
+
+            <div class="iss-user-strip">
+                <div class="iss-user-info">
+                    <span class="iss-u-label">Completed</span>
+                    <span class="iss-u-val iss-u-done">@_completedCount</span>
+                </div>
+                <div class="iss-user-info">
+                    <span class="iss-u-label">To Do</span>
+                    <span class="iss-u-val iss-u-todo">@_todoCount</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- STATUS TABS -->
+        <div class="iss-status-bar">
+            <button class="iss-status-btn @(_statusFilter == "todo" ? "s-active s-todo" : "s-idle")"
+                    @onclick='() => _statusFilter = "todo"'>
+                <svg width="13" height="13" viewBox="0 0 20 20" fill="none" stroke="currentColor"
+                     stroke-width="2" stroke-linecap="round"><circle cx="10" cy="10" r="8"/><path d="M10 6v4l3 3"/></svg>
+                To Do
+                @if (_todoCount > 0) { <span class="iss-cnt-badge">@_todoCount</span> }
+            </button>
+            <button class="iss-status-btn @(_statusFilter == "completed" ? "s-active s-done" : "s-idle")"
+                    @onclick='() => _statusFilter = "completed"'>
+                <svg width="13" height="13" viewBox="0 0 20 20" fill="none" stroke="currentColor"
+                     stroke-width="2" stroke-linecap="round"><path d="M4 10l5 5 7-8"/></svg>
+                Completed
+                @if (_completedCount > 0) { <span class="iss-cnt-badge">@_completedCount</span> }
+            </button>
+        </div>
+
+        <!-- TIME TABS — chỉ hiện khi To Do -->
+        @if (_statusFilter == "todo")
+        {
+        <div class="iss-time-bar">
+            <button class="iss-time-btn @(_timeFilter == "today" ? "t-active" : "")"
+                    @onclick='() => SetTimeFilter("today")'>Today</button>
+            <button class="iss-time-btn @(_timeFilter == "7days" ? "t-active" : "")"
+                    @onclick='() => SetTimeFilter("7days")'>7 days</button>
+            <button class="iss-time-btn @(_timeFilter == "14days" ? "t-active" : "")"
+                    @onclick='() => SetTimeFilter("14days")'>14 days</button>
+        </div>
+        }
+
+        <!-- CONTENT -->
+        <div class="iss-content">
+            @{var filtered = FilteredJobs();}
+
+            @if (_statusFilter == "completed")
+            {
+                <div class="iss-section-title">Completed</div>
+                @if (!filtered.Any())
+                {
+                    <div class="iss-empty">
+                        <svg width="48" height="48" viewBox="0 0 48 48" fill="none" stroke="#ccc" stroke-width="1.5">
+                            <rect x="8" y="10" width="32" height="32" rx="4"/>
+                            <path d="M16 10V6M32 10V6M8 20h32" stroke-linecap="round"/>
+                            <circle cx="24" cy="32" r="4"/>
+                        </svg>
+                        <p>No completed inspections this year</p>
+                    </div>
+                }
+                @foreach (var job in filtered.OrderByDescending(j => j.CompletedAt ?? j.InspectionDate))
+                {
+                    <div class="iss-comp-item">
+                        <div class="iss-comp-row">
+                            <span class="iss-comp-label">Completed Date</span>
+                            <span class="iss-comp-val">
+                                @(job.CompletedAt.HasValue
+                                    ? job.CompletedAt.Value.ToString("d MMM yyyy")
+                                    : job.InspectionDate != DateTime.MinValue
+                                        ? job.InspectionDate.ToString("d MMM yyyy")
+                                        : "—")
+                            </span>
+                        </div>
+                        <div class="iss-comp-row">
+                            <span class="iss-comp-label">Job No</span>
+                            <span class="iss-comp-val">@(job.JobNumber ?? $"#{job.Id}")</span>
+                        </div>
+                        <div class="iss-comp-row">
+                            <span class="iss-comp-label">Customer Name</span>
+                            <span class="iss-comp-val">@job.CustomerName</span>
+                        </div>
+                        <div class="iss-comp-row">
+                            <span class="iss-comp-label">Category</span>
+                            <span class="iss-comp-val">@(job.ProductCategory ?? "—")</span>
+                        </div>
+                        <div class="iss-comp-row">
+                            <span class="iss-comp-label">Product Type</span>
+                            <span class="iss-comp-val">@(job.ProductType ?? "—")</span>
+                        </div>
+                        <div class="iss-comp-row">
+                            <span class="iss-comp-label">Inspection Type</span>
+                            <span class="iss-comp-val">
+                                <span class="iss-it-badge it-@job.InspectionType.ToLower()">@job.InspectionType</span>
+                            </span>
+                        </div>
+                        <div class="iss-comp-row">
+                            <span class="iss-comp-label">Vendor Name</span>
+                            <span class="iss-comp-val">@job.VendorName</span>
+                        </div>
+                        <div class="iss-comp-row">
+                            <span class="iss-comp-label">Result</span>
+                            <span class="iss-comp-val">
+                                @if (!string.IsNullOrEmpty(job.OverallResult))
+                                {
+                                    <span class="iss-result-badge res-@job.OverallResult.ToLower()">
+                                        @job.OverallResult.ToUpper()
+                                    </span>
+                                }
+                                else
+                                {
+                                    <span class="iss-comp-na">—</span>
+                                }
+                            </span>
+                        </div>
+                        <div class="iss-comp-row">
+                            <span class="iss-comp-label">Report</span>
+                            <span class="iss-comp-val">
+                                @if (!string.IsNullOrEmpty(job.ReportUrl))
+                                {
+                                    <a class="iss-pdf-btn" href="@job.ReportUrl" target="_blank" download>
+                                        <svg width="13" height="13" viewBox="0 0 20 20" fill="none" stroke="currentColor"
+                                             stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                            <path d="M4 16v1a1 1 0 001 1h10a1 1 0 001-1v-1M10 12V4M6 9l4 4 4-4"/>
+                                        </svg>
+                                        Download PDF
+                                    </a>
+                                }
+                                else
+                                {
+                                    <span class="iss-comp-na">—</span>
+                                }
+                            </span>
+                        </div>
+                    </div>
+                    <div class="iss-comp-divider"></div>
+                }
+            }
+            else if (!filtered.Any())
+            {
+                <div class="iss-empty">
+                    <svg width="48" height="48" viewBox="0 0 48 48" fill="none" stroke="#ccc" stroke-width="1.5">
+                        <rect x="8" y="10" width="32" height="32" rx="4"/>
+                        <path d="M16 10V6M32 10V6M8 20h32" stroke-linecap="round"/>
+                        <circle cx="24" cy="32" r="4"/>
+                    </svg>
+                    <p>No inspections for this period</p>
+                </div>
+            }
+            else if (_timeFilter == "today")
+            {
+                <div class="iss-section-title">Today — @DateTime.Today.ToString("dddd, d MMMM yyyy")</div>
+                <div class="iss-card-grid">
+                    @foreach (var job in filtered)
+                    {
+                        <div class="iss-job-card" @onclick="() => OpenJobDetail(job)">
+                            <div class="iss-jc-top">
+                                <span class="iss-job-no">@(job.JobNumber ?? $"#{job.Id}")</span>
+                                <span class="iss-it-badge it-@job.InspectionType.ToLower()">@job.InspectionType</span>
+                            </div>
+                            <div class="iss-jc-body">
+                                <div class="iss-jf"><span class="iss-jl">Customer Name</span><span class="iss-jv">@job.CustomerName</span></div>
+                                <div class="iss-jf"><span class="iss-jl">Category</span><span class="iss-jv">@(job.ProductCategory ?? "—")</span></div>
+                                <div class="iss-jf"><span class="iss-jl">Product Type</span><span class="iss-jv">@(job.ProductType ?? "—")</span></div>
+                                <div class="iss-jf"><span class="iss-jl">Inspection Type</span><span class="iss-jv">@job.InspectionType</span></div>
+                                <div class="iss-jf"><span class="iss-jl">Vendor Name</span><span class="iss-jv">@job.VendorName</span></div>
+                                <div class="iss-jf"><span class="iss-jl">Vendor Address</span><span class="iss-jv">@(job.VendorAddress ?? "—")</span></div>
+                            </div>
+                            <div class="iss-jc-foot">
+                                <span class="iss-st-pill @GetStatusClass(job.Status)">@job.Status</span>
+                                <button class="iss-start-sm" @onclick:stopPropagation="true"
+                                        @onclick="() => StartInspection(job)">Start</button>
+                            </div>
+                        </div>
+                    }
+                </div>
+            }
+            else if (_timeFilter == "7days")
+            {
+                var byDay = filtered
+                    .GroupBy(j => j.InspectionDate.Date)
+                    .OrderBy(g => g.Key).ToList();
+                <div class="iss-section-title">Next 7 days</div>
+                foreach (var grp in byDay)
+                {
+                    <div class="iss-day-group">
+                        <div class="iss-day-hdr">
+                            <span class="iss-day-date">@grp.Key.ToString("ddd, d MMM yyyy")</span>
+                            <span class="iss-day-cnt">@grp.Count() job@(grp.Count() > 1 ? "s" : "")</span>
+                        </div>
+                        @foreach (var job in grp)
+                        {
+                            <div class="iss-list-item" @onclick="() => OpenJobDetail(job)">
+                                <div class="iss-li-body">
+                                    <div class="iss-li-row"><span class="iss-ll">Date</span><span class="iss-lv">@job.InspectionDate.ToString("d MMM yyyy")</span></div>
+                                    <div class="iss-li-row"><span class="iss-ll">Category</span><span class="iss-lv">@(job.ProductCategory ?? "—")</span></div>
+                                    <div class="iss-li-row"><span class="iss-ll">Product Type</span><span class="iss-lv">@(job.ProductType ?? "—")</span></div>
+                                    <div class="iss-li-row"><span class="iss-ll">Inspection Type</span><span class="iss-lv">@job.InspectionType</span></div>
+                                    <div class="iss-li-row"><span class="iss-ll">Vendor Name</span><span class="iss-lv">@job.VendorName</span></div>
+                                    <div class="iss-li-row"><span class="iss-ll">Vendor Address</span><span class="iss-lv">@(job.VendorAddress ?? "—")</span></div>
+                                </div>
+                                <svg class="iss-chevron" width="16" height="16" viewBox="0 0 20 20"
+                                     fill="none" stroke="#ccc" stroke-width="2" stroke-linecap="round">
+                                    <path d="M7 5l5 5-5 5"/>
+                                </svg>
+                            </div>
+                        }
+                    </div>
+                }
+            }
+            else if (_timeFilter == "14days")
+            {
+                var days14 = Enumerable.Range(0, 14).Select(i => DateTime.Today.AddDays(i)).ToList();
+                <div class="iss-section-title">Next 14 days</div>
+
+                <div class="iss-cal-table-wrap">
+                    <table class="iss-cal-table">
+                        <tbody>
+                        @for (int idx = 0; idx < days14.Count; idx += 2)
+                        {
+                            var d1 = days14[idx];
+                            var d2 = idx + 1 < days14.Count ? days14[idx + 1] : (DateTime?)null;
+                            var j1 = filtered.Where(j => j.InspectionDate.Date == d1.Date).ToList();
+                            var j2 = d2.HasValue
+                                ? filtered.Where(j => j.InspectionDate.Date == d2.Value.Date).ToList()
+                                : new List<JobItem>();
+                            <tr>
+                                <td class="iss-cal-cell @(j1.Any() ? "cell-has" : "")">
+                                    <div class="iss-cal-date">@d1.ToString("d MMM yyyy")</div>
+                                    @foreach (var j in j1)
+                                    {
+                                        <div class="iss-cal-job" @onclick="() => OpenJobDetail(j)">
+                                            <span class="iss-it-badge it-@j.InspectionType.ToLower()">@j.InspectionType</span>
+                                            <div class="iss-cj-cat">@(j.ProductCategory ?? "—")</div>
+                                            <div class="iss-cj-vendor">@j.VendorName</div>
+                                        </div>
+                                    }
+                                </td>
+                                @if (d2.HasValue)
+                                {
+                                    <td class="iss-cal-cell @(j2.Any() ? "cell-has" : "")">
+                                        <div class="iss-cal-date">@d2.Value.ToString("d MMM yyyy")</div>
+                                        @foreach (var j in j2)
+                                        {
+                                            <div class="iss-cal-job" @onclick="() => OpenJobDetail(j)">
+                                                <span class="iss-it-badge it-@j.InspectionType.ToLower()">@j.InspectionType</span>
+                                                <div class="iss-cj-cat">@(j.ProductCategory ?? "—")</div>
+                                                <div class="iss-cj-vendor">@j.VendorName</div>
+                                            </div>
+                                        }
+                                    </td>
+                                }
+                            </tr>
+                        }
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="iss-cal-mobile">
+                    @foreach (var day in days14)
+                    {
+                        var dj = filtered.Where(j => j.InspectionDate.Date == day.Date).ToList();
+                        <div class="iss-cal-day @(dj.Any() ? "cday-has" : "cday-empty")">
+                            <div class="iss-cal-day-hdr">
+                                <span class="iss-cal-day-name">@day.ToString("ddd, d MMM")</span>
+                                @if (dj.Any())
+                                {
+                                    <span class="iss-cal-day-cnt">@dj.Count</span>
+                                }
+                            </div>
+                            @if (dj.Any())
+                            {
+                                @foreach (var j in dj)
+                                {
+                                    <div class="iss-cal-row" @onclick="() => OpenJobDetail(j)">
+                                        <span class="iss-it-badge it-@j.InspectionType.ToLower()">@j.InspectionType</span>
+                                        <span class="iss-cal-info">@(j.ProductCategory ?? "—") · @j.VendorName</span>
+                                        <svg width="14" height="14" viewBox="0 0 20 20" fill="none"
+                                             stroke="#ccc" stroke-width="2" stroke-linecap="round">
+                                            <path d="M7 5l5 5-5 5"/>
+                                        </svg>
+                                    </div>
+                                }
+                            }
+                            else
+                            {
+                                <div class="iss-cal-day-empty">No jobs</div>
+                            }
+                        </div>
+                    }
+                </div>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    // ────────────────────────────────────────────
+    //  STATE
+    // ────────────────────────────────────────────
+    private enum View { Summary, JobDetail }
+    private View    _view           = View.Summary;
+    private string  _timeFilter     = "today";
+    private string  _statusFilter   = "todo";
+    private string  _prevTimeFilter = "today";
+    private bool    _loading        = true;
+    private JobItem? _selectedJob;
+    private List<JobItem>    _allJobs      = new();
+    private List<MonthStat>  _monthSummary = new();
+
+    // ────────────────────────────────────────────
+    //  VIEW MODELS
+    // ────────────────────────────────────────────
+    public class JobItem
+    {
+        public int      Id              { get; set; }
+        public string?  JobNumber       { get; set; }
+        public string   Title           { get; set; } = "";
+        public string   CustomerName    { get; set; } = "";
+        public string?  ProductCategory { get; set; }
+        public string?  ProductType     { get; set; }
+        public string   InspectionType  { get; set; } = "DPI";
+        public string   VendorName      { get; set; } = "";
+        public string?  VendorAddress   { get; set; }
+        public string?  InspectorName   { get; set; }
+        public string   Status          { get; set; } = "New";
+        public DateTime InspectionDate  { get; set; }
+        public DateTime CreatedAt       { get; set; }
+        public DateTime? CompletedAt    { get; set; }
+        public string?   OverallResult  { get; set; }
+        public string?   ReportUrl      { get; set; }
+    }
+
+    public record MonthStat(string ShortName, int Count);
+
+    // ────────────────────────────────────────────
+    //  STATUS HELPERS
+    //  API trả: "New" | "OnGoing" | "Completed" | "Cancel"
+    //  To Do  = New hoặc OnGoing  (chưa hoàn thành)
+    //  Done   = Completed
+    // ────────────────────────────────────────────
+    private static bool IsCompleted(JobItem j) =>
+        string.Equals(j.Status, "Completed", StringComparison.OrdinalIgnoreCase);
+
+    private static bool IsTodo(JobItem j) =>
+        string.Equals(j.Status, "New",      StringComparison.OrdinalIgnoreCase) ||
+        string.Equals(j.Status, "OnGoing",  StringComparison.OrdinalIgnoreCase);
+
+    // ────────────────────────────────────────────
+    //  COMPUTED
+    //  _todoCount / _completedCount: chỉ tính job trong năm hiện tại
+    // ────────────────────────────────────────────
+    private int _currentYear => DateTime.Now.Year;
+
+    private int _todoCount =>
+        _allJobs.Count(j => IsTodo(j) && j.InspectionDate.Year == _currentYear);
+
+    private int _completedCount =>
+        _allJobs.Count(j => IsCompleted(j) && j.InspectionDate.Year == _currentYear);
+
+    // ────────────────────────────────────────────
+    //  FILTER JOBS
+    //  - Tab "To Do"       → New | OnGoing, lọc theo ngày
+    //  - Tab "Completed"   → Completed, lọc theo ngày
+    //  - Chỉ job trong năm hiện tại
+    // ────────────────────────────────────────────
+    private List<JobItem> FilteredJobs()
+    {
+        var today = DateTime.Today;
+
+        // Tab Completed: trả về toàn bộ job Completed trong năm, không lọc theo ngày
+        if (_statusFilter == "completed")
+        {
+            return _allJobs
+                .Where(j => IsCompleted(j) &&
+                            j.InspectionDate != DateTime.MinValue &&
+                            j.InspectionDate.Year == _currentYear)
+                .OrderByDescending(j => j.CompletedAt ?? j.InspectionDate)
+                .ToList();
+        }
+
+        // Tab To Do: lọc New | OnGoing, năm hiện tại, theo khoảng thời gian
+        IEnumerable<JobItem> q = _allJobs
+            .Where(j => IsTodo(j) &&
+                        j.InspectionDate != DateTime.MinValue &&
+                        j.InspectionDate.Year == _currentYear);
+
+        return _timeFilter switch
+        {
+            "today"  => q.Where(j => j.InspectionDate.Date == today).ToList(),
+            "7days"  => q.Where(j => j.InspectionDate.Date >= today &&
+                                     j.InspectionDate.Date <  today.AddDays(7)).ToList(),
+            "14days" => q.Where(j => j.InspectionDate.Date >= today &&
+                                     j.InspectionDate.Date <  today.AddDays(14)).ToList(),
+            _ => new()
+        };
+    }
+
+    // ────────────────────────────────────────────
+    //  LIFECYCLE
+    // ────────────────────────────────────────────
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAllJobs();
+        BuildMonthSummary();
+        _loading = false;
+    }
+
+    private async Task LoadAllJobs()
+    {
+        try
+        {
+            // Load tất cả job (không filter status ở đây — filter ở client)
+            var r1 = await Http.GetFromJsonAsync<ApiPageResponse>(
+                "api/inspections?page=1&pageSize=200",
+                new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+
+            if (r1?.Items == null) return;
+            _allJobs = r1.Items.Select(MapToJobItem).ToList();
+
+            // Load các trang tiếp theo nếu có
+            int totalPages = (int)Math.Ceiling((double)r1.Total / 200);
+            for (int p = 2; p <= totalPages; p++)
+            {
+                var rp = await Http.GetFromJsonAsync<ApiPageResponse>(
+                    $"api/inspections?page={p}&pageSize=200",
+                    new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                if (rp?.Items != null)
+                    _allJobs.AddRange(rp.Items.Select(MapToJobItem));
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[InspectionScheduleSummary] Error: {ex.Message}");
+        }
+    }
+
+    private static JobItem MapToJobItem(ApiItem i) => new()
+    {
+        Id              = i.Id,
+        JobNumber       = i.JobNumber ?? i.Title,
+        Title           = i.Title      ?? "",
+        CustomerName    = i.CustomerName ?? "",
+        ProductCategory = string.IsNullOrEmpty(i.ProductCategory) ? null : i.ProductCategory,
+        ProductType     = string.IsNullOrEmpty(i.ProductType)     ? null : i.ProductType,
+        InspectionType  = i.InspectionType ?? "DPI",
+        VendorName      = i.VendorName  ?? "",
+        VendorAddress   = string.IsNullOrEmpty(i.VendorAddress)   ? null : i.VendorAddress,
+        InspectorName   = i.InspectorName,
+        Status          = i.Status      ?? "New",
+        // Nếu API không có InspectionDate → DateTime.MinValue → bị loại khỏi mọi filter
+        InspectionDate  = i.InspectionDate ?? DateTime.MinValue,
+        CreatedAt       = i.CreatedAt,
+        CompletedAt     = i.CompletedAt,
+        OverallResult   = null,
+        ReportUrl       = null,
+    };
+
+    private void BuildMonthSummary()
+    {
+        // Monthly grid: đếm job Completed theo từng tháng trong năm hiện tại
+        var year = _currentYear;
+        _monthSummary = Enumerable.Range(1, 12).Select(m =>
+        {
+            var abbr = CultureInfo.InvariantCulture.DateTimeFormat.AbbreviatedMonthNames[m - 1];
+            var cnt  = _allJobs.Count(j =>
+                IsCompleted(j) &&
+                j.InspectionDate != DateTime.MinValue &&
+                j.InspectionDate.Year  == year &&
+                j.InspectionDate.Month == m);
+            return new MonthStat(abbr, cnt);
+        }).ToList();
+    }
+
+    // ────────────────────────────────────────────
+    //  ACTIONS
+    // ────────────────────────────────────────────
+    private void SetTimeFilter(string f) { _timeFilter = f; _view = View.Summary; }
+
+    private void OpenJobDetail(JobItem job)
+    {
+        _selectedJob    = job;
+        _prevTimeFilter = _timeFilter;
+        _view           = View.JobDetail;
+    }
+
+    private void GoBack() { _view = View.Summary; _timeFilter = _prevTimeFilter; }
+
+    private void StartInspection(JobItem? job)
+    {
+        if (job == null) return;
+        Navigation.NavigateTo($"/inspection-qc/{job.Id}");
+    }
+
+    private static string GetStatusClass(string status) => status switch
+    {
+        "Completed" or "completed"   => "st-done",
+        "OnGoing"   or "ongoing"     => "st-going",
+        "Pending"   or "pending"     => "st-pending",
+        "Cancel"    or "cancelled"   => "st-cancel",
+        _                            => "st-new"
+    };
+
+    // ────────────────────────────────────────────
+    //  API DTOs  (mirrors GetAll response shape)
+    // ────────────────────────────────────────────
+    private class ApiPageResponse
+    {
+        public int            Total    { get; set; }
+        public int            Page     { get; set; }
+        public int            PageSize { get; set; }
+        public List<ApiItem>? Items    { get; set; }
+    }
+
+    private class ApiItem
+    {
+        public int       Id              { get; set; }
+        public string?   Title           { get; set; }
+        public string?   Status          { get; set; }
+        public string?   JobNumber       { get; set; }
+        public string?   CustomerName    { get; set; }
+        public string?   VendorName      { get; set; }
+        public string?   VendorAddress   { get; set; }
+        public string?   ProductCategory { get; set; }
+        public string?   ProductType     { get; set; }
+        public string?   InspectionType  { get; set; }
+        public string?   InspectorName   { get; set; }
+        public DateTime? InspectionDate  { get; set; }
+        public DateTime  CreatedAt       { get; set; }
+        public DateTime? CompletedAt     { get; set; }
+    }
+}
+
+<style>
+    /* ══════════ BASE ══════════ */
+    .iss-page {
+        font-family: 'SF Pro Display', -apple-system, 'Segoe UI', sans-serif;
+        background: #f0f3f8;
+        min-height: 100vh;
+        padding-bottom: 48px;
+    }
+
+    /* ══════════ LOADING ══════════ */
+    .iss-loading {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 14px;
+        min-height: 40vh;
+        color: #888;
+        font-size: 14px;
+    }
+    .iss-spinner {
+        width: 38px; height: 38px;
+        border: 3px solid #dde6f4;
+        border-top-color: #2D7DD2;
+        border-radius: 50%;
+        animation: iss-spin .75s linear infinite;
+    }
+    @@keyframes iss-spin { to { transform: rotate(360deg); } }
+
+    /* ══════════ HEADER CARD ══════════ */
+    .iss-header-card {
+        background: white;
+        padding: 18px 16px 12px;
+        box-shadow: 0 2px 8px rgba(0,0,0,.07);
+        border-bottom: 1px solid #e4eaf4;
+    }
+    .iss-header-top {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 14px;
+    }
+    .iss-logo { display: flex; align-items: center; gap: 8px; }
+    .iss-logo-text {
+        font-size: 20px; font-weight: 700;
+        color: #1a1a2e; letter-spacing: -.5px;
+    }
+    .iss-year-badge {
+        background: #e8f0fe; color: #1565c0;
+        font-size: 12px; font-weight: 700;
+        padding: 3px 10px; border-radius: 20px;
+    }
+
+    /* Monthly grid */
+    .iss-month-header {
+        display: flex; justify-content: space-between; align-items: baseline;
+        margin-bottom: 8px;
+    }
+    .iss-month-title { font-size: 11px; font-weight: 700; color: #666; text-transform: uppercase; letter-spacing: .06em; }
+    .iss-month-total { font-size: 12px; color: #2D7DD2; font-weight: 600; }
+
+    .iss-month-grid {
+        display: grid;
+        grid-template-columns: repeat(6, 1fr);   /* 2 rows × 6 */
+        gap: 3px;
+        margin-bottom: 12px;
+    }
+    @@media (min-width: 600px) {
+        .iss-month-grid { grid-template-columns: repeat(12, 1fr); }  /* 1 row × 12 */
+    }
+
+    .iss-month-cell {
+        background: #f6f8fc;
+        border: 1px solid #e4eaf4;
+        border-radius: 6px;
+        padding: 5px 3px 4px;
+        text-align: center;
+        min-height: 36px;
+        transition: background .2s;
+    }
+    .iss-month-cell.has-jobs { background: #ddeeff; border-color: #a8cef8; }
+    .iss-m-name { font-size: 10px; font-weight: 600; color: #999; display: block; }
+    .iss-month-cell.has-jobs .iss-m-name { color: #1565c0; }
+    .iss-m-count { display: block; font-size: 13px; font-weight: 700; color: #2D7DD2; margin-top: 1px; }
+
+    /* User strip */
+    .iss-user-strip { display: flex; gap: 20px; padding-top: 10px; border-top: 1px solid #f0f3f8; flex-wrap: wrap; }
+    .iss-user-info  { display: flex; gap: 5px; align-items: baseline; }
+    .iss-u-label { font-size: 11px; color: #aaa; }
+    .iss-u-val   { font-size: 12px; font-weight: 700; color: #333; }
+    .iss-u-todo  { color: #f08c5a; }
+    .iss-u-done  { color: #27ae60; }
+
+    @@media (min-width: 640px)  { .iss-header-card { padding: 20px 32px 14px; } }
+    @@media (min-width: 1024px) { .iss-header-card { padding: 22px 40px 14px; } }
+
+    /* ══════════ STATUS BAR ══════════ */
+    .iss-status-bar {
+        display: flex;
+        gap: 8px;
+        background: white;
+        padding: 10px 16px 0;
+        border-bottom: 1px solid #eee;
+    }
+    .iss-status-btn {
+        flex: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 5px;
+        padding: 9px 10px;
+        border: none; border-radius: 24px;
+        font-size: 13px; font-weight: 600;
+        cursor: pointer;
+        transition: all .2s;
+    }
+    .iss-cnt-badge {
+        background: rgba(255,255,255,.3);
+        border-radius: 10px;
+        padding: 1px 6px;
+        font-size: 11px; font-weight: 700;
+    }
+    .s-idle  { background: #f0f2f5; color: #aaa; }
+    .s-active.s-todo { background: linear-gradient(135deg, #f4a77a, #f08c5a); color: white; box-shadow: 0 4px 12px rgba(240,140,90,.4); transform: translateY(-1px); }
+    .s-active.s-done { background: linear-gradient(135deg, #43c776, #27ae60); color: white; box-shadow: 0 4px 12px rgba(39,174,96,.35); transform: translateY(-1px); }
+
+    @@media (min-width: 640px)  { .iss-status-bar { padding: 10px 32px 0; gap: 12px; } .iss-status-btn { flex: none; min-width: 160px; } }
+    @@media (min-width: 1024px) { .iss-status-bar { padding: 10px 40px 0; } }
+
+    /* ══════════ TIME BAR ══════════ */
+    .iss-time-bar {
+        display: flex;
+        gap: 8px;
+        padding: 10px 16px 10px;
+        background: white;
+        border-bottom: 2px solid #f0f3f8;
+    }
+    .iss-time-btn {
+        flex: 1;
+        padding: 8px 0;
+        border: none; border-radius: 20px;
+        font-size: 13px; font-weight: 600;
+        cursor: pointer;
+        background: #e2f0fd; color: #2D7DD2;
+        transition: all .2s;
+    }
+    .iss-time-btn.t-active {
+        background: linear-gradient(135deg, #2acfcf, #17a8a8);
+        color: white;
+        box-shadow: 0 4px 10px rgba(42,207,207,.3);
+        transform: translateY(-1px);
+    }
+    @@media (min-width: 640px)  { .iss-time-bar { padding: 10px 32px; gap: 12px; } .iss-time-btn { flex: none; padding: 8px 28px; } }
+    @@media (min-width: 1024px) { .iss-time-bar { padding: 10px 40px; } }
+
+    /* ══════════ CONTENT WRAPPER ══════════ */
+    .iss-content {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 16px;
+    }
+    @@media (min-width: 640px)  { .iss-content { padding: 20px 32px; } }
+    @@media (min-width: 1024px) { .iss-content { padding: 24px 40px; } }
+
+    .iss-section-title {
+        font-size: 15px; font-weight: 700; color: #1a1a2e;
+        margin-bottom: 14px;
+        padding-bottom: 8px;
+        border-bottom: 2px solid #e4eaf4;
+    }
+
+    /* Empty */
+    .iss-empty { display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 60px 0; color: #ccc; font-size: 14px; }
+
+    /* ══════════ TODAY — CARD GRID ══════════ */
+    .iss-card-grid {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 12px;
+    }
+    @@media (min-width: 600px)  { .iss-card-grid { grid-template-columns: repeat(2, 1fr); } }
+    @@media (min-width: 1024px) { .iss-card-grid { grid-template-columns: repeat(3, 1fr); } }
+
+    .iss-job-card {
+        background: white;
+        border-radius: 12px;
+        padding: 14px 16px;
+        box-shadow: 0 2px 8px rgba(0,0,0,.07);
+        cursor: pointer;
+        transition: transform .15s, box-shadow .15s;
+        border: 1px solid transparent;
+        display: flex; flex-direction: column; gap: 0;
+    }
+    .iss-job-card:hover { transform: translateY(-3px); box-shadow: 0 6px 20px rgba(0,0,0,.11); border-color: #bbd9f8; }
+
+    .iss-jc-top {
+        display: flex; align-items: center; justify-content: space-between;
+        margin-bottom: 10px; padding-bottom: 8px; border-bottom: 1px solid #f0f3f8;
+    }
+    .iss-job-no { font-size: 12px; font-weight: 700; color: #1565c0; }
+
+    .iss-it-badge {
+        font-size: 10px; font-weight: 700;
+        padding: 2px 8px; border-radius: 10px;
+        text-transform: uppercase; white-space: nowrap;
+    }
+    .it-dpi { background: #e8f0fe; color: #1565c0; }
+    .it-ppt { background: #fff3e0; color: #e65100; }
+    .it-pst { background: #f3e5f5; color: #7b1fa2; }
+
+    .iss-jc-body { flex: 1; }
+    .iss-jf { display: flex; gap: 6px; margin-bottom: 5px; align-items: baseline; }
+    .iss-jl { font-size: 11px; color: #2D7DD2; font-weight: 600; min-width: 100px; flex-shrink: 0; }
+    .iss-jv { font-size: 12px; color: #333; word-break: break-word; }
+
+    .iss-jc-foot {
+        display: flex; align-items: center; justify-content: space-between;
+        margin-top: 10px; padding-top: 8px; border-top: 1px solid #f0f3f8;
+    }
+    .iss-st-pill { font-size: 11px; font-weight: 600; padding: 3px 10px; border-radius: 10px; }
+    .st-new     { background: #e8f0fe; color: #1565c0; }
+    .st-going   { background: #e3f2fd; color: #0277bd; }
+    .st-done    { background: #e8f5e9; color: #2e7d32; }
+    .st-pending { background: #fff8e1; color: #f57f17; }
+    .st-cancel  { background: #fce4ec; color: #c62828; }
+
+    .iss-start-sm {
+        background: #27ae60; color: white;
+        border: none; border-radius: 8px;
+        padding: 6px 18px;
+        font-size: 12px; font-weight: 700;
+        cursor: pointer; transition: background .2s;
+    }
+    .iss-start-sm:hover { background: #219a52; }
+
+    /* ══════════ 7-DAY LIST ══════════ */
+    .iss-day-group {
+        background: white;
+        border-radius: 10px;
+        margin-bottom: 12px;
+        overflow: hidden;
+        box-shadow: 0 2px 8px rgba(0,0,0,.06);
+    }
+    .iss-day-hdr {
+        display: flex; align-items: center; justify-content: space-between;
+        padding: 9px 14px;
+        background: #f6f8fc;
+        border-bottom: 1px solid #eef1f7;
+    }
+    .iss-day-date { font-size: 13px; font-weight: 700; color: #1a1a2e; }
+    .iss-day-cnt  { font-size: 11px; font-weight: 600; color: #2D7DD2; background: #e8f0fe; padding: 2px 8px; border-radius: 10px; }
+
+    .iss-list-item {
+        display: flex; align-items: center;
+        padding: 12px 14px;
+        cursor: pointer;
+        border-bottom: 1px solid #f5f7fa;
+        transition: background .15s;
+    }
+    .iss-list-item:last-child { border-bottom: none; }
+    .iss-list-item:hover { background: #f0f8ff; }
+    .iss-li-body { flex: 1; }
+    .iss-li-row { display: flex; gap: 6px; margin-bottom: 4px; align-items: baseline; }
+    .iss-ll { font-size: 11px; color: #2D7DD2; font-weight: 600; min-width: 108px; flex-shrink: 0; }
+    .iss-lv { font-size: 12px; color: #333; }
+    .iss-chevron { flex-shrink: 0; margin-left: 6px; }
+
+    @@media (min-width: 768px) {
+        .iss-ll { font-size: 12px; min-width: 120px; }
+        .iss-lv { font-size: 13px; }
+    }
+
+    /* ══════════ 14-DAY TABLE (≥ 600px) ══════════ */
+    .iss-cal-table-wrap { display: none; }
+    @@media (min-width: 600px) {
+        .iss-cal-table-wrap { display: block; }
+        .iss-cal-mobile     { display: none; }
+    }
+
+    .iss-cal-table {
+        width: 100%;
+        border-collapse: collapse;
+        background: white;
+        border-radius: 10px;
+        overflow: hidden;
+        box-shadow: 0 2px 8px rgba(0,0,0,.06);
+    }
+    .iss-cal-cell {
+        width: 50%; vertical-align: top;
+        border: 1px solid #e4eaf4;
+        padding: 10px 12px;
+    }
+    .iss-cal-cell.cell-has { background: #fafcff; }
+    .iss-cal-date {
+        font-size: 12px; font-weight: 700; color: #1a1a2e;
+        margin-bottom: 6px; padding-bottom: 4px;
+        border-bottom: 1px solid #f0f3f8;
+    }
+    .iss-cal-job {
+        padding: 5px 0; cursor: pointer;
+        border-top: 1px dashed #eee; margin-top: 4px;
+        transition: color .15s;
+    }
+    .iss-cal-job:first-of-type { border-top: none; margin-top: 0; }
+    .iss-cal-job:hover .iss-cj-cat { color: #1565c0; }
+    .iss-cj-cat { font-size: 11px; color: #333; display: block; margin-top: 2px; }
+    .iss-cj-vendor { font-size: 10px; color: #999; }
+
+    /* ══════════ 14-DAY MOBILE CARDS ══════════ */
+    .iss-cal-mobile { display: block; }
+    @@media (min-width: 600px) { .iss-cal-mobile { display: none; } }
+
+    .iss-cal-day {
+        background: white;
+        border-radius: 10px;
+        margin-bottom: 8px;
+        overflow: hidden;
+        border: 1px solid #e4eaf4;
+        box-shadow: 0 1px 4px rgba(0,0,0,.05);
+    }
+    .iss-cal-day.cday-empty { opacity: .75; }
+    .iss-cal-day-hdr {
+        display: flex; align-items: center; justify-content: space-between;
+        padding: 9px 14px;
+        background: #f6f8fc;
+        border-bottom: 1px solid #eef1f7;
+    }
+    .iss-cal-day-name { font-size: 13px; font-weight: 700; color: #1a1a2e; }
+    .iss-cal-day-cnt  { font-size: 11px; font-weight: 700; color: #1565c0; background: #e8f0fe; padding: 2px 8px; border-radius: 10px; }
+    .iss-cal-day-empty { font-size: 12px; color: #ccc; padding: 10px 14px; }
+
+    .iss-cal-row {
+        display: flex; align-items: center; gap: 8px;
+        padding: 9px 14px;
+        cursor: pointer;
+        border-bottom: 1px solid #f5f7fa;
+        transition: background .15s;
+    }
+    .iss-cal-row:last-child { border-bottom: none; }
+    .iss-cal-row:hover { background: #f0f8ff; }
+    .iss-cal-info { flex: 1; font-size: 12px; color: #444; }
+
+    /* ══════════ DETAIL PAGE ══════════ */
+    .iss-detail-wrap {
+        max-width: 680px; margin: 0 auto;
+        padding: 20px 16px;
+    }
+    @@media (min-width: 640px)  { .iss-detail-wrap { padding: 28px 32px; } }
+    @@media (min-width: 1024px) { .iss-detail-wrap { padding: 32px 40px; } }
+
+    .iss-back-btn {
+        display: flex; align-items: center; gap: 4px;
+        background: none; border: none;
+        font-size: 14px; color: #2D7DD2; font-weight: 600;
+        cursor: pointer; padding: 0 0 18px 0;
+        transition: color .2s;
+    }
+    .iss-back-btn:hover { color: #1565c0; }
+
+    .iss-detail-card {
+        background: white; border-radius: 14px;
+        padding: 20px 20px 16px;
+        box-shadow: 0 3px 14px rgba(0,0,0,.09);
+    }
+    .iss-detail-badge {
+        display: inline-block;
+        font-size: 11px; font-weight: 700;
+        padding: 4px 12px; border-radius: 12px;
+        margin-bottom: 14px;
+    }
+
+    .iss-field-group { margin-bottom: 12px; }
+    .iss-field {
+        display: flex; gap: 10px;
+        padding: 8px 0;
+        border-bottom: 1px solid #f5f7fa;
+        align-items: baseline;
+    }
+    .iss-field:last-child { border-bottom: none; }
+    .iss-fl { font-size: 13px; font-weight: 600; color: #2D7DD2; min-width: 130px; flex-shrink: 0; }
+    .iss-fv { font-size: 13px; color: #1a1a2e; word-break: break-word; }
+
+    .iss-vendor-section { background: #f7f9fc; border-radius: 8px; padding: 12px 14px; margin-top: 4px; }
+    .iss-vendor-title { font-size: 11px; font-weight: 700; color: #2D7DD2; margin-bottom: 8px; text-transform: uppercase; letter-spacing: .04em; }
+    .iss-vi-row { display: flex; align-items: baseline; gap: 6px; margin-bottom: 5px; }
+    .iss-vi-dot { color: #bbb; }
+    .iss-vi-label { font-size: 12px; color: #888; min-width: 70px; flex-shrink: 0; }
+    .iss-vi-val { font-size: 13px; color: #333; }
+
+    .iss-start-btn {
+        display: flex; align-items: center; justify-content: center; gap: 8px;
+        background: linear-gradient(135deg, #27ae60, #1e8449);
+        color: white; border: none; border-radius: 12px;
+        padding: 14px 0; font-size: 15px; font-weight: 700;
+        cursor: pointer; width: 100%; margin-top: 20px;
+        transition: all .2s;
+        box-shadow: 0 4px 14px rgba(39,174,96,.35);
+    }
+    .iss-start-btn:hover { box-shadow: 0 6px 20px rgba(39,174,96,.45); transform: translateY(-1px); }
+
+    /* ══════════ COMPLETED LIST ══════════ */
+    .iss-comp-item {
+        background: white;
+        padding: 14px 16px 10px;
+    }
+    .iss-comp-row {
+        display: flex;
+        gap: 12px;
+        padding: 6px 0;
+        align-items: baseline;
+    }
+    .iss-comp-label {
+        font-size: 13px;
+        color: #1565c0;
+        font-weight: 600;
+        min-width: 130px;
+        flex-shrink: 0;
+    }
+    .iss-comp-val {
+        font-size: 13px;
+        color: #1a1a2e;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: wrap;
+    }
+    .iss-comp-na { color: #bbb; }
+    .iss-comp-divider {
+        height: 1px;
+        background: linear-gradient(90deg, #4dd9d9 0%, #4dd9d9 60%, transparent 100%);
+        margin: 0;
+    }
+
+    /* Result badge */
+    .iss-result-badge {
+        font-size: 11px;
+        font-weight: 700;
+        padding: 3px 10px;
+        border-radius: 10px;
+        text-transform: uppercase;
+        letter-spacing: .04em;
+    }
+    .res-pass { background: #e8f5e9; color: #2e7d32; }
+    .res-fail { background: #fce4ec; color: #c62828; }
+
+    /* PDF download button */
+    .iss-pdf-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        background: #f0f3f8;
+        color: #1565c0;
+        border: 1px solid #bbd9f8;
+        border-radius: 8px;
+        padding: 4px 12px;
+        font-size: 12px;
+        font-weight: 600;
+        text-decoration: none;
+        transition: background .15s, border-color .15s;
+    }
+    .iss-pdf-btn:hover {
+        background: #ddeeff;
+        border-color: #2D7DD2;
+    }
+
+    @@media (min-width: 640px) {
+        .iss-comp-label { min-width: 150px; font-size: 14px; }
+        .iss-comp-val   { font-size: 14px; }
+        .iss-comp-item  { padding: 16px 0 12px; }
+    }
+</style>

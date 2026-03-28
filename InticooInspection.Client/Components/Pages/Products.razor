@@ -1,0 +1,722 @@
+@page "/products"
+@using System.Net.Http.Json
+@using System.Net.Http.Headers
+@inject HttpClient Http
+@inject IJSRuntime JS
+
+<PageTitle>Product Information - Inticoo</PageTitle>
+
+<div class="page-container">
+
+    <!-- ── Top bar: title + search + filter + add (single row) ── -->
+    <div class="top-bar">
+        <div class="title-block">
+            <h1 class="page-title">Product Information</h1>
+            <span class="page-sub">Manage product master data</span>
+        </div>
+        <div class="search-wrap">
+            <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5">
+                <circle cx="9" cy="9" r="6"/><path d="M15 15l3 3" stroke-linecap="round"/>
+            </svg>
+            <input class="search-input" type="text" placeholder="Search name, code, customer..."
+                   @bind="_search" @bind:event="oninput" @bind:after="ApplyFilter" />
+        </div>
+        <select class="filter-select" @bind="_filterCat" @bind:after="ApplyFilter">
+            <option value="">All Categories</option>
+            @foreach (var c in _categories)
+            { <option value="@c.Name">@c.Name</option> }
+        </select>
+        <button class="btn-add" @onclick="async () => await OpenAddModal()">
+            <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+                <path d="M10 4v12M4 10h12"/>
+            </svg>
+            Add Product
+        </button>
+    </div>
+
+    <!-- ── Alerts ── -->
+    @if (!string.IsNullOrEmpty(_pageError))
+    {
+        <div class="alert-box alert-err">@_pageError <button class="alert-x" @onclick="ClearError">✕</button></div>
+    }
+    @if (!string.IsNullOrEmpty(_pageOk))
+    {
+        <div class="alert-box alert-ok">@_pageOk <button class="alert-x" @onclick="ClearOk">✕</button></div>
+    }
+
+    <!-- ── Table ── -->
+    @if (_loading)
+    {
+        <div class="loading-wrap"><div class="spinner"></div><span>Loading...</span></div>
+    }
+    else
+    {
+        <div class="table-wrap">
+            <table class="ptable">
+                <thead>
+                    <tr>
+                        <th class="th-no">No</th>
+                        <th class="th-y">Customer</th>
+                        <th class="th-y">Customer ID</th>
+                        <th class="th-y">Category</th>
+                        <th class="th-y">Product Type</th>
+                        <th class="th-y">Photo</th>
+                        <th class="th-y">Product Name</th>
+                        <th class="th-y">Code</th>
+                        <th class="th-y">Size</th>
+                        <th class="th-y">Vendor Name</th>
+                        <th class="th-y">Vendor ID</th>
+                        <th class="th-y">Remark</th>
+                        <th class="th-act">Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (!_filtered.Any())
+                    {
+                        <tr><td colspan="13" class="td-empty">No products found.</td></tr>
+                    }
+                    else
+                    {
+                        @for (int i = 0; i < _filtered.Count; i++)
+                        {
+                            var item = _filtered[i];
+                            <tr class="@(i % 2 == 1 ? "tr-alt" : "")">
+                                <td class="tc">@(i + 1)</td>
+                                <td>@item.CustomerName</td>
+                                <td class="tc mono">@item.CustomerId</td>
+                                <td>@item.Category</td>
+                                <td>@item.ProductType</td>
+                                <td class="tc">
+                                    @if (!string.IsNullOrEmpty(item.PhotoUrl))
+                                    {
+                                        var imgUrl = item.PhotoUrl.StartsWith("http") ? item.PhotoUrl : $"{Http.BaseAddress?.ToString().TrimEnd('/')}{item.PhotoUrl}";
+                                        <img src="@imgUrl" class="thumb"
+                                             @onclick="() => _lightbox = imgUrl" title="Preview" />
+                                    }
+                                    else { <span class="dash">—</span> }
+                                </td>
+                                <td class="fw">@item.ProductName</td>
+                                <td class="mono">@item.ProductCode</td>
+                                <td>@item.ProductSize</td>
+                                <td>@item.VendorName</td>
+                                <td class="mono tc">@item.VendorId</td>
+                                <td class="remark">@item.Remark</td>
+                                <td class="tc">
+                                    <button class="bico bedit" @onclick="() => OpenEdit(item)" title="Edit">
+                                        <svg width="13" height="13" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 2l4 4-10 10H4v-4L14 2z" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                                    </button>
+                                    <button class="bico bdel" @onclick="() => AskDelete(item)" title="Delete">
+                                        <svg width="13" height="13" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 6h14M8 6V4h4v2M5 6l1 11h8l1-11" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                                    </button>
+                                </td>
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
+        </div>
+        <div class="tfoot">@_filtered.Count / @_all.Count record(s)</div>
+    }
+</div>
+
+<!-- ═══ ADD / EDIT MODAL ═══ -->
+@if (_showModal)
+{
+    <div class="modal-overlay" @onclick="CloseModal">
+        <div class="modal-card" @onclick:stopPropagation="true">
+            <div class="modal-header">
+                <h2>@(_isEdit ? "Edit Product" : "Add New Product")</h2>
+                <button class="modal-close" @onclick="CloseModal">✕</button>
+            </div>
+
+            @if (!string.IsNullOrEmpty(_mErr))
+            {
+                <div class="error-alert">@_mErr</div>
+            }
+
+            <!-- Customer ID → Name auto-fill -->
+            <div class="form-section-title">Customer & Vendor</div>
+            <div class="form-grid">
+                <div class="form-group">
+                    <label>Customer ID <span class="required">*</span></label>
+                    <select class="form-input" @bind="_f.CustomerId" @bind:after="OnCustChanged">
+                        <option value="">— Select Customer —</option>
+                        @foreach (var c in _custs)
+                        { <option value="@c.CustomerId">@c.CustomerId — @c.CompanyName</option> }
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Customer Name</label>
+                    <input class="form-input form-input-disabled" readonly value="@_f.CustomerName" />
+                </div>
+                <div class="form-group">
+                    <label>Vendor ID</label>
+                    <select class="form-input" @bind="_f.VendorId" @bind:after="OnVendChanged">
+                        <option value="">— Select Vendor —</option>
+                        @foreach (var v in _vends)
+                        { <option value="@v.Code">@v.Code — @v.Name</option> }
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Vendor Name</label>
+                    <input class="form-input form-input-disabled" readonly value="@_f.VendorName" />
+                </div>
+            </div>
+
+            <div class="form-section-title">Product Details</div>
+            <div class="form-grid">
+                <div class="form-group">
+                    <label>Category <span class="required">*</span></label>
+                    <select class="form-input" @bind="_f.Category">
+                        <option value="">-- Select Category --</option>
+                        @foreach (var c in _categories)
+                        {
+                            <option value="@c.Name">@c.Name</option>
+                        }
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Product Type</label>
+                    <input class="form-input" @bind="_f.ProductType" placeholder="e.g. Smart TV" />
+                </div>
+                <div class="form-group">
+                    <label>Product Name <span class="required">*</span></label>
+                    <input class="form-input" @bind="_f.ProductName" placeholder="e.g. 55-inch OLED" />
+                </div>
+                <div class="form-group">
+                    <label>Product Code</label>
+                    @if (_isEdit)
+                    {
+                        <input class="form-input" @bind="_f.ProductCode" />
+                    }
+                    else
+                    {
+                        <div class="form-input form-input-disabled" style="background:#f0f4f8;color:#1e90d6;font-weight:600;font-family:monospace;">@_f.ProductCode</div>
+                    }
+                </div>
+                <div class="form-group">
+                    <label>Size</label>
+                    <input class="form-input" @bind="_f.ProductSize" placeholder="e.g. 55 inch" />
+                </div>
+                <div class="form-group full-width">
+                    <label>Remark</label>
+                    <textarea class="form-input form-textarea" @bind="_f.Remark" placeholder="Optional notes..."></textarea>
+                </div>
+            </div>
+
+            <div class="form-section-title">Product Photo</div>
+            <div class="photo-area-modal">
+                @if (!string.IsNullOrEmpty(_prevUrl))
+                {
+                    <div class="prev-wrap">
+                        <img src="@_prevUrl" class="prev-img" />
+                        <button class="rm-photo" @onclick="RemovePhoto">✕</button>
+                    </div>
+                }
+                <label class="upload-zone">
+                    <div class="upload-label">
+                        @if (_uploading)
+                        {
+                            <div class="spinner"></div>
+                            <span class="upload-text">Uploading...</span>
+                        }
+                        else
+                        {
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.4)" stroke-width="1.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                            <span class="upload-text">@(string.IsNullOrEmpty(_prevUrl) ? "Click to choose image" : "Click to change image")</span>
+                            <span class="upload-hint">JPG, PNG, WEBP · max 5 MB</span>
+                        }
+                        <InputFile OnChange="OnPhoto" accept="image/*" style="display:none" />
+                    </div>
+                </label>
+            </div>
+
+            <div class="modal-footer">
+                <button class="btn-cancel" @onclick="CloseModal">Cancel</button>
+                <button class="btn-submit" @onclick="Save" disabled="@_saving">
+                    @if (_saving) { <div class="spinner"></div> }
+                    @(_isEdit ? "Update Product" : "Save Product")
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+<!-- ═══ DELETE CONFIRM ═══ -->
+@if (_showDel)
+{
+    <div class="modal-overlay" @onclick="() => _showDel = false">
+        <div class="modal-card confirm-card" @onclick:stopPropagation="true">
+            <div class="confirm-icon">🗑️</div>
+            <h2>Confirm Delete</h2>
+            <p>Delete <strong>@_delItem?.ProductName</strong>?</p>
+            <p>This action cannot be undone.</p>
+            <div class="modal-footer">
+                <button class="btn-cancel" @onclick="() => _showDel = false">Cancel</button>
+                <button class="btn-delete" @onclick="DoDelete" disabled="@_saving">
+                    @if (_saving) { <div class="spinner"></div> } else { <span>Delete</span> }
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+<!-- ═══ PHOTO LIGHTBOX ═══ -->
+@if (!string.IsNullOrEmpty(_lightbox))
+{
+    <div class="modal-overlay" @onclick="CloseLightbox">
+        <div class="lb-box" @onclick:stopPropagation="true">
+            <button class="lb-close" @onclick="CloseLightbox">✕</button>
+            <img src="@_lightbox" />
+        </div>
+    </div>
+}
+
+@code {
+    // ── Records ──────────────────────────────────────────────────────
+    class CategoryItem
+    {
+        public int    Id   { get; set; }
+        public string Name { get; set; } = "";
+    }
+
+    class PDto
+    {
+        public int    Id           { get; set; }
+        public string CustomerId   { get; set; } = "";
+        public string CustomerName { get; set; } = "";
+        public string VendorId     { get; set; } = "";
+        public string VendorName   { get; set; } = "";
+        public string Category     { get; set; } = "";
+        public string ProductType  { get; set; } = "";
+        public string ProductName  { get; set; } = "";
+        public string ProductCode  { get; set; } = "";
+        public string ProductColor { get; set; } = "";
+        public string ProductSize  { get; set; } = "";
+        public string PhotoUrl     { get; set; } = "";
+        public string Remark       { get; set; } = "";
+    }
+
+    class CustItem
+    {
+        public int    Id           { get; set; }
+        public string CustomerId   { get; set; } = "";
+        public string CompanyName  { get; set; } = "";
+    }
+    class VendItem
+    {
+        public int    Id   { get; set; }
+        public string Code { get; set; } = "";
+        public string Name { get; set; } = "";
+    }
+    class Paged<T>
+    {
+        public int      Total    { get; set; }
+        public int      Page     { get; set; }
+        public int      PageSize { get; set; }
+        public List<T>  Items    { get; set; } = new();
+    }
+    class PhotoRes { public bool Success { get; set; } public string PhotoUrl { get; set; } = ""; }
+    class SaveRes  { public bool Success { get; set; } public int    Id       { get; set; } }
+
+    class PForm
+    {
+        public string CustomerId   { get; set; } = "";
+        public string CustomerName { get; set; } = "";
+        public string VendorId     { get; set; } = "";
+        public string VendorName   { get; set; } = "";
+        public string Category     { get; set; } = "";
+        public string ProductType  { get; set; } = "";
+        public string ProductName  { get; set; } = "";
+        public string ProductCode  { get; set; } = "";
+        public string ProductColor { get; set; } = "";
+        public string ProductSize  { get; set; } = "";
+        public string PhotoUrl     { get; set; } = "";
+        public string Remark       { get; set; } = "";
+    }
+
+    // ── State ────────────────────────────────────────────────────────
+    List<PDto>     _all = new(); List<PDto> _filtered = new();
+    List<CategoryItem> _categories = new();
+    List<CustItem> _custs = new();
+    List<VendItem> _vends = new();
+
+    bool   _loading = true, _saving = false, _uploading = false;
+    string _pageError = "", _pageOk = "", _mErr = "";
+    string _search = "", _filterCat = "";
+    string _lightbox = "", _prevUrl = "";
+    bool   _showModal = false, _isEdit = false;
+    int    _editId = 0;
+    PForm  _f = new();
+    bool   _showDel = false;
+    PDto?  _delItem = null;
+    IBrowserFile? _pendingFile = null;
+
+    protected override async Task OnInitializedAsync()
+        => await Task.WhenAll(Load(), LoadCusts(), LoadVends(), LoadCategories());
+
+    async Task Load()
+    {
+        _loading = true;
+        try
+        {
+            var opts = new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+            var json = await Http.GetStringAsync("api/products?pageSize=500");
+            var r = System.Text.Json.JsonSerializer.Deserialize<Paged<PDto>>(json, opts);
+            _all = r?.Items ?? new();
+            // _categories được load riêng từ api/products/productcategories
+            ApplyFilter();
+        }
+        catch (Exception ex) { _pageError = ex.Message; }
+        finally { _loading = false; }
+    }
+
+    async Task LoadCusts()
+    {
+        try
+        {
+            var opts = new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+            var json = await Http.GetStringAsync("api/customers?pageSize=500");
+            var r = System.Text.Json.JsonSerializer.Deserialize<Paged<CustItem>>(json, opts);
+            _custs = r?.Items.OrderBy(c => c.CustomerId).ToList() ?? new();
+        }
+        catch { }
+    }
+
+    async Task LoadVends()
+    {
+        try
+        {
+            var opts = new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+            var json = await Http.GetStringAsync("api/vendors?pageSize=500");
+            var r = System.Text.Json.JsonSerializer.Deserialize<Paged<VendItem>>(json, opts);
+            _vends = r?.Items.OrderBy(v => v.Code).ToList() ?? new();
+        }
+        catch { }
+    }
+
+    async Task LoadCategories()
+    {
+        try
+        {
+            var opts = new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+            var json = await Http.GetStringAsync("api/products/productcategories");
+            _categories = System.Text.Json.JsonSerializer.Deserialize<List<CategoryItem>>(json, opts) ?? new();
+        }
+        catch { }
+    }
+
+    void ApplyFilter()
+    {
+        var q = _search.Trim().ToLower();
+        _filtered = _all.Where(p =>
+            (string.IsNullOrEmpty(q) ||
+             p.ProductName.ToLower().Contains(q) || p.ProductCode.ToLower().Contains(q) ||
+             p.CustomerName.ToLower().Contains(q) || p.Category.ToLower().Contains(q)) &&
+            (string.IsNullOrEmpty(_filterCat) || p.Category == _filterCat)
+        ).ToList();
+    }
+
+    void OnCustChanged()
+    {
+        var c = _custs.FirstOrDefault(x => x.CustomerId == _f.CustomerId);
+        _f.CustomerName = c?.CompanyName ?? "";
+    }
+
+    void OnVendChanged()
+    {
+        var v = _vends.FirstOrDefault(x => x.Code == _f.VendorId);
+        _f.VendorName = v?.Name ?? "";
+    }
+
+    async Task OpenAddModal()
+    {
+        _f = new(); _prevUrl = ""; _pendingFile = null;
+        _isEdit = false; _editId = 0; _mErr = "";
+        // Tự động lấy code tiếp theo từ API
+        try
+        {
+            var opts = new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+            var json = await Http.GetStringAsync("api/products/nextcode");
+            var result = System.Text.Json.JsonSerializer.Deserialize<NextCodeResult>(json, opts);
+            _f.ProductCode = result?.Code ?? "";
+        }
+        catch { }
+        _showModal = true;
+    }
+
+    class NextCodeResult { public string Code { get; set; } = ""; }
+
+    void OpenEdit(PDto item)
+    {
+        _f = new PForm
+        {
+            CustomerId   = item.CustomerId,   CustomerName = item.CustomerName,
+            VendorId     = item.VendorId,     VendorName   = item.VendorName,
+            Category     = item.Category,     ProductType  = item.ProductType,
+            ProductName  = item.ProductName,  ProductCode  = item.ProductCode,
+            ProductColor = item.ProductColor, ProductSize  = item.ProductSize,
+            PhotoUrl     = item.PhotoUrl,     Remark       = item.Remark
+        };
+        _prevUrl = item.PhotoUrl; _pendingFile = null;
+        _isEdit = true; _editId = item.Id; _mErr = "";
+        _showModal = true;
+    }
+
+    void CloseModal() => _showModal = false;
+
+    async Task OnPhoto(InputFileChangeEventArgs e)
+    {
+        var file = e.File;
+        if (file == null) return;
+        if (file.Size > 5 * 1024 * 1024) { _mErr = "Image must be under 5 MB."; return; }
+        var ok = new[] { "image/jpeg","image/png","image/webp","image/gif" };
+        if (!ok.Contains(file.ContentType)) { _mErr = "Only JPG / PNG / WEBP allowed."; return; }
+        _mErr = "";
+
+        // Local preview
+        var buf = new byte[Math.Min(file.Size, 2 * 1024 * 1024)];
+        await file.OpenReadStream(5 * 1024 * 1024).ReadAsync(buf);
+        _prevUrl = $"data:{file.ContentType};base64,{Convert.ToBase64String(buf)}";
+
+        if (_isEdit && _editId > 0)
+            await DoUpload(_editId, file);
+        else
+            _pendingFile = file;
+    }
+
+    async Task DoUpload(int id, IBrowserFile file)
+    {
+        _uploading = true;
+        try
+        {
+            using var mc = new MultipartFormDataContent();
+            var sc = new StreamContent(file.OpenReadStream(5 * 1024 * 1024));
+            sc.Headers.ContentType = new MediaTypeHeaderValue(file.ContentType);
+            mc.Add(sc, "file", file.Name);
+            var resp = await Http.PostAsync($"api/products/{id}/photo", mc);
+            if (resp.IsSuccessStatusCode)
+            {
+                var opts = new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+                var json = await resp.Content.ReadAsStringAsync();
+                var r = System.Text.Json.JsonSerializer.Deserialize<PhotoRes>(json, opts);
+                _f.PhotoUrl = r?.PhotoUrl ?? "";
+                _prevUrl    = _f.PhotoUrl;
+            }
+            else
+            {
+                var err = await resp.Content.ReadAsStringAsync();
+                _mErr = $"Photo upload failed: {err}";
+            }
+        }
+        catch (Exception ex) { _mErr = ex.Message; }
+        finally { _uploading = false; }
+    }
+
+    void RemovePhoto() { _prevUrl = ""; _f.PhotoUrl = ""; _pendingFile = null; }
+
+    async Task Save()
+    {
+        _mErr = "";
+        if (string.IsNullOrWhiteSpace(_f.CustomerId))  { _mErr = "Please select a Customer."; return; }
+        if (string.IsNullOrWhiteSpace(_f.Category))    { _mErr = "Category is required."; return; }
+        if (string.IsNullOrWhiteSpace(_f.ProductName)) { _mErr = "Product Name is required."; return; }
+
+        _saving = true;
+        try
+        {
+            var body = new {
+                _f.CustomerId, _f.VendorId, _f.Category, _f.ProductType,
+                _f.ProductName, _f.ProductCode, _f.ProductColor, _f.ProductSize,
+                PhotoUrl = _f.PhotoUrl, _f.Remark
+            };
+
+            HttpResponseMessage resp;
+            int savedId = _editId;
+
+            if (_isEdit)
+                resp = await Http.PutAsJsonAsync($"api/products/{_editId}", body);
+            else
+            {
+                resp = await Http.PostAsJsonAsync("api/products", body);
+                if (resp.IsSuccessStatusCode)
+                {
+                    var cr = await resp.Content.ReadFromJsonAsync<SaveRes>();
+                    savedId = cr?.Id ?? 0;
+                }
+            }
+
+            if (resp.IsSuccessStatusCode)
+            {
+                if (!_isEdit && savedId > 0 && _pendingFile != null)
+                {
+                    await DoUpload(savedId, _pendingFile);
+                    // Update record with the photo URL returned from server
+                    if (!string.IsNullOrEmpty(_f.PhotoUrl))
+                    {
+                        var updateBody = new {
+                            _f.CustomerId, _f.VendorId, _f.Category, _f.ProductType,
+                            _f.ProductName, _f.ProductCode, _f.ProductColor, _f.ProductSize,
+                            PhotoUrl = _f.PhotoUrl, _f.Remark
+                        };
+                        await Http.PutAsJsonAsync($"api/products/{savedId}", updateBody);
+                    }
+                }
+
+                _pendingFile = null;
+                _showModal   = false;
+                _pageOk      = _isEdit ? "Product updated." : "Product added.";
+                await Load();
+            }
+            else
+            {
+                var e = await resp.Content.ReadAsStringAsync();
+                _mErr = $"Error: {e}";
+            }
+        }
+        catch (Exception ex) { _mErr = ex.Message; }
+        finally { _saving = false; }
+    }
+
+    void ClearError()    => _pageError = "";
+    void ClearOk()       => _pageOk    = "";
+    void CloseLightbox() => _lightbox  = "";
+
+    void AskDelete(PDto item) { _delItem = item; _showDel = true; }
+
+    async Task DoDelete()
+    {
+        if (_delItem == null) return;
+        _saving = true;
+        try
+        {
+            var resp = await Http.DeleteAsync($"api/products/{_delItem.Id}");
+            _showDel = false;
+            if (resp.IsSuccessStatusCode) { _pageOk = $"'{_delItem.ProductName}' deleted."; await Load(); }
+            else _pageError = "Delete failed.";
+        }
+        catch (Exception ex) { _pageError = ex.Message; }
+        finally { _saving = false; }
+    }
+}
+
+<style>
+    @@import url("https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=Sora:wght@600;700&display=swap");
+
+    .page-container { font-family: "DM Sans", sans-serif; color: #fff; }
+
+    /* ── Single top bar ── */
+    .top-bar { display:flex; align-items:center; gap:10px; margin-bottom:14px; flex-wrap:wrap; }
+    .title-block { display:flex; align-items:baseline; gap:10px; flex-shrink:0; margin-right:4px; }
+    .page-title  { font-family:"Sora",sans-serif; font-size:18px; font-weight:700; color:#fff; margin:0; white-space:nowrap; }
+    .page-sub    { font-size:12px; color:rgba(255,255,255,.45); white-space:nowrap; }
+    .sep         { width:1px; height:20px; background:rgba(255,255,255,.15); flex-shrink:0; }
+
+    .search-wrap { flex:1; min-width:200px; display:flex; align-items:center; gap:8px; background:rgba(255,255,255,.1); border:1px solid rgba(255,255,255,.15); border-radius:8px; padding:8px 12px; }
+    .search-wrap svg { color:rgba(255,255,255,.4); flex-shrink:0; }
+    .search-input { flex:1; background:none; border:none; outline:none; color:#fff; font-size:13px; font-family:"DM Sans",sans-serif; }
+    .search-input::placeholder { color:rgba(255,255,255,.35); }
+    .filter-select { background:rgba(255,255,255,.1); border:1px solid rgba(255,255,255,.15); border-radius:8px; padding:8px 12px; color:#fff; font-size:13px; outline:none; cursor:pointer; min-width:140px; font-family:"DM Sans",sans-serif; flex-shrink:0; }
+    .filter-select option { background:#1565c0; }
+
+    .btn-add { display:flex; align-items:center; gap:7px; padding:8px 16px; background:#1e90d6; color:#fff; border:none; border-radius:8px; font-size:13px; font-weight:600; cursor:pointer; font-family:"DM Sans",sans-serif; white-space:nowrap; flex-shrink:0; transition:background .2s,transform .1s; }
+    .btn-add:hover { background:#1565c0; transform:translateY(-1px); }
+
+    .alert-box { display:flex; align-items:center; justify-content:space-between; padding:10px 14px; border-radius:8px; font-size:13px; margin-bottom:14px; }
+    .alert-err  { background:rgba(220,38,38,.12); border:1px solid rgba(220,38,38,.3); color:#fca5a5; }
+    .alert-ok   { background:rgba(34,197,94,.12); border:1px solid rgba(34,197,94,.3); color:#86efac; }
+    .alert-x    { background:none; border:none; cursor:pointer; color:inherit; font-size:14px; padding:0 4px; }
+    .mmx        { margin:0 22px 14px; }
+
+    .table-wrap { overflow-x:auto; border-radius:10px; box-shadow:0 4px 20px rgba(0,0,0,.25); }
+    .ptable { width:100%; border-collapse:collapse; background:#fff; font-size:12.5px; min-width:1000px; }
+    .ptable th { padding:7px 9px; border:1px solid #b8c4d8; text-align:center; font-weight:600; font-size:12px; color:#1a2d5a; white-space:nowrap; }
+    .th-y   { background:#fffde7; }
+    .th-grp { background:#e3f2fd; }
+    .th-no  { background:#f5f5f5; width:40px; }
+    .th-act { background:#f5f5f5; width:70px; }
+    .ptable td { padding:7px 9px; border:1px solid #dde4ef; color:#1a2d5a; vertical-align:middle; }
+    .tc   { text-align:center; }
+    .fw   { font-weight:500; }
+    .mono { font-family:monospace; font-size:12px; color:#3d5080; }
+    .remark { max-width:130px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .td-empty { text-align:center; padding:40px; color:#9baac8; font-style:italic; }
+    .tr-alt td { background:#eef5fd; }
+    .ptable tbody tr:hover td { background:#ddeeff; }
+    .dash { color:#c0c9d8; }
+    .thumb { width:40px; height:40px; object-fit:cover; border-radius:5px; border:1px solid #dde4ef; cursor:pointer; transition:opacity .15s; }
+    .thumb:hover { opacity:.8; }
+    .bico { display:inline-flex; align-items:center; justify-content:center; width:26px; height:26px; border:none; border-radius:6px; cursor:pointer; transition:all .15s; margin:0 2px; }
+    .bedit { background:#e8f0fe; color:#1565c0; } .bedit:hover { background:#1565c0; color:#fff; }
+    .bdel  { background:#fef2f2; color:#dc2626; } .bdel:hover  { background:#dc2626; color:#fff; }
+    .tfoot { margin-top:8px; text-align:right; font-size:12px; color:rgba(255,255,255,.4); }
+
+    .loading-wrap { display:flex; align-items:center; justify-content:center; gap:12px; padding:60px; color:rgba(255,255,255,.6); }
+    .spinner    { width:22px; height:22px; border:2.5px solid rgba(255,255,255,.2); border-top-color:#fff; border-radius:50%; animation:spin .7s linear infinite; }
+    .spinner-sm { display:inline-block; width:14px; height:14px; border:2px solid rgba(255,255,255,.3); border-top-color:#fff; border-radius:50%; animation:spin .7s linear infinite; margin-right:5px; vertical-align:middle; }
+    @@keyframes spin { to { transform:rotate(360deg); } }
+
+    /* Modal */
+    .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.55); backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center; z-index: 1000; padding: 20px; }
+    .modal-card { background: #fff; border: 1px solid #dde4ef; border-radius: 16px; padding: 28px 32px; width: 75vw; max-width: 1100px; max-height: 90vh; overflow-y: auto; box-shadow: 0 24px 60px rgba(0,0,0,0.18); }
+    .modal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+    .modal-header h2 { font-family: "Sora", sans-serif; font-size: 20px; font-weight: 700; color: #1a2d5a; }
+    .modal-close { background: none; border: none; cursor: pointer; color: #9baac8; font-size: 18px; padding: 4px 8px; border-radius: 6px; line-height: 1; }
+    .modal-close:hover { background: #f0f4fb; color: #1a2d5a; }
+    .error-alert { background: #fff1f1; border: 1px solid #fecaca; border-radius: 10px; padding: 12px 14px; font-size: 13px; color: #b42318; margin-bottom: 16px; }
+    .form-section-title { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .08em; color: #1e90d6; margin: 20px 0 12px; padding-bottom: 7px; border-bottom: 1.5px solid #c7e3f8; }
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px 28px; }
+    .form-group { margin-bottom: 2px; }
+    .form-group.full-width { grid-column: 1 / -1; }
+    .form-group label { display: block; font-size: 11px; font-weight: 600; color: #7a8fad; margin-bottom: 6px; text-transform: uppercase; letter-spacing: .06em; }
+    .required { color: #e53935; }
+    .form-input { width: 100%; padding: 10px 13px; background: #f7fafd; border: 1.5px solid #c9d8ee; border-radius: 9px; color: #1a2d5a; font-size: 14px; outline: none; font-family: inherit; box-sizing: border-box; transition: border-color .15s, box-shadow .15s; }
+    .form-input:focus { border-color: #1e90d6; background: #fff; box-shadow: 0 0 0 3px rgba(30,144,214,0.1); }
+    .form-input::placeholder { color: #b0bdd4; }
+    .form-input-disabled { background: #f0f4f8; color: #9baac8; cursor: not-allowed; }
+    .form-textarea { min-height: 80px; resize: vertical; }
+    .modal-footer { display: flex; justify-content: flex-end; gap: 10px; padding-top: 20px; border-top: 1px solid #e8eef7; margin-top: 16px; }
+    .btn-cancel { padding: 10px 20px; background: #f0f4fb; border: 1px solid #c9d8ee; border-radius: 9px; color: #4a6080; font-size: 14px; cursor: pointer; transition: background .15s; }
+    .btn-cancel:hover { background: #e0eaf7; }
+    .btn-submit { display: flex; align-items: center; gap: 8px; padding: 10px 24px; background: #1e90d6; border: none; border-radius: 9px; color: #fff; font-size: 14px; font-weight: 600; cursor: pointer; min-width: 150px; justify-content: center; transition: background .15s; }
+    .btn-submit:hover:not(:disabled) { background: #1565c0; }
+    .btn-submit:disabled { opacity: .65; cursor: not-allowed; }
+    .btn-delete { padding: 10px 22px; background: #fff1f1; border: 1px solid #fecaca; border-radius: 9px; color: #dc2626; font-size: 14px; font-weight: 600; cursor: pointer; }
+    .btn-delete:hover { background: #fee2e2; }
+    .confirm-card { text-align: center; max-width: 440px; }
+    .confirm-icon { font-size: 40px; margin-bottom: 12px; }
+    .confirm-card h2 { font-family: "Sora", sans-serif; font-size: 18px; margin-bottom: 10px; color: #1a2d5a; }
+    .confirm-card p { font-size: 14px; color: #4a6080; line-height: 1.6; margin-bottom: 4px; }
+    .upload-zone { border: 2px dashed #c9d8ee; border-radius: 12px; padding: 4px; transition: border-color .2s, background .2s; margin-bottom: 12px; cursor: pointer; }
+    .upload-zone:hover { border-color: #1e90d6; background: #f0f7ff; }
+    .upload-label { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 24px 20px; cursor: pointer; }
+    .upload-text { font-size: 14px; color: #4a6080; }
+    .upload-hint { font-size: 12px; color: #9baac8; }
+    .photo-area-modal { display: flex; align-items: center; gap: 14px; margin-bottom: 8px; flex-wrap: wrap; }
+    .prev-wrap { position: relative; flex-shrink: 0; }
+    .prev-img { width: 80px; height: 80px; object-fit: cover; border-radius: 10px; border: 2px solid #dde4ef; }
+    .rm-photo { position: absolute; top: -8px; right: -8px; width: 22px; height: 22px; border-radius: 50%; background: #dc2626; color: #fff; border: none; cursor: pointer; font-size: 11px; display: flex; align-items: center; justify-content: center; }
+    .spinner { width: 16px; height: 16px; border: 2px solid rgba(30,144,214,0.3); border-top-color: #1e90d6; border-radius: 50%; animation: spin .7s linear infinite; display: inline-block; }
+    .lb-box { position: relative; max-width: 90vw; max-height: 90vh; background: #000; border-radius: 12px; overflow: hidden; }
+    .lb-box img { display: block; max-width: 90vw; max-height: 85vh; object-fit: contain; }
+    .lb-close { position: absolute; top: 10px; right: 10px; background: rgba(0,0,0,.6); color: #fff; border: none; border-radius: 50%; width: 30px; height: 30px; cursor: pointer; font-size: 14px; display: flex; align-items: center; justify-content: center; }
+
+    @@media (max-width: 900px) {
+        .modal-card { width: 92vw; padding: 20px 18px; }
+        .form-grid { grid-template-columns: 1fr; gap: 12px; }
+        .form-group.full-width { grid-column: 1; }
+        .title-block { width: 100%; }
+        .search-wrap { min-width: 160px; }
+    }
+
+    @@media (max-width: 600px) {
+        .frow { flex-direction:column; }
+        .top-bar { flex-direction:column; align-items:stretch; gap:8px; }
+        .title-block { flex-direction:column; gap:2px; align-items:flex-start; }
+        .search-wrap { min-width:unset; }
+        .filter-select { width:100%; }
+        .btn-add { width:100%; justify-content:center; }
+        .modal-card { width: 100%; border-radius: 12px; padding: 16px 14px; max-height: 95vh; }
+        .modal-header h2 { font-size: 16px; }
+    }
+</style>

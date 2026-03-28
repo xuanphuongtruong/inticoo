@@ -1,0 +1,1769 @@
+@page "/inspections/new"
+@attribute [Microsoft.AspNetCore.Authorization.Authorize]
+@using InticooInspection.Client.Services
+@using System.Net.Http.Json
+@using System.Net.Http.Headers
+@using Microsoft.AspNetCore.Components.Forms
+@inject HttpClient Http
+@inject NavigationManager Navigation
+@inject Blazored.SessionStorage.ISessionStorageService SessionStorage
+
+<PageTitle>New Inspection - Inticoo</PageTitle>
+
+<div class="ni-page">
+
+    <!-- Header -->
+    <div class="ni-header">
+        <button class="ni-back-btn" @onclick="GoBack">
+            <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M13 4l-6 6 6 6" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+        </button>
+        <div class="ni-title-block">
+            <span class="ni-breadcrumb">Inspections</span>
+            <h1 class="ni-title" style="color:#ffffff;">New Inspection</h1>
+        </div>
+        <div class="ni-header-actions">
+        </div>
+    </div>
+
+    <div class="ni-body">
+
+        <!-- General Information + Photo (gộp 1 card) -->
+        <div class="ni-card">
+            <div class="ni-section-title">General Information</div>
+            <div class="gi-layout">
+
+                <!-- Cột trái: Photo -->
+                <div class="gi-photo-col">
+                    <label class="photo-slot @(string.IsNullOrEmpty(PhotoPreview1) ? "" : "photo-slot--filled")">
+                        @if (_photoUploading)
+                        {
+                            <div class="photo-placeholder">
+                                <div class="spinner-lg" style="border-top-color:#1e90d6;width:32px;height:32px;"></div>
+                                <span style="color:#1e90d6;font-size:12px;margin-top:8px;">Uploading...</span>
+                            </div>
+                        }
+                        else if (!string.IsNullOrEmpty(PhotoPreview1))
+                        {
+                            <img src="@PhotoPreview1" alt="Photo" />
+                            <button class="photo-remove-btn" type="button"
+                                    @onclick:stopPropagation="true" @onclick="RemovePhoto">
+                                <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.5">
+                                    <path d="M5 5l10 10M15 5L5 15" stroke-linecap="round"/>
+                                </svg>
+                            </button>
+                        }
+                        else
+                        {
+                            <div class="photo-placeholder">
+                                <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                                    <rect x="3" y="3" width="18" height="18" rx="3"/>
+                                    <circle cx="8.5" cy="8.5" r="1.5"/>
+                                    <path d="M21 15l-5-5L5 21"/>
+                                </svg>
+                                <span>Click to upload photo</span>
+                                <span class="photo-hint">JPG, PNG, WEBP · max 5 MB</span>
+                            </div>
+                        }
+                        <InputFile OnChange="OnPhotoSelected" accept="image/*" style="display:none" />
+                    </label>
+                    @* FIX: hiển thị lỗi upload photo *@
+                    @if (!string.IsNullOrEmpty(_photoError))
+                    {
+                        <div style="color:#dc2626;font-size:11.5px;margin-top:6px;background:#fff5f5;border:1px solid #fecaca;border-radius:7px;padding:6px 10px;">
+                            ⚠ @_photoError
+                        </div>
+                    }
+                </div>
+
+                <!-- Cột phải: Fields -->
+                <div class="gi-fields-col">
+                <div class="ni-grid-2">
+                <div class="field-group">
+                    <label>Customer ID <span class="field-required">*</span></label>
+                    @if (_loadingCustomers)
+                    {
+                        <div class="field-loading">Loading...</div>
+                    }
+                    else
+                    {
+                        <select value="@Model.CustomerId" @onchange="OnCustomerChanged">
+                            <option value="">-- Select Customer --</option>
+                            @foreach (var c in _customers)
+                            {
+                                <option value="@c.CustomerId">@c.CustomerId — @c.CompanyName</option>
+                            }
+                        </select>
+                    }
+                </div>
+                <div class="field-group">
+                    <label>Customer Name</label>
+                    <div class="readonly-field @(string.IsNullOrEmpty(Model.CustomerName) ? "" : "accent")">
+                        @(string.IsNullOrEmpty(Model.CustomerName) ? "Auto-filled when selecting ID" : Model.CustomerName)
+                    </div>
+                </div>
+                <div class="field-group">
+                    <label>Vendor ID</label>
+                    @if (_loadingVendors)
+                    {
+                        <div class="field-loading">Loading...</div>
+                    }
+                    else
+                    {
+                        <select value="@Model.VendorId" @onchange="OnVendorChanged">
+                            <option value="">-- Select Vendor --</option>
+                            @foreach (var v in _vendors)
+                            {
+                                <option value="@v.Code">@v.Code — @v.Name</option>
+                            }
+                        </select>
+                    }
+                </div>
+                <div class="field-group">
+                    <label>Vendor Name</label>
+                    <div class="readonly-field @(string.IsNullOrEmpty(Model.VendorName) ? "" : "accent")">
+                        @(string.IsNullOrEmpty(Model.VendorName) ? "Auto-filled when selecting ID" : Model.VendorName)
+                    </div>
+                </div>
+                <div class="field-group">
+                    <label>Inspection Location</label>
+                    @if (_loadingCountries)
+                    {
+                        <div class="field-loading">Loading countries...</div>
+                    }
+                    else
+                    {
+                        <select value="@_selectedCountryId" @onchange="OnCountryChanged">
+                            <option value="">-- Select Country --</option>
+                            @foreach (var co in _countries)
+                            {
+                                <option value="@co.Id">@co.Name</option>
+                            }
+                        </select>
+                    }
+                </div>
+                <div class="field-group">
+                    <label>P.O. Number</label>
+                    <input @bind="Model.PoNumber" placeholder="Enter PO number" />
+                </div>
+                <div class="field-group">
+                    <label>Inspection Date</label>
+                    <input type="date" @bind="Model.InspectionDate" />
+                </div>
+                <div class="field-group">
+                    <label>Item Number</label>
+                    <input @bind="Model.ItemNumber" placeholder="Enter item number" />
+                </div>
+                <div class="field-group">
+                    <label>Inspection Type</label>
+                    <div class="radio-group">
+                        <label class="radio-label">
+                            <input type="radio" name="inspType" value="PPT"
+                                   checked="@(Model.InspectionType == InspectionTypeEnum.PPT)"
+                                   @onchange="() => Model.InspectionType = InspectionTypeEnum.PPT" />
+                            <span>PPT</span>
+                        </label>
+                        <label class="radio-label">
+                            <input type="radio" name="inspType" value="DPI"
+                                   checked="@(Model.InspectionType == InspectionTypeEnum.DPI)"
+                                   @onchange="() => Model.InspectionType = InspectionTypeEnum.DPI" />
+                            <span>DPI</span>
+                        </label>
+                        <label class="radio-label">
+                            <input type="radio" name="inspType" value="PST"
+                                   checked="@(Model.InspectionType == InspectionTypeEnum.PST)"
+                                   @onchange="() => Model.InspectionType = InspectionTypeEnum.PST" />
+                            <span>PST</span>
+                        </label>
+                    </div>
+                </div>
+                <div class="field-group">
+                    <label>Product ID</label>
+                    @if (_loadingProducts)
+                    {
+                        <div class="field-loading">Loading...</div>
+                    }
+                    else
+                    {
+                        <select value="@Model.ProductCode" @onchange="OnProductChanged">
+                            <option value="">-- Select Product --</option>
+                            @foreach (var p in _products)
+                            {
+                                <option value="@p.ProductCode">@p.ProductCode — @p.ProductName</option>
+                            }
+                        </select>
+                    }
+                </div>
+                <div class="field-group">
+                    <label>Product Name</label>
+                    <div class="readonly-field @(string.IsNullOrEmpty(Model.ProductName) ? "" : "accent")">
+                        @(string.IsNullOrEmpty(Model.ProductName) ? "Auto-filled from Product ID" : Model.ProductName)
+                    </div>
+                </div>
+                <div class="field-group">
+                    <label>Inspection Reference</label>
+                    <div class="toggle-group">
+                        <button class="@ToggleCss(Model.InspectionReference)" @onclick="() => Model.InspectionReference = true">Yes</button>
+                        <button class="@ToggleCss(!Model.InspectionReference)" @onclick="() => Model.InspectionReference = false">No</button>
+                    </div>
+                </div>
+                <div class="field-group">
+                    <label>Total Shipment Quantity</label>
+                    <input type="number" @bind="Model.TotalShipmentQty" placeholder="0" />
+                </div>
+                <div class="field-group">
+                    <label>Product Category</label>
+                    <div class="readonly-field @(string.IsNullOrEmpty(Model.ProductCategory) ? "" : "accent")">
+                        @(string.IsNullOrEmpty(Model.ProductCategory) ? "Auto-filled from Product ID" : Model.ProductCategory)
+                    </div>
+                </div>
+                <div class="field-group">
+                    <label>Total Carton Boxes</label>
+                    <input type="number" @bind="Model.TotalCartonBoxes" placeholder="0" />
+                </div>
+                </div>
+                </div><!-- gi-fields-col -->
+            </div><!-- gi-layout -->
+        </div>
+
+        <!-- Overall Conclusion -->
+        <div class="ni-card">
+            <div class="ni-section-title">Inspection Results</div>
+            <table class="oc-table">
+                <thead>
+                    <tr>
+                        <th class="oc-th-label">OVERALL CONCLUSION</th>
+                        <th class="oc-th-compliance">COMPLIANCE</th>
+                        <th class="oc-th-remark">REMARK</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var row in OverallConclusions)
+                    {
+                        var r = row;
+                        <tr class="oc-row">
+                            <td class="oc-td-label">@r.Letter. @r.Label</td>
+                            <td class="oc-td-compliance">
+                                <button class="@(r.Compliance == "Pass" ? "oc-btn oc-yes active" : "oc-btn oc-yes")"
+                                        @onclick="@(() => ToggleCompliance(r, "Pass"))">YES</button>
+                                <span class="oc-sep">/</span>
+                                <button class="@(r.Compliance == "Fail" ? "oc-btn oc-no active" : "oc-btn oc-no")"
+                                        @onclick="@(() => ToggleCompliance(r, "Fail"))">NO</button>
+                            </td>
+                            <td class="oc-td-remark">
+                                <input class="oc-remark-input" @bind="r.Remark" placeholder="Remark..." />
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+
+        <!-- AQL Sampling Simulator -->
+        <div class="ni-card">
+            <div class="ni-section-title">AQL Sampling Simulator</div>
+            @if (!string.IsNullOrEmpty(_currentCodeLetter))
+            {
+                <div style="margin-bottom:12px;font-size:13px;color:#4a6080;">
+                    Lot Size <strong>@AqlQuantity</strong> · Level <strong>@AqlInspectionLevel</strong>
+                    → Code Letter: <span style="font-size:16px;font-weight:700;color:#1e90d6;background:#e6f1fb;padding:2px 10px;border-radius:6px;">@_currentCodeLetter</span>
+                </div>
+            }
+            <div class="ni-grid-2" style="margin-bottom:20px;">
+                <div class="field-group">
+                    <label>Quantity</label>
+                    <input type="number" value="@AqlQuantity" @onchange="OnAqlQuantityChanged" placeholder="Enter quantity" />
+                </div>
+                <div class="field-group">
+                    <label>Inspection Level</label>
+                    <select value="@AqlInspectionLevel" @onchange="OnAqlLevelChanged">
+                        <optgroup label="General Inspection">
+                            <option value="I">Level I</option>
+                            <option value="II">Level II</option>
+                            <option value="III">Level III</option>
+                        </optgroup>
+                        <optgroup label="Special Inspection">
+                            <option value="S1">S1</option>
+                            <option value="S2">S2</option>
+                            <option value="S3">S3</option>
+                            <option value="S4">S4</option>
+                        </optgroup>
+                    </select>
+                </div>
+            </div>
+            <div class="aql-defects-row">
+                <div class="aql-defect-card critical">
+                    <div class="aql-defect-header">Critical Defects</div>
+                    <div class="field-group">
+                        <label>Select AQL</label>
+                        <select value="@CriticalAql" @onchange="OnCriticalAqlChanged">
+                            <option value="0">Not Allowed</option>
+                            <option value="0.065">0.065</option>
+                            <option value="0.10">0.10</option>
+                            <option value="0.15">0.15</option>
+                            <option value="0.25">0.25</option>
+                            <option value="0.40">0.40</option>
+                            <option value="0.65">0.65</option>
+                            <option value="1.0">1.0</option>
+                            <option value="1.5">1.5</option>
+                            <option value="2.5">2.5</option>
+                            <option value="4.0">4.0</option>
+                            <option value="6.5">6.5</option>
+                        </select>
+                    </div>
+                    <div class="aql-stats">
+                        <div class="aql-stat"><span>Sample Size</span><strong>@CriticalSampleSize</strong></div>
+                        <div class="aql-stat"><span>Accept Point</span><strong class="accent-ok">@CriticalAccept</strong></div>
+                        <div class="aql-stat"><span>Reject Point</span><strong class="accent-err">@CriticalReject</strong></div>
+                    </div>
+                </div>
+                <div class="aql-defect-card major">
+                    <div class="aql-defect-header">Major Defects</div>
+                    <div class="field-group">
+                        <label>Select AQL</label>
+                        <select value="@MajorAql" @onchange="OnMajorAqlChanged">
+                            <option value="0">Not Allowed</option>
+                            <option value="0.065">0.065</option>
+                            <option value="0.10">0.10</option>
+                            <option value="0.15">0.15</option>
+                            <option value="0.25">0.25</option>
+                            <option value="0.40">0.40</option>
+                            <option value="0.65">0.65</option>
+                            <option value="1.0">1.0</option>
+                            <option value="1.5">1.5</option>
+                            <option value="2.5">2.5</option>
+                            <option value="4.0">4.0</option>
+                            <option value="6.5">6.5</option>
+                        </select>
+                    </div>
+                    <div class="aql-stats">
+                        <div class="aql-stat"><span>Sample Size</span><strong>@MajorSampleSize</strong></div>
+                        <div class="aql-stat"><span>Accept Point</span><strong class="accent-ok">@MajorAccept</strong></div>
+                        <div class="aql-stat"><span>Reject Point</span><strong class="accent-err">@MajorReject</strong></div>
+                    </div>
+                </div>
+                <div class="aql-defect-card minor">
+                    <div class="aql-defect-header">Minor Defects</div>
+                    <div class="field-group">
+                        <label>Select AQL</label>
+                        <select value="@MinorAql" @onchange="OnMinorAqlChanged">
+                            <option value="0">Not Allowed</option>
+                            <option value="0.065">0.065</option>
+                            <option value="0.10">0.10</option>
+                            <option value="0.15">0.15</option>
+                            <option value="0.25">0.25</option>
+                            <option value="0.40">0.40</option>
+                            <option value="0.65">0.65</option>
+                            <option value="1.0">1.0</option>
+                            <option value="1.5">1.5</option>
+                            <option value="2.5">2.5</option>
+                            <option value="4.0">4.0</option>
+                            <option value="6.5">6.5</option>
+                        </select>
+                    </div>
+                    <div class="aql-stats">
+                        <div class="aql-stat"><span>Sample Size</span><strong>@MinorSampleSize</strong></div>
+                        <div class="aql-stat"><span>Accept Point</span><strong class="accent-ok">@MinorAccept</strong></div>
+                        <div class="aql-stat"><span>Reject Point</span><strong class="accent-err">@MinorReject</strong></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- A. Quantity Conformity -->
+        <div class="ni-card">
+            <div class="ni-section-title"><span class="section-alpha">A</span> Quantity Conformity</div>
+            <div class="ni-grid-2">
+                <div class="field-group">
+                    <label>Total Shipment Quantity</label>
+                    <div class="readonly-field">@(Model.TotalShipmentQty > 0 ? Model.TotalShipmentQty.ToString() : "Auto")</div>
+                </div>
+                <div class="field-group">
+                    <label>Total Carton Boxes</label>
+                    <div class="readonly-field">@(Model.TotalCartonBoxes > 0 ? Model.TotalCartonBoxes.ToString() : "Auto")</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- B. Packaging & Identification -->
+        <div class="ni-card">
+            <div class="ni-section-title"><span class="section-alpha">B</span> Packaging &amp; Identification</div>
+
+            <!-- Row 1: Item Number + Carton Number -->
+            <div class="ni-grid-2" style="margin-bottom:14px;">
+                <div class="field-group">
+                    <label>Item Number</label>
+                    <input @bind="Packaging.ItemNumber" placeholder="Enter item number" />
+                </div>
+                <div class="field-group">
+                    <label>Carton Number</label>
+                    <input @bind="Packaging.CartonNumber" placeholder="Enter carton number" />
+                </div>
+            </div>
+
+            <!-- Row 2: Radio options grid (2 col) -->
+            <div class="pkg-grid">
+
+                <div class="pkg2-row">
+                    <span class="pkg2-label">Type of Packaging</span>
+                    <div class="pkg2-options">
+                        <label class="radio-label"><input type="radio" name="pkgType" checked="@(Packaging.PackagingType == PkgFsc)" @onchange="() => Packaging.PackagingType = PkgFsc" /><span>FSC Carton</span></label>
+                        <label class="radio-label"><input type="radio" name="pkgType" checked="@(Packaging.PackagingType == PkgNonFsc)" @onchange="() => Packaging.PackagingType = PkgNonFsc" /><span>Non-FSC Carton</span></label>
+                    </div>
+                </div>
+
+                <div class="pkg2-row">
+                    <span class="pkg2-label">Shipping Mark</span>
+                    <div class="pkg2-options">
+                        <label class="radio-label"><input type="radio" name="shippingMark" checked="@(Packaging.ShippingMark == SmColorLabel)" @onchange="() => Packaging.ShippingMark = SmColorLabel" /><span>Color Label</span></label>
+                        <label class="radio-label"><input type="radio" name="shippingMark" checked="@(Packaging.ShippingMark == SmPrinting)" @onchange="() => Packaging.ShippingMark = SmPrinting" /><span>Printing</span></label>
+                    </div>
+                </div>
+
+                <div class="pkg2-row">
+                    <span class="pkg2-label">Color of Carton</span>
+                    <div class="pkg2-options">
+                        <label class="radio-label"><input type="radio" name="cartonColor" checked="@(Packaging.CartonColor == ColWhite)" @onchange="() => Packaging.CartonColor = ColWhite" /><span>White</span></label>
+                        <label class="radio-label"><input type="radio" name="cartonColor" checked="@(Packaging.CartonColor == ColBrown)" @onchange="() => Packaging.CartonColor = ColBrown" /><span>Brown</span></label>
+                    </div>
+                </div>
+
+                <div class="pkg2-row">
+                    <span class="pkg2-label">Barcode / QR Code</span>
+                    <div class="pkg2-options">
+                        <div class="toggle-group">
+                            <button class="@ToggleCss(Packaging.HasBarcode)" @onclick="() => Packaging.HasBarcode = true">Yes</button>
+                            <button class="@ToggleCss(!Packaging.HasBarcode)" @onclick="() => Packaging.HasBarcode = false">No</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="pkg2-row">
+                    <span class="pkg2-label">Type of Cardboard</span>
+                    <div class="pkg2-options">
+                        <label class="radio-label"><input type="radio" name="cardboard" checked="@(Packaging.CardboardType == CbSingleFace)" @onchange="() => Packaging.CardboardType = CbSingleFace" /><span>Single face</span></label>
+                        <label class="radio-label"><input type="radio" name="cardboard" checked="@(Packaging.CardboardType == CbSingleWall)" @onchange="() => Packaging.CardboardType = CbSingleWall" /><span>Single Wall</span></label>
+                        <label class="radio-label"><input type="radio" name="cardboard" checked="@(Packaging.CardboardType == CbDoubleWall)" @onchange="() => Packaging.CardboardType = CbDoubleWall" /><span>Double Wall</span></label>
+                    </div>
+                </div>
+
+                <div class="pkg2-row">
+                    <span class="pkg2-label">Assembly Instruction</span>
+                    <div class="pkg2-options">
+                        <div class="toggle-group">
+                            <button class="@ToggleCss(Packaging.AssemblyInstruction)" @onclick="() => Packaging.AssemblyInstruction = true">Yes</button>
+                            <button class="@ToggleCss(!Packaging.AssemblyInstruction)" @onclick="() => Packaging.AssemblyInstruction = false">No</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="pkg2-row pkg2-span2">
+                    <span class="pkg2-label">Hardware</span>
+                    <div class="pkg2-options">
+                        <div class="toggle-group">
+                            <button class="@ToggleCss(Packaging.Hardware)" @onclick="() => Packaging.Hardware = true">Yes</button>
+                            <button class="@ToggleCss(!Packaging.Hardware)" @onclick="() => Packaging.Hardware = false">No</button>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Inner Packing -->
+            <div class="pkg-sub-section">
+                <span class="pkg-sub-title">Inner Packing</span>
+                <div class="ni-grid-2">
+                    <div class="field-group">
+                        <label>Quantity</label>
+                        <input type="number" @bind="Packaging.InnerPackingQty" placeholder="0" />
+                    </div>
+                    <div class="field-group">
+                        <label>Remark</label>
+                        <input @bind="Packaging.InnerPackingRemark" placeholder="Remark..." />
+                    </div>
+                </div>
+            </div>
+
+            <!-- Outer Packing -->
+            <div class="pkg-sub-section">
+                <span class="pkg-sub-title">Outer Packing</span>
+                <div class="ni-grid-4">
+                    <div class="field-group"><label>L (mm)</label><input type="number" @bind="Packaging.OuterL" placeholder="0" /></div>
+                    <div class="field-group"><label>W (mm)</label><input type="number" @bind="Packaging.OuterW" placeholder="0" /></div>
+                    <div class="field-group"><label>H (mm)</label><input type="number" @bind="Packaging.OuterH" placeholder="0" /></div>
+                    <div class="field-group"><label>Weight (Kgs)</label><input type="number" step="0.01" @bind="Packaging.OuterWeight" placeholder="0.00" /></div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- C. Product Specification -->
+        <div class="ni-card">
+            <div class="ni-section-title"><span class="section-alpha">C</span> Product Specification</div>
+            <div class="sub-section-label">i. Product Size</div>
+            <div class="ni-grid-4" style="margin-bottom:20px;">
+                <div class="field-group"><label>L (mm)</label><input type="number" @bind="ProductSpec.SizeL" placeholder="0" /></div>
+                <div class="field-group"><label>W (mm)</label><input type="number" @bind="ProductSpec.SizeW" placeholder="0" /></div>
+                <div class="field-group"><label>H (mm)</label><input type="number" @bind="ProductSpec.SizeH" placeholder="0" /></div>
+                <div class="field-group"><label>Weight (Kgs)</label><input type="number" step="0.01" @bind="ProductSpec.Weight" placeholder="0.00" /></div>
+            </div>
+            <div class="compare-golden-row">
+                <div class="sub-section-label" style="margin-bottom:0;">ii. Compare Golden Sample</div>
+                <div class="toggle-group">
+                    <button class="@ToggleCss(ProductSpec.CompareGoldenSample)" @onclick="() => ProductSpec.CompareGoldenSample = true">Yes</button>
+                    <button class="@ToggleCss(!ProductSpec.CompareGoldenSample)" @onclick="() => ProductSpec.CompareGoldenSample = false">No</button>
+                </div>
+            </div>
+            <div class="sub-section-label" style="margin-top:20px;">iii. Colour Swatch Comparison</div>
+            <div class="data-table">
+                <div class="data-table-header">
+                    <div class="col-no">No</div>
+                    <div class="col-flex">Material</div>
+                </div>
+                @for (int i = 0; i < ColourSwatches.Count; i++)
+                {
+                    var idx = i;
+                    <div class="data-table-row">
+                        <div class="col-no">@(idx + 1)</div>
+                        <div class="col-flex"><input @bind="ColourSwatches[idx]" placeholder="Enter material..." class="table-input" /></div>
+                    </div>
+                }
+                <button class="add-row-btn" @onclick="AddColourSwatch">+ Add Row</button>
+            </div>
+        </div>
+
+        <!-- D. Performance Testing -->
+        <div class="ni-card">
+            <div class="ni-section-title"><span class="section-alpha">D</span> Performance Testing</div>
+            <div class="data-table">
+                <div class="data-table-header">
+                    <div class="col-no">No</div>
+                    <div class="col-flex">Category</div>
+                    <div class="col-flex">Test Item</div>
+                    <div class="col-flex2">Test Requirement</div>
+                    <div class="col-flex">Remark</div>
+                </div>
+                @for (int i = 0; i < PerformanceTests.Count; i++)
+                {
+                    var idx = i;
+                    var test = PerformanceTests[idx];
+                    <div class="data-table-row">
+                        <div class="col-no">@(idx + 1)</div>
+                        <div class="col-flex"><input @bind="test.Category" placeholder="Category..." class="table-input" /></div>
+                        <div class="col-flex"><input @bind="test.TestItem" placeholder="Test item..." class="table-input" /></div>
+                        <div class="col-flex2"><input @bind="test.TestRequirement" placeholder="Requirement..." class="table-input" /></div>
+                        <div class="col-flex"><input @bind="test.Remark" placeholder="Remark..." class="table-input" /></div>
+                    </div>
+                }
+                <button class="add-row-btn" @onclick="AddPerformanceTest">+ Add Row</button>
+            </div>
+        </div>
+
+        <!-- E. Reference -->
+        <div class="ni-card">
+            <div class="ni-section-title"><span class="section-alpha">E</span> Reference</div>
+            <div class="data-table">
+                <div class="data-table-header">
+                    <div class="col-no">No</div>
+                    <div class="col-flex2">Reference</div>
+                    <div class="col-flex">Attached File</div>
+                    <div class="col-flex">Remark</div>
+                </div>
+                @for (int i = 0; i < References.Count; i++)
+                {
+                    var idx = i;
+                    var refItem = References[idx];
+                    @* FIX: dùng refItem.Id (Guid) thay vì idx làm @key để tránh InputFile bị gắn nhầm row *@
+                    <div class="data-table-row" @key="refItem.Id">
+                        <div class="col-no">@(idx + 1)</div>
+                        <div class="col-flex2"><input @bind="refItem.ReferenceName" placeholder="Reference name..." class="table-input" /></div>
+                        <div class="col-flex">
+                            @* InputFile LUÔN tồn tại trong DOM — chỉ ẩn/hiện bằng display:none/block
+                               Tránh lỗi _blazorFilesById khi IsUploading làm mất InputFile khỏi DOM *@
+
+                            @* Trạng thái: Đang upload *@
+                            <span class="file-uploading" style="display:@(refItem.IsUploading ? "inline-flex" : "none")">
+                                ⏳ Uploading...
+                            </span>
+
+                            @* Trạng thái: Có lỗi *@
+                            <div style="display:@(!refItem.IsUploading && !string.IsNullOrEmpty(refItem.UploadError) ? "flex" : "none");align-items:center;gap:6px;">
+                                <span style="color:#dc2626;font-size:11.5px;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="@refItem.UploadError">⚠ @refItem.UploadError</span>
+                                <label class="file-attach-btn" style="padding:3px 8px;font-size:11px;" title="Retry">
+                                    Retry
+                                    <InputFile OnChange="@(async e => await OnReferenceFileSelected(e, idx))" style="display:none;" />
+                                </label>
+                            </div>
+
+                            @* Trạng thái: Đã có file *@
+                            <div style="display:@(!refItem.IsUploading && string.IsNullOrEmpty(refItem.UploadError) && !string.IsNullOrEmpty(refItem.FileUrl) ? "flex" : "none");align-items:center;gap:6px;">
+                                @{ var fn = refItem.FileName ?? ""; }
+                                <a href="@refItem.FileUrl" target="_blank" class="file-link-btn" title="@refItem.FileName">
+                                    <svg width="12" height="12" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M4 17h12M10 3v10M6 13l4 4 4-4" stroke-linecap="round" stroke-linejoin="round"/>
+                                    </svg>
+                                    @(fn.Length > 20 ? fn[..20] + "…" : (fn.Length > 0 ? fn : "(file)"))
+                                </a>
+                                <label class="file-reupload-btn" title="Change file">
+                                    <svg width="11" height="11" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M10 3v10M6 7l4-4 4 4" stroke-linecap="round" stroke-linejoin="round"/>
+                                    </svg>
+                                    <InputFile OnChange="@(async e => await OnReferenceFileSelected(e, idx))" style="display:none;" />
+                                </label>
+                            </div>
+
+                            @* Trạng thái: Chưa có file (mặc định) *@
+                            <label class="file-attach-btn" style="display:@(!refItem.IsUploading && string.IsNullOrEmpty(refItem.UploadError) && string.IsNullOrEmpty(refItem.FileUrl) ? "inline-flex" : "none");">
+                                <svg width="13" height="13" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M10 3v10M6 7l4-4 4 4" stroke-linecap="round" stroke-linejoin="round"/>
+                                    <path d="M4 17h12" stroke-linecap="round"/>
+                                </svg>
+                                Attach File
+                                <InputFile OnChange="@(async e => await OnReferenceFileSelected(e, idx))" style="display:none;" />
+                            </label>
+                        </div>
+                        <div class="col-flex"><input @bind="refItem.Remark" placeholder="Remark..." class="table-input" /></div>
+                    </div>
+                }
+                <button class="add-row-btn" @onclick="AddReference">+ Add Row</button>
+            </div>
+        </div>
+
+        <!-- Office Use -->
+        <div class="ni-card office-card">
+            <div class="ni-section-title">Office Use</div>
+            <div class="office-inline-row">
+                <div class="field-group">
+                    <label>Inspector ID</label>
+                    @if (_loadingInspectors)
+                    {
+                        <div class="field-loading">Loading...</div>
+                    }
+                    else
+                    {
+                        <select value="@OfficeUse.InspectorId" @onchange="OnInspectorChanged" class="highlight-field">
+                            <option value="">-- Select Inspector --</option>
+                            @foreach (var u in _inspectors)
+                            {
+                                var key = !string.IsNullOrEmpty(u.InspectorId) ? u.InspectorId : u.Id;
+                                <option value="@key">@(string.IsNullOrEmpty(u.InspectorId) ? u.FullName : $"{u.InspectorId} — {u.FullName}")</option>
+                            }
+                        </select>
+                    }
+                </div>
+                <div class="field-group">
+                    <label>Inspector Name</label>
+                    <div class="readonly-field @(string.IsNullOrEmpty(OfficeUse.InspectorName) ? "" : "accent")">
+                        @(string.IsNullOrEmpty(OfficeUse.InspectorName) ? "Auto-filled from ID" : OfficeUse.InspectorName)
+                    </div>
+                </div>
+                <div class="field-group">
+                    <label>Job Number</label>
+                    <div class="readonly-field accent">Auto</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Submit row -->
+        <div class="ni-submit-row">
+            <button class="btn-cancel" @onclick="GoBack">Cancel</button>
+            @if (_validationErrors.Count > 0)
+            {
+                <div class="ni-save-error">
+                    <strong>Please fix the following errors:</strong>
+                    <ul style="margin:6px 0 0 0;padding-left:18px;">
+                        @foreach (var err in _validationErrors)
+                        {
+                            <li>@err</li>
+                        }
+                    </ul>
+                </div>
+            }
+            else if (!string.IsNullOrEmpty(_saveError))
+            {
+                <div class="ni-save-error">@_saveError</div>
+            }
+            <button class="btn-save large" @onclick="HandleSave" disabled="@_saving">
+                @if (_saving)
+                {
+                    <span class="ni-spinner"></span>
+                    <span>Saving...</span>
+                }
+                else
+                {
+                    <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M5 10l4 4 8-8" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                    <span>Save Inspection</span>
+                }
+            </button>
+        </div>
+
+    </div>
+</div>
+
+@code {
+    // ── String constants — tránh inline string literals trong Razor attributes ──
+    private const string PkgFsc       = "FSC Carton";
+    private const string PkgNonFsc    = "Non-FSC Carton";
+    private const string ColWhite     = "White";
+    private const string ColBrown     = "Brown";
+    private const string CbSingleFace = "Single face";
+    private const string CbSingleWall = "Single Wall";
+    private const string CbDoubleWall = "Double Wall";
+    private const string SmColorLabel = "Color Label";
+    private const string SmPrinting   = "Printing";
+
+    // Helper CSS cho toggle button — tránh ternary với string literals trong attribute
+    private static string ToggleCss(bool active) => active ? "toggle-btn active" : "toggle-btn";
+
+    // ── State ──
+    private InspectionModel  Model       = new();
+    private PackagingModel   Packaging   = new();
+    private ProductSpecModel ProductSpec = new();
+    private OfficeUseModel   OfficeUse   = new();
+
+    private List<string>             ColourSwatches   = new() { "", "", "" };
+    private List<PerformanceTestRow> PerformanceTests = new() { new(), new(), new() };
+    private List<ReferenceRow>       References       = new() { new(), new(), new(), new(), new() };
+
+    private List<OverallConclusionRow> OverallConclusions = new()
+    {
+        new() { Letter = "A", Label = "Quantity Conformity" },
+        new() { Letter = "B", Label = "Packaging & Identification" },
+        new() { Letter = "C", Label = "Product Specification Compliance" },
+        new() { Letter = "D", Label = "Performance Testing" },
+        new() { Letter = "E", Label = "Appearance & Craftsmanship" },
+        new() { Letter = "F", Label = "Details of Defect Found" },
+    };
+
+    private static string GetComplianceClass(string v) => v switch
+    {
+        "Pass" => "compliance-pass",
+        "Fail" => "compliance-fail",
+        "NA"   => "compliance-na",
+        _      => ""
+    };
+
+    // ── Photos ──
+    // PhotoPreview1  : data URL base64 dùng để preview ngay trên client (không phụ thuộc API base address)
+    // Photo1ServerUrl: URL server trả về sau khi upload xong — dùng để lưu vào DB
+    private string? PhotoPreview1   = null;
+    private string? Photo1ServerUrl = null;
+    private bool    _photoUploading = false;
+    private string? _photoError     = null;
+
+    // ── Helper upload chung — tránh ContentType null/empty gây crash ──
+    private static string SafeContentType(string? ct) =>
+        string.IsNullOrWhiteSpace(ct) ? "application/octet-stream" : ct;
+
+    private async Task OnPhotoSelected(InputFileChangeEventArgs e)
+    {
+        var file = e.File;
+        _photoError      = null;
+        Photo1ServerUrl  = null;
+
+        // 1. Đọc bytes — giới hạn 5 MB
+        byte[] bytes;
+        try
+        {
+            using var s  = file.OpenReadStream(maxAllowedSize: 5 * 1024 * 1024);
+            using var ms = new System.IO.MemoryStream();
+            await s.CopyToAsync(ms);
+            bytes = ms.ToArray();
+        }
+        catch (Exception ex)
+        {
+            _photoError = $"File quá lớn hoặc không đọc được: {ex.Message}";
+            StateHasChanged();
+            return;
+        }
+
+        // 2. Hiển thị preview ngay bằng data URL — không cần chờ upload
+        var mime      = SafeContentType(file.ContentType);
+        PhotoPreview1 = $"data:{mime};base64,{Convert.ToBase64String(bytes)}";
+        _photoUploading = true;
+        StateHasChanged();
+
+        // 3. Upload lên server
+        try
+        {
+            using var content = new MultipartFormDataContent();
+            var sc = new ByteArrayContent(bytes);
+            sc.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue(mime);
+            content.Add(sc, "file", file.Name);
+
+            var token = await SessionStorage.GetItemAsync<string>("auth_token");
+            if (!string.IsNullOrEmpty(token))
+                Http.DefaultRequestHeaders.Authorization =
+                    new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+
+            var resp = await Http.PostAsync("api/files/upload-photo", content);
+            if (resp.IsSuccessStatusCode)
+            {
+                var opts   = new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+                var result = await resp.Content.ReadFromJsonAsync<UploadResult>(opts);
+                Photo1ServerUrl = result?.Url ?? "";
+                // Giữ nguyên PhotoPreview1 (data URL) để hiển thị ảnh — img src vẫn hoạt động
+            }
+            else
+            {
+                var body = await resp.Content.ReadAsStringAsync();
+                _photoError     = $"Upload thất bại ({(int)resp.StatusCode}): {body}";
+                // Không xóa preview để user vẫn thấy ảnh đã chọn, nhưng biết chưa lưu được
+            }
+        }
+        catch (Exception ex)
+        {
+            _photoError = $"Lỗi kết nối: {ex.Message}";
+        }
+        finally
+        {
+            _photoUploading = false;
+            StateHasChanged();
+        }
+    }
+
+    private void RemovePhoto()
+    {
+        PhotoPreview1   = null;
+        Photo1ServerUrl = null;
+        _photoError     = null;
+    }
+
+    // ── Dropdowns ──
+    private List<CustomerDropdownDto>  _customers  = new();
+    private List<VendorDropdownDto>    _vendors    = new();
+    private List<ProductDropdownDto>   _allProducts = new(); // toàn bộ
+    private List<ProductDropdownDto>   _products    = new(); // đã lọc
+    private List<InspectorDropdownDto> _inspectors  = new();
+    private bool _loadingCustomers  = true;
+    private bool _loadingVendors    = true;
+    private bool _loadingProducts   = true;
+    private bool _loadingInspectors = true;
+
+    // Geo
+    private List<CountryDto> _countries         = new();
+    private int              _selectedCountryId = 0;
+    private bool             _loadingCountries  = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await Task.WhenAll(LoadCustomers(), LoadVendors(), LoadProducts(), LoadInspectors(), LoadCountries());
+    }
+
+    private async Task LoadCustomers()
+    {
+        try { _customers = await Http.GetFromJsonAsync<List<CustomerDropdownDto>>("api/customers/dropdown") ?? new(); }
+        catch { _customers = new(); }
+        finally { _loadingCustomers = false; }
+    }
+
+    private async Task LoadVendors()
+    {
+        try { _vendors = await Http.GetFromJsonAsync<List<VendorDropdownDto>>("api/vendors/dropdown") ?? new(); }
+        catch { _vendors = new(); }
+        finally { _loadingVendors = false; }
+    }
+
+    private void OnCustomerChanged(ChangeEventArgs e)
+    {
+        Model.CustomerId   = e.Value?.ToString() ?? "";
+        var found          = _customers.FirstOrDefault(c => c.CustomerId == Model.CustomerId);
+        Model.CustomerName = found?.CompanyName ?? "";
+        FilterProducts();
+    }
+
+    private void OnVendorChanged(ChangeEventArgs e)
+    {
+        Model.VendorId   = e.Value?.ToString() ?? "";
+        var found        = _vendors.FirstOrDefault(v => v.Code == Model.VendorId);
+        Model.VendorName = found?.Name ?? "";
+        FilterProducts();
+    }
+
+    private async Task LoadProducts()
+    {
+        try
+        {
+            _allProducts = await Http.GetFromJsonAsync<List<ProductDropdownDto>>("api/products/dropdown") ?? new();
+            FilterProducts();
+        }
+        catch { _allProducts = new(); _products = new(); }
+        finally { _loadingProducts = false; }
+    }
+
+    private void FilterProducts()
+    {
+        var list = _allProducts.AsEnumerable();
+        if (!string.IsNullOrEmpty(Model.CustomerId))
+            list = list.Where(p => p.CustomerId == Model.CustomerId);
+        if (!string.IsNullOrEmpty(Model.VendorId))
+            list = list.Where(p => p.VendorId == Model.VendorId);
+        _products = list.ToList();
+        // Reset product selection nếu product hiện tại không còn trong list
+        if (!string.IsNullOrEmpty(Model.ProductCode) && !_products.Any(p => p.ProductCode == Model.ProductCode))
+        {
+            Model.ProductCode = "";
+            Model.ProductName = "";
+            Model.ProductCategory = "";
+        }
+    }
+
+    private void OnProductChanged(ChangeEventArgs e)
+    {
+        Model.ProductCode     = e.Value?.ToString() ?? "";
+        var found             = _products.FirstOrDefault(p => p.ProductCode == Model.ProductCode);
+        Model.ProductName     = found?.ProductName ?? "";
+        Model.ProductCategory = found?.Category    ?? "";
+    }
+
+    private async Task LoadInspectors()
+    {
+        try { _inspectors = await Http.GetFromJsonAsync<List<InspectorDropdownDto>>("api/users/dropdown") ?? new(); }
+        catch { _inspectors = new(); }
+        finally { _loadingInspectors = false; }
+    }
+
+    private async Task LoadCountries()
+    {
+        try { _countries = await Http.GetFromJsonAsync<List<CountryDto>>("api/geo/countries") ?? new(); }
+        catch { _countries = new(); }
+        finally { _loadingCountries = false; }
+    }
+
+    private void OnCountryChanged(ChangeEventArgs e)
+    {
+        _selectedCountryId = int.TryParse(e.Value?.ToString(), out var id) ? id : 0;
+        var country = _countries.FirstOrDefault(c => c.Id == _selectedCountryId);
+        Model.InspectionLocation = country?.Name ?? "";
+    }
+
+    private void OnInspectorChanged(ChangeEventArgs e)
+    {
+        var selectedKey       = e.Value?.ToString() ?? "";
+        // Key là InspectorId nếu có, ngược lại dùng Id
+        var found             = _inspectors.FirstOrDefault(u =>
+            (!string.IsNullOrEmpty(u.InspectorId) && u.InspectorId == selectedKey) ||
+            u.Id == selectedKey);
+        OfficeUse.InspectorId   = found?.InspectorId ?? selectedKey;
+        OfficeUse.InspectorName = found?.FullName ?? "";
+    }
+
+    // ── AQL ──
+    private int    AqlQuantity        = 0;
+    private string AqlInspectionLevel = "II";
+    private string CriticalAql        = "0";
+    private string MajorAql           = "2.5";
+    private string MinorAql           = "4.0";
+
+    private int CriticalSampleSize, CriticalAccept, CriticalReject;
+    private int MajorSampleSize,    MajorAccept,    MajorReject;
+    private int MinorSampleSize,    MinorAccept,    MinorReject;
+    private string _currentCodeLetter = "";
+
+    private void OnAqlQuantityChanged(ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out var v)) AqlQuantity = v;
+        RecalcAql();
+    }
+
+    private void OnAqlLevelChanged(ChangeEventArgs e)
+    {
+        AqlInspectionLevel = e.Value?.ToString() ?? "II";
+        RecalcAql();
+    }
+
+    private void OnCriticalAqlChanged(ChangeEventArgs e)
+    {
+        CriticalAql = e.Value?.ToString() ?? "0";
+        RecalcAql();
+    }
+
+    private void OnMajorAqlChanged(ChangeEventArgs e)
+    {
+        MajorAql = e.Value?.ToString() ?? "2.5";
+        RecalcAql();
+    }
+
+    private void OnMinorAqlChanged(ChangeEventArgs e)
+    {
+        MinorAql = e.Value?.ToString() ?? "4.0";
+        RecalcAql();
+    }
+
+    // ══════════════════════════════════════════════════════════════
+    //  AQL ANSI/ASQ Z1.4 – 2008  (Table A + Table B)
+    // ══════════════════════════════════════════════════════════════
+
+    // TABLE A — Lot size → Code letter (General Inspection Level I, II, III)
+    private static string GetCodeLetter(int qty, string level)
+    {
+        if (qty <= 1) return "A";
+
+        // Special Inspection Levels S1-S4
+        if (level == "S1" || level == "S2" || level == "S3" || level == "S4")
+        {
+            var special = new (int max, string S1, string S2, string S3, string S4)[]
+            {
+                (     150, "A","A","A","A"),
+                (     500, "A","A","B","B"),
+                (   1200, "A","A","B","C"),
+                (  10000, "A","B","C","C"),
+                (  35000, "B","B","C","D"),
+                ( 150000, "B","C","D","E"),
+                ( 500000, "B","C","D","E"),
+                (int.MaxValue,"C","C","D","F"),
+            };
+            foreach (var row in special)
+                if (qty <= row.max)
+                    return level switch { "S1"=>row.S1,"S2"=>row.S2,"S3"=>row.S3,_=>row.S4 };
+            return "F";
+        }
+
+        // General Inspection Levels I, II, III
+        var table = new (int max, string I, string II, string III)[]
+        {
+            (      8, "A","A","B"),
+            (     15, "A","B","C"),
+            (     25, "B","C","D"),
+            (     50, "C","D","E"),
+            (     90, "C","E","F"),
+            (    150, "D","F","G"),
+            (    280, "E","G","H"),
+            (    500, "F","H","J"),
+            (   1200, "G","J","K"),
+            (   3200, "H","K","L"),
+            (  10000, "J","L","M"),
+            (  35000, "K","M","N"),
+            ( 150000, "L","N","P"),
+            ( 500000, "M","P","Q"),
+            (int.MaxValue,"N","Q","R"),
+        };
+        foreach (var row in table)
+            if (qty <= row.max)
+                return level switch { "I"=>row.I, "III"=>row.III, _=>row.II };
+        return "R";
+    }
+
+    // TABLE B — Code letter + AQL → Sample size, Ac, Re
+    private static readonly Dictionary<string, int> _codeSizes = new()
+    {
+        {"A",2},{"B",3},{"C",5},{"D",8},{"E",13},{"F",20},
+        {"G",32},{"H",50},{"J",80},{"K",125},{"L",200},
+        {"M",315},{"N",500},{"P",800},{"Q",1250},{"R",2000}
+    };
+
+    private static readonly Dictionary<string, Dictionary<string, (int ac, int re)>> _tableB = new()
+    {
+        ["A"] = new(){ ["0.065"]=(-1,-1),["0.10"]=(-1,-1),["0.15"]=(-1,-1),["0.25"]=(-1,-1),["0.40"]=(-1,-1),["0.65"]=(-1,-1),["1.0"]=(-1,-1),["1.5"]=(-1,-1),["2.5"]=(-1,-1),["4.0"]=(-1,-1),["6.5"]=(0,1) },
+        ["B"] = new(){ ["0.065"]=(-1,-1),["0.10"]=(-1,-1),["0.15"]=(-1,-1),["0.25"]=(-1,-1),["0.40"]=(-1,-1),["0.65"]=(-1,-1),["1.0"]=(-1,-1),["1.5"]=(-1,-1),["2.5"]=(-1,-1),["4.0"]=(-2,-2),["6.5"]=(0,1) },
+        ["C"] = new(){ ["0.065"]=(-1,-1),["0.10"]=(-1,-1),["0.15"]=(-1,-1),["0.25"]=(-1,-1),["0.40"]=(-1,-1),["0.65"]=(-1,-1),["1.0"]=(-1,-1),["1.5"]=(-1,-1),["2.5"]=(0,1),["4.0"]=(-1,-1),["6.5"]=(1,2) },
+        ["D"] = new(){ ["0.065"]=(-1,-1),["0.10"]=(-1,-1),["0.15"]=(-1,-1),["0.25"]=(-1,-1),["0.40"]=(-1,-1),["0.65"]=(-1,-1),["1.0"]=(-1,-1),["1.5"]=(0,1),["2.5"]=(-1,-1),["4.0"]=(1,2),["6.5"]=(2,3) },
+        ["E"] = new(){ ["0.065"]=(-1,-1),["0.10"]=(-1,-1),["0.15"]=(-1,-1),["0.25"]=(-1,-1),["0.40"]=(-1,-1),["0.65"]=(-1,-1),["1.0"]=(0,1),["1.5"]=(-1,-1),["2.5"]=(1,2),["4.0"]=(2,3),["6.5"]=(3,4) },
+        ["F"] = new(){ ["0.065"]=(-1,-1),["0.10"]=(-1,-1),["0.15"]=(-1,-1),["0.25"]=(-1,-1),["0.40"]=(-2,-2),["0.65"]=(0,1),["1.0"]=(-2,-2),["1.5"]=(1,2),["2.5"]=(2,3),["4.0"]=(3,4),["6.5"]=(5,6) },
+        ["G"] = new(){ ["0.065"]=(-1,-1),["0.10"]=(-1,-1),["0.15"]=(-1,-1),["0.25"]=(0,1),["0.40"]=(-1,-1),["0.65"]=(-2,-2),["1.0"]=(1,2),["1.5"]=(-2,-2),["2.5"]=(3,4),["4.0"]=(5,6),["6.5"]=(7,8) },
+        ["H"] = new(){ ["0.065"]=(-1,-1),["0.10"]=(-1,-1),["0.15"]=(-2,-2),["0.25"]=(0,1),["0.40"]=(-1,-1),["0.65"]=(1,2),["1.0"]=(2,3),["1.5"]=(3,4),["2.5"]=(3,4),["4.0"]=(5,6),["6.5"]=(7,8) },
+        ["J"] = new(){ ["0.065"]=(-1,-1),["0.10"]=(-2,-2),["0.15"]=(-1,-1),["0.25"]=(0,1),["0.40"]=(1,2),["0.65"]=(2,3),["1.0"]=(3,4),["1.5"]=(5,6),["2.5"]=(7,8),["4.0"]=(10,11),["6.5"]=(14,15) },
+        ["K"] = new(){ ["0.065"]=(-2,-2),["0.10"]=(-1,-1),["0.15"]=(0,1),["0.25"]=(1,2),["0.40"]=(2,3),["0.65"]=(3,4),["1.0"]=(5,6),["1.5"]=(7,8),["2.5"]=(10,11),["4.0"]=(14,15),["6.5"]=(21,22) },
+        ["L"] = new(){ ["0.065"]=(-1,-1),["0.10"]=(0,1),["0.15"]=(1,2),["0.25"]=(2,3),["0.40"]=(3,4),["0.65"]=(5,6),["1.0"]=(7,8),["1.5"]=(10,11),["2.5"]=(14,15),["4.0"]=(21,22),["6.5"]=(-1,-1) },
+        ["M"] = new(){ ["0.065"]=(0,1),["0.10"]=(1,2),["0.15"]=(2,3),["0.25"]=(3,4),["0.40"]=(5,6),["0.65"]=(7,8),["1.0"]=(10,11),["1.5"]=(14,15),["2.5"]=(21,22),["4.0"]=(-1,-1),["6.5"]=(-1,-1) },
+        ["N"] = new(){ ["0.065"]=(1,2),["0.10"]=(2,3),["0.15"]=(3,4),["0.25"]=(5,6),["0.40"]=(7,8),["0.65"]=(10,11),["1.0"]=(14,15),["1.5"]=(21,22),["2.5"]=(-1,-1),["4.0"]=(-1,-1),["6.5"]=(-1,-1) },
+        ["P"] = new(){ ["0.065"]=(2,3),["0.10"]=(3,4),["0.15"]=(5,6),["0.25"]=(7,8),["0.40"]=(10,11),["0.65"]=(14,15),["1.0"]=(21,22),["1.5"]=(-1,-1),["2.5"]=(-1,-1),["4.0"]=(-1,-1),["6.5"]=(-1,-1) },
+        ["Q"] = new(){ ["0.065"]=(3,4),["0.10"]=(5,6),["0.15"]=(7,8),["0.25"]=(10,11),["0.40"]=(14,15),["0.65"]=(21,22),["1.0"]=(-1,-1),["1.5"]=(-1,-1),["2.5"]=(-1,-1),["4.0"]=(-1,-1),["6.5"]=(-1,-1) },
+        ["R"] = new(){ ["0.065"]=(5,6),["0.10"]=(7,8),["0.15"]=(10,11),["0.25"]=(14,15),["0.40"]=(21,22),["0.65"]=(-1,-1),["1.0"]=(-1,-1),["1.5"]=(-1,-1),["2.5"]=(-1,-1),["4.0"]=(-1,-1),["6.5"]=(-1,-1) },
+    };
+
+    // Normalize AQL string → table key
+    private static string NormalizeAqlKey(string aql) => aql switch
+    {
+        "0"     => "0",
+        "0.065" => "0.065",
+        "0.1"   => "0.10",
+        "0.10"  => "0.10",
+        "0.15"  => "0.15",
+        "0.25"  => "0.25",
+        "0.4"   => "0.40",
+        "0.40"  => "0.40",
+        "0.65"  => "0.65",
+        "1.0"   => "1.0",
+        "1.5"   => "1.5",
+        "2.5"   => "2.5",
+        "4.0"   => "4.0",
+        "6.5"   => "6.5",
+        _       => "2.5"
+    };
+
+    // Look up Table B — xử lý đúng cả ↑ và ↓ arrow
+    private static (int sampleSize, int ac, int re) LookupTableB(string codeLetter, string aqlKey)
+    {
+        if (aqlKey == "0") return (_codeSizes.GetValueOrDefault(codeLetter, 0), 0, 0);
+
+        var letters = new[] {"A","B","C","D","E","F","G","H","J","K","L","M","N","P","Q","R"};
+        int idx = Array.IndexOf(letters, codeLetter);
+        if (idx < 0) return (0, 0, 0);
+
+        if (!_tableB.ContainsKey(codeLetter) || !_tableB[codeLetter].ContainsKey(aqlKey))
+            return (_codeSizes.GetValueOrDefault(codeLetter, 0), 0, 1);
+
+        var (ac0, re0) = _tableB[codeLetter][aqlKey];
+
+        if (ac0 == -1) // ↑ arrow: dùng plan trên (letter nhỏ hơn, sample nhỏ hơn)
+        {
+            for (int i = idx - 1; i >= 0; i--)
+            {
+                var l = letters[i];
+                if (!_tableB.ContainsKey(l) || !_tableB[l].ContainsKey(aqlKey)) continue;
+                var (a, r) = _tableB[l][aqlKey];
+                if (a >= 0) return (_codeSizes.GetValueOrDefault(l, 0), a, r);
+            }
+            return (_codeSizes.GetValueOrDefault(codeLetter, 0), 0, 1);
+        }
+
+        if (ac0 == -2) // ↓ arrow: dùng plan dưới (letter lớn hơn, sample lớn hơn)
+        {
+            for (int i = idx + 1; i < letters.Length; i++)
+            {
+                var l = letters[i];
+                if (!_tableB.ContainsKey(l) || !_tableB[l].ContainsKey(aqlKey)) continue;
+                var (a, r) = _tableB[l][aqlKey];
+                if (a >= 0) return (_codeSizes.GetValueOrDefault(l, 0), a, r);
+            }
+            return (_codeSizes.GetValueOrDefault(codeLetter, 0), 0, 1);
+        }
+
+        return (_codeSizes.GetValueOrDefault(codeLetter, 0), ac0, re0);
+    }
+
+    private void RecalcAql()
+    {
+        if (AqlQuantity <= 0)
+        {
+            CriticalSampleSize = CriticalAccept = CriticalReject = 0;
+            MajorSampleSize    = MajorAccept    = MajorReject    = 0;
+            MinorSampleSize    = MinorAccept    = MinorReject    = 0;
+            _currentCodeLetter = "";
+            return;
+        }
+
+        var codeLetter = GetCodeLetter(AqlQuantity, AqlInspectionLevel);
+        _currentCodeLetter = codeLetter;
+
+        // Critical
+        if (CriticalAql == "0")
+        {
+            CriticalSampleSize = _codeSizes.GetValueOrDefault(codeLetter, 0);
+            CriticalAccept = CriticalReject = 0;
+        }
+        else
+        {
+            var (sz, ac, re) = LookupTableB(codeLetter, NormalizeAqlKey(CriticalAql));
+            CriticalSampleSize = sz; CriticalAccept = ac; CriticalReject = re;
+        }
+
+        // Major
+        var (szM, acM, reM) = LookupTableB(codeLetter, NormalizeAqlKey(MajorAql));
+        MajorSampleSize = szM; MajorAccept = acM; MajorReject = reM;
+
+        // Minor
+        var (szN, acN, reN) = LookupTableB(codeLetter, NormalizeAqlKey(MinorAql));
+        MinorSampleSize = szN; MinorAccept = acN; MinorReject = reN;
+    }
+
+    private void ToggleCompliance(OverallConclusionRow row, string value)
+        => row.Compliance = row.Compliance == value ? "" : value;
+
+    private void AddColourSwatch()    => ColourSwatches.Add("");
+    private void AddPerformanceTest() => PerformanceTests.Add(new());
+    private void AddReference()       => References.Add(new());
+
+    // FIX: xử lý lỗi đầy đủ, không nuốt exception
+    private async Task OnReferenceFileSelected(InputFileChangeEventArgs e, int idx)
+    {
+        if (idx >= References.Count) return;
+
+        // 1. Lấy file ra TRƯỚC khi làm bất cứ điều gì khác
+        var file = e.File;
+        if (file == null) return;
+
+        var refItem = References[idx];
+        refItem.FileName    = file.Name;
+        refItem.UploadError = "";
+        refItem.FileUrl     = "";
+
+        // 2. Copy vào MemoryStream NGAY LẬP TỨC — cắt đứt liên kết với DOM trình duyệt
+        //    Phải làm TRƯỚC StateHasChanged() để tránh lỗi _blazorFilesById
+        var ms = new System.IO.MemoryStream();
+        try
+        {
+            await file.OpenReadStream(maxAllowedSize: 20 * 1024 * 1024).CopyToAsync(ms);
+        }
+        catch (Exception ex)
+        {
+            refItem.UploadError = $"Không đọc được file: {ex.Message}";
+            StateHasChanged();
+            return;
+        }
+        ms.Position = 0;
+
+        // 3. Bây giờ đã an toàn — gọi StateHasChanged sau khi đã có dữ liệu trong memory
+        refItem.IsUploading = true;
+        StateHasChanged();
+
+        try
+        {
+            using var content = new MultipartFormDataContent();
+            var sc = new ByteArrayContent(ms.ToArray());
+            sc.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue(SafeContentType(file.ContentType));
+            content.Add(sc, "file", file.Name);
+
+            var token = await SessionStorage.GetItemAsync<string>("auth_token");
+            if (!string.IsNullOrEmpty(token))
+                Http.DefaultRequestHeaders.Authorization =
+                    new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+
+            var resp = await Http.PostAsync("api/files/upload", content);
+            if (resp.IsSuccessStatusCode)
+            {
+                var rawBody = await resp.Content.ReadAsStringAsync();
+                try
+                {
+                    using var doc = System.Text.Json.JsonDocument.Parse(rawBody);
+                    string? url = null;
+                    string? fileName = null;
+                    foreach (var prop in doc.RootElement.EnumerateObject())
+                    {
+                        if (prop.Name.Equals("url", StringComparison.OrdinalIgnoreCase) ||
+                            prop.Name.Equals("fileUrl", StringComparison.OrdinalIgnoreCase))
+                            url = prop.Value.GetString();
+                        if (prop.Name.Equals("fileName", StringComparison.OrdinalIgnoreCase) ||
+                            prop.Name.Equals("name", StringComparison.OrdinalIgnoreCase))
+                            fileName = prop.Value.GetString();
+                    }
+                    refItem.FileUrl     = url      ?? "";
+                    refItem.FileName    = fileName ?? file.Name;
+                    refItem.UploadError = string.IsNullOrEmpty(url)
+                        ? $"Upload OK nhưng server không trả URL. Body: {rawBody}"
+                        : "";
+                }
+                catch (Exception parseEx)
+                {
+                    refItem.UploadError = $"Parse error: {parseEx.Message}";
+                }
+            }
+            else
+            {
+                var body = await resp.Content.ReadAsStringAsync();
+                refItem.UploadError = $"{(int)resp.StatusCode}: {body}";
+            }
+        }
+        catch (Exception ex)
+        {
+            refItem.UploadError = ex.Message;
+        }
+        finally
+        {
+            refItem.IsUploading = false;
+            await ms.DisposeAsync();
+            StateHasChanged();
+        }
+    }
+
+    private class UploadResult
+    {
+        public string Url      { get; set; } = "";
+        public string FileName { get; set; } = "";
+    }
+
+    private bool _saving = false;
+    private string? _saveError;
+    private List<string> _validationErrors = new();
+
+    // ── Validation ──
+    private bool ValidateForm()
+    {
+        _validationErrors.Clear();
+
+        if (string.IsNullOrWhiteSpace(Model.CustomerId))
+            _validationErrors.Add("Customer ID is required.");
+        if (string.IsNullOrWhiteSpace(Model.InspectionLocation))
+            _validationErrors.Add("Inspection Location is required.");
+        if (Model.InspectionDate == null)
+            _validationErrors.Add("Inspection Date is required.");
+        if (string.IsNullOrWhiteSpace(Model.PoNumber))
+            _validationErrors.Add("P.O. Number is required.");
+        if (string.IsNullOrWhiteSpace(Model.ItemNumber))
+            _validationErrors.Add("Item Number is required.");
+        if (string.IsNullOrWhiteSpace(Model.ProductCode))
+            _validationErrors.Add("Product ID is required.");
+        if (Model.TotalShipmentQty <= 0)
+            _validationErrors.Add("Total Shipment Quantity must be greater than 0.");
+
+        if (AqlQuantity <= 0)
+            _validationErrors.Add("AQL Quantity is required.");
+
+        if (string.IsNullOrWhiteSpace(OfficeUse.InspectorId))
+            _validationErrors.Add("Inspector is required (Office Use).");
+
+        return _validationErrors.Count == 0;
+    }
+
+    private async Task HandleSave()
+    {
+        _saveError = null;
+        _validationErrors.Clear();
+
+        if (!ValidateForm())
+        {
+            _saveError = string.Join(" | ", _validationErrors);
+            return;
+        }
+
+        if (_photoUploading)
+        {
+            _saveError = "Ảnh đang được tải lên, vui lòng chờ...";
+            return;
+        }
+        if (!string.IsNullOrEmpty(_photoError))
+        {
+            _saveError = $"Ảnh chưa tải lên được: {_photoError}. Vui lòng thử lại hoặc xóa ảnh.";
+            return;
+        }
+
+        _saving = true;
+        try
+        {
+            var payload = new
+            {
+                title              = string.IsNullOrWhiteSpace(Model.ProductName) ? "Inspection" : Model.ProductName,
+                description        = (string?)null,
+                customerName       = Model.CustomerName,
+                customerId         = Model.CustomerId,
+                vendorName         = Model.VendorName,
+                vendorId           = Model.VendorId,
+                inspectionLocation = Model.InspectionLocation,
+                poNumber           = Model.PoNumber,
+                inspectionDate     = Model.InspectionDate,
+                itemNumber         = Model.ItemNumber,
+                inspectionType     = Model.InspectionType.ToString(),
+                productName        = Model.ProductName,
+                productCategory    = Model.ProductCategory,
+                totalShipmentQty   = Model.TotalShipmentQty,
+                totalCartonBoxes   = Model.TotalCartonBoxes,
+                inspectorId        = OfficeUse.InspectorId,
+                inspectorName      = OfficeUse.InspectorName,
+                photo1Url          = Photo1ServerUrl,   // lưu server URL, không lưu data URL base64
+                photo2Url          = (string?)null,
+                // AQL
+                aqlQuantity              = AqlQuantity,
+                aqlLevel                 = AqlInspectionLevel,
+                aqlCritical              = CriticalAql,
+                aqlMajor                 = MajorAql,
+                aqlMinor                 = MinorAql,
+                aqlCriticalSampleSize    = CriticalSampleSize,
+                aqlCriticalAccept        = CriticalAccept,
+                aqlCriticalReject        = CriticalReject,
+                aqlMajorSampleSize       = MajorSampleSize,
+                aqlMajorAccept           = MajorAccept,
+                aqlMajorReject           = MajorReject,
+                aqlMinorSampleSize       = MinorSampleSize,
+                aqlMinorAccept           = MinorAccept,
+                aqlMinorReject           = MinorReject,
+
+                // Packaging & Identification
+                packaging = new
+                {
+                    itemNumber           = Packaging.ItemNumber,
+                    cartonNumber         = Packaging.CartonNumber,
+                    packagingType        = Packaging.PackagingType,
+                    cartonColor          = Packaging.CartonColor,
+                    cardboardType        = Packaging.CardboardType,
+                    shippingMark         = Packaging.ShippingMark,
+                    hasBarcode           = Packaging.HasBarcode,
+                    innerPackingQty      = Packaging.InnerPackingQty,
+                    innerPackingRemark   = Packaging.InnerPackingRemark,
+                    outerL               = Packaging.OuterL,
+                    outerW               = Packaging.OuterW,
+                    outerH               = Packaging.OuterH,
+                    outerWeight          = Packaging.OuterWeight,
+                    assemblyInstruction  = Packaging.AssemblyInstruction,
+                    hardware             = Packaging.Hardware
+                },
+
+                // Product Specification
+                productSpec = new
+                {
+                    sizeL               = ProductSpec.SizeL,
+                    sizeW               = ProductSpec.SizeW,
+                    sizeH               = ProductSpec.SizeH,
+                    weight              = ProductSpec.Weight,
+                    compareGoldenSample = ProductSpec.CompareGoldenSample,
+                    colourSwatches      = ColourSwatches
+                                            .Where(s => !string.IsNullOrWhiteSpace(s))
+                                            .ToArray()
+                },
+
+                // Performance Testing
+                performanceTests = PerformanceTests
+                    .Where(t => !string.IsNullOrWhiteSpace(t.Category) || !string.IsNullOrWhiteSpace(t.TestItem))
+                    .Select(t => new
+                    {
+                        category        = t.Category,
+                        testItem        = t.TestItem,
+                        testRequirement = t.TestRequirement,
+                        remark          = t.Remark
+                    }).ToArray(),
+
+                // References
+                references = References
+                    .Where(r => !string.IsNullOrWhiteSpace(r.ReferenceName))
+                    .Select(r => new
+                    {
+                        referenceName = r.ReferenceName,
+                        fileName      = r.FileName,
+                        fileUrl       = r.FileUrl,
+                        remark        = r.Remark
+                    }).ToArray(),
+
+                steps              = Array.Empty<object>(),
+                overallConclusions = OverallConclusions.Select(o => new
+                {
+                    letter     = o.Letter,
+                    label      = o.Label,
+                    compliance = o.Compliance,
+                    remark     = o.Remark
+                }).ToArray()
+            };
+
+            var token = await SessionStorage.GetItemAsync<string>("auth_token");
+            if (string.IsNullOrEmpty(token))
+            {
+                _saveError = "Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại.";
+                return;
+            }
+
+            Http.DefaultRequestHeaders.Authorization =
+                new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+
+            var resp = await Http.PostAsJsonAsync("api/inspections", payload);
+            if (resp.IsSuccessStatusCode)
+            {
+                Navigation.NavigateTo("/inspections");
+            }
+            else
+            {
+                var body = await resp.Content.ReadAsStringAsync();
+                _saveError = $"Save failed ({(int)resp.StatusCode}): {body}";
+            }
+        }
+        catch (Exception ex)
+        {
+            _saveError = ex.Message;
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+
+    private void GoBack() => Navigation.NavigateTo("/inspections");
+
+    // ── Enums & DTOs ──
+    private enum InspectionTypeEnum { PPT, DPI, PST }
+
+    private class InspectionModel
+    {
+        public string CustomerName       { get; set; } = "";
+        public string CustomerId         { get; set; } = "";
+        public string VendorName         { get; set; } = "";
+        public string VendorId           { get; set; } = "";
+        public string InspectionLocation { get; set; } = "";
+        public string PoNumber           { get; set; } = "";
+        public DateTime? InspectionDate  { get; set; }
+        public string ItemNumber         { get; set; } = "";
+        public InspectionTypeEnum InspectionType { get; set; } = InspectionTypeEnum.DPI;
+        public string ProductCode        { get; set; } = "";
+        public string ProductName        { get; set; } = "";
+        public bool   InspectionReference{ get; set; } = true;
+        public int    TotalShipmentQty   { get; set; }
+        public string ProductCategory    { get; set; } = "";
+        public int    TotalCartonBoxes   { get; set; }
+    }
+
+    private class PackagingModel
+    {
+        public string ItemNumber          { get; set; } = "";
+        public string CartonNumber        { get; set; } = "";
+        public string PackagingType       { get; set; } = "";
+        public string CartonColor         { get; set; } = "";
+        public string CardboardType       { get; set; } = "";
+        public string ShippingMark        { get; set; } = "";
+        public bool   HasBarcode          { get; set; }
+        public int    InnerPackingQty     { get; set; }
+        public string InnerPackingRemark  { get; set; } = "";
+        public double OuterL              { get; set; }
+        public double OuterW              { get; set; }
+        public double OuterH              { get; set; }
+        public double OuterWeight         { get; set; }
+        public bool   AssemblyInstruction { get; set; }
+        public bool   Hardware            { get; set; }
+    }
+
+    private class ProductSpecModel
+    {
+        public double SizeL               { get; set; }
+        public double SizeW               { get; set; }
+        public double SizeH               { get; set; }
+        public double Weight              { get; set; }
+        public bool   CompareGoldenSample { get; set; }
+    }
+
+    private class OfficeUseModel
+    {
+        public string InspectorName { get; set; } = "";
+        public string InspectorId   { get; set; } = "";
+    }
+
+    private class PerformanceTestRow
+    {
+        public string Category        { get; set; } = "";
+        public string TestItem        { get; set; } = "";
+        public string TestRequirement { get; set; } = "";
+        public string Remark          { get; set; } = "";
+    }
+
+    // FIX: thêm Id (Guid) để dùng làm @key ổn định — tránh InputFile bị gắn nhầm row khi thêm/xoá
+    private class ReferenceRow
+    {
+        public Guid   Id            { get; set; } = Guid.NewGuid();
+        public string ReferenceName { get; set; } = "";
+        public string FileName      { get; set; } = "";
+        public string FileUrl       { get; set; } = "";
+        public string Remark        { get; set; } = "";
+        public bool   IsUploading   { get; set; } = false;
+        public string UploadError   { get; set; } = "";
+    }
+
+    private class OverallConclusionRow
+    {
+        public string Letter     { get; set; } = "";
+        public string Label      { get; set; } = "";
+        public string Compliance { get; set; } = "";
+        public string Remark     { get; set; } = "";
+    }
+
+    private class CustomerDropdownDto
+    {
+        public string CustomerId  { get; set; } = "";
+        public string CompanyName { get; set; } = "";
+    }
+
+    private class VendorDropdownDto
+    {
+        public string Code { get; set; } = "";
+        public string Name { get; set; } = "";
+    }
+
+    private class ProductDropdownDto
+    {
+        public int    Id          { get; set; }
+        public string ProductCode { get; set; } = "";
+        public string ProductName { get; set; } = "";
+        public string Category    { get; set; } = "";
+        public string CustomerId  { get; set; } = "";
+        public string VendorId    { get; set; } = "";
+    }
+
+    private class InspectorDropdownDto
+    {
+        public string  Id         { get; set; } = "";
+        public string? InspectorId { get; set; }
+        public string  FullName   { get; set; } = "";
+    }
+
+    private class CountryDto
+    {
+        public int    Id     { get; set; }
+        public string Code   { get; set; } = "";
+        public string Name   { get; set; } = "";
+        public string Region { get; set; } = "";
+    }
+}
+
+<style>
+    @@import url("https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=Sora:wght@600;700&display=swap");
+
+    .ni-page { min-height: 100vh; font-family: "DM Sans", sans-serif; }
+
+    /* Header */
+    .ni-header { display: flex; align-items: center; gap: 14px; margin-bottom: 24px; }
+    .ni-back-btn { background: #f0f4fb; border: 1px solid #c9d8ee; color: #4a6080; border-radius: 10px; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all .2s; flex-shrink: 0; }
+    .ni-back-btn:hover { background: #e0eaf7; color: #1a2d5a; }
+    .ni-title-block { flex: 1; }
+    .ni-breadcrumb { font-size: 12px; color: rgba(255,255,255,0.6); display: block; margin-bottom: 2px; }
+    .ni-title { font-family: "Sora", sans-serif; font-size: 22px; font-weight: 700; margin: 0; }
+    .ni-header-actions { display: flex; gap: 8px; }
+
+    /* Body */
+    .ni-body { display: flex; flex-direction: column; gap: 20px; }
+
+    /* Card */
+    .ni-card { background: #fff; border-radius: 14px; padding: 22px 24px; border: 1px solid #dde4ef; box-shadow: 0 1px 4px rgba(30,45,90,0.04); }
+    .ni-section-title { font-family: "Sora", sans-serif; font-size: 14px; font-weight: 700; color: #1a2d5a; margin-bottom: 18px; display: flex; align-items: center; gap: 10px; }
+    .section-alpha { display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; background: #1a2d5a; color: #fff; border-radius: 6px; font-size: 13px; font-weight: 700; flex-shrink: 0; }
+    .sub-section-label { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; color: #7a8fad; margin-bottom: 12px; }
+
+    /* General Information layout */
+    .gi-layout { display: grid; grid-template-columns: 200px 1fr; gap: 24px; }
+    .gi-photo-col { display: flex; flex-direction: column; }
+    .gi-fields-col { }
+
+    /* Photo slot */
+    .photo-slot { display: flex; flex-direction: column; align-items: center; justify-content: center; width: 180px; height: 180px; border-radius: 12px; border: 2px dashed #c9d8ee; background: #f7fafd; cursor: pointer; overflow: hidden; position: relative; transition: border-color .2s; }
+    .photo-slot:hover { border-color: #1e90d6; }
+    .photo-slot--filled { border-style: solid; border-color: #1e90d6; }
+    .photo-slot img { width: 100%; height: 100%; object-fit: cover; }
+    .photo-placeholder { display: flex; flex-direction: column; align-items: center; gap: 8px; color: #9baac8; font-size: 12px; text-align: center; padding: 16px; }
+    .photo-hint { font-size: 11px; color: #b0bdd4; }
+    .photo-remove-btn { position: absolute; top: 6px; right: 6px; background: rgba(255,255,255,0.9); border: 1px solid #dde4ef; border-radius: 6px; width: 26px; height: 26px; display: flex; align-items: center; justify-content: center; cursor: pointer; color: #7a8fad; transition: all .15s; }
+    .photo-remove-btn:hover { background: #fff; color: #dc2626; border-color: #fca5a5; }
+
+    /* Grids */
+    .ni-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px 20px; }
+    .ni-grid-4 { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 14px; }
+
+    /* Field group */
+    .field-group { display: flex; flex-direction: column; gap: 5px; }
+    .field-group label { font-size: 12px; font-weight: 600; color: #7a8fad; text-transform: uppercase; letter-spacing: .05em; }
+    .field-required { color: #e53935; }
+    .field-group input, .field-group select, .field-group textarea {
+        background: #f7fafd; border: 1.5px solid #c9d8ee; border-radius: 8px;
+        padding: 9px 12px; font-size: 13px; color: #1a2d5a; font-family: "DM Sans", sans-serif;
+        outline: none; transition: border-color .15s, box-shadow .15s;
+    }
+    .field-group input:focus, .field-group select:focus, .field-group textarea:focus {
+        border-color: #1e90d6; box-shadow: 0 0 0 3px rgba(30,144,214,0.1);
+    }
+    .field-group input::placeholder { color: #b0bdd4; }
+    .field-loading { font-size: 13px; color: #9baac8; padding: 9px 0; font-style: italic; }
+    .readonly-field { background: #f0f4fb; border: 1.5px solid #e0e8f4; border-radius: 8px; padding: 9px 12px; font-size: 13px; color: #9baac8; min-height: 38px; }
+    .readonly-field.accent { color: #1a2d5a; font-weight: 500; background: #e6f1fb; border-color: #b5d4f4; }
+    .highlight-field { border-color: #1e90d6 !important; background: #f0f8ff !important; }
+
+    /* Buttons */
+    .btn-save { background: #1e90d6; color: #fff; border: none; border-radius: 10px; padding: 10px 22px; font-size: 13.5px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 7px; font-family: "DM Sans", sans-serif; transition: background .15s; }
+    .btn-save:hover:not(:disabled) { background: #1778b8; }
+    .btn-save:disabled { opacity: .6; cursor: not-allowed; }
+    .btn-save.large { padding: 11px 28px; font-size: 14px; }
+    .btn-cancel { background: #f0f4fb; color: #4a6080; border: 1px solid #c9d8ee; border-radius: 10px; padding: 10px 20px; font-size: 13px; font-weight: 500; cursor: pointer; font-family: "DM Sans", sans-serif; transition: all .15s; }
+    .btn-cancel:hover { background: #e0eaf7; }
+
+    /* Radio / Toggle */
+    .radio-group { display: flex; gap: 14px; flex-wrap: wrap; padding: 6px 0; }
+    .radio-label { display: flex; align-items: center; gap: 7px; font-size: 13px; color: #4a6080; cursor: pointer; }
+    .radio-label:hover { color: #1a2d5a; }
+    .radio-label input[type="radio"] { accent-color: #1e90d6; width: 14px; height: 14px; cursor: pointer; }
+    .toggle-group { display: flex; background: #f0f4fb; border-radius: 8px; padding: 3px; gap: 3px; border: 1px solid #dde4ef; }
+    .toggle-btn { padding: 5px 16px; border: none; border-radius: 6px; background: transparent; color: #9baac8; font-size: 12.5px; font-weight: 500; cursor: pointer; transition: all .15s; }
+    .toggle-btn.active { background: #1e90d6; color: #fff; }
+    .toggle-btn:hover:not(.active) { color: #4a6080; }
+
+    /* Packaging grid 2-col */
+    .pkg-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0; border: 1px solid #e0e8f4; border-radius: 10px; overflow: hidden; margin-bottom: 16px; }
+    .pkg2-row { display: flex; align-items: center; gap: 12px; padding: 10px 16px; border-bottom: 1px solid #eef4fb; border-right: 1px solid #e0e8f4; background: #fff; }
+    .pkg2-row:nth-child(even) { border-right: none; }
+    .pkg2-row:nth-last-child(-n+2) { border-bottom: none; }
+    .pkg2-span2 { grid-column: span 2; border-right: none !important; }
+    .pkg2-label { font-size: 13px; font-weight: 500; color: #4a6080; white-space: nowrap; width: 160px; flex-shrink: 0; }
+    .pkg2-options { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; flex: 1; }
+    .pkg-sub-section { margin-top: 14px; padding-top: 14px; border-top: 1px solid #eef4fb; }
+    .pkg-sub-title { display: block; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: #7a8fad; margin-bottom: 10px; }
+
+    /* AQL */
+    .aql-defects-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; }
+    .aql-defect-card { border-radius: 12px; padding: 18px; border: 1px solid; }
+    .aql-defect-card.critical { background: #fff5f5; border-color: #fecaca; }
+    .aql-defect-card.major    { background: #fffbeb; border-color: #fde68a; }
+    .aql-defect-card.minor    { background: #eff6ff; border-color: #bfdbfe; }
+    .aql-defect-header { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; margin-bottom: 14px; border-radius: 6px; padding: 5px 10px; display: inline-block; }
+    .critical .aql-defect-header { background: #fee2e2; color: #dc2626; }
+    .major    .aql-defect-header { background: #fef3c7; color: #d97706; }
+    .minor    .aql-defect-header { background: #dbeafe; color: #2563eb; }
+    .aql-stats { display: flex; flex-direction: column; gap: 6px; margin-top: 14px; }
+    .aql-stat { display: flex; justify-content: space-between; align-items: center; font-size: 12.5px; color: #7a8fad; padding: 4px 0; border-bottom: 1px solid #eef4fb; }
+    .aql-stat:last-child { border-bottom: none; }
+    .aql-stat strong { font-size: 14px; font-weight: 600; color: #1a2d5a; }
+    .accent-ok  { color: #16a34a !important; }
+    .accent-err { color: #dc2626 !important; }
+
+    /* Data tables (Performance, Reference, Colour) */
+    .data-table { border: 1px solid #dde4ef; border-radius: 10px; overflow: hidden; background: #fff; }
+    .data-table-header { display: flex; background: #f0f5fb; padding: 9px 14px; gap: 12px; border-bottom: 1px solid #dde4ef; }
+    .data-table-header > div { font-size: 11px; font-weight: 600; color: #7a8fad; text-transform: uppercase; letter-spacing: .07em; }
+    .data-table-row { display: flex; align-items: center; padding: 7px 14px; gap: 12px; border-bottom: 1px solid #eef4fb; }
+    .data-table-row:last-of-type { border-bottom: none; }
+    .col-no   { width: 30px; flex-shrink: 0; font-size: 12px; color: #b0bdd4; text-align: center; }
+    .col-flex  { flex: 1; }
+    .col-flex2 { flex: 2; }
+    .table-input { width: 100%; background: transparent; border: none; border-bottom: 1px solid #e0e8f0; padding: 5px 4px; color: #1a2d5a; font-size: 13px; font-family: "DM Sans", sans-serif; outline: none; transition: border-color .15s; }
+    .table-input::placeholder { color: #b0bdd4; }
+    .table-input:focus { border-bottom-color: #1e90d6; }
+    .add-row-btn { width: 100%; background: none; border: none; border-top: 1px solid #eef4fb; padding: 10px; color: #1e90d6; font-size: 12.5px; font-weight: 500; cursor: pointer; transition: color .15s, background .15s; }
+    .add-row-btn:hover { background: #f0f7ff; }
+    .file-attach-btn { display: inline-flex; align-items: center; gap: 5px; padding: 5px 10px; background: #e6f1fb; border: 1px solid #b5d4f4; border-radius: 7px; color: #1e90d6; font-size: 12px; font-weight: 500; cursor: pointer; transition: all .15s; max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .file-attach-btn:hover { background: #cce4f8; }
+    .file-link-btn { display:inline-flex; align-items:center; gap:5px; padding:4px 8px; background:#f0fdf4; border:1px solid #86efac; border-radius:7px; color:#16a34a; font-size:11.5px; font-weight:500; cursor:pointer; text-decoration:none; max-width:130px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .file-link-btn:hover { background:#dcfce7; }
+    .file-reupload-btn { display:inline-flex; align-items:center; justify-content:center; width:24px; height:24px; background:#f0f4fb; border:1px solid #c9d8ee; border-radius:6px; color:#7a8fad; cursor:pointer; flex-shrink:0; }
+    .file-reupload-btn:hover { background:#e0eaf7; color:#1a2d5a; }
+    .file-uploading { font-size:12px; color:#7a8fad; font-style:italic; padding:4px 8px; background:#f7fafd; border-radius:6px; }
+
+    /* Product spec */
+    .compare-golden-row { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; background: #f7fafd; border-radius: 10px; border: 1px solid #dde4ef; }
+
+    /* Office use */
+    .office-card { border-color: #fde68a; background: #fffdf0; }
+    .office-inline-row { display: flex; gap: 20px; flex-wrap: wrap; }
+    .office-inline-row .field-group { flex: 1; min-width: 200px; }
+
+    /* Submit row */
+    .ni-submit-row { display: flex; justify-content: flex-end; align-items: center; gap: 12px; padding: 8px 0 16px; }
+    .ni-save-error { color: #dc2626; font-size: 13px; background: #fff5f5; border: 1px solid #fecaca; border-radius: 8px; padding: 8px 14px; }
+    .ni-spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid rgba(255,255,255,0.4); border-top-color: #fff; border-radius: 50%; animation: spin .7s linear infinite; margin-right: 4px; vertical-align: middle; }
+
+    /* Overall Conclusion Table */
+    .oc-table { width: 100%; border-collapse: collapse; border: 1.5px solid #b8c4d8; border-radius: 8px; overflow: hidden; background: #fff; font-size: 13px; }
+    .oc-table thead tr { background: #1a2d5a; }
+    .oc-th-label     { padding: 10px 14px; font-weight: 700; font-size: 12px; color: #fff; text-align: left; border: 1px solid #2a4070; width: 45%; }
+    .oc-th-compliance{ padding: 10px 14px; font-weight: 700; font-size: 12px; color: #fff; text-align: center; border: 1px solid #2a4070; width: 20%; }
+    .oc-th-remark    { padding: 10px 14px; font-weight: 700; font-size: 12px; color: #fff; text-align: left; border: 1px solid #2a4070; }
+    .oc-row { border-bottom: 1px solid #dde4ef; }
+    .oc-row:last-child { border-bottom: none; }
+    .oc-row:nth-child(even) td { background: #f7fafd; }
+    .oc-td-label { padding: 10px 14px; color: #1a2d5a; font-weight: 500; border: 1px solid #dde4ef; }
+    .oc-td-compliance { padding: 8px 10px; text-align: center; border: 1px solid #dde4ef; white-space: nowrap; }
+    .oc-td-remark { padding: 6px 10px; border: 1px solid #dde4ef; }
+    .oc-btn { background: none; border: none; cursor: pointer; font-size: 13px; font-weight: 700; padding: 3px 6px; border-radius: 4px; transition: all .15s; font-family: "DM Sans", sans-serif; }
+    .oc-yes { color: #2196f3; } .oc-yes:hover { background: rgba(33,150,243,.1); }
+    .oc-yes.active { color: #fff; background: #2196f3; }
+    .oc-no  { color: #2196f3; } .oc-no:hover  { background: rgba(33,150,243,.1); }
+    .oc-no.active  { color: #fff; background: #e53935; }
+    .oc-sep { color: #b0bec5; font-weight: 400; margin: 0 2px; }
+    .oc-remark-input { width: 100%; background: transparent; border: none; border-bottom: 1px solid #e0e8f0; padding: 5px 4px; color: #4a6080; font-size: 13px; font-family: "DM Sans", sans-serif; outline: none; }
+    .overall-select { width: calc(100% - 14px); margin: 7px 7px 7px 4px; background: #f7fafd; border: 1.5px solid #c9d8ee; border-radius: 8px; padding: 7px 10px; color: #4a6080; font-size: 12.5px; font-family: "DM Sans", sans-serif; outline: none; cursor: pointer; transition: border-color .15s, background .15s; }
+    .overall-select:focus { border-color: #1e90d6; box-shadow: 0 0 0 3px rgba(30,144,214,0.1); }
+    .overall-select option { background: #fff; color: #1a2d5a; }
+    .overall-select.compliance-pass { border-color: #86efac; color: #16a34a; background: #f0fdf4; }
+    .overall-select.compliance-fail { border-color: #fca5a5; color: #dc2626; background: #fff5f5; }
+    .overall-select.compliance-na   { border-color: #d1d5db; color: #9baac8; background: #f9fafb; }
+
+    @@keyframes spin { to { transform: rotate(360deg); } }
+
+    @@media (max-width: 768px) {
+        .ni-grid-2 { grid-template-columns: 1fr; }
+        .ni-grid-4 { grid-template-columns: 1fr 1fr; }
+        .aql-defects-row { grid-template-columns: 1fr; }
+        .gi-layout { grid-template-columns: 1fr; }
+    }
+</style>

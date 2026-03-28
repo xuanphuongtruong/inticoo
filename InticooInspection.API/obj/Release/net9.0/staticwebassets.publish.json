@@ -1,0 +1,1052 @@
+{
+  "Version": 1,
+  "Hash": "ZMfFWyOC27wQgzyzXFy/bRkJrgNehG0jpe+WI9xe5qA=",
+  "Source": "InticooInspection.API",
+  "BasePath": "_content/InticooInspection.API",
+  "Mode": "Default",
+  "ManifestType": "Publish",
+  "ReferencedProjectsConfiguration": [],
+  "DiscoveryPatterns": [
+    {
+      "Name": "InticooInspection.API\\wwwroot",
+      "Source": "InticooInspection.API",
+      "ContentRoot": "D:\\Source\\InticooApp\\InticooInspection\\InticooInspection.API\\wwwroot\\",
+      "BasePath": "_content/InticooInspection.API",
+      "Pattern": "**"
+    }
+  ],
+  "Assets": [
+    {
+      "Identity": "D:\\Source\\InticooApp\\InticooInspection\\InticooInspection.API\\wwwroot\\uploads\\customers\\5\\4b8db0bfab1d498f97a06d8a41b4fce7.pdf",
+      "SourceId": "InticooInspection.API",
+      "SourceType": "Discovered",
+      "ContentRoot": "D:\\Source\\InticooApp\\InticooInspection\\InticooInspection.API\\wwwroot\\",
+      "BasePath": "_content/InticooInspection.API",
+      "RelativePath": "uploads/customers/5/4b8db0bfab1d498f97a06d8a41b4fce7#[.{fingerprint}]?.pdf",
+      "AssetKind": "All",
+      "AssetMode": "All",
+      "AssetRole": "Primary",
+      "AssetMergeBehavior": "",
+      "AssetMergeSource": "",
+      "RelatedAsset": "",
+      "AssetTraitName": "",
+      "AssetTraitValue": "",
+      "Fingerprint": "qa867uw2oy",
+      "Integrity": "go51wJf/qy1KdnTkAOyX6Q0p+h8hFVS0Bim1S83RnJ0=",
+      "CopyToOutputDirectory": "Never",
+      "CopyToPublishDirectory": "PreserveNewest",
+      "OriginalItemSpec": "wwwroot\\uploads\\customers\\5\\4b8db0bfab1d498f97a06d8a41b4fce7.pdf"
+    },
+    {
+      "Identity": "D:\\Source\\InticooApp\\InticooInspection\\InticooInspection.API\\wwwroot\\uploads\\cv\\21d45d14-bae5-48f4-ad05-dc50a8a7cf62.pdf",
+      "SourceId": "InticooInspection.API",
+      "SourceType": "Discovered",
+      "ContentRoot": "D:\\Source\\InticooApp\\InticooInspection\\InticooInspection.API\\wwwroot\\",
+      "BasePath": "_content/InticooInspection.API",
+      "RelativePath": "uploads/cv/21d45d14-bae5-48f4-ad05-dc50a8a7cf62#[.{fingerprint}]?.pdf",
+      "AssetKind": "All",
+      "AssetMode": "All",
+      "AssetRole": "Primary",
+      "AssetMergeBehavior": "",
+      "AssetMergeSource": "",
+      "RelatedAsset": "",
+      "AssetTraitName": "",
+      "AssetTraitValue": "",
+      "Fingerprint": "qa867uw2oy",
+      "Integrity": "go51wJf/qy1KdnTkAOyX6Q0p+h8hFVS0Bim1S83RnJ0=",
+      "CopyToOutputDirectory": "Never",
+      "CopyToPublishDirectory": "PreserveNewest",
+      "OriginalItemSpec": "wwwroot\\uploads\\cv\\21d45d14-bae5-48f4-ad05-dc50a8a7cf62.pdf"
+    },
+    {
+      "Identity": "D:\\Source\\InticooApp\\InticooInspection\\InticooInspection.API\\wwwroot\\uploads\\cv\\4f85d5b8-4928-4333-b47f-532487afdf0a.pdf",
+      "SourceId": "InticooInspection.API",
+      "SourceType": "Discovered",
+      "ContentRoot": "D:\\Source\\InticooApp\\InticooInspection\\InticooInspection.API\\wwwroot\\",
+      "BasePath": "_content/InticooInspection.API",
+      "RelativePath": "uploads/cv/4f85d5b8-4928-4333-b47f-532487afdf0a#[.{fingerprint}]?.pdf",
+      "AssetKind": "All",
+      "AssetMode": "All",
+      "AssetRole": "Primary",
+      "AssetMergeBehavior": "",
+      "AssetMergeSource": "",
+      "RelatedAsset": "",
+      "AssetTraitName": "",
+      "AssetTraitValue": "",
+      "Fingerprint": "n289q3gjyq",
+      "Integrity": "H5ca/65SCaFSwJQLcw3Qg0g4euRaCGIEFuCvFNDDaDo=",
+      "CopyToOutputDirectory": "Never",
+      "CopyToPublishDirectory": "PreserveNewest",
+      "OriginalItemSpec": "wwwroot\\uploads\\cv\\4f85d5b8-4928-4333-b47f-532487afdf0a.pdf"
+    },
+    {
+      "Identity": "D:\\Source\\InticooApp\\InticooInspection\\InticooInspection.API\\wwwroot\\uploads\\photos\\GAME_T8-10_62a4df95825040ff9177c185cbfe50d6.png",
+      "SourceId": "InticooInspection.API",
+      "SourceType": "Discovered",
+      "ContentRoot": "D:\\Source\\InticooApp\\InticooInspection\\InticooInspection.API\\wwwroot\\",
+      "BasePath": "_content/InticooInspection.API",
+      "RelativePath": "uploads/photos/GAME_T8-10_62a4df95825040ff9177c185cbfe50d6#[.{fingerprint}]?.png",
+      "AssetKind": "All",
+      "AssetMode": "All",
+      "AssetRole": "Primary",
+      "AssetMergeBehavior": "",
+      "AssetMergeSource": "",
+      "RelatedAsset": "",
+      "AssetTraitName": "",
+      "AssetTraitValue": "",
+      "Fingerprint": "ewc1x06mg1",
+      "Integrity": "cmcZmfqknM/D/U74KMYIT7RD3YYcEQesYjLMffnhJ5w=",
+      "CopyToOutputDirectory": "Never",
+      "CopyToPublishDirectory": "PreserveNewest",
+      "OriginalItemSpec": "wwwroot\\uploads\\photos\\GAME_T8-10_62a4df95825040ff9177c185cbfe50d6.png"
+    },
+    {
+      "Identity": "D:\\Source\\InticooApp\\InticooInspection\\InticooInspection.API\\wwwroot\\uploads\\photos\\GAME_T8-10_e488a42a6caa4041a1009bd5ce74c5df.png",
+      "SourceId": "InticooInspection.API",
+      "SourceType": "Discovered",
+      "ContentRoot": "D:\\Source\\InticooApp\\InticooInspection\\InticooInspection.API\\wwwroot\\",
+      "BasePath": "_content/InticooInspection.API",
+      "RelativePath": "uploads/photos/GAME_T8-10_e488a42a6caa4041a1009bd5ce74c5df#[.{fingerprint}]?.png",
+      "AssetKind": "All",
+      "AssetMode": "All",
+      "AssetRole": "Primary",
+      "AssetMergeBehavior": "",
+      "AssetMergeSource": "",
+      "RelatedAsset": "",
+      "AssetTraitName": "",
+      "AssetTraitValue": "",
+      "Fingerprint": "ewc1x06mg1",
+      "Integrity": "cmcZmfqknM/D/U74KMYIT7RD3YYcEQesYjLMffnhJ5w=",
+      "CopyToOutputDirectory": "Never",
+      "CopyToPublishDirectory": "PreserveNewest",
+      "OriginalItemSpec": "wwwroot\\uploads\\photos\\GAME_T8-10_e488a42a6caa4041a1009bd5ce74c5df.png"
+    },
+    {
+      "Identity": "D:\\Source\\InticooApp\\InticooInspection\\InticooInspection.API\\wwwroot\\uploads\\photos\\z5516603870734_1aba9bb5122d97bbe53b932f6859269f_913eedec4d5147f09a956058408a1253.jpg",
+      "SourceId": "InticooInspection.API",
+      "SourceType": "Discovered",
+      "ContentRoot": "D:\\Source\\InticooApp\\InticooInspection\\InticooInspection.API\\wwwroot\\",
+      "BasePath": "_content/InticooInspection.API",
+      "RelativePath": "uploads/photos/z5516603870734_1aba9bb5122d97bbe53b932f6859269f_913eedec4d5147f09a956058408a1253#[.{fingerprint}]?.jpg",
+      "AssetKind": "All",
+      "AssetMode": "All",
+      "AssetRole": "Primary",
+      "AssetMergeBehavior": "",
+      "AssetMergeSource": "",
+      "RelatedAsset": "",
+      "AssetTraitName": "",
+      "AssetTraitValue": "",
+      "Fingerprint": "x6fqa0kogv",
+      "Integrity": "aVlC3X7iAQxLc9xre3AsNnwIkqSzNeifjWJLOHy+SqA=",
+      "CopyToOutputDirectory": "Never",
+      "CopyToPublishDirectory": "PreserveNewest",
+      "OriginalItemSpec": "wwwroot\\uploads\\photos\\z5516603870734_1aba9bb5122d97bbe53b932f6859269f_913eedec4d5147f09a956058408a1253.jpg"
+    },
+    {
+      "Identity": "D:\\Source\\InticooApp\\InticooInspection\\InticooInspection.API\\wwwroot\\uploads\\references\\logo_29815a06f63b4fdb9b5e35850850649a.png",
+      "SourceId": "InticooInspection.API",
+      "SourceType": "Discovered",
+      "ContentRoot": "D:\\Source\\InticooApp\\InticooInspection\\InticooInspection.API\\wwwroot\\",
+      "BasePath": "_content/InticooInspection.API",
+      "RelativePath": "uploads/references/logo_29815a06f63b4fdb9b5e35850850649a#[.{fingerprint}]?.png",
+      "AssetKind": "All",
+      "AssetMode": "All",
+      "AssetRole": "Primary",
+      "AssetMergeBehavior": "",
+      "AssetMergeSource": "",
+      "RelatedAsset": "",
+      "AssetTraitName": "",
+      "AssetTraitValue": "",
+      "Fingerprint": "uu204mlgca",
+      "Integrity": "dvq0E/Us6OgkckUAngJRoj1GnYH/h7cPXMuD4hJm4hc=",
+      "CopyToOutputDirectory": "Never",
+      "CopyToPublishDirectory": "PreserveNewest",
+      "OriginalItemSpec": "wwwroot\\uploads\\references\\logo_29815a06f63b4fdb9b5e35850850649a.png"
+    },
+    {
+      "Identity": "D:\\Source\\InticooApp\\InticooInspection\\InticooInspection.API\\wwwroot\\uploads\\references\\Xác_nhận_báo_giá_929c8d8314d84e78b2428b66386732db.pdf",
+      "SourceId": "InticooInspection.API",
+      "SourceType": "Discovered",
+      "ContentRoot": "D:\\Source\\InticooApp\\InticooInspection\\InticooInspection.API\\wwwroot\\",
+      "BasePath": "_content/InticooInspection.API",
+      "RelativePath": "uploads/references/Xác_nhận_báo_giá_929c8d8314d84e78b2428b66386732db#[.{fingerprint}]?.pdf",
+      "AssetKind": "All",
+      "AssetMode": "All",
+      "AssetRole": "Primary",
+      "AssetMergeBehavior": "",
+      "AssetMergeSource": "",
+      "RelatedAsset": "",
+      "AssetTraitName": "",
+      "AssetTraitValue": "",
+      "Fingerprint": "qa867uw2oy",
+      "Integrity": "go51wJf/qy1KdnTkAOyX6Q0p+h8hFVS0Bim1S83RnJ0=",
+      "CopyToOutputDirectory": "Never",
+      "CopyToPublishDirectory": "PreserveNewest",
+      "OriginalItemSpec": "wwwroot\\uploads\\references\\Xác_nhận_báo_giá_929c8d8314d84e78b2428b66386732db.pdf"
+    },
+    {
+      "Identity": "D:\\Source\\InticooApp\\InticooInspection\\InticooInspection.API\\wwwroot\\uploads\\vendors\\3_04885311-d1a5-415a-98eb-7e3ee5baefe7.png",
+      "SourceId": "InticooInspection.API",
+      "SourceType": "Discovered",
+      "ContentRoot": "D:\\Source\\InticooApp\\InticooInspection\\InticooInspection.API\\wwwroot\\",
+      "BasePath": "_content/InticooInspection.API",
+      "RelativePath": "uploads/vendors/3_04885311-d1a5-415a-98eb-7e3ee5baefe7#[.{fingerprint}]?.png",
+      "AssetKind": "All",
+      "AssetMode": "All",
+      "AssetRole": "Primary",
+      "AssetMergeBehavior": "",
+      "AssetMergeSource": "",
+      "RelatedAsset": "",
+      "AssetTraitName": "",
+      "AssetTraitValue": "",
+      "Fingerprint": "uu204mlgca",
+      "Integrity": "dvq0E/Us6OgkckUAngJRoj1GnYH/h7cPXMuD4hJm4hc=",
+      "CopyToOutputDirectory": "Never",
+      "CopyToPublishDirectory": "PreserveNewest",
+      "OriginalItemSpec": "wwwroot\\uploads\\vendors\\3_04885311-d1a5-415a-98eb-7e3ee5baefe7.png"
+    },
+    {
+      "Identity": "D:\\Source\\InticooApp\\InticooInspection\\InticooInspection.API\\wwwroot\\uploads\\vendors\\3_622c6b12-3420-49cc-935e-27619f32c58a.pdf",
+      "SourceId": "InticooInspection.API",
+      "SourceType": "Discovered",
+      "ContentRoot": "D:\\Source\\InticooApp\\InticooInspection\\InticooInspection.API\\wwwroot\\",
+      "BasePath": "_content/InticooInspection.API",
+      "RelativePath": "uploads/vendors/3_622c6b12-3420-49cc-935e-27619f32c58a#[.{fingerprint}]?.pdf",
+      "AssetKind": "All",
+      "AssetMode": "All",
+      "AssetRole": "Primary",
+      "AssetMergeBehavior": "",
+      "AssetMergeSource": "",
+      "RelatedAsset": "",
+      "AssetTraitName": "",
+      "AssetTraitValue": "",
+      "Fingerprint": "njmo8184xb",
+      "Integrity": "I7SnkLDA3b8ubOB7Wssool/X9bOMhclkXTSKQ9gtAv4=",
+      "CopyToOutputDirectory": "Never",
+      "CopyToPublishDirectory": "PreserveNewest",
+      "OriginalItemSpec": "wwwroot\\uploads\\vendors\\3_622c6b12-3420-49cc-935e-27619f32c58a.pdf"
+    }
+  ],
+  "Endpoints": [
+    {
+      "Route": "uploads/customers/5/4b8db0bfab1d498f97a06d8a41b4fce7.pdf",
+      "AssetFile": "D:\\Source\\InticooApp\\InticooInspection\\InticooInspection.API\\wwwroot\\uploads\\customers\\5\\4b8db0bfab1d498f97a06d8a41b4fce7.pdf",
+      "Selectors": [],
+      "ResponseHeaders": [
+        {
+          "Name": "Accept-Ranges",
+          "Value": "bytes"
+        },
+        {
+          "Name": "Content-Length",
+          "Value": "566538"
+        },
+        {
+          "Name": "Content-Type",
+          "Value": "application/pdf"
+        },
+        {
+          "Name": "ETag",
+          "Value": "\"go51wJf/qy1KdnTkAOyX6Q0p+h8hFVS0Bim1S83RnJ0=\""
+        },
+        {
+          "Name": "Last-Modified",
+          "Value": "Sat, 21 Mar 2026 07:20:49 GMT"
+        },
+        {
+          "Name": "Cache-Control",
+          "Value": "no-cache"
+        }
+      ],
+      "EndpointProperties": [
+        {
+          "Name": "integrity",
+          "Value": "sha256-go51wJf/qy1KdnTkAOyX6Q0p+h8hFVS0Bim1S83RnJ0="
+        }
+      ]
+    },
+    {
+      "Route": "uploads/customers/5/4b8db0bfab1d498f97a06d8a41b4fce7.qa867uw2oy.pdf",
+      "AssetFile": "D:\\Source\\InticooApp\\InticooInspection\\InticooInspection.API\\wwwroot\\uploads\\customers\\5\\4b8db0bfab1d498f97a06d8a41b4fce7.pdf",
+      "Selectors": [],
+      "ResponseHeaders": [
+        {
+          "Name": "Accept-Ranges",
+          "Value": "bytes"
+        },
+        {
+          "Name": "Content-Length",
+          "Value": "566538"
+        },
+        {
+          "Name": "Content-Type",
+          "Value": "application/pdf"
+        },
+        {
+          "Name": "ETag",
+          "Value": "\"go51wJf/qy1KdnTkAOyX6Q0p+h8hFVS0Bim1S83RnJ0=\""
+        },
+        {
+          "Name": "Last-Modified",
+          "Value": "Sat, 21 Mar 2026 07:20:49 GMT"
+        },
+        {
+          "Name": "Cache-Control",
+          "Value": "max-age=31536000, immutable"
+        }
+      ],
+      "EndpointProperties": [
+        {
+          "Name": "fingerprint",
+          "Value": "qa867uw2oy"
+        },
+        {
+          "Name": "label",
+          "Value": "uploads/customers/5/4b8db0bfab1d498f97a06d8a41b4fce7.pdf"
+        },
+        {
+          "Name": "integrity",
+          "Value": "sha256-go51wJf/qy1KdnTkAOyX6Q0p+h8hFVS0Bim1S83RnJ0="
+        }
+      ]
+    },
+    {
+      "Route": "uploads/cv/21d45d14-bae5-48f4-ad05-dc50a8a7cf62.pdf",
+      "AssetFile": "D:\\Source\\InticooApp\\InticooInspection\\InticooInspection.API\\wwwroot\\uploads\\cv\\21d45d14-bae5-48f4-ad05-dc50a8a7cf62.pdf",
+      "Selectors": [],
+      "ResponseHeaders": [
+        {
+          "Name": "Accept-Ranges",
+          "Value": "bytes"
+        },
+        {
+          "Name": "Content-Length",
+          "Value": "566538"
+        },
+        {
+          "Name": "Content-Type",
+          "Value": "application/pdf"
+        },
+        {
+          "Name": "ETag",
+          "Value": "\"go51wJf/qy1KdnTkAOyX6Q0p+h8hFVS0Bim1S83RnJ0=\""
+        },
+        {
+          "Name": "Last-Modified",
+          "Value": "Sat, 21 Mar 2026 09:01:58 GMT"
+        },
+        {
+          "Name": "Cache-Control",
+          "Value": "no-cache"
+        }
+      ],
+      "EndpointProperties": [
+        {
+          "Name": "integrity",
+          "Value": "sha256-go51wJf/qy1KdnTkAOyX6Q0p+h8hFVS0Bim1S83RnJ0="
+        }
+      ]
+    },
+    {
+      "Route": "uploads/cv/21d45d14-bae5-48f4-ad05-dc50a8a7cf62.qa867uw2oy.pdf",
+      "AssetFile": "D:\\Source\\InticooApp\\InticooInspection\\InticooInspection.API\\wwwroot\\uploads\\cv\\21d45d14-bae5-48f4-ad05-dc50a8a7cf62.pdf",
+      "Selectors": [],
+      "ResponseHeaders": [
+        {
+          "Name": "Accept-Ranges",
+          "Value": "bytes"
+        },
+        {
+          "Name": "Content-Length",
+          "Value": "566538"
+        },
+        {
+          "Name": "Content-Type",
+          "Value": "application/pdf"
+        },
+        {
+          "Name": "ETag",
+          "Value": "\"go51wJf/qy1KdnTkAOyX6Q0p+h8hFVS0Bim1S83RnJ0=\""
+        },
+        {
+          "Name": "Last-Modified",
+          "Value": "Sat, 21 Mar 2026 09:01:58 GMT"
+        },
+        {
+          "Name": "Cache-Control",
+          "Value": "max-age=31536000, immutable"
+        }
+      ],
+      "EndpointProperties": [
+        {
+          "Name": "fingerprint",
+          "Value": "qa867uw2oy"
+        },
+        {
+          "Name": "label",
+          "Value": "uploads/cv/21d45d14-bae5-48f4-ad05-dc50a8a7cf62.pdf"
+        },
+        {
+          "Name": "integrity",
+          "Value": "sha256-go51wJf/qy1KdnTkAOyX6Q0p+h8hFVS0Bim1S83RnJ0="
+        }
+      ]
+    },
+    {
+      "Route": "uploads/cv/4f85d5b8-4928-4333-b47f-532487afdf0a.n289q3gjyq.pdf",
+      "AssetFile": "D:\\Source\\InticooApp\\InticooInspection\\InticooInspection.API\\wwwroot\\uploads\\cv\\4f85d5b8-4928-4333-b47f-532487afdf0a.pdf",
+      "Selectors": [],
+      "ResponseHeaders": [
+        {
+          "Name": "Accept-Ranges",
+          "Value": "bytes"
+        },
+        {
+          "Name": "Content-Length",
+          "Value": "414378"
+        },
+        {
+          "Name": "Content-Type",
+          "Value": "application/pdf"
+        },
+        {
+          "Name": "ETag",
+          "Value": "\"H5ca/65SCaFSwJQLcw3Qg0g4euRaCGIEFuCvFNDDaDo=\""
+        },
+        {
+          "Name": "Last-Modified",
+          "Value": "Tue, 24 Mar 2026 09:07:18 GMT"
+        },
+        {
+          "Name": "Cache-Control",
+          "Value": "max-age=31536000, immutable"
+        }
+      ],
+      "EndpointProperties": [
+        {
+          "Name": "fingerprint",
+          "Value": "n289q3gjyq"
+        },
+        {
+          "Name": "label",
+          "Value": "uploads/cv/4f85d5b8-4928-4333-b47f-532487afdf0a.pdf"
+        },
+        {
+          "Name": "integrity",
+          "Value": "sha256-H5ca/65SCaFSwJQLcw3Qg0g4euRaCGIEFuCvFNDDaDo="
+        }
+      ]
+    },
+    {
+      "Route": "uploads/cv/4f85d5b8-4928-4333-b47f-532487afdf0a.pdf",
+      "AssetFile": "D:\\Source\\InticooApp\\InticooInspection\\InticooInspection.API\\wwwroot\\uploads\\cv\\4f85d5b8-4928-4333-b47f-532487afdf0a.pdf",
+      "Selectors": [],
+      "ResponseHeaders": [
+        {
+          "Name": "Accept-Ranges",
+          "Value": "bytes"
+        },
+        {
+          "Name": "Content-Length",
+          "Value": "414378"
+        },
+        {
+          "Name": "Content-Type",
+          "Value": "application/pdf"
+        },
+        {
+          "Name": "ETag",
+          "Value": "\"H5ca/65SCaFSwJQLcw3Qg0g4euRaCGIEFuCvFNDDaDo=\""
+        },
+        {
+          "Name": "Last-Modified",
+          "Value": "Tue, 24 Mar 2026 09:07:18 GMT"
+        },
+        {
+          "Name": "Cache-Control",
+          "Value": "no-cache"
+        }
+      ],
+      "EndpointProperties": [
+        {
+          "Name": "integrity",
+          "Value": "sha256-H5ca/65SCaFSwJQLcw3Qg0g4euRaCGIEFuCvFNDDaDo="
+        }
+      ]
+    },
+    {
+      "Route": "uploads/photos/GAME_T8-10_62a4df95825040ff9177c185cbfe50d6.ewc1x06mg1.png",
+      "AssetFile": "D:\\Source\\InticooApp\\InticooInspection\\InticooInspection.API\\wwwroot\\uploads\\photos\\GAME_T8-10_62a4df95825040ff9177c185cbfe50d6.png",
+      "Selectors": [],
+      "ResponseHeaders": [
+        {
+          "Name": "Accept-Ranges",
+          "Value": "bytes"
+        },
+        {
+          "Name": "Content-Length",
+          "Value": "301242"
+        },
+        {
+          "Name": "Content-Type",
+          "Value": "image/png"
+        },
+        {
+          "Name": "ETag",
+          "Value": "\"cmcZmfqknM/D/U74KMYIT7RD3YYcEQesYjLMffnhJ5w=\""
+        },
+        {
+          "Name": "Last-Modified",
+          "Value": "Fri, 27 Mar 2026 16:41:56 GMT"
+        },
+        {
+          "Name": "Cache-Control",
+          "Value": "max-age=31536000, immutable"
+        }
+      ],
+      "EndpointProperties": [
+        {
+          "Name": "fingerprint",
+          "Value": "ewc1x06mg1"
+        },
+        {
+          "Name": "label",
+          "Value": "uploads/photos/GAME_T8-10_62a4df95825040ff9177c185cbfe50d6.png"
+        },
+        {
+          "Name": "integrity",
+          "Value": "sha256-cmcZmfqknM/D/U74KMYIT7RD3YYcEQesYjLMffnhJ5w="
+        }
+      ]
+    },
+    {
+      "Route": "uploads/photos/GAME_T8-10_62a4df95825040ff9177c185cbfe50d6.png",
+      "AssetFile": "D:\\Source\\InticooApp\\InticooInspection\\InticooInspection.API\\wwwroot\\uploads\\photos\\GAME_T8-10_62a4df95825040ff9177c185cbfe50d6.png",
+      "Selectors": [],
+      "ResponseHeaders": [
+        {
+          "Name": "Accept-Ranges",
+          "Value": "bytes"
+        },
+        {
+          "Name": "Content-Length",
+          "Value": "301242"
+        },
+        {
+          "Name": "Content-Type",
+          "Value": "image/png"
+        },
+        {
+          "Name": "ETag",
+          "Value": "\"cmcZmfqknM/D/U74KMYIT7RD3YYcEQesYjLMffnhJ5w=\""
+        },
+        {
+          "Name": "Last-Modified",
+          "Value": "Fri, 27 Mar 2026 16:41:56 GMT"
+        },
+        {
+          "Name": "Cache-Control",
+          "Value": "max-age=3600, must-revalidate"
+        }
+      ],
+      "EndpointProperties": [
+        {
+          "Name": "integrity",
+          "Value": "sha256-cmcZmfqknM/D/U74KMYIT7RD3YYcEQesYjLMffnhJ5w="
+        }
+      ]
+    },
+    {
+      "Route": "uploads/photos/GAME_T8-10_e488a42a6caa4041a1009bd5ce74c5df.ewc1x06mg1.png",
+      "AssetFile": "D:\\Source\\InticooApp\\InticooInspection\\InticooInspection.API\\wwwroot\\uploads\\photos\\GAME_T8-10_e488a42a6caa4041a1009bd5ce74c5df.png",
+      "Selectors": [],
+      "ResponseHeaders": [
+        {
+          "Name": "Accept-Ranges",
+          "Value": "bytes"
+        },
+        {
+          "Name": "Content-Length",
+          "Value": "301242"
+        },
+        {
+          "Name": "Content-Type",
+          "Value": "image/png"
+        },
+        {
+          "Name": "ETag",
+          "Value": "\"cmcZmfqknM/D/U74KMYIT7RD3YYcEQesYjLMffnhJ5w=\""
+        },
+        {
+          "Name": "Last-Modified",
+          "Value": "Fri, 27 Mar 2026 16:11:06 GMT"
+        },
+        {
+          "Name": "Cache-Control",
+          "Value": "max-age=31536000, immutable"
+        }
+      ],
+      "EndpointProperties": [
+        {
+          "Name": "fingerprint",
+          "Value": "ewc1x06mg1"
+        },
+        {
+          "Name": "label",
+          "Value": "uploads/photos/GAME_T8-10_e488a42a6caa4041a1009bd5ce74c5df.png"
+        },
+        {
+          "Name": "integrity",
+          "Value": "sha256-cmcZmfqknM/D/U74KMYIT7RD3YYcEQesYjLMffnhJ5w="
+        }
+      ]
+    },
+    {
+      "Route": "uploads/photos/GAME_T8-10_e488a42a6caa4041a1009bd5ce74c5df.png",
+      "AssetFile": "D:\\Source\\InticooApp\\InticooInspection\\InticooInspection.API\\wwwroot\\uploads\\photos\\GAME_T8-10_e488a42a6caa4041a1009bd5ce74c5df.png",
+      "Selectors": [],
+      "ResponseHeaders": [
+        {
+          "Name": "Accept-Ranges",
+          "Value": "bytes"
+        },
+        {
+          "Name": "Content-Length",
+          "Value": "301242"
+        },
+        {
+          "Name": "Content-Type",
+          "Value": "image/png"
+        },
+        {
+          "Name": "ETag",
+          "Value": "\"cmcZmfqknM/D/U74KMYIT7RD3YYcEQesYjLMffnhJ5w=\""
+        },
+        {
+          "Name": "Last-Modified",
+          "Value": "Fri, 27 Mar 2026 16:11:06 GMT"
+        },
+        {
+          "Name": "Cache-Control",
+          "Value": "max-age=3600, must-revalidate"
+        }
+      ],
+      "EndpointProperties": [
+        {
+          "Name": "integrity",
+          "Value": "sha256-cmcZmfqknM/D/U74KMYIT7RD3YYcEQesYjLMffnhJ5w="
+        }
+      ]
+    },
+    {
+      "Route": "uploads/photos/z5516603870734_1aba9bb5122d97bbe53b932f6859269f_913eedec4d5147f09a956058408a1253.jpg",
+      "AssetFile": "D:\\Source\\InticooApp\\InticooInspection\\InticooInspection.API\\wwwroot\\uploads\\photos\\z5516603870734_1aba9bb5122d97bbe53b932f6859269f_913eedec4d5147f09a956058408a1253.jpg",
+      "Selectors": [],
+      "ResponseHeaders": [
+        {
+          "Name": "Accept-Ranges",
+          "Value": "bytes"
+        },
+        {
+          "Name": "Content-Length",
+          "Value": "639767"
+        },
+        {
+          "Name": "Content-Type",
+          "Value": "image/jpeg"
+        },
+        {
+          "Name": "ETag",
+          "Value": "\"aVlC3X7iAQxLc9xre3AsNnwIkqSzNeifjWJLOHy+SqA=\""
+        },
+        {
+          "Name": "Last-Modified",
+          "Value": "Sat, 28 Mar 2026 01:49:42 GMT"
+        },
+        {
+          "Name": "Cache-Control",
+          "Value": "max-age=3600, must-revalidate"
+        }
+      ],
+      "EndpointProperties": [
+        {
+          "Name": "integrity",
+          "Value": "sha256-aVlC3X7iAQxLc9xre3AsNnwIkqSzNeifjWJLOHy+SqA="
+        }
+      ]
+    },
+    {
+      "Route": "uploads/photos/z5516603870734_1aba9bb5122d97bbe53b932f6859269f_913eedec4d5147f09a956058408a1253.x6fqa0kogv.jpg",
+      "AssetFile": "D:\\Source\\InticooApp\\InticooInspection\\InticooInspection.API\\wwwroot\\uploads\\photos\\z5516603870734_1aba9bb5122d97bbe53b932f6859269f_913eedec4d5147f09a956058408a1253.jpg",
+      "Selectors": [],
+      "ResponseHeaders": [
+        {
+          "Name": "Accept-Ranges",
+          "Value": "bytes"
+        },
+        {
+          "Name": "Content-Length",
+          "Value": "639767"
+        },
+        {
+          "Name": "Content-Type",
+          "Value": "image/jpeg"
+        },
+        {
+          "Name": "ETag",
+          "Value": "\"aVlC3X7iAQxLc9xre3AsNnwIkqSzNeifjWJLOHy+SqA=\""
+        },
+        {
+          "Name": "Last-Modified",
+          "Value": "Sat, 28 Mar 2026 01:49:42 GMT"
+        },
+        {
+          "Name": "Cache-Control",
+          "Value": "max-age=31536000, immutable"
+        }
+      ],
+      "EndpointProperties": [
+        {
+          "Name": "fingerprint",
+          "Value": "x6fqa0kogv"
+        },
+        {
+          "Name": "label",
+          "Value": "uploads/photos/z5516603870734_1aba9bb5122d97bbe53b932f6859269f_913eedec4d5147f09a956058408a1253.jpg"
+        },
+        {
+          "Name": "integrity",
+          "Value": "sha256-aVlC3X7iAQxLc9xre3AsNnwIkqSzNeifjWJLOHy+SqA="
+        }
+      ]
+    },
+    {
+      "Route": "uploads/references/logo_29815a06f63b4fdb9b5e35850850649a.png",
+      "AssetFile": "D:\\Source\\InticooApp\\InticooInspection\\InticooInspection.API\\wwwroot\\uploads\\references\\logo_29815a06f63b4fdb9b5e35850850649a.png",
+      "Selectors": [],
+      "ResponseHeaders": [
+        {
+          "Name": "Accept-Ranges",
+          "Value": "bytes"
+        },
+        {
+          "Name": "Content-Length",
+          "Value": "45591"
+        },
+        {
+          "Name": "Content-Type",
+          "Value": "image/png"
+        },
+        {
+          "Name": "ETag",
+          "Value": "\"dvq0E/Us6OgkckUAngJRoj1GnYH/h7cPXMuD4hJm4hc=\""
+        },
+        {
+          "Name": "Last-Modified",
+          "Value": "Sat, 28 Mar 2026 01:34:57 GMT"
+        },
+        {
+          "Name": "Cache-Control",
+          "Value": "max-age=3600, must-revalidate"
+        }
+      ],
+      "EndpointProperties": [
+        {
+          "Name": "integrity",
+          "Value": "sha256-dvq0E/Us6OgkckUAngJRoj1GnYH/h7cPXMuD4hJm4hc="
+        }
+      ]
+    },
+    {
+      "Route": "uploads/references/logo_29815a06f63b4fdb9b5e35850850649a.uu204mlgca.png",
+      "AssetFile": "D:\\Source\\InticooApp\\InticooInspection\\InticooInspection.API\\wwwroot\\uploads\\references\\logo_29815a06f63b4fdb9b5e35850850649a.png",
+      "Selectors": [],
+      "ResponseHeaders": [
+        {
+          "Name": "Accept-Ranges",
+          "Value": "bytes"
+        },
+        {
+          "Name": "Content-Length",
+          "Value": "45591"
+        },
+        {
+          "Name": "Content-Type",
+          "Value": "image/png"
+        },
+        {
+          "Name": "ETag",
+          "Value": "\"dvq0E/Us6OgkckUAngJRoj1GnYH/h7cPXMuD4hJm4hc=\""
+        },
+        {
+          "Name": "Last-Modified",
+          "Value": "Sat, 28 Mar 2026 01:34:57 GMT"
+        },
+        {
+          "Name": "Cache-Control",
+          "Value": "max-age=31536000, immutable"
+        }
+      ],
+      "EndpointProperties": [
+        {
+          "Name": "fingerprint",
+          "Value": "uu204mlgca"
+        },
+        {
+          "Name": "label",
+          "Value": "uploads/references/logo_29815a06f63b4fdb9b5e35850850649a.png"
+        },
+        {
+          "Name": "integrity",
+          "Value": "sha256-dvq0E/Us6OgkckUAngJRoj1GnYH/h7cPXMuD4hJm4hc="
+        }
+      ]
+    },
+    {
+      "Route": "uploads/references/Xác_nhận_báo_giá_929c8d8314d84e78b2428b66386732db.pdf",
+      "AssetFile": "D:\\Source\\InticooApp\\InticooInspection\\InticooInspection.API\\wwwroot\\uploads\\references\\Xác_nhận_báo_giá_929c8d8314d84e78b2428b66386732db.pdf",
+      "Selectors": [],
+      "ResponseHeaders": [
+        {
+          "Name": "Accept-Ranges",
+          "Value": "bytes"
+        },
+        {
+          "Name": "Content-Length",
+          "Value": "566538"
+        },
+        {
+          "Name": "Content-Type",
+          "Value": "application/pdf"
+        },
+        {
+          "Name": "ETag",
+          "Value": "\"go51wJf/qy1KdnTkAOyX6Q0p+h8hFVS0Bim1S83RnJ0=\""
+        },
+        {
+          "Name": "Last-Modified",
+          "Value": "Sat, 28 Mar 2026 01:50:12 GMT"
+        },
+        {
+          "Name": "Cache-Control",
+          "Value": "no-cache"
+        }
+      ],
+      "EndpointProperties": [
+        {
+          "Name": "integrity",
+          "Value": "sha256-go51wJf/qy1KdnTkAOyX6Q0p+h8hFVS0Bim1S83RnJ0="
+        }
+      ]
+    },
+    {
+      "Route": "uploads/references/Xác_nhận_báo_giá_929c8d8314d84e78b2428b66386732db.qa867uw2oy.pdf",
+      "AssetFile": "D:\\Source\\InticooApp\\InticooInspection\\InticooInspection.API\\wwwroot\\uploads\\references\\Xác_nhận_báo_giá_929c8d8314d84e78b2428b66386732db.pdf",
+      "Selectors": [],
+      "ResponseHeaders": [
+        {
+          "Name": "Accept-Ranges",
+          "Value": "bytes"
+        },
+        {
+          "Name": "Content-Length",
+          "Value": "566538"
+        },
+        {
+          "Name": "Content-Type",
+          "Value": "application/pdf"
+        },
+        {
+          "Name": "ETag",
+          "Value": "\"go51wJf/qy1KdnTkAOyX6Q0p+h8hFVS0Bim1S83RnJ0=\""
+        },
+        {
+          "Name": "Last-Modified",
+          "Value": "Sat, 28 Mar 2026 01:50:12 GMT"
+        },
+        {
+          "Name": "Cache-Control",
+          "Value": "max-age=31536000, immutable"
+        }
+      ],
+      "EndpointProperties": [
+        {
+          "Name": "fingerprint",
+          "Value": "qa867uw2oy"
+        },
+        {
+          "Name": "label",
+          "Value": "uploads/references/Xác_nhận_báo_giá_929c8d8314d84e78b2428b66386732db.pdf"
+        },
+        {
+          "Name": "integrity",
+          "Value": "sha256-go51wJf/qy1KdnTkAOyX6Q0p+h8hFVS0Bim1S83RnJ0="
+        }
+      ]
+    },
+    {
+      "Route": "uploads/vendors/3_04885311-d1a5-415a-98eb-7e3ee5baefe7.png",
+      "AssetFile": "D:\\Source\\InticooApp\\InticooInspection\\InticooInspection.API\\wwwroot\\uploads\\vendors\\3_04885311-d1a5-415a-98eb-7e3ee5baefe7.png",
+      "Selectors": [],
+      "ResponseHeaders": [
+        {
+          "Name": "Accept-Ranges",
+          "Value": "bytes"
+        },
+        {
+          "Name": "Content-Length",
+          "Value": "45591"
+        },
+        {
+          "Name": "Content-Type",
+          "Value": "image/png"
+        },
+        {
+          "Name": "ETag",
+          "Value": "\"dvq0E/Us6OgkckUAngJRoj1GnYH/h7cPXMuD4hJm4hc=\""
+        },
+        {
+          "Name": "Last-Modified",
+          "Value": "Fri, 13 Mar 2026 16:40:27 GMT"
+        },
+        {
+          "Name": "Cache-Control",
+          "Value": "max-age=3600, must-revalidate"
+        }
+      ],
+      "EndpointProperties": [
+        {
+          "Name": "integrity",
+          "Value": "sha256-dvq0E/Us6OgkckUAngJRoj1GnYH/h7cPXMuD4hJm4hc="
+        }
+      ]
+    },
+    {
+      "Route": "uploads/vendors/3_04885311-d1a5-415a-98eb-7e3ee5baefe7.uu204mlgca.png",
+      "AssetFile": "D:\\Source\\InticooApp\\InticooInspection\\InticooInspection.API\\wwwroot\\uploads\\vendors\\3_04885311-d1a5-415a-98eb-7e3ee5baefe7.png",
+      "Selectors": [],
+      "ResponseHeaders": [
+        {
+          "Name": "Accept-Ranges",
+          "Value": "bytes"
+        },
+        {
+          "Name": "Content-Length",
+          "Value": "45591"
+        },
+        {
+          "Name": "Content-Type",
+          "Value": "image/png"
+        },
+        {
+          "Name": "ETag",
+          "Value": "\"dvq0E/Us6OgkckUAngJRoj1GnYH/h7cPXMuD4hJm4hc=\""
+        },
+        {
+          "Name": "Last-Modified",
+          "Value": "Fri, 13 Mar 2026 16:40:27 GMT"
+        },
+        {
+          "Name": "Cache-Control",
+          "Value": "max-age=31536000, immutable"
+        }
+      ],
+      "EndpointProperties": [
+        {
+          "Name": "fingerprint",
+          "Value": "uu204mlgca"
+        },
+        {
+          "Name": "label",
+          "Value": "uploads/vendors/3_04885311-d1a5-415a-98eb-7e3ee5baefe7.png"
+        },
+        {
+          "Name": "integrity",
+          "Value": "sha256-dvq0E/Us6OgkckUAngJRoj1GnYH/h7cPXMuD4hJm4hc="
+        }
+      ]
+    },
+    {
+      "Route": "uploads/vendors/3_622c6b12-3420-49cc-935e-27619f32c58a.njmo8184xb.pdf",
+      "AssetFile": "D:\\Source\\InticooApp\\InticooInspection\\InticooInspection.API\\wwwroot\\uploads\\vendors\\3_622c6b12-3420-49cc-935e-27619f32c58a.pdf",
+      "Selectors": [],
+      "ResponseHeaders": [
+        {
+          "Name": "Accept-Ranges",
+          "Value": "bytes"
+        },
+        {
+          "Name": "Content-Length",
+          "Value": "362875"
+        },
+        {
+          "Name": "Content-Type",
+          "Value": "application/pdf"
+        },
+        {
+          "Name": "ETag",
+          "Value": "\"I7SnkLDA3b8ubOB7Wssool/X9bOMhclkXTSKQ9gtAv4=\""
+        },
+        {
+          "Name": "Last-Modified",
+          "Value": "Fri, 13 Mar 2026 16:40:00 GMT"
+        },
+        {
+          "Name": "Cache-Control",
+          "Value": "max-age=31536000, immutable"
+        }
+      ],
+      "EndpointProperties": [
+        {
+          "Name": "fingerprint",
+          "Value": "njmo8184xb"
+        },
+        {
+          "Name": "label",
+          "Value": "uploads/vendors/3_622c6b12-3420-49cc-935e-27619f32c58a.pdf"
+        },
+        {
+          "Name": "integrity",
+          "Value": "sha256-I7SnkLDA3b8ubOB7Wssool/X9bOMhclkXTSKQ9gtAv4="
+        }
+      ]
+    },
+    {
+      "Route": "uploads/vendors/3_622c6b12-3420-49cc-935e-27619f32c58a.pdf",
+      "AssetFile": "D:\\Source\\InticooApp\\InticooInspection\\InticooInspection.API\\wwwroot\\uploads\\vendors\\3_622c6b12-3420-49cc-935e-27619f32c58a.pdf",
+      "Selectors": [],
+      "ResponseHeaders": [
+        {
+          "Name": "Accept-Ranges",
+          "Value": "bytes"
+        },
+        {
+          "Name": "Content-Length",
+          "Value": "362875"
+        },
+        {
+          "Name": "Content-Type",
+          "Value": "application/pdf"
+        },
+        {
+          "Name": "ETag",
+          "Value": "\"I7SnkLDA3b8ubOB7Wssool/X9bOMhclkXTSKQ9gtAv4=\""
+        },
+        {
+          "Name": "Last-Modified",
+          "Value": "Fri, 13 Mar 2026 16:40:00 GMT"
+        },
+        {
+          "Name": "Cache-Control",
+          "Value": "no-cache"
+        }
+      ],
+      "EndpointProperties": [
+        {
+          "Name": "integrity",
+          "Value": "sha256-I7SnkLDA3b8ubOB7Wssool/X9bOMhclkXTSKQ9gtAv4="
+        }
+      ]
+    }
+  ]
+}

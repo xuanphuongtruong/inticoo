@@ -1,0 +1,12 @@
+D:\Source\InticooApp\InticooInspection\InticooInspection.Domain\bin\Debug\net9.0\InticooInspection.Domain.deps.json
+D:\Source\InticooApp\InticooInspection\InticooInspection.Domain\bin\Debug\net9.0\InticooInspection.Domain.dll
+D:\Source\InticooApp\InticooInspection\InticooInspection.Domain\bin\Debug\net9.0\InticooInspection.Domain.pdb
+D:\Source\InticooApp\InticooInspection\InticooInspection.Domain\obj\Debug\net9.0\InticooInspection.Domain.GeneratedMSBuildEditorConfig.editorconfig
+D:\Source\InticooApp\InticooInspection\InticooInspection.Domain\obj\Debug\net9.0\InticooInspection.Domain.AssemblyInfoInputs.cache
+D:\Source\InticooApp\InticooInspection\InticooInspection.Domain\obj\Debug\net9.0\InticooInspection.Domain.AssemblyInfo.cs
+D:\Source\InticooApp\InticooInspection\InticooInspection.Domain\obj\Debug\net9.0\InticooInspection.Domain.csproj.CoreCompileInputs.cache
+D:\Source\InticooApp\InticooInspection\InticooInspection.Domain\obj\Debug\net9.0\InticooInspection.Domain.dll
+D:\Source\InticooApp\InticooInspection\InticooInspection.Domain\obj\Debug\net9.0\refint\InticooInspection.Domain.dll
+D:\Source\InticooApp\InticooInspection\InticooInspection.Domain\obj\Debug\net9.0\InticooInspection.Domain.pdb
+D:\Source\InticooApp\InticooInspection\InticooInspection.Domain\obj\Debug\net9.0\ref\InticooInspection.Domain.dll
+D:\Source\InticooApp\InticooInspection\InticooInspection.Domain\obj\Debug\net9.0\InticooInspection.Domain.csproj.AssemblyReference.cache

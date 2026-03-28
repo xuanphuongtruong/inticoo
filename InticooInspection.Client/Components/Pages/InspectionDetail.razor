@@ -1,0 +1,247 @@
+@page "/inspections/{Id:int}"
+@attribute [Microsoft.AspNetCore.Authorization.Authorize]
+@using System.Net.Http.Json
+@inject HttpClient Http
+@inject NavigationManager Navigation
+
+<PageTitle>Inspection Detail - Inticoo</PageTitle>
+
+@if (_loading)
+{
+    <div class="loading-state">
+        <div class="spinner-lg"></div>
+        <p>Loading...</p>
+    </div>
+}
+else if (_inspection == null)
+{
+    <div class="empty-state"><span>⚠️</span><p>Inspection not found.</p></div>
+}
+else
+{
+    <div class="page-header">
+        <button class="btn-back" @onclick="GoBack">← Back</button>
+        <div class="header-info">
+            <h1 class="page-title">@_inspection.Title</h1>
+            <span class="@GetBadgeClass(_inspection.Status)">@_inspection.Status</span>
+        </div>
+        <div class="header-actions">
+            @if (_inspection.Status == "Pending")
+            {
+                <button class="btn-action btn-start" @onclick="StartInspection">▶ Start</button>
+            }
+            @if (_inspection.Status == "InProgress")
+            {
+                <button class="btn-action btn-complete" @onclick="CompleteInspection">✓ Complete</button>
+            }
+            @if (_inspection.Status != "Cancelled" && _inspection.Status != "Completed")
+            {
+                <button class="btn-action btn-cancel-ins" @onclick="CancelInspection">✕ Cancel</button>
+            }
+        </div>
+    </div>
+
+    <div class="detail-grid">
+        <div class="info-card">
+            <h2 class="card-title">Details</h2>
+            @if (!string.IsNullOrEmpty(_inspection.Description))
+            {
+                <p class="description">@_inspection.Description</p>
+            }
+            <div class="meta-list">
+                <div class="meta-item">
+                    <span class="meta-label">Created by</span>
+                    <span class="meta-value">@_inspection.CreatedByName</span>
+                </div>
+                <div class="meta-item">
+                    <span class="meta-label">Date</span>
+                    <span class="meta-value">@_inspection.CreatedAt.ToString("MMM dd, yyyy")</span>
+                </div>
+                <div class="meta-item">
+                    <span class="meta-label">Progress</span>
+                    <span class="meta-value">@GetDoneCount() / @_inspection.Steps.Count steps</span>
+                </div>
+            </div>
+            @if (_inspection.Steps.Count > 0)
+            {
+                <div class="progress-section">
+                    <div class="progress-bar-lg">
+                        <div class="progress-fill-lg" style="@($"width:{GetProgress()}%")"></div>
+                    </div>
+                    <span class="progress-pct">@GetProgress()%</span>
+                </div>
+            }
+        </div>
+
+        <div class="steps-card">
+            <h2 class="card-title">Steps (@_inspection.Steps.Count)</h2>
+            @if (_inspection.Steps.Count == 0)
+            {
+                <p class="muted-text">No steps defined.</p>
+            }
+            else
+            {
+                <div class="steps-list">
+                    @foreach (var step in _inspection.Steps.OrderBy(s => s.Order))
+                    {
+                        var stepId = step.Id;
+                        <div class="@GetStepClass(step.Status)">
+                            <div class="step-header">
+                                <div class="step-left">
+                                    <span class="step-num">@step.Order</span>
+                                    <div>
+                                        <div class="step-title">@step.Title</div>
+                                        @if (!string.IsNullOrEmpty(step.Description))
+                                        {
+                                            <div class="step-desc">@step.Description</div>
+                                        }
+                                        @if (!string.IsNullOrEmpty(step.Note))
+                                        {
+                                            <div class="step-note">📝 @step.Note</div>
+                                        }
+                                    </div>
+                                </div>
+                                <div class="step-actions">
+                                    <span class="@GetBadgeClass(step.Status)">@step.Status</span>
+                                    @if (_inspection.Status == "InProgress")
+                                    {
+                                        <button class="step-btn pass" @onclick="() => UpdateStep(stepId, PassStatus)">✓</button>
+                                        <button class="step-btn fail" @onclick="() => UpdateStep(stepId, FailStatus)">✕</button>
+                                        <button class="step-btn skip" @onclick="() => UpdateStep(stepId, SkipStatus)">⊘</button>
+                                    }
+                                </div>
+                            </div>
+                        </div>
+                    }
+                </div>
+            }
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public int Id { get; set; }
+
+    private InspectionDetailDto? _inspection;
+    private bool _loading = true;
+
+    private const string PassStatus = "Pass";
+    private const string FailStatus = "Fail";
+    private const string SkipStatus = "Skipped";
+
+    protected override async Task OnInitializedAsync() => await Load();
+    private void GoBack() => Navigation.NavigateTo("/inspections");
+    private async Task StartInspection()    => await UpdateStatus("InProgress");
+    private async Task CompleteInspection() => await UpdateStatus("Completed");
+    private async Task CancelInspection()   => await UpdateStatus("Cancelled");
+
+    private async Task Load()
+    {
+        _loading = true;
+        try { _inspection = await Http.GetFromJsonAsync<InspectionDetailDto>($"api/inspections/{Id}"); }
+        catch { }
+        finally { _loading = false; }
+    }
+
+    private async Task UpdateStatus(string status)
+    {
+        await Http.PutAsJsonAsync($"api/inspections/{Id}/status", new { status });
+        await Load();
+    }
+
+    private async Task UpdateStep(int stepId, string status)
+    {
+        await Http.PutAsJsonAsync($"api/inspections/{Id}/steps/{stepId}", new { status, note = "" });
+        await Load();
+    }
+
+    private int GetDoneCount() =>
+        _inspection?.Steps.Count(s => s.Status == "Pass" || s.Status == "Skipped") ?? 0;
+
+    private int GetProgress() =>
+        _inspection?.Steps.Count > 0
+            ? (int)Math.Round((double)GetDoneCount() / _inspection!.Steps.Count * 100)
+            : 0;
+
+    private string GetBadgeClass(string status) =>
+        "badge badge-" + status.ToLower().Replace(" ", "");
+
+    private string GetStepClass(string status) =>
+        "step-item step-" + status.ToLower();
+
+    private class InspectionDetailDto
+    {
+        public int Id { get; set; }
+        public string Title { get; set; } = "";
+        public string? Description { get; set; }
+        public string Status { get; set; } = "";
+        public DateTime CreatedAt { get; set; }
+        public DateTime? CompletedAt { get; set; }
+        public string CreatedByName { get; set; } = "";
+        public List<StepDetailDto> Steps { get; set; } = new();
+    }
+
+    private class StepDetailDto
+    {
+        public int Id { get; set; }
+        public int Order { get; set; }
+        public string Title { get; set; } = "";
+        public string? Description { get; set; }
+        public string Status { get; set; } = "Pending";
+        public string? Note { get; set; }
+    }
+}
+
+<style>
+    .page-header { display: flex; align-items: center; gap: 16px; margin-bottom: 24px; flex-wrap: wrap; }
+    .btn-back { padding: 8px 14px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; color: rgba(255,255,255,0.6); font-size: 13px; cursor: pointer; }
+    .btn-back:hover { color: #fff; }
+    .header-info { display: flex; align-items: center; gap: 12px; flex: 1; }
+    .page-title { font-family: "Sora", sans-serif; font-size: 20px; font-weight: 700; }
+    .header-actions { display: flex; gap: 8px; }
+    .btn-action { padding: 8px 16px; border: none; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; }
+    .btn-start      { background: rgba(33,150,243,0.2);  color: #2196f3; }
+    .btn-complete   { background: rgba(76,175,80,0.2);   color: #4caf50; }
+    .btn-cancel-ins { background: rgba(244,67,54,0.15);  color: #f44336; }
+    .detail-grid { display: grid; grid-template-columns: 300px 1fr; gap: 20px; }
+    .info-card, .steps-card { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.07); border-radius: 16px; padding: 22px; }
+    .card-title { font-family: "Sora", sans-serif; font-size: 15px; font-weight: 600; margin-bottom: 16px; }
+    .description { font-size: 14px; color: rgba(255,255,255,0.6); line-height: 1.6; margin-bottom: 16px; }
+    .meta-list { display: flex; flex-direction: column; gap: 10px; margin-bottom: 16px; }
+    .meta-item { display: flex; justify-content: space-between; font-size: 13px; }
+    .meta-label { color: rgba(255,255,255,0.35); }
+    .meta-value { color: rgba(255,255,255,0.8); }
+    .progress-section { display: flex; align-items: center; gap: 10px; }
+    .progress-bar-lg { flex: 1; height: 8px; background: rgba(255,255,255,0.08); border-radius: 4px; }
+    .progress-fill-lg { height: 100%; background: linear-gradient(90deg, #1e90d6, #3ab4f2); border-radius: 4px; transition: width .4s; }
+    .progress-pct { font-size: 13px; color: #3ab4f2; font-weight: 600; }
+    .steps-list { display: flex; flex-direction: column; gap: 8px; }
+    .step-item { border: 1px solid rgba(255,255,255,0.07); border-radius: 10px; padding: 14px; }
+    .step-item.step-pass    { border-color: rgba(76,175,80,0.3); }
+    .step-item.step-fail    { border-color: rgba(244,67,54,0.3); }
+    .step-item.step-skipped { border-color: rgba(255,193,7,0.2); }
+    .step-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+    .step-left { display: flex; align-items: flex-start; gap: 12px; flex: 1; }
+    .step-num { width: 24px; height: 24px; border-radius: 50%; background: rgba(255,255,255,0.06); color: rgba(255,255,255,0.5); font-size: 11px; font-weight: 600; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .step-title { font-size: 14px; font-weight: 500; margin-bottom: 2px; }
+    .step-desc  { font-size: 12px; color: rgba(255,255,255,0.35); }
+    .step-note  { font-size: 12px; color: rgba(255,193,7,0.8); margin-top: 4px; }
+    .step-actions { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+    .step-btn { width: 28px; height: 28px; border: none; border-radius: 6px; font-size: 13px; cursor: pointer; }
+    .step-btn.pass { background: rgba(76,175,80,0.15);  color: #4caf50; }
+    .step-btn.fail { background: rgba(244,67,54,0.15);  color: #f44336; }
+    .step-btn.skip { background: rgba(255,193,7,0.15);  color: #ffc107; }
+    .badge { padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; }
+    .badge-pending    { background: rgba(255,193,7,0.15);  color: #ffc107; }
+    .badge-inprogress { background: rgba(33,150,243,0.15); color: #2196f3; }
+    .badge-completed  { background: rgba(76,175,80,0.15);  color: #4caf50; }
+    .badge-cancelled  { background: rgba(244,67,54,0.15);  color: #f44336; }
+    .badge-pass       { background: rgba(76,175,80,0.15);  color: #4caf50; }
+    .badge-fail       { background: rgba(244,67,54,0.15);  color: #f44336; }
+    .badge-skipped    { background: rgba(255,193,7,0.15);  color: #ffc107; }
+    .loading-state, .empty-state { display: flex; flex-direction: column; align-items: center; gap: 16px; padding: 60px; color: rgba(255,255,255,0.4); }
+    .spinner-lg { width: 36px; height: 36px; border: 3px solid rgba(255,255,255,0.1); border-top-color: #3ab4f2; border-radius: 50%; animation: spin .7s linear infinite; }
+    .muted-text { color: rgba(255,255,255,0.3); font-size: 14px; }
+    @@media (max-width: 768px) { .detail-grid { grid-template-columns: 1fr; } }
+    @@keyframes spin { to { transform: rotate(360deg); } }
+</style>

@@ -1,0 +1,1312 @@
+@page "/suppliers"
+@attribute [Microsoft.AspNetCore.Authorization.Authorize]
+@using System.Net.Http.Json
+@using System.Net.Http.Headers
+@inject HttpClient Http
+@inject Blazored.SessionStorage.ISessionStorageService SessionStorage
+
+<PageTitle>Vendors - Inticoo</PageTitle>
+
+<div class="top-bar">
+    <div class="title-block">
+        <h1 class="page-title">Vendors</h1>
+        <span class="page-sub">Manage supplier and vendor information</span>
+    </div>
+    <div class="tb-divider"></div>
+    <div class="search-wrap">
+        <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5">
+            <circle cx="9" cy="9" r="5.5"/><path d="M15 15l-2.5-2.5" stroke-linecap="round"/>
+        </svg>
+        <input class="search-input" type="text" placeholder="Search by code, name, tax code, contact..."
+               @bind="_search" @bind:event="oninput" @onkeyup="OnSearchKey" />
+    </div>
+    <select class="filter-select" @bind="_filterType" @bind:after="() => LoadPage(1)">
+        <option value="">All Types</option>
+        <option value="Material">Material</option>
+        <option value="Accessory">Accessory</option>
+        <option value="Service">Service</option>
+        <option value="Logistics">Logistics</option>
+        <option value="Manufacturing">Manufacturing</option>
+    </select>
+    <select class="filter-select" @bind="_filterStatus" @bind:after="() => LoadPage(1)">
+        <option value="">All Status</option>
+        <option value="Active">Active</option>
+        <option value="Inactive">Inactive</option>
+        <option value="Suspended">Suspended</option>
+    </select>
+    <span class="total-count">@_total vendors</span>
+    <AuthorizeView Roles="Admin">
+        <button class="btn-new" @onclick="async () => await OpenCreate()">
+            <svg width="13" height="13" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M10 4v12M4 10h12"/></svg>
+            New Vendor
+        </button>
+    </AuthorizeView>
+</div>
+
+@if (_loading)
+{
+    <div class="loading-wrap"><div class="spinner"></div><span>Loading...</span></div>
+}
+else if (_vendors.Count == 0)
+{
+    <div class="empty-state">
+        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="1.5">
+            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+            <polyline points="9 22 9 12 15 12 15 22"/>
+        </svg>
+        <p>No vendors found.</p>
+    </div>
+}
+else
+{
+    <div class="table-wrap">
+        <table class="ptable">
+            <thead>
+                <tr>
+                    <th style="width:48px;text-align:center">No</th>
+                    <th>Vendor Name</th>
+                    <th>Vendor ID</th>
+                    <th>Category</th>
+                    <th colspan="3" style="text-align:center;border-left:1px solid rgba(255,255,255,0.06)">Vendor Address</th>
+                    <th colspan="5" style="text-align:center;border-left:1px solid rgba(255,255,255,0.06)">Vendor Information</th>
+                    <th style="text-align:center;border-left:1px solid rgba(255,255,255,0.06)">Factory Audit</th>
+                    <th>Actions</th>
+                </tr>
+                <tr class="thead-sub">
+                    <th></th>
+                    <th></th>
+                    <th></th>
+                    <th></th>
+                    <th style="border-left:1px solid rgba(255,255,255,0.06)">Address</th>
+                    <th>City</th>
+                    <th>Country</th>
+                    <th style="border-left:1px solid rgba(255,255,255,0.06)">Name</th>
+                    <th>Position</th>
+                    <th>Mobile</th>
+                    <th>Office</th>
+                    <th>Email</th>
+                    <th style="text-align:center;border-left:1px solid rgba(255,255,255,0.06)">Files</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var v in _vendors)
+                {
+                    var item = v;
+                    var rowNo = (_page - 1) * _pageSize + _vendors.IndexOf(v) + 1;
+                    <tr class="@(rowNo % 2 == 0 ? "table-row tr-alt" : "table-row")">
+                        <td class="tc muted">@rowNo</td>
+                        <td>
+                            <div class="vendor-cell">
+                                <div class="vendor-avatar">@GetInitials(item.Name)</div>
+                                <div>
+                                    <div class="vendor-name">@item.Name</div>
+                                    @if (!string.IsNullOrEmpty(item.ShortName))
+                                    { <div class="vendor-short">@item.ShortName</div> }
+                                </div>
+                            </div>
+                        </td>
+                        <td><span class="code-badge">@item.Code</span></td>
+                        <td><span class="type-badge type-@GetTypeCss(item.Type)">@GetTypeLabel(item.Type)</span></td>
+                        <td style="border-left:1px solid rgba(255,255,255,0.04)" class="muted small-td">@(item.CompanyAddress ?? "-")</td>
+                        <td class="muted small-td">@(item.City ?? "-")</td>
+                        <td class="muted small-td">@(item.Country ?? "-")</td>
+                        <td style="border-left:1px solid rgba(255,255,255,0.04)" class="small-td">@(item.ContactName ?? "-")</td>
+                        <td class="muted small-td">@(item.ContactTitle ?? "-")</td>
+                        <td class="mono small-td">@(item.ContactPhone ?? "-")</td>
+                        <td class="muted small-td">-</td>
+                        <td class="small-td">
+                            @if (!string.IsNullOrEmpty(item.ContactEmail))
+                            { <span style="font-size:12px;color:rgba(255,255,255,0.55)">@item.ContactEmail</span> }
+                            else { <span class="muted">-</span> }
+                        </td>
+                        <td style="text-align:center;position:relative;border-left:1px solid rgba(255,255,255,0.04)">
+                            @if (item.Attachments.Count > 0)
+                            {
+                                <span class="file-count-badge file-count-btn"
+                                      @onclick="(e) => ToggleFilePopup(e, item)"
+                                      @onclick:stopPropagation="true">
+                                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                                    @item.Attachments.Count
+                                </span>
+                            }
+                            else
+                            {
+                                <label class="upload-inline-btn" title="Upload file">
+                                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                                    Upload
+                                    <InputFile OnChange="(e) => HandleInlineUpload(e, item)" style="display:none" accept=".pdf,.jpg,.jpeg,.png" multiple />
+                                </label>
+                            }
+                        </td>
+                        <td>
+                            <div class="action-btns">
+                                <button class="bico" style="background:#f0f4fb;color:#4a6080;" @onclick="() => OpenDetail(item)">
+                                    <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 10s3.5-6 8-6 8 6 8 6-3.5 6-8 6-8-6-8-6Z"/><circle cx="10" cy="10" r="2.5"/></svg>
+                                </button>
+                                <AuthorizeView Roles="Admin">
+                                    <button class="bico bedit" @onclick="async () => await OpenEdit(item)">Edit</button>
+                                    <button class="bico bdel" @onclick="() => ConfirmDelete(item)">Delete</button>
+                                </AuthorizeView>
+                            </div>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+
+    @if (_total > _pageSize)
+    {
+        <div class="pagination">
+            <button class="page-btn" disabled="@(_page == 1)" @onclick="PrevPage">&#8592; Prev</button>
+            <span class="page-info">Page @_page of @TotalPages()</span>
+            <button class="page-btn" disabled="@(_page >= TotalPages())" @onclick="NextPage">Next &#8594;</button>
+        </div>
+    }
+}
+
+<!-- File popup -->
+@if (_filePopupVendor != null)
+{
+    <div class="fp-backdrop" @onclick="CloseFilePopup"></div>
+    <div class="fp-popup" style="top:@(_filePopupY)px;left:@(_filePopupX)px" @onclick:stopPropagation="true">
+        <div class="fp-header">
+            <span class="fp-title">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                @_filePopupVendor.Attachments.Count file(s) — @_filePopupVendor.Name
+            </span>
+            <button class="fp-close" @onclick="CloseFilePopup">&#x2715;</button>
+        </div>
+        <div class="fp-list">
+            @foreach (var att in _filePopupVendor.Attachments)
+            {
+                <div class="fp-item">
+                    <div class="fp-icon">@((MarkupString)GetFileIconSvg(att.ContentType))</div>
+                    <div class="fp-info">
+                        <span class="fp-name">@att.OriginalName</span>
+                        <span class="fp-meta">@FormatFileSize(att.FileSize) · @att.UploadedAt.ToLocalTime().ToString("dd/MM/yyyy")</span>
+                    </div>
+                    <div class="fp-actions">
+                        @if (att.ContentType.StartsWith("image/") || att.ContentType == "application/pdf")
+                        {
+                            <a href="@att.DownloadUrl" target="_blank" class="fp-btn fp-btn-view" title="View">
+                                <svg width="13" height="13" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 10s3.5-6 8-6 8 6 8 6-3.5 6-8 6-8-6-8-6Z"/><circle cx="10" cy="10" r="2.5"/></svg>
+                                View
+                            </a>
+                        }
+                        <a href="@att.DownloadUrl" download="@att.OriginalName" class="fp-btn fp-btn-dl" title="Download">
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                            Download
+                        </a>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+}
+
+<!-- ═══════════════════ Modal Create / Edit ═══════════════════ -->
+@if (_showModal)
+{
+    <div class="modal-overlay" @onclick="CloseModal">
+        <div class="modal-card modal-lg" @onclick:stopPropagation="true">
+
+            <div class="modal-header">
+                <div>
+                    <h2>@(_editId == null ? "New Vendor" : "Edit Vendor")</h2>
+                    @if (_editId != null)
+                    { <span style="font-size:12px;color:rgba(255,255,255,0.3);margin-top:2px;display:block;">@_f.Code</span> }
+                </div>
+                <button class="modal-close" @onclick="CloseModal">&#x2715;</button>
+            </div>
+
+            @if (!string.IsNullOrEmpty(_formError))
+            { <div class="error-alert">@_formError</div> }
+
+            <!-- Basic Info -->
+            <div class="section-title">Basic Information</div>
+            <div class="fg-row">
+                <div class="fg fg-1">
+                    <label>Vendor Code <span class="required">*</span></label>
+                    <input class="form-input input-readonly" type="text" @bind="_f.Code" readonly="true" />
+                </div>
+                <div class="fg fg-2">
+                    <label>Vendor Name <span class="required">*</span></label>
+                    <input class="form-input" type="text" placeholder="Full company name" @bind="_f.Name" @bind:event="oninput" />
+                </div>
+                <div class="fg fg-1">
+                    <label>Short Name</label>
+                    <input class="form-input" type="text" placeholder="Abbreviation" @bind="_f.ShortName" @bind:event="oninput" />
+                </div>
+                <div class="fg fg-1">
+                    <label>Type</label>
+                    <select class="form-input" @bind="_f.Type">
+                        <option value="0">Material</option>
+                        <option value="1">Accessory</option>
+                        <option value="2">Service</option>
+                        <option value="3">Logistics</option>
+                        <option value="4">Manufacturing</option>
+                    </select>
+                </div>
+                <div class="fg fg-1">
+                    <label>Status</label>
+                    <select class="form-input" @bind="_f.Status">
+                        <option value="0">Active</option>
+                        <option value="1">Inactive</option>
+                        <option value="2">Suspended</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Legal -->
+            <div class="section-title">Legal Information</div>
+            <div class="fg-row">
+                <div class="fg fg-1">
+                    <label>Tax Code</label>
+                    <input class="form-input" type="text" placeholder="Tax code" @bind="_f.TaxCode" @bind:event="oninput" />
+                </div>
+                <div class="fg fg-1">
+                    <label>Business Reg. No.</label>
+                    <input class="form-input" type="text" placeholder="Business Reg. No." @bind="_f.BusinessRegNo" @bind:event="oninput" />
+                </div>
+                <div class="fg fg-1">
+                    <label>Website</label>
+                    <input class="form-input" type="text" placeholder="https://example.com" @bind="_f.Website" @bind:event="oninput" />
+                </div>
+            </div>
+
+            <!-- Contact -->
+            <div class="section-title">Primary Contact</div>
+            <div class="fg-row">
+                <div class="fg fg-2">
+                    <label>Contact Person</label>
+                    <input class="form-input" type="text" placeholder="Full name" @bind="_f.ContactName" @bind:event="oninput" />
+                </div>
+                <div class="fg fg-1">
+                    <label>Title / Position</label>
+                    <input class="form-input" type="text" placeholder="e.g. Sales Manager" @bind="_f.ContactTitle" @bind:event="oninput" />
+                </div>
+                <div class="fg fg-1">
+                    <label>Phone</label>
+                    <input class="form-input" type="text" placeholder="Phone number" @bind="_f.ContactPhone" @bind:event="oninput" />
+                </div>
+                <div class="fg fg-2">
+                    <label>Email</label>
+                    <input class="form-input" type="email" placeholder="Email address" @bind="_f.ContactEmail" @bind:event="oninput" />
+                </div>
+            </div>
+
+            <!-- Address -->
+            <div class="section-title">Address</div>
+            <div class="fg-row">
+                <div class="fg fg-3">
+                    <label>Company Address</label>
+                    <input class="form-input" type="text" placeholder="Street address" @bind="_f.CompanyAddress" @bind:event="oninput" />
+                </div>
+                <div class="fg fg-3">
+                    <label>Billing Address</label>
+                    <input class="form-input" type="text" placeholder="Billing / invoice address" @bind="_f.BillingAddress" @bind:event="oninput" />
+                </div>
+                <div class="fg fg-1">
+                    <label>Country</label>
+                    @if (_loadingCountries)
+                    {
+                        <div class="form-input" style="color:#9baac8;font-style:italic;">Loading...</div>
+                    }
+                    else
+                    {
+                        <select class="form-input" value="@_f.Country" @onchange="OnCountryChanged">
+                            <option value="">-- Select Country --</option>
+                            @foreach (var c in _countries)
+                            {
+                                <option value="@c.Name">@c.Name</option>
+                            }
+                        </select>
+                    }
+                </div>
+                <div class="fg fg-1">
+                    <label>City / Province</label>
+                    @if (_loadingCities)
+                    {
+                        <div class="form-input" style="color:#9baac8;font-style:italic;">Loading...</div>
+                    }
+                    else
+                    {
+                        <select class="form-input" @bind="_f.City" disabled="@(string.IsNullOrEmpty(_f.Country))">
+                            <option value="">-- Select City --</option>
+                            @foreach (var ct in _cities)
+                            {
+                                <option value="@ct.Name">@ct.Name</option>
+                            }
+                        </select>
+                    }
+                </div>
+                <div class="fg fg-1">
+                    <label>Notes</label>
+                    <input class="form-input" type="text" placeholder="Additional notes..." @bind="_f.Notes" @bind:event="oninput" />
+                </div>
+            </div>
+
+            <!-- Attachments -->
+            <div class="section-title">
+                Attachments
+                @{ int totalAtt = _attachments.Count + _pendingFiles.Count; }
+                @if (totalAtt > 0)
+                { <span class="att-count-label">@totalAtt file(s)</span> }
+                @if (_editId == null && _pendingFiles.Count > 0)
+                { <span class="att-hint-label">— sẽ upload khi nhấn Create Vendor</span> }
+            </div>
+
+            <!-- Saved files (edit mode) -->
+            @if (_attachments.Count > 0)
+            {
+                <div class="att-list">
+                    @foreach (var att in _attachments)
+                    {
+                        var a = att;
+                        <div class="att-item">
+                            <div class="att-icon">@((MarkupString)GetFileIconSvg(a.ContentType))</div>
+                            <div class="att-info">
+                                <a href="@a.DownloadUrl" target="_blank" class="att-name">@a.OriginalName</a>
+                                <span class="att-meta">@FormatFileSize(a.FileSize) · @a.UploadedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</span>
+                            </div>
+                            <a href="@a.DownloadUrl" target="_blank" class="att-action-btn att-download" title="Download">
+                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                            </a>
+                            <button class="att-action-btn att-delete" @onclick="() => DeleteAttachment(a)" disabled="@_uploadLoading">
+                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+                            </button>
+                        </div>
+                    }
+                </div>
+            }
+
+            <!-- Pending files (new mode — chờ upload cùng lúc create) -->
+            @if (_pendingFiles.Count > 0)
+            {
+                <div class="att-list">
+                    @foreach (var pf in _pendingFiles)
+                    {
+                        var p = pf;
+                        <div class="att-item att-pending">
+                            <div class="att-icon">@((MarkupString)GetFileIconSvgByName(p.Name))</div>
+                            <div class="att-info">
+                                <span class="att-name" style="color:rgba(255,255,255,0.75);cursor:default">@p.Name</span>
+                                <span class="att-meta">@FormatFileSize(p.Size) &nbsp;·&nbsp; <span class="pending-badge">Chờ upload</span></span>
+                            </div>
+                            <button class="att-action-btn att-delete" @onclick="() => RemovePendingFile(p)">
+                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+                            </button>
+                        </div>
+                    }
+                </div>
+            }
+
+            <!-- Drop zone — luôn hiện ở cả New và Edit -->
+            <div class="upload-zone @(_isDragOver ? "drag-over" : "")"
+                 @ondragover:preventDefault="true"
+                 @ondragenter="() => _isDragOver = true"
+                 @ondragleave="() => _isDragOver = false"
+                 @ondrop="HandleDrop">
+                @if (_uploadLoading)
+                {
+                    <div class="upload-zone-inner">
+                        <div class="spinner" style="width:24px;height:24px;border-width:3px;"></div>
+                        <span>Uploading @_uploadingCount file(s)...</span>
+                    </div>
+                }
+                else
+                {
+                    <div class="upload-zone-inner">
+                        <div class="upload-icon-wrap">
+                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                        </div>
+                        <div class="upload-text">
+                            Drag &amp; drop files here, or
+                            <label class="browse-link">
+                                choose files
+                                <InputFile OnChange="HandleFileUpload" style="display:none" accept=".pdf,.jpg,.jpeg,.png" multiple disabled="@_uploadLoading" />
+                            </label>
+                        </div>
+                        <span class="upload-hint">PDF, JPG, PNG &nbsp;·&nbsp; Max 10 MB / file</span>
+                    </div>
+                }
+            </div>
+
+            @if (!string.IsNullOrEmpty(_uploadError))
+            { <div class="error-alert" style="margin-top:8px">@_uploadError</div> }
+
+            <div class="modal-footer">
+                <button class="btn-cancel" @onclick="CloseModal">Cancel</button>
+                <button class="btn-submit" @onclick="SaveVendor" disabled="@_saving">
+                    @if (_saving)
+                    {
+                        <span class="spinner"></span>
+                        <span>@(_editId == null && _pendingFiles.Count > 0 ? "Creating & Uploading..." : "Saving...")</span>
+                    }
+                    else
+                    {
+                        <span>@(_editId == null ? "Create Vendor" : "Save Changes")</span>
+                        @if (_editId == null && _pendingFiles.Count > 0)
+                        { <span class="btn-file-hint">+ @_pendingFiles.Count file(s)</span> }
+                    }
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+<!-- Detail Modal -->
+@if (_detailItem != null)
+{
+    <div class="modal-overlay" @onclick="() => _detailItem = null">
+        <div class="modal-card modal-lg" @onclick:stopPropagation="true">
+            <div class="modal-header">
+                <div>
+                    <h2>@_detailItem.Name</h2>
+                    <span class="code-badge" style="margin-top:4px;display:inline-block;">@_detailItem.Code</span>
+                </div>
+                <button class="modal-close" @onclick="() => _detailItem = null">&#x2715;</button>
+            </div>
+            <div class="detail-grid">
+                <div class="detail-section">
+                    <div class="detail-section-title">Basic Info</div>
+                    <div class="detail-row"><span>Short Name</span><span>@(_detailItem.ShortName ?? "-")</span></div>
+                    <div class="detail-row"><span>Type</span><span class="type-badge type-@GetTypeCss(_detailItem.Type)">@GetTypeLabel(_detailItem.Type)</span></div>
+                    <div class="detail-row"><span>Status</span><span class="status-badge status-@GetStatusCss(_detailItem.Status)">@GetStatusLabel(_detailItem.Status)</span></div>
+                    <div class="detail-row"><span>Website</span>
+                        @if (!string.IsNullOrEmpty(_detailItem.Website))
+                        { <a href="@_detailItem.Website" target="_blank" class="detail-link">@_detailItem.Website</a> }
+                        else { <span>-</span> }
+                    </div>
+                </div>
+                <div class="detail-section">
+                    <div class="detail-section-title">Legal</div>
+                    <div class="detail-row"><span>Tax Code</span><span class="mono">@(_detailItem.TaxCode ?? "-")</span></div>
+                    <div class="detail-row"><span>Business Reg.</span><span class="mono">@(_detailItem.BusinessRegNo ?? "-")</span></div>
+                </div>
+                <div class="detail-section">
+                    <div class="detail-section-title">Contact</div>
+                    <div class="detail-row"><span>Name</span><span>@(_detailItem.ContactName ?? "-")</span></div>
+                    <div class="detail-row"><span>Title</span><span>@(_detailItem.ContactTitle ?? "-")</span></div>
+                    <div class="detail-row"><span>Phone</span><span class="mono">@(_detailItem.ContactPhone ?? "-")</span></div>
+                    <div class="detail-row"><span>Email</span><span>@(_detailItem.ContactEmail ?? "-")</span></div>
+                </div>
+                <div class="detail-section">
+                    <div class="detail-section-title">Address</div>
+                    <div class="detail-row"><span>Company</span><span>@(_detailItem.CompanyAddress ?? "-")</span></div>
+                    <div class="detail-row"><span>Billing</span><span>@(_detailItem.BillingAddress ?? "-")</span></div>
+                    <div class="detail-row"><span>City</span><span>@(_detailItem.City ?? "-")</span></div>
+                    <div class="detail-row"><span>Country</span><span>@(_detailItem.Country ?? "-")</span></div>
+                </div>
+                @if (!string.IsNullOrEmpty(_detailItem.Notes))
+                {
+                    <div class="detail-section col-2">
+                        <div class="detail-section-title">Notes</div>
+                        <p class="detail-notes">@_detailItem.Notes</p>
+                    </div>
+                }
+                @if (_detailItem.Attachments.Count > 0)
+                {
+                    <div class="detail-section col-2">
+                        <div class="detail-section-title">Attachments (@_detailItem.Attachments.Count)</div>
+                        <div class="att-list">
+                            @foreach (var att in _detailItem.Attachments)
+                            {
+                                <div class="att-item">
+                                    <div class="att-icon">@((MarkupString)GetFileIconSvg(att.ContentType))</div>
+                                    <div class="att-info">
+                                        <a href="@att.DownloadUrl" target="_blank" class="att-name">@att.OriginalName</a>
+                                        <span class="att-meta">@FormatFileSize(att.FileSize) · @att.UploadedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</span>
+                                    </div>
+                                    <a href="@att.DownloadUrl" target="_blank" class="att-action-btn att-download">
+                                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                                    </a>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                }
+            </div>
+            <div class="modal-footer">
+                <button class="btn-cancel" @onclick="() => _detailItem = null">Close</button>
+                <AuthorizeView Roles="Admin">
+                    <button class="btn-submit" @onclick="async () => { _detailItem = null; await OpenEdit(_detailItem2!); }">Edit</button>
+                </AuthorizeView>
+            </div>
+        </div>
+    </div>
+}
+
+<!-- Confirm Delete -->
+@if (_deleteItem != null)
+{
+    <div class="modal-overlay" @onclick="() => _deleteItem = null">
+        <div class="modal-card confirm-card" @onclick:stopPropagation="true">
+            <div class="confirm-icon">&#9888;</div>
+            <h2>Delete Vendor</h2>
+            <p>Are you sure you want to delete <strong>@_deleteItem.Name</strong>?<br/>This action cannot be undone.</p>
+            <div class="modal-footer">
+                <button class="btn-cancel" @onclick="() => _deleteItem = null">Cancel</button>
+                <button class="btn-delete" @onclick="DeleteVendor" disabled="@_saving">
+                    @if (_saving) { <span class="spinner"></span> } else { <span>Delete</span> }
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private List<VendorDto> _vendors = new();
+    private bool   _loading = true;
+    private string _search = "", _filterType = "", _filterStatus = "";
+    private int    _page = 1, _pageSize = 20, _total = 0;
+
+    private bool   _showModal = false;
+    private int?   _editId   = null;
+    private VendorForm _f    = new();
+    private string _formError = "";
+
+    // Country/City dropdowns
+    private List<CountryItem> _countries      = new();
+    private List<CityItem>    _cities          = new();
+    private bool              _loadingCountries = true;
+    private bool              _loadingCities    = false;
+    private bool   _saving   = false;
+
+    private List<AttachmentDto> _attachments  = new();  // saved on server
+    private List<PendingFile>   _pendingFiles = new();  // in-memory, not yet uploaded
+
+    private bool   _uploadLoading  = false;
+    private int    _uploadingCount = 0;
+    private string _uploadError    = "";
+    private bool   _isDragOver     = false;
+
+    private VendorDto? _detailItem  = null;
+    private VendorDto? _detailItem2 = null;
+    private VendorDto? _deleteItem  = null;
+
+    // File popup
+    private VendorDto? _filePopupVendor = null;
+    private double _filePopupX = 0, _filePopupY = 0;
+
+    private void ToggleFilePopup(MouseEventArgs e, VendorDto vendor)
+    {
+        if (_filePopupVendor?.Id == vendor.Id) { _filePopupVendor = null; return; }
+        _filePopupVendor = vendor;
+        // Position popup near the click, keep within viewport roughly
+        _filePopupX = Math.Max(10, e.ClientX - 280);
+        _filePopupY = e.ClientY + 12;
+    }
+
+    private void CloseFilePopup() => _filePopupVendor = null;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await SetAuthHeader();
+        await Task.WhenAll(LoadPage(1), LoadCountries());
+    }
+
+    private async Task LoadCountries()
+    {
+        try
+        {
+            var opts = new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+            var json = await Http.GetStringAsync("api/geo/countries");
+            _countries = System.Text.Json.JsonSerializer.Deserialize<List<CountryItem>>(json, opts) ?? new();
+        }
+        catch { }
+        finally { _loadingCountries = false; }
+    }
+
+    private async Task OnCountryChanged(ChangeEventArgs e)
+    {
+        _f.Country = e.Value?.ToString() ?? "";
+        _f.City    = "";
+        _cities    = new();
+        if (string.IsNullOrEmpty(_f.Country)) return;
+
+        _loadingCities = true;
+        try
+        {
+            var country = _countries.FirstOrDefault(c => c.Name == _f.Country);
+            if (country == null) return;
+            var opts = new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+            var json = await Http.GetStringAsync($"api/geo/cities?countryId={country.Id}");
+            _cities = System.Text.Json.JsonSerializer.Deserialize<List<CityItem>>(json, opts) ?? new();
+        }
+        catch { }
+        finally { _loadingCities = false; }
+    }
+
+    private async Task SetAuthHeader()
+    {
+        try
+        {
+            var token = await SessionStorage.GetItemAsync<string>("auth_token");
+            if (!string.IsNullOrEmpty(token))
+                Http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        }
+        catch { }
+    }
+
+    private async Task LoadPage(int page)
+    {
+        _loading = true; _page = page;
+        try
+        {
+            var url = $"api/vendors?page={page}&pageSize={_pageSize}&search={Uri.EscapeDataString(_search)}&type={_filterType}&status={_filterStatus}";
+            var result = await Http.GetFromJsonAsync<VendorPageResult>(url);
+            if (result != null) { _vendors = result.Items; _total = result.Total; }
+        }
+        catch { }
+        finally { _loading = false; }
+    }
+
+    private async Task OnSearchKey(KeyboardEventArgs e) { if (e.Key == "Enter") await LoadPage(1); }
+    private async Task PrevPage() => await LoadPage(_page - 1);
+    private async Task NextPage() => await LoadPage(_page + 1);
+    private int TotalPages() => (_total + _pageSize - 1) / _pageSize;
+
+    private async Task OpenCreate()
+    {
+        _editId = null; _f = new(); _formError = "";
+        _attachments.Clear(); _pendingFiles.Clear(); _uploadError = "";
+        try
+        {
+            var result = await Http.GetFromJsonAsync<NextCodeResult>("api/vendors/next-code");
+            if (result != null) _f.Code = result.Code;
+        }
+        catch { }
+        _showModal = true;
+    }
+
+    private async Task OpenEdit(VendorDto v)
+    {
+        _editId = v.Id;
+        _f = new VendorForm
+        {
+            Code = v.Code, Name = v.Name, ShortName = v.ShortName ?? "",
+            Type = v.Type, Status = v.Status,
+            TaxCode = v.TaxCode ?? "", BusinessRegNo = v.BusinessRegNo ?? "",
+            Website = v.Website ?? "", Notes = v.Notes ?? "",
+            ContactName = v.ContactName ?? "", ContactTitle = v.ContactTitle ?? "",
+            ContactPhone = v.ContactPhone ?? "", ContactEmail = v.ContactEmail ?? "",
+            CompanyAddress = v.CompanyAddress ?? "", BillingAddress = v.BillingAddress ?? "",
+            City = "", Country = v.Country ?? ""
+        };
+        _attachments = v.Attachments.ToList();
+        _pendingFiles.Clear();
+        _uploadError = ""; _formError = "";
+        _showModal = true;
+        // Load cities cho country hiện tại khi edit
+        if (!string.IsNullOrEmpty(v.Country))
+        {
+            var country = _countries.FirstOrDefault(c => c.Name == v.Country);
+            if (country != null)
+            {
+                _loadingCities = true;
+                try
+                {
+                    var opts = new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+                    var json = await Http.GetStringAsync($"api/geo/cities?countryId={country.Id}");
+                    _cities = System.Text.Json.JsonSerializer.Deserialize<List<CityItem>>(json, opts) ?? new();
+                    _f.City = v.City ?? "";
+                }
+                catch { }
+                finally { _loadingCities = false; }
+            }
+        }
+    }
+
+    private void OpenDetail(VendorDto v) { _detailItem = v; _detailItem2 = v; }
+    private void CloseModal() { _showModal = false; _pendingFiles.Clear(); }
+
+    // ── Save ─────────────────────────────────────────────────────────
+    private async Task SaveVendor()
+    {
+        _formError = "";
+        if (string.IsNullOrWhiteSpace(_f.Code)) { _formError = "Vendor code is required."; return; }
+        if (string.IsNullOrWhiteSpace(_f.Name)) { _formError = "Vendor name is required."; return; }
+
+        _saving = true;
+        try
+        {
+            var payload = new
+            {
+                code = _f.Code, name = _f.Name, shortName = _f.ShortName,
+                type = _f.Type, status = _f.Status,
+                taxCode = _f.TaxCode, businessRegNo = _f.BusinessRegNo,
+                website = _f.Website, notes = _f.Notes,
+                contactName = _f.ContactName, contactTitle = _f.ContactTitle,
+                contactPhone = _f.ContactPhone, contactEmail = _f.ContactEmail,
+                companyAddress = _f.CompanyAddress, billingAddress = _f.BillingAddress,
+                city = _f.City, country = _f.Country
+            };
+
+            HttpResponseMessage response;
+            int? newId = null;
+
+            if (_editId == null)
+            {
+                // CREATE
+                response = await Http.PostAsJsonAsync("api/vendors", payload);
+                if (response.IsSuccessStatusCode)
+                {
+                    var created = await response.Content.ReadFromJsonAsync<CreateResult>();
+                    newId = created?.Id;
+                }
+            }
+            else
+            {
+                // UPDATE
+                response = await Http.PutAsJsonAsync($"api/vendors/{_editId}", payload);
+            }
+
+            if (!response.IsSuccessStatusCode)
+            {
+                var err = await response.Content.ReadFromJsonAsync<ErrorResponse>();
+                _formError = err?.Message ?? "An error occurred.";
+                return;
+            }
+
+            // Upload pending files right after create
+            int targetId = newId ?? _editId ?? 0;
+            if (_pendingFiles.Count > 0 && targetId > 0)
+                await UploadPendingFiles(targetId);
+
+            _showModal = false;
+            _pendingFiles.Clear();
+            await LoadPage(_page);
+        }
+        catch { _formError = "Connection error."; }
+        finally { _saving = false; }
+    }
+
+    // ── File handlers ─────────────────────────────────────────────────
+    private async Task HandleFileUpload(InputFileChangeEventArgs e)
+    {
+        var files = e.GetMultipleFiles(10);
+
+        if (_editId != null)
+        {
+            // Edit mode: upload ngay lập tức
+            await UploadFilesNow(_editId.Value, files);
+        }
+        else
+        {
+            // Create mode: đọc vào bộ nhớ, chờ khi Create
+            foreach (var f in files)
+            {
+                try
+                {
+                    using var ms = new System.IO.MemoryStream();
+                    await f.OpenReadStream(10 * 1024 * 1024).CopyToAsync(ms);
+                    _pendingFiles.Add(new PendingFile
+                    {
+                        Name     = f.Name,
+                        Size     = f.Size,
+                        Data     = ms.ToArray(),
+                        MimeType = string.IsNullOrEmpty(f.ContentType) ? "application/octet-stream" : f.ContentType
+                    });
+                }
+                catch { }
+            }
+        }
+    }
+
+    private void HandleDrop(DragEventArgs e) => _isDragOver = false;
+
+    private void RemovePendingFile(PendingFile pf) => _pendingFiles.Remove(pf);
+
+    /// Upload pending (byte[]) files after vendor is created
+    private async Task UploadPendingFiles(int vendorId)
+    {
+        _uploadLoading  = true;
+        _uploadingCount = _pendingFiles.Count;
+        try
+        {
+            using var content = new MultipartFormDataContent();
+            foreach (var pf in _pendingFiles)
+            {
+                var sc = new ByteArrayContent(pf.Data);
+                sc.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue(pf.MimeType);
+                content.Add(sc, "files", pf.Name);
+            }
+            await Http.PostAsync($"api/vendors/{vendorId}/attachments", content);
+        }
+        catch { }
+        finally { _uploadLoading = false; _uploadingCount = 0; }
+    }
+
+    /// Upload stream files immediately (edit mode)
+    private async Task UploadFilesNow(int vendorId, IReadOnlyList<IBrowserFile> files)
+    {
+        if (files.Count == 0) return;
+        _uploadLoading  = true;
+        _uploadingCount = files.Count;
+        _uploadError    = "";
+        try
+        {
+            using var content = new MultipartFormDataContent();
+            foreach (var file in files)
+                content.Add(new StreamContent(file.OpenReadStream(10 * 1024 * 1024)), "files", file.Name);
+
+            var response = await Http.PostAsync($"api/vendors/{vendorId}/attachments", content);
+            if (response.IsSuccessStatusCode)
+                await RefreshAttachments(vendorId);
+            else
+                _uploadError = "Upload failed. Please try again.";
+        }
+        catch (Exception ex) { _uploadError = $"Error: {ex.Message}"; }
+        finally { _uploadLoading = false; _uploadingCount = 0; }
+    }
+
+    private async Task RefreshAttachments(int vendorId)
+    {
+        try
+        {
+            var list = await Http.GetFromJsonAsync<List<AttachmentDto>>($"api/vendors/{vendorId}/attachments");
+            if (list != null) _attachments = list;
+        }
+        catch { }
+    }
+
+    private async Task DeleteAttachment(AttachmentDto att)
+    {
+        if (_editId == null) return;
+        _uploadLoading = true;
+        try
+        {
+            var r = await Http.DeleteAsync($"api/vendors/{_editId}/attachments/{att.Id}");
+            if (r.IsSuccessStatusCode) _attachments.Remove(att);
+        }
+        catch { }
+        finally { _uploadLoading = false; }
+    }
+
+    private void ConfirmDelete(VendorDto v) => _deleteItem = v;
+
+    private async Task HandleInlineUpload(InputFileChangeEventArgs e, VendorDto vendor)
+    {
+        var files = e.GetMultipleFiles(10);
+        if (files.Count == 0) return;
+        await UploadFilesNow(vendor.Id, files);
+        // Refresh the vendor list so badge updates
+        await LoadPage(_page);
+    }
+
+    private async Task DeleteVendor()
+    {
+        if (_deleteItem == null) return;
+        _saving = true;
+        var response = await Http.DeleteAsync($"api/vendors/{_deleteItem.Id}");
+        _saving = false;
+        if (response.IsSuccessStatusCode) { _deleteItem = null; await LoadPage(_page); }
+    }
+
+    // ── Helpers ──────────────────────────────────────────────────────
+    private static string FormatFileSize(long bytes)
+    {
+        if (bytes < 1024)         return $"{bytes} B";
+        if (bytes < 1024 * 1024)  return $"{bytes / 1024.0:F1} KB";
+        return $"{bytes / (1024.0 * 1024):F1} MB";
+    }
+
+    private static string GetFileIconSvg(string contentType) =>
+        contentType.StartsWith("image/")
+            ? "<svg width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='#81c784' stroke-width='2'><rect x='3' y='3' width='18' height='18' rx='2'/><circle cx='8.5' cy='8.5' r='1.5'/><polyline points='21 15 16 10 5 21'/></svg>"
+            : "<svg width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='#ef9a9a' stroke-width='2'><path d='M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z'/><polyline points='14 2 14 8 20 8'/><line x1='9' y1='13' x2='15' y2='13'/><line x1='9' y1='17' x2='13' y2='17'/></svg>";
+
+    private static string GetFileIconSvgByName(string name)
+    {
+        var ext = System.IO.Path.GetExtension(name).ToLowerInvariant();
+        return ext is ".jpg" or ".jpeg" or ".png" or ".gif" or ".webp"
+            ? GetFileIconSvg("image/")
+            : GetFileIconSvg("application/pdf");
+    }
+
+    private string GetInitials(string name)
+        => string.Concat(name.Split(" ").Take(2).Select(w => w.Length > 0 ? w[0].ToString().ToUpper() : ""));
+
+    private string GetTypeLabel(int t) => t switch { 0=>"Material",1=>"Accessory",2=>"Service",3=>"Logistics",4=>"Manufacturing",_=>"Unknown" };
+    private string GetTypeCss(int t)   => t switch { 0=>"material",1=>"accessory",2=>"service",3=>"logistics",4=>"manufacturing",_=>"material" };
+    private string GetStatusLabel(int s) => s switch { 0=>"Active",1=>"Inactive",2=>"Suspended",_=>"Unknown" };
+    private string GetStatusCss(int s)   => s switch { 0=>"active",1=>"inactive",2=>"suspended",_=>"active" };
+
+    // ── Inner classes ─────────────────────────────────────────────────
+    private class PendingFile
+    {
+        public string Name     { get; set; } = "";
+        public long   Size     { get; set; }
+        public byte[] Data     { get; set; } = Array.Empty<byte>();
+        public string MimeType { get; set; } = "application/octet-stream";
+    }
+
+    private class NextCodeResult   { public string Code { get; set; } = ""; }
+    private class CreateResult     { public int    Id   { get; set; } }
+    private class VendorPageResult { public int Total { get; set; } public List<VendorDto> Items { get; set; } = new(); }
+    private class ErrorResponse    { public string? Message { get; set; } }
+
+    private class AttachmentDto
+    {
+        public int      Id           { get; set; }
+        public string   OriginalName { get; set; } = "";
+        public string   ContentType  { get; set; } = "";
+        public long     FileSize     { get; set; }
+        public DateTime UploadedAt   { get; set; }
+        public string   DownloadUrl  { get; set; } = "";
+    }
+
+    private class CountryItem
+    {
+        public int    Id     { get; set; }
+        public string Name   { get; set; } = "";
+        public string Code   { get; set; } = "";
+        public string Region { get; set; } = "";
+    }
+
+    private class CityItem
+    {
+        public int    Id        { get; set; }
+        public string Name      { get; set; } = "";
+        public bool   IsCapital { get; set; }
+    }
+
+    private class VendorForm
+    {
+        public string Code = "", Name = "", ShortName = "";
+        public int Type = 0, Status = 0;
+        public string TaxCode = "", BusinessRegNo = "", Website = "", Notes = "";
+        public string ContactName = "", ContactTitle = "", ContactPhone = "", ContactEmail = "";
+        public string CompanyAddress = "", BillingAddress = "", City = "", Country = "";
+    }
+
+    private class VendorDto
+    {
+        public int     Id             { get; set; }
+        public string  Code           { get; set; } = "";
+        public string  Name           { get; set; } = "";
+        public string? ShortName      { get; set; }
+        public int     Type           { get; set; }
+        public int     Status         { get; set; }
+        public string? TaxCode        { get; set; }
+        public string? BusinessRegNo  { get; set; }
+        public string? Website        { get; set; }
+        public string? Notes          { get; set; }
+        public string? ContactName    { get; set; }
+        public string? ContactTitle   { get; set; }
+        public string? ContactPhone   { get; set; }
+        public string? ContactEmail   { get; set; }
+        public string? CompanyAddress { get; set; }
+        public string? BillingAddress { get; set; }
+        public string? City           { get; set; }
+        public string? Country        { get; set; }
+        public string? AttachmentPath { get; set; }
+        public string? AttachmentName { get; set; }
+        public DateTime CreatedAt     { get; set; }
+        public List<AttachmentDto> Attachments { get; set; } = new();
+    }
+}
+
+<style>
+    @@import url("https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=Sora:wght@600;700&display=swap");
+
+    .page-container { font-family: "DM Sans", sans-serif; color: #fff; }
+
+    /* ── Top bar ── */
+    .top-bar { display:flex; align-items:center; gap:10px; margin-bottom:14px; flex-wrap:wrap; }
+    .title-block { display:flex; align-items:baseline; gap:10px; flex-shrink:0; margin-right:4px; }
+    .page-title  { font-family:"Sora",sans-serif; font-size:18px; font-weight:700; color:#fff; margin:0; white-space:nowrap; }
+    .page-sub    { font-size:12px; color:rgba(255,255,255,.45); white-space:nowrap; }
+    .tb-divider  { width:1px; height:20px; background:rgba(255,255,255,.15); flex-shrink:0; }
+    .search-wrap { flex:1; min-width:200px; display:flex; align-items:center; gap:8px; background:rgba(255,255,255,.1); border:1px solid rgba(255,255,255,.15); border-radius:8px; padding:8px 12px; }
+    .search-wrap svg { color:rgba(255,255,255,.4); flex-shrink:0; }
+    .search-input { flex:1; background:none; border:none; outline:none; color:#fff; font-size:13px; font-family:"DM Sans",sans-serif; }
+    .search-input::placeholder { color:rgba(255,255,255,.35); }
+    .filter-select { background:rgba(255,255,255,.1); border:1px solid rgba(255,255,255,.15); border-radius:8px; padding:8px 12px; color:#fff; font-size:13px; outline:none; cursor:pointer; flex-shrink:0; font-family:"DM Sans",sans-serif; }
+    .filter-select option { background:#1565c0; }
+    .total-count { font-size:12px; color:rgba(255,255,255,.4); white-space:nowrap; flex-shrink:0; }
+    .btn-new { display:flex; align-items:center; gap:6px; padding:8px 16px; background:#1e90d6; color:#fff; border:none; border-radius:8px; font-size:13px; font-weight:600; cursor:pointer; white-space:nowrap; flex-shrink:0; font-family:"DM Sans",sans-serif; transition:background .2s,transform .1s; }
+    .btn-new:hover { background:#1565c0; transform:translateY(-1px); }
+
+    /* ── Alerts ── */
+    .alert-box { display:flex; align-items:center; justify-content:space-between; padding:10px 14px; border-radius:8px; font-size:13px; margin-bottom:14px; }
+    .alert-err  { background:rgba(220,38,38,.12); border:1px solid rgba(220,38,38,.3); color:#fca5a5; }
+    .alert-ok   { background:rgba(34,197,94,.12); border:1px solid rgba(34,197,94,.3); color:#86efac; }
+    .alert-x    { background:none; border:none; cursor:pointer; color:inherit; font-size:14px; padding:0 4px; }
+
+    /* ── Table ── */
+    .table-wrap { overflow-x:auto; border-radius:10px; box-shadow:0 4px 20px rgba(0,0,0,.25); }
+    .ptable { width:100%; border-collapse:collapse; background:#fff; font-size:12.5px; }
+    .ptable th { padding:8px 10px; border:1px solid #b8c4d8; text-align:center; font-weight:600; font-size:11px; color:#1a2d5a; white-space:nowrap; text-transform:uppercase; letter-spacing:.04em; }
+    .th-y   { background:#fffde7; }
+    .th-grp { background:#e3f2fd; color:#1565c0 !important; }
+    .th-no  { background:#f5f5f5; width:38px; }
+    .th-act { background:#f5f5f5; width:72px; }
+    .ptable td { padding:8px 10px; border:1px solid #dde4ef; color:#1a2d5a; vertical-align:middle; font-size:13px; }
+    .tc   { text-align:center; }
+    .fw   { font-weight:500; }
+    .mono { font-family:monospace; font-size:12px; color:#3d5080; }
+    .muted { color:#9baac8; }
+    .remark-td { max-width:140px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .td-empty { text-align:center; padding:40px; color:#9baac8; font-style:italic; }
+    .tr-alt td { background:#eef5fd; }
+    .ptable tbody tr:hover td { background:#ddeeff; }
+    .dash { color:#c0c9d8; }
+
+    /* action icon buttons */
+    .bico { display:inline-flex; align-items:center; justify-content:center; width:28px; height:28px; border:none; border-radius:6px; cursor:pointer; transition:all .15s; margin:0 2px; }
+    .bedit { background:#e8f0fe; color:#1565c0; } .bedit:hover { background:#1565c0; color:#fff; }
+    .bdel  { background:#fef2f2; color:#dc2626; } .bdel:hover  { background:#dc2626; color:#fff; }
+
+    /* status badges */
+    .s-active   { display:inline-block; padding:3px 9px; border-radius:20px; font-size:11px; font-weight:600; text-transform:uppercase; background:#eaf3de; color:#3b6d11; border:1px solid #c0dd97; }
+    .s-inactive { display:inline-block; padding:3px 9px; border-radius:20px; font-size:11px; font-weight:600; text-transform:uppercase; background:#fef2f2; color:#dc2626; border:1px solid #fecaca; }
+    .s-suspended{ display:inline-block; padding:3px 9px; border-radius:20px; font-size:11px; font-weight:600; text-transform:uppercase; background:#fff8e1; color:#b45309; border:1px solid #fcd34d; }
+
+    .tfoot { margin-top:8px; text-align:right; font-size:12px; color:rgba(255,255,255,.4); }
+    .loading-wrap { display:flex; align-items:center; justify-content:center; gap:12px; padding:60px; color:rgba(255,255,255,.6); }
+    .spinner    { width:20px; height:20px; border:2.5px solid rgba(30,144,214,.3); border-top-color:#1e90d6; border-radius:50%; animation:spin .7s linear infinite; display:inline-block; }
+    .spinner-sm { width:14px; height:14px; border:2px solid rgba(30,144,214,.3); border-top-color:#1e90d6; border-radius:50%; animation:spin .7s linear infinite; display:inline-block; vertical-align:middle; margin-right:5px; }
+    .spinner-lg { width:36px; height:36px; border:3px solid #c9d8ee; border-top-color:#1e90d6; border-radius:50%; animation:spin .7s linear infinite; }
+    .loading-state,.empty-state { display:flex; flex-direction:column; align-items:center; gap:16px; padding:60px; color:#9baac8; }
+    @@keyframes spin { to { transform:rotate(360deg); } }
+
+    /* ── Modal ── */
+    .modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.55); backdrop-filter:blur(4px); display:flex; align-items:center; justify-content:center; z-index:1000; padding:20px; }
+    .modal-card { background:#fff; border:1px solid #dde4ef; border-radius:16px; padding:28px 32px; width:75vw; max-width:1000px; max-height:90vh; overflow-y:auto; box-shadow:0 24px 60px rgba(0,0,0,0.18); }
+    .modal-lg   { max-width:1000px; }
+    .modal-wide { max-width:900px; }
+    .modal-sm   { max-width:480px; }
+    .modal-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:20px; }
+    .modal-header h2 { font-family:"Sora",sans-serif; font-size:20px; font-weight:700; color:#1a2d5a; }
+    .modal-close { background:none; border:none; cursor:pointer; color:#9baac8; font-size:18px; padding:4px 8px; border-radius:6px; line-height:1; flex-shrink:0; }
+    .modal-close:hover { background:#f0f4fb; color:#1a2d5a; }
+    .error-alert { background:#fff1f1; border:1px solid #fecaca; border-radius:10px; padding:12px 14px; font-size:13px; color:#b42318; margin-bottom:16px; }
+
+    /* form */
+    .form-section-title { font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:.08em; color:#1e90d6; margin:20px 0 12px; padding-bottom:7px; border-bottom:1.5px solid #c7e3f8; display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+    .form-grid  { display:grid; grid-template-columns:1fr 1fr; gap:16px 28px; }
+    .form-group { margin-bottom:2px; }
+    .form-group.full-width { grid-column:1 / -1; }
+    .form-group label { display:block; font-size:11px; font-weight:600; color:#7a8fad; margin-bottom:6px; text-transform:uppercase; letter-spacing:.06em; }
+    .label-hint { font-size:11px; font-weight:400; text-transform:none; color:#9baac8; letter-spacing:0; margin-left:4px; }
+    .fg-row { display:flex; flex-wrap:wrap; gap:12px; margin-bottom:2px; }
+    .fg     { display:flex; flex-direction:column; min-width:0; }
+    .fg-1   { flex:1 1 140px; }
+    .fg-2   { flex:2 1 240px; }
+    .fg-3   { flex:10 1 100%; }
+    .fg label { display:block; font-size:11px; font-weight:600; color:#7a8fad; margin-bottom:5px; text-transform:uppercase; letter-spacing:.06em; white-space:nowrap; }
+    .required,.req { color:#e53935; }
+    .form-input { width:100%; padding:10px 13px; background:#f7fafd; border:1.5px solid #c9d8ee; border-radius:9px; color:#1a2d5a; font-size:14px; outline:none; font-family:inherit; box-sizing:border-box; transition:border-color .15s,box-shadow .15s; }
+    .form-input:focus { border-color:#1e90d6; background:#fff; box-shadow:0 0 0 3px rgba(30,144,214,0.1); }
+    .form-input::placeholder { color:#b0bdd4; }
+    .form-input-disabled,.form-input[disabled],.form-input[readonly] { background:#f0f4f8; color:#9baac8; cursor:not-allowed; }
+    .form-textarea { min-height:80px; resize:vertical; }
+
+    /* upload */
+    .upload-zone { border:2px dashed #c9d8ee; border-radius:12px; padding:4px; transition:border-color .2s,background .2s; margin-bottom:12px; cursor:pointer; }
+    .upload-zone:hover,.upload-zone.drag-over { border-color:#1e90d6; background:#f0f7ff; }
+    .upload-label { display:flex; flex-direction:column; align-items:center; gap:6px; padding:24px 20px; cursor:pointer; }
+    .upload-text  { font-size:14px; color:#4a6080; }
+    .upload-hint  { font-size:12px; color:#9baac8; }
+    .upload-zone-inner { display:flex; flex-direction:column; align-items:center; gap:8px; color:#9baac8; font-size:13px; text-align:center; }
+    .upload-icon-wrap  { width:44px; height:44px; border-radius:12px; background:#e6f1fb; display:flex; align-items:center; justify-content:center; margin-bottom:2px; }
+    .browse-link  { color:#1e90d6; cursor:pointer; text-decoration:underline; }
+    .upload-inline-btn { display:inline-flex; align-items:center; gap:4px; padding:4px 9px; border-radius:6px; font-size:11px; font-weight:600; color:#9baac8; border:1px dashed #c9d8ee; cursor:pointer; transition:all .15s; white-space:nowrap; }
+    .upload-inline-btn:hover { border-color:#1e90d6; color:#1e90d6; background:#e6f1fb; }
+
+    /* file list */
+    .file-list { display:flex; flex-direction:column; gap:6px; margin-bottom:8px; }
+    .existing-files { margin-top:4px; }
+    .existing-label { font-size:11px; text-transform:uppercase; color:#9baac8; letter-spacing:.05em; margin-bottom:6px; }
+    .file-item { display:flex; align-items:center; gap:10px; background:#f7fafd; border:1px solid #dde4ef; border-radius:8px; padding:8px 12px; }
+    .att-list  { display:flex; flex-direction:column; gap:5px; margin-bottom:10px; }
+    .att-item  { display:flex; align-items:center; gap:10px; padding:8px 12px; background:#f7fafd; border:1px solid #dde4ef; border-radius:10px; transition:background .15s; }
+    .att-item:hover { background:#eef4fb; }
+    .att-pending { border-color:rgba(255,152,0,.35); background:rgba(255,152,0,.04); }
+    .att-icon  { flex-shrink:0; display:flex; align-items:center; }
+    .att-info  { flex:1; min-width:0; }
+    .att-name  { font-size:13px; color:#1e90d6; text-decoration:none; display:block; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .att-name:hover { text-decoration:underline; }
+    .att-meta  { font-size:11px; color:#9baac8; display:block; margin-top:2px; }
+    .pending-badge { color:#e65100; font-weight:600; }
+    .att-count-label { font-size:10px; background:#e6f1fb; color:#1e90d6; padding:2px 7px; border-radius:10px; }
+    .att-hint-label  { font-size:10px; color:#9baac8; font-style:italic; text-transform:none; letter-spacing:0; }
+    .att-action-btn  { background:none; border:none; cursor:pointer; padding:5px 7px; border-radius:6px; display:flex; align-items:center; transition:all .15s; flex-shrink:0; text-decoration:none; }
+    .att-download    { color:#9baac8; }
+    .att-download:hover { background:#e6f1fb; color:#1e90d6; }
+    .att-delete      { color:#c9d8ee; }
+    .att-delete:hover{ background:#fef2f2; color:#dc2626; }
+    .att-action-btn:disabled { opacity:.4; cursor:not-allowed; }
+    .file-icon { width:30px; height:30px; border-radius:6px; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+    .file-icon.pdf { background:rgba(239,83,80,.1); color:#ef5350; }
+    .file-icon.img { background:rgba(30,144,214,.1); color:#1e90d6; }
+    .file-info { flex:1; min-width:0; }
+    .file-name { display:block; font-size:13px; color:#1a2d5a; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .file-link { color:#1e90d6; text-decoration:none; }
+    .file-link:hover { text-decoration:underline; }
+    .file-size { font-size:11px; color:#9baac8; }
+    .file-remove { background:none; border:none; cursor:pointer; color:#9baac8; font-size:14px; padding:4px; border-radius:4px; flex-shrink:0; line-height:1; }
+    .file-remove:hover { color:#dc2626; background:#fef2f2; }
+
+    /* cv upload */
+    .cv-upload-box  { position:relative; border:1.5px dashed #c9d8ee; border-radius:12px; min-height:72px; transition:border-color .2s,background .2s; overflow:hidden; background:#f7fafd; }
+    .cv-upload-box.drag-over { border-color:#1e90d6; background:#f0f7ff; }
+    .cv-placeholder { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px; padding:18px; pointer-events:none; }
+    .cv-upload-icon { font-size:22px; color:#b0bdd4; }
+    .cv-upload-text { font-size:13px; color:#4a6080; }
+    .cv-browse-link { color:#1e90d6; cursor:pointer; pointer-events:all; text-decoration:underline; }
+    .cv-upload-hint { font-size:11px; color:#9baac8; }
+    .cv-selected,.cv-existing { display:flex; align-items:center; gap:12px; padding:14px 16px; }
+    .cv-file-icon  { font-size:24px; flex-shrink:0; }
+    .cv-file-info  { flex:1; min-width:0; }
+    .cv-file-name  { display:block; font-size:13px; font-weight:500; color:#1a2d5a; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .cv-file-size  { font-size:11px; color:#9baac8; }
+    .cv-view-link  { display:inline-block; font-size:11px; color:#1e90d6; text-decoration:none; margin-top:2px; }
+    .cv-remove-btn { background:none; border:none; cursor:pointer; color:#9baac8; font-size:16px; padding:4px; border-radius:4px; pointer-events:all; position:relative; z-index:2; }
+    .cv-remove-btn:hover { color:#dc2626; }
+    .cv-replace-btn { font-size:12px; color:#1e90d6; cursor:pointer; border:1px solid #b5d4f4; border-radius:6px; padding:4px 10px; pointer-events:all; position:relative; z-index:2; white-space:nowrap; background:#e6f1fb; }
+    .cv-error { margin-top:6px; font-size:12px; color:#b42318; }
+
+    /* roles */
+    .roles-picker { display:flex; gap:8px; flex-wrap:wrap; margin-top:4px; }
+    .role-check   { display:flex; align-items:center; gap:6px; cursor:pointer; padding:6px 12px; border-radius:8px; border:1.5px solid #c9d8ee; background:#f7fafd; transition:all .2s; }
+    .role-check input { display:none; }
+    .role-check.checked { border-color:#1e90d6; background:#e6f1fb; }
+    .role-badge   { padding:3px 8px; border-radius:20px; font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:.04em; }
+    .role-admin      { background:rgba(156,39,176,.12); color:#7b1fa2; }
+    .role-user       { background:rgba(33,150,243,.12);  color:#1565c0; }
+    .role-inspector  { background:rgba(255,152,0,.12);   color:#e65100; }
+
+    /* type & code badges */
+    .code-badge         { font-family:monospace; font-size:12px; font-weight:600; background:#e6f1fb; color:#1565c0; padding:3px 8px; border-radius:6px; border:1px solid #b5d4f4; }
+    .type-badge         { padding:3px 8px; border-radius:6px; font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:.04em; }
+    .type-material      { background:#eaf3de; color:#3b6d11; border:1px solid #c0dd97; }
+    .type-accessory     { background:#e6f1fb; color:#1565c0; border:1px solid #b5d4f4; }
+    .type-service       { background:#f3e8fc; color:#7b1fa2; border:1px solid #d1b3f0; }
+    .type-logistics     { background:#fff3e0; color:#e65100; border:1px solid #ffcc80; }
+    .type-manufacturing { background:#fef2f2; color:#dc2626; border:1px solid #fecaca; }
+
+    /* file count badge / file popup */
+    .file-count-btn { display:inline-flex; align-items:center; gap:5px; padding:3px 10px; background:#e6f1fb; border:1px solid #b5d4f4; border-radius:20px; color:#1e90d6; font-size:12px; font-weight:600; cursor:pointer; transition:all .2s; }
+    .file-count-btn:hover { background:#cce4f8; border-color:#85b7eb; transform:translateY(-1px); }
+    .file-count-badge { display:inline-flex; align-items:center; gap:4px; padding:3px 8px; border-radius:20px; font-size:12px; font-weight:600; background:#e6f1fb; color:#1e90d6; border:1px solid #b5d4f4; }
+    .fp-backdrop { position:fixed; inset:0; z-index:1100; }
+    .fp-popup    { position:fixed; z-index:1101; width:380px; background:#fff; border:1px solid #c9d8ee; border-radius:14px; box-shadow:0 20px 60px rgba(0,0,0,.18); overflow:hidden; animation:fp-in .15s ease; }
+    @@keyframes fp-in { from { opacity:0; transform:translateY(-6px) scale(.97); } to { opacity:1; transform:none; } }
+    .fp-header  { display:flex; align-items:center; justify-content:space-between; padding:12px 14px 10px; border-bottom:1px solid #e8eef7; }
+    .fp-title   { font-size:12px; font-weight:600; color:#4a6080; display:flex; align-items:center; gap:6px; }
+    .fp-close   { background:none; border:none; cursor:pointer; color:#9baac8; font-size:14px; padding:2px 6px; border-radius:5px; line-height:1; }
+    .fp-close:hover { background:#f0f4fb; color:#1a2d5a; }
+    .fp-list    { max-height:320px; overflow-y:auto; padding:6px 0; }
+    .fp-item    { display:flex; align-items:center; gap:10px; padding:9px 14px; transition:background .12s; }
+    .fp-item:hover { background:#f7fafd; }
+    .fp-icon    { flex-shrink:0; display:flex; align-items:center; }
+    .fp-info    { flex:1; min-width:0; }
+    .fp-name    { display:block; font-size:13px; color:#1a2d5a; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-weight:500; }
+    .fp-meta    { display:block; font-size:11px; color:#9baac8; margin-top:2px; }
+    .fp-actions { display:flex; gap:4px; flex-shrink:0; }
+
+    /* inline file popup used in Customers */
+    .files-popup-sub { font-size:13px; color:#9baac8; margin-top:2px; }
+    .popup-file-list  { display:flex; flex-direction:column; gap:8px; max-height:420px; overflow-y:auto; padding-right:4px; }
+    .popup-file-item  { display:flex; align-items:center; gap:12px; background:#f7fafd; border:1px solid #dde4ef; border-radius:10px; padding:10px 14px; transition:background .15s; }
+    .popup-file-item:hover { background:#eef4fb; }
+    .popup-file-actions { display:flex; gap:6px; flex-shrink:0; }
+    .popup-btn  { display:inline-flex; align-items:center; gap:5px; padding:5px 12px; border-radius:7px; font-size:12px; font-weight:600; text-decoration:none; transition:all .2s; cursor:pointer; border:none; }
+    .view-btn   { background:#e6f1fb; color:#1e90d6; border:1px solid #b5d4f4; }
+    .view-btn:hover { background:#cce4f8; }
+    .download-btn { background:#eaf3de; color:#3b6d11; border:1px solid #c0dd97; }
+    .download-btn:hover { background:#d4ebb8; }
+
+    /* vendor/user cell */
+    .vendor-cell   { display:flex; align-items:center; gap:10px; }
+    .vendor-avatar { width:36px; height:36px; border-radius:10px; background:#1e90d6; display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:700; flex-shrink:0; color:#fff; }
+    .vendor-name   { font-weight:600; font-size:14px; color:#1a2d5a; }
+    .vendor-short  { font-size:12px; color:#9baac8; margin-top:2px; }
+    .contact-name  { font-size:13px; color:#4a6080; }
+    .contact-phone { font-size:12px; color:#9baac8; font-family:monospace; margin-top:2px; }
+    .company-cell  { display:flex; align-items:center; gap:10px; }
+    .company-avatar{ width:32px; height:32px; border-radius:8px; background:#1e90d6; display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:700; flex-shrink:0; color:#fff; }
+    .company-name  { font-weight:600; font-size:13px; color:#1a2d5a; }
+    .user-cell     { display:flex; align-items:center; gap:8px; }
+    .user-avatar   { width:30px; height:30px; border-radius:50%; background:#1e90d6; display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:700; flex-shrink:0; color:#fff; }
+    .user-fullname { font-weight:500; font-size:13px; white-space:nowrap; color:#1a2d5a; }
+    .mono-sm  { font-family:monospace; font-size:12px; color:#3d5080; }
+    .dim      { color:#9baac8; }
+    .sm       { font-size:12px; }
+    .small-td { font-size:12px; max-width:130px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .cat-badge{ padding:3px 9px; border-radius:20px; font-size:11px; font-weight:600; background:#e6f1fb; color:#1565c0; white-space:nowrap; border:1px solid #b5d4f4; }
+
+    /* status toggle (Users) */
+    .status-toggle           { padding:3px 10px; border-radius:20px; border:none; cursor:pointer; font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:.04em; transition:all .2s; white-space:nowrap; }
+    .status-toggle.s-active  { background:#eaf3de; color:#3b6d11; border:1px solid #c0dd97; }
+    .status-toggle.s-inactive{ background:#fef2f2; color:#dc2626; border:1px solid #fecaca; }
+    .status-toggle:hover     { filter:brightness(.95); }
+
+    /* cv link */
+    .cv-link { display:inline-flex; align-items:center; gap:3px; font-size:12px; color:#1e90d6; text-decoration:none; padding:3px 8px; border-radius:6px; border:1px solid #b5d4f4; background:#e6f1fb; transition:background .2s; white-space:nowrap; }
+    .cv-link:hover { background:#cce4f8; }
+
+    /* detail view (Vendors) */
+    .detail-grid          { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:8px; }
+    .detail-section       { background:#f7fafd; border:1px solid #dde4ef; border-radius:12px; padding:16px; }
+    .detail-section.col-2 { grid-column:span 2; }
+    .detail-section-title { font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.08em; color:#7a8fad; margin-bottom:12px; }
+    .detail-row           { display:flex; justify-content:space-between; align-items:center; padding:6px 0; border-bottom:1px solid #eef4fb; font-size:13px; gap:8px; }
+    .detail-row:last-child { border-bottom:none; }
+    .detail-row span:first-child { color:#9baac8; flex-shrink:0; }
+    .detail-row span:last-child  { color:#1a2d5a; text-align:right; }
+    .detail-link  { color:#1e90d6; font-size:13px; text-decoration:none; }
+    .detail-link:hover { text-decoration:underline; }
+    .detail-notes { font-size:13px; color:#4a6080; line-height:1.7; }
+
+    /* misc */
+    .check-label  { display:flex; align-items:center; gap:8px; cursor:pointer; font-size:14px; color:#4a6080; }
+    .check-label input { width:16px; height:16px; accent-color:#1e90d6; }
+    .btn-file-hint { font-size:11px; background:#e6f1fb; color:#1e90d6; padding:2px 7px; border-radius:8px; }
+    .action-btns { display:flex; gap:4px; }
+    .action-btn  { background:none; border:none; cursor:pointer; padding:5px 9px; border-radius:6px; font-size:13px; font-weight:500; transition:all .2s; color:#9baac8; display:flex; align-items:center; gap:4px; }
+    .action-btn.view:hover   { background:#f0f4fb; color:#4a6080; }
+    .action-btn.edit:hover   { background:#e8f0fe; color:#1565c0; }
+    .action-btn.delete:hover { background:#fef2f2; color:#dc2626; }
+
+    /* modal footer & buttons */
+    .modal-footer { display:flex; justify-content:flex-end; align-items:center; gap:10px; padding-top:20px; border-top:1px solid #e8eef7; margin-top:16px; }
+    .btn-cancel   { padding:10px 20px; background:#f0f4fb; border:1px solid #c9d8ee; border-radius:9px; color:#4a6080; font-size:14px; cursor:pointer; transition:background .15s; }
+    .btn-cancel:hover { background:#e0eaf7; }
+    .btn-submit   { display:flex; align-items:center; gap:8px; padding:10px 24px; background:#1e90d6; border:none; border-radius:9px; color:#fff; font-size:14px; font-weight:600; cursor:pointer; min-width:140px; justify-content:center; transition:background .15s; }
+    .btn-submit:hover:not(:disabled) { background:#1565c0; }
+    .btn-submit:disabled { opacity:.65; cursor:not-allowed; }
+    .btn-delete   { padding:10px 22px; background:#fff1f1; border:1px solid #fecaca; border-radius:9px; color:#dc2626; font-size:14px; font-weight:600; cursor:pointer; }
+    .btn-delete:hover { background:#fee2e2; }
+    .confirm-card { text-align:center; max-width:440px; }
+    .confirm-icon { font-size:40px; margin-bottom:12px; }
+    .confirm-card h2 { font-family:"Sora",sans-serif; font-size:18px; margin-bottom:10px; color:#1a2d5a; }
+    .confirm-card p  { font-size:14px; color:#4a6080; line-height:1.6; margin-bottom:4px; }
+
+    /* pagination */
+    .pagination { display:flex; align-items:center; justify-content:center; gap:16px; margin-top:20px; }
+    .page-btn   { padding:8px 16px; background:#f0f4fb; border:1px solid #c9d8ee; border-radius:8px; color:#4a6080; font-size:13px; cursor:pointer; }
+    .page-btn:disabled { opacity:.4; cursor:not-allowed; }
+    .page-info  { font-size:13px; color:#9baac8; }
+
+    @@media (max-width:900px) {
+        .modal-card { width:92vw; padding:20px 18px; }
+        .form-grid { grid-template-columns:1fr; gap:12px; }
+        .form-group.full-width { grid-column:1; }
+        .title-block { width:100%; }
+        .detail-grid { grid-template-columns:1fr; }
+        .detail-section.col-2 { grid-column:1; }
+    }
+    @@media (max-width:600px) {
+        .top-bar { flex-direction:column; align-items:stretch; gap:8px; }
+        .title-block { flex-direction:column; gap:2px; align-items:flex-start; }
+        .search-wrap { min-width:unset; }
+        .filter-select { width:100%; }
+        .btn-new { width:100%; justify-content:center; }
+    }
+</style>

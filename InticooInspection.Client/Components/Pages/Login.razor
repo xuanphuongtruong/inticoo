@@ -1,0 +1,560 @@
+@page "/login"
+@layout InticooInspection.Client.Layout.EmptyLayout
+@using InticooInspection.Client.Services
+@using Microsoft.AspNetCore.Components.Web
+@inject IAuthService AuthService
+@inject NavigationManager Navigation
+@inject AuthenticationStateProvider AuthStateProvider
+@inject Blazored.LocalStorage.ILocalStorageService LocalStorage
+
+<PageTitle>Sign In - Inticoo Inspection</PageTitle>
+
+<div class="login-page">
+    <div class="login-shell">
+        <div class="brand-block">
+            <div class="brand-logo-wrap">
+                <img src="logo.png" alt="Inticoo" class="brand-logo" />
+                <div class="brand-tagline">Precision You Can Trust</div>
+            </div>
+        </div>
+
+        <div class="login-card">
+            <div class="card-header">
+                <div class="card-title">Login</div>
+                <div class="card-line"></div>
+            </div>
+
+            @if (!string.IsNullOrWhiteSpace(_errorMessage))
+            {
+                <div class="error-box">
+                    <svg viewBox="0 0 24 24" class="error-icon" aria-hidden="true">
+                        <path d="M12 2L1 21h22L12 2zm0 6.8l.8 6.1h-1.6L12 8.8zm0 9.2a1.2 1.2 0 1 1 0-2.4 1.2 1.2 0 0 1 0 2.4z" />
+                    </svg>
+                    <span>@_errorMessage</span>
+                </div>
+            }
+
+            <div class="form-body">
+                <div class="field-group">
+                    <label class="field-label" for="username">Username</label>
+                    <div class="input-box">
+                        <div class="input-icon-box" aria-hidden="true">
+                            <svg viewBox="0 0 24 24" class="input-icon">
+                                <path d="M12 12a4 4 0 1 0-4-4 4 4 0 0 0 4 4zm0 2c-4.4 0-8 2.2-8 5v1h16v-1c0-2.8-3.6-5-8-5z" />
+                            </svg>
+                        </div>
+                        <input id="username"
+                               type="text"
+                               class="login-input"
+                               placeholder="Enter your username"
+                               @bind="_username"
+                               @bind:event="oninput"
+                               @onkeydown="HandleKeyDown" />
+                    </div>
+                </div>
+
+                <div class="field-group">
+                    <label class="field-label" for="password">Password</label>
+                    <div class="input-box password-box">
+                        <div class="input-icon-box" aria-hidden="true">
+                            <svg viewBox="0 0 24 24" class="input-icon">
+                                <path d="M17 9h-1V7a4 4 0 0 0-8 0v2H7a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-8a2 2 0 0 0-2-2zm-6 0V7a2 2 0 1 1 4 0v2h-4zm1 7.7V18h2v-1.3a2 2 0 1 0-2 0z" />
+                            </svg>
+                        </div>
+                        <input id="password"
+                               type="@(_showPwd ? "text" : "password")"
+                               class="login-input password-input"
+                               placeholder="Enter your password"
+                               @bind="_password"
+                               @bind:event="oninput"
+                               @onkeydown="HandleKeyDown" />
+
+                        <button type="button" class="toggle-password" @onclick="TogglePassword" aria-label="Show or hide password">
+                            @if (_showPwd)
+                            {
+                                <svg viewBox="0 0 24 24" class="eye-icon">
+                                    <path d="M3 3l18 18-1.4 1.4-3.1-3.1A11.4 11.4 0 0 1 12 20C5 20 1 12 1 12a20.3 20.3 0 0 1 5.2-5.8L1.6 4.4 3 3zm6.2 6.2A4 4 0 0 0 14.8 15l-1.6-1.6a2 2 0 0 1-2.4-2.4L9.2 9.2zM12 4c7 0 11 8 11 8a19.7 19.7 0 0 1-4.1 4.9l-1.5-1.5A16.9 16.9 0 0 0 20.8 12S17.3 6 12 6c-1.2 0-2.3.2-3.3.6L7.1 5a11.2 11.2 0 0 1 4.9-1z" />
+                                </svg>
+                            }
+                            else
+                            {
+                                <svg viewBox="0 0 24 24" class="eye-icon">
+                                    <path d="M12 5c7 0 11 7 11 7s-4 7-11 7S1 12 1 12s4-7 11-7zm0 2C7 7 4 12 4 12s3 5 8 5 8-5 8-5-3-5-8-5zm0 2.5A2.5 2.5 0 1 1 9.5 12 2.5 2.5 0 0 1 12 9.5z" />
+                                </svg>
+                            }
+                        </button>
+                    </div>
+                </div>
+
+                <label class="remember-row">
+                    <input type="checkbox" @bind="_rememberMe" />
+                    <span class="remember-custom">
+                        @if (_rememberMe)
+                        {
+                            <svg viewBox="0 0 16 16" class="check-icon" aria-hidden="true">
+                                <path d="M3 8.2 6.1 11 13 4.5" />
+                            </svg>
+                        }
+                    </span>
+                    <span class="remember-text">Remember me</span>
+                </label>
+
+                <button class="submit-btn" @onclick="HandleLogin" disabled="@_isLoading">
+                    @if (_isLoading)
+                    {
+                        <span>Signing in...</span>
+                    }
+                    else
+                    {
+                        <span>Login</span>
+                    }
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private string _username = string.Empty;
+    private string _password = string.Empty;
+    private bool _rememberMe;
+    private bool _showPwd;
+    private bool _isLoading;
+    private string _errorMessage = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var state = await AuthStateProvider.GetAuthenticationStateAsync();
+        if (state.User.Identity?.IsAuthenticated == true)
+        {
+            Navigation.NavigateTo("/");
+            return;
+        }
+
+        var saved = await LocalStorage.GetItemAsStringAsync("remember_username");
+        if (!string.IsNullOrWhiteSpace(saved))
+        {
+            _username = saved;
+            _rememberMe = true;
+        }
+    }
+
+    private void TogglePassword() => _showPwd = !_showPwd;
+
+    private async Task HandleLogin()
+    {
+        _errorMessage = string.Empty;
+
+        if (string.IsNullOrWhiteSpace(_username) || string.IsNullOrWhiteSpace(_password))
+        {
+            _errorMessage = "Please enter username and password.";
+            return;
+        }
+
+        _isLoading = true;
+
+        try
+        {
+            var result = await AuthService.LoginAsync(new LoginDto
+            {
+                Username = _username.Trim(),
+                Password = _password,
+                RememberMe = _rememberMe
+            });
+
+            if (result.Success)
+            {
+                if (_rememberMe)
+                    await LocalStorage.SetItemAsStringAsync("remember_username", _username.Trim());
+                else
+                    await LocalStorage.RemoveItemAsync("remember_username");
+
+                Navigation.NavigateTo("/", forceLoad: true);
+                return;
+            }
+
+            _password = string.Empty;
+            _errorMessage = result.Message ?? "Invalid username or password.";
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task HandleKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+            await HandleLogin();
+    }
+}
+
+<style>
+    @@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
+    *, *::before, *::after {
+        box-sizing: border-box;
+    }
+
+    html, body {
+        height: 100%;
+        margin: 0;
+    }
+
+    body {
+        font-family: 'Inter', 'Segoe UI', sans-serif;
+    }
+
+    .login-page {
+        min-height: 100vh;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        padding: 32px 18px;
+        background:
+            radial-gradient(circle at top left, rgba(71, 166, 255, 0.18), transparent 28%),
+            radial-gradient(circle at bottom right, rgba(17, 92, 210, 0.10), transparent 24%),
+            linear-gradient(180deg, #f7fbff 0%, #eef5fc 100%);
+    }
+
+    .login-shell {
+        width: 100%;
+        max-width: 700px;
+    }
+
+    .brand-block {
+        text-align: center;
+        margin-bottom: 26px;
+    }
+
+    .brand-logo-wrap {
+        position: relative;
+        display: inline-block;
+    }
+
+    .brand-logo {
+        width: min(100%, 600px);
+        max-height: 148px;
+        object-fit: contain;
+        display: block;
+        margin: 0 auto;
+        filter: drop-shadow(0 10px 20px rgba(9, 54, 116, 0.12));
+    }
+
+    .brand-tagline {
+        position: absolute;
+        bottom: 2px;
+        right: 0;
+        font-size: 15px;
+        color: #4a6d9c;
+        font-weight: 400;
+        letter-spacing: 0.3px;
+        white-space: nowrap;
+    }
+
+    .login-card {
+        width: 100%;
+        max-width: 520px;
+        margin: 0 auto;
+        background: rgba(255, 255, 255, 0.88);
+        border: 1px solid rgba(162, 197, 232, 0.75);
+        border-radius: 28px;
+        padding: 30px 30px 26px;
+        box-shadow: 0 24px 55px rgba(18, 76, 145, 0.12);
+        backdrop-filter: blur(10px);
+    }
+
+    .card-header {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        margin-bottom: 20px;
+    }
+
+    .card-title {
+        font-size: 30px;
+        font-weight: 800;
+        color: #183b72;
+        letter-spacing: 0.2px;
+    }
+
+    .card-line {
+        flex: 1;
+        height: 1px;
+        background: linear-gradient(90deg, rgba(39, 125, 225, 0.35), rgba(39, 125, 225, 0));
+    }
+
+    .error-box {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        border-radius: 14px;
+        padding: 12px 14px;
+        margin-bottom: 18px;
+        color: #b42318;
+        background: #fff1f1;
+        border: 1px solid #fecaca;
+        font-size: 14px;
+        font-weight: 500;
+    }
+
+    .error-icon {
+        width: 18px;
+        height: 18px;
+        fill: currentColor;
+        flex-shrink: 0;
+    }
+
+    .form-body {
+        display: flex;
+        flex-direction: column;
+        gap: 18px;
+    }
+
+    .field-group {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .field-label {
+        font-size: 15px;
+        font-weight: 700;
+        color: #1c3761;
+        letter-spacing: 0.2px;
+    }
+
+    .input-box {
+        display: flex;
+        align-items: center;
+        min-height: 62px;
+        border: 2px solid #c7d9ee;
+        border-radius: 18px;
+        background: #ffffff;
+        overflow: hidden;
+        transition: border-color .2s ease, box-shadow .2s ease, transform .12s ease;
+    }
+
+    .input-box:focus-within {
+        border-color: #3498ff;
+        box-shadow: 0 0 0 4px rgba(52, 152, 255, 0.12);
+        transform: translateY(-1px);
+    }
+
+    .input-icon-box {
+        width: 68px;
+        min-height: 62px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: linear-gradient(180deg, #edf5ff 0%, #e5f0fd 100%);
+        border-right: 1px solid #d6e3f3;
+        flex-shrink: 0;
+    }
+
+    .input-icon {
+        width: 26px;
+        height: 26px;
+        fill: #5a8fd0;
+    }
+
+    .login-input {
+        flex: 1;
+        height: 60px;
+        border: none;
+        outline: none;
+        background: transparent;
+        padding: 0 18px;
+        font-size: 17px;
+        color: #28466f;
+        font-weight: 500;
+    }
+
+    .login-input::placeholder {
+        color: #7f98b8;
+        font-weight: 500;
+    }
+
+    .password-box .password-input {
+        padding-right: 6px;
+    }
+
+    .toggle-password {
+        width: 62px;
+        height: 60px;
+        border: none;
+        background: transparent;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        color: #547fb5;
+        transition: background .2s ease, color .2s ease;
+    }
+
+    .toggle-password:hover {
+        background: #f5f9ff;
+        color: #256bcb;
+    }
+
+    .eye-icon {
+        width: 26px;
+        height: 26px;
+        fill: currentColor;
+    }
+
+    .remember-row {
+        display: inline-flex;
+        align-items: center;
+        gap: 12px;
+        cursor: pointer;
+        user-select: none;
+        margin-top: 2px;
+        width: fit-content;
+    }
+
+    .remember-row input[type="checkbox"] {
+        display: none;
+    }
+
+    .remember-custom {
+        width: 30px;
+        height: 30px;
+        border-radius: 9px;
+        background: linear-gradient(180deg, #2aa2ff 0%, #0d69e8 100%);
+        border: 1px solid #0a64df;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: inset 0 1px 0 rgba(255,255,255,0.25), 0 4px 10px rgba(13, 105, 232, 0.16);
+    }
+
+    .check-icon {
+        width: 16px;
+        height: 16px;
+        fill: none;
+        stroke: #ffffff;
+        stroke-width: 2.3;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+    }
+
+    .remember-text {
+        font-size: 17px;
+        font-weight: 500;
+        color: #1d3560;
+    }
+
+    .submit-btn {
+        width: 100%;
+        height: 66px;
+        border: none;
+        border-radius: 18px;
+        margin-top: 6px;
+        background: linear-gradient(180deg, #2fb1ff 0%, #0d80f0 55%, #0866e2 100%);
+        color: #ffffff;
+        font-size: 22px;
+        font-weight: 800;
+        letter-spacing: 0.3px;
+        cursor: pointer;
+        box-shadow: inset 0 2px 0 rgba(255,255,255,0.25), 0 10px 20px rgba(8, 102, 226, 0.22);
+        transition: transform .12s ease, box-shadow .2s ease, opacity .2s ease;
+    }
+
+    .submit-btn:hover:not(:disabled) {
+        transform: translateY(-1px);
+        box-shadow: inset 0 2px 0 rgba(255,255,255,0.25), 0 14px 24px rgba(8, 102, 226, 0.24);
+    }
+
+    .submit-btn:disabled {
+        opacity: .7;
+        cursor: not-allowed;
+    }
+
+    @@media (max-width: 768px) {
+        .brand-logo {
+            max-height: 118px;
+        }
+
+        .brand-tagline {
+            font-size: 16px;
+        }
+
+        .login-card {
+            padding: 24px 22px 22px;
+            border-radius: 24px;
+        }
+
+        .card-title {
+            font-size: 26px;
+        }
+    }
+
+    @@media (max-width: 520px) {
+        .login-page {
+            padding: 22px 14px;
+            align-items: flex-start;
+        }
+
+        .brand-block {
+            margin-bottom: 18px;
+        }
+
+        .brand-logo {
+            max-height: 88px;
+        }
+
+        .brand-tagline {
+            font-size: 14px;
+        }
+
+        .login-card {
+            padding: 20px 16px 18px;
+            border-radius: 22px;
+        }
+
+        .card-header {
+            gap: 10px;
+            margin-bottom: 16px;
+        }
+
+        .card-title {
+            font-size: 22px;
+        }
+
+        .input-box,
+        .input-icon-box {
+            min-height: 56px;
+        }
+
+        .input-icon-box {
+            width: 56px;
+        }
+
+        .input-icon,
+        .eye-icon {
+            width: 23px;
+            height: 23px;
+        }
+
+        .login-input,
+        .toggle-password {
+            height: 54px;
+        }
+
+        .login-input {
+            font-size: 16px;
+            padding: 0 14px;
+        }
+
+        .remember-text {
+            font-size: 15px;
+        }
+
+        .submit-btn {
+            height: 58px;
+            font-size: 20px;
+            border-radius: 16px;
+        }
+    }
+</style>
