@@ -74,8 +74,8 @@ builder.Services.AddCors(options =>
             {
                 return uri.Host == "localhost" ||
                        uri.Host == "127.0.0.1" ||
-                       uri.Host.EndsWith("azurewebsites.net") ||
-                       uri.Host.EndsWith("azurestaticapps.net");
+                       uri.Host == "black-grass-002608310.2.azurestaticapps.net" ||
+                       uri.Host.EndsWith("azurewebsites.net");
             }
             return false;
         })
@@ -104,7 +104,7 @@ using (var scope = app.Services.CreateScope())
     await db.Database.MigrateAsync();
     await DbSeeder.SeedAsync(userManager, roleManager);
 }
-
+app.UseDeveloperExceptionPage();
 app.UseSwagger();
 app.UseSwaggerUI(c =>
 {
