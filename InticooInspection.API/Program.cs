@@ -53,18 +53,34 @@ builder.Services.AddAuthentication(options =>
 // CORS
 builder.Services.AddCors(options =>
 {
+    //options.AddPolicy("BlazorClient", policy =>
+    //    policy.SetIsOriginAllowed(origin =>
+    //    {
+    //        // Cho phép tất cả localhost (mọi port) trong môi trường dev
+    //        var uri = new Uri(origin);
+    //        return uri.Host == "localhost" || uri.Host == "127.0.0.1" ||
+    //               uri.Host.EndsWith("azurewebsites.net") ||
+    //               uri.Host.EndsWith("azurestaticapps.net");
+    //    })
+    //          .AllowAnyHeader()
+    //          .AllowAnyMethod());
     options.AddPolicy("BlazorClient", policy =>
         policy.SetIsOriginAllowed(origin =>
         {
-            // Cho phép tất cả localhost (mọi port) trong môi trường dev
-            var uri = new Uri(origin);
-            return uri.Host == "localhost" || uri.Host == "127.0.0.1" ||
-                   uri.Host.EndsWith("azurewebsites.net") ||
-                   uri.Host.EndsWith("azurestaticapps.net");
+            if (string.IsNullOrWhiteSpace(origin)) return false;
+
+            // Thử parse origin để kiểm tra host
+            if (Uri.TryCreate(origin, UriKind.Absolute, out var uri))
+            {
+                return uri.Host == "localhost" ||
+                       uri.Host == "127.0.0.1" ||
+                       uri.Host.EndsWith("azurewebsites.net") ||
+                       uri.Host.EndsWith("azurestaticapps.net");
+            }
+            return false;
         })
-              .AllowAnyHeader()
-              .AllowAnyMethod()
-              .AllowCredentials());
+        .AllowAnyHeader()
+        .AllowAnyMethod());
 });
 
 builder.Services.AddAuthorization(options =>

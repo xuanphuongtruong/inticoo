@@ -1,0 +1,11 @@
+{
+    "trailingSlash": "auto",
+    "navigationFallback": {
+        "rewrite": "/index.html"
+    },
+    "globalHeaders": {
+        "Access-Control-Allow-Origin": "http://localhost:5186",
+        "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+        "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Requested-With"
+    }
+}
