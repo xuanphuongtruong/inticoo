@@ -70,14 +70,18 @@ builder.Services.AddCors(options =>
             if (string.IsNullOrWhiteSpace(origin)) return false;
 
             // Thử parse origin để kiểm tra host
-            if (Uri.TryCreate(origin, UriKind.Absolute, out var uri))
-            {
-                return uri.Host == "localhost" ||
-                       uri.Host == "127.0.0.1" ||
-                       uri.Host == "black-grass-002608310.2.azurestaticapps.net" ||
-                       uri.Host.EndsWith("azurewebsites.net");
-            }
-            return false;
+            //if (Uri.TryCreate(origin, UriKind.Absolute, out var uri))
+            //{
+            //    return uri.Host == "localhost" ||
+            //           uri.Host == "127.0.0.1" ||
+            //           uri.Host == "black-grass-002608310.2.azurestaticapps.net" ||
+            //           uri.Host.EndsWith("azurewebsites.net");
+
+            //}
+            return origin.StartsWith("http://localhost:5186") ||
+               origin.StartsWith("https://localhost:5186") ||
+               origin.EndsWith("azurestaticapps.net");
+            //return false;
         })
         .AllowAnyHeader()
         .AllowAnyMethod());
@@ -89,7 +93,10 @@ builder.Services.AddAuthorization(options =>
         policy.RequireClaim("http://schemas.microsoft.com/ws/2008/06/identity/claims/role", "Admin"));
 });
 builder.Services.AddHttpContextAccessor();
-builder.Services.AddControllers();
+builder.Services.AddControllers().AddJsonOptions(options =>
+{
+    options.JsonSerializerOptions.PropertyNameCaseInsensitive = true;
+}); ;
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 

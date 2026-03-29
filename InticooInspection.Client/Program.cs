@@ -15,14 +15,21 @@ builder.RootComponents.Add<HeadOutlet>("head::after");
 //});
 
 // Trong Program.cs của dự án Client
-string apiBaseUrl = builder.HostEnvironment.IsDevelopment()
-    ? "https://inticoo-e4hrerayb4b7h4fk.southeastasia-01.azurewebsites.net/" // Local gọi thẳng API
-    : "https://black-grass-002608310.2.azurestaticapps.net/"; // Production dùng Proxy của Azure
+//string apiBaseUrl = builder.HostEnvironment.IsDevelopment()
+//    ? "https://inticoo-e4hrerayb4b7h4fk.southeastasia-01.azurewebsites.net/" // Local gọi thẳng API
+//    : "https://black-grass-002608310.2.azurestaticapps.net/"; // Production dùng Proxy của Azure
 
-builder.Services.AddSingleton(new HttpClient
-{
-    BaseAddress = new Uri(apiBaseUrl)
-});
+//builder.Services.AddSingleton(new HttpClient
+//{
+//    BaseAddress = new Uri(apiBaseUrl)
+//});
+
+// Tự động nhận diện môi trường
+var apiBaseUrl = builder.HostEnvironment.IsDevelopment()
+    ? "https://inticoo-e4hrerayb4b7h4fk.southeastasia-01.azurewebsites.net/" // Khi dev ở máy
+    : "/"; // Khi đã deploy lên cùng một host (Proxy)
+
+builder.Services.AddScoped(sp => new HttpClient { BaseAddress = new Uri(apiBaseUrl) });
 
 builder.Services.AddBlazoredLocalStorage();
 builder.Services.AddBlazoredSessionStorage();
