@@ -83,6 +83,7 @@ builder.Services.AddCors(options =>
                origin.EndsWith("azurestaticapps.net");
             //return false;
         })
+        .AllowAnyOrigin()
         .AllowAnyHeader()
         .AllowAnyMethod());
 });
