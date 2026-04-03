@@ -66,15 +66,6 @@
         <!-- HEADER -->
         <div class="iss-header-card">
             <div class="iss-header-top">
-                <div class="iss-logo">
-                    <svg width="28" height="28" viewBox="0 0 32 32" fill="none">
-                        <polygon points="16,2 28,9 28,23 16,30 4,23 4,9" fill="#2D7DD2" opacity="0.85"/>
-                        <polygon points="16,6 25,11 25,21 16,26 7,21 7,11" fill="#1a5fa8"/>
-                        <rect x="13" y="10" width="6" height="12" rx="1" fill="white" opacity="0.9"/>
-                        <rect x="10" y="13" width="12" height="6" rx="1" fill="white" opacity="0.6"/>
-                    </svg>
-                    <span class="iss-logo-text">inticoo</span>
-                </div>
                 <div class="iss-year-badge">@DateTime.Now.Year</div>
             </div>
 
@@ -144,7 +135,10 @@
 
             @if (_statusFilter == "completed")
             {
-                <div class="iss-section-title">Completed</div>
+                <div class="iss-section-title">
+                    Completed
+                    <span class="iss-section-count">@filtered.Count job@(filtered.Count != 1 ? "s" : "")</span>
+                </div>
                 @if (!filtered.Any())
                 {
                     <div class="iss-empty">
@@ -158,79 +152,94 @@
                 }
                 @foreach (var job in filtered.OrderByDescending(j => j.CompletedAt ?? j.InspectionDate))
                 {
-                    <div class="iss-comp-item">
-                        <div class="iss-comp-row">
-                            <span class="iss-comp-label">Completed Date</span>
-                            <span class="iss-comp-val">
-                                @(job.CompletedAt.HasValue
-                                    ? job.CompletedAt.Value.ToString("d MMM yyyy")
-                                    : job.InspectionDate != DateTime.MinValue
-                                        ? job.InspectionDate.ToString("d MMM yyyy")
-                                        : "—")
-                            </span>
-                        </div>
-                        <div class="iss-comp-row">
-                            <span class="iss-comp-label">Job No</span>
-                            <span class="iss-comp-val">@(job.JobNumber ?? $"#{job.Id}")</span>
-                        </div>
-                        <div class="iss-comp-row">
-                            <span class="iss-comp-label">Customer Name</span>
-                            <span class="iss-comp-val">@job.CustomerName</span>
-                        </div>
-                        <div class="iss-comp-row">
-                            <span class="iss-comp-label">Category</span>
-                            <span class="iss-comp-val">@(job.ProductCategory ?? "—")</span>
-                        </div>
-                        <div class="iss-comp-row">
-                            <span class="iss-comp-label">Product Type</span>
-                            <span class="iss-comp-val">@(job.ProductType ?? "—")</span>
-                        </div>
-                        <div class="iss-comp-row">
-                            <span class="iss-comp-label">Inspection Type</span>
-                            <span class="iss-comp-val">
+                    <div class="iss-comp-card">
+                        <!-- Card header: Job No + Type badge + Result -->
+                        <div class="iss-comp-card-header">
+                            <div class="iss-comp-card-left">
+                                <span class="iss-comp-jobno">@(job.JobNumber ?? $"#{job.Id}")</span>
                                 <span class="iss-it-badge it-@job.InspectionType.ToLower()">@job.InspectionType</span>
-                            </span>
-                        </div>
-                        <div class="iss-comp-row">
-                            <span class="iss-comp-label">Vendor Name</span>
-                            <span class="iss-comp-val">@job.VendorName</span>
-                        </div>
-                        <div class="iss-comp-row">
-                            <span class="iss-comp-label">Result</span>
-                            <span class="iss-comp-val">
+                            </div>
+                            <div class="iss-comp-card-right">
                                 @if (!string.IsNullOrEmpty(job.OverallResult))
                                 {
                                     <span class="iss-result-badge res-@job.OverallResult.ToLower()">
+                                        @if (job.OverallResult.ToLower() == "pass" || job.OverallResult.ToLower() == "passed")
+                                        {
+                                            <svg width="11" height="11" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M4 10l5 5 7-8"/></svg>
+                                        }
+                                        else
+                                        {
+                                            <svg width="11" height="11" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M6 6l8 8M14 6l-8 8"/></svg>
+                                        }
                                         @job.OverallResult.ToUpper()
                                     </span>
                                 }
                                 else
                                 {
-                                    <span class="iss-comp-na">—</span>
+                                    <span class="iss-result-badge res-na">N/A</span>
                                 }
-                            </span>
+                            </div>
                         </div>
-                        <div class="iss-comp-row">
-                            <span class="iss-comp-label">Report</span>
-                            <span class="iss-comp-val">
-                                @if (!string.IsNullOrEmpty(job.ReportUrl))
-                                {
-                                    <a class="iss-pdf-btn" href="@job.ReportUrl" target="_blank" download>
-                                        <svg width="13" height="13" viewBox="0 0 20 20" fill="none" stroke="currentColor"
-                                             stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                            <path d="M4 16v1a1 1 0 001 1h10a1 1 0 001-1v-1M10 12V4M6 9l4 4 4-4"/>
-                                        </svg>
-                                        Download PDF
-                                    </a>
-                                }
-                                else
-                                {
-                                    <span class="iss-comp-na">—</span>
-                                }
-                            </span>
+
+                        <!-- Card body: fields -->
+                        <div class="iss-comp-card-body">
+                            <div class="iss-comp-field">
+                                <span class="iss-comp-label">
+                                    <svg width="11" height="11" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="4" width="14" height="14" rx="2"/><path d="M3 9h14M7 4V2M13 4V2"/></svg>
+                                    Completed Date
+                                </span>
+                                <span class="iss-comp-val">
+                                    @(job.CompletedAt.HasValue
+                                        ? job.CompletedAt.Value.ToString("d MMM yyyy")
+                                        : job.InspectionDate != DateTime.MinValue
+                                            ? job.InspectionDate.ToString("d MMM yyyy")
+                                            : "—")
+                                </span>
+                            </div>
+                            <div class="iss-comp-field">
+                                <span class="iss-comp-label">
+                                    <svg width="11" height="11" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="10" cy="7" r="4"/><path d="M3 17c0-3.3 3.1-6 7-6s7 2.7 7 6"/></svg>
+                                    Customer
+                                </span>
+                                <span class="iss-comp-val">@job.CustomerName</span>
+                            </div>
+                            <div class="iss-comp-field">
+                                <span class="iss-comp-label">
+                                    <svg width="11" height="11" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="2" y="7" width="16" height="11" rx="2"/><path d="M6 7V5a4 4 0 018 0v2"/></svg>
+                                    Vendor
+                                </span>
+                                <span class="iss-comp-val">@job.VendorName</span>
+                            </div>
+                            <div class="iss-comp-field">
+                                <span class="iss-comp-label">
+                                    <svg width="11" height="11" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 3h14v14H3z"/><path d="M3 8h14M8 3v14"/></svg>
+                                    Category
+                                </span>
+                                <span class="iss-comp-val">@(job.ProductCategory ?? "—")</span>
+                            </div>
+                            <div class="iss-comp-field">
+                                <span class="iss-comp-label">
+                                    <svg width="11" height="11" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 4h12v12H4z"/><circle cx="10" cy="10" r="3"/></svg>
+                                    Product Type
+                                </span>
+                                <span class="iss-comp-val">@(job.ProductType ?? "—")</span>
+                            </div>
+                        </div>
+
+                        <!-- Card footer: View Report button -->
+                        <div class="iss-comp-card-footer">
+                            <button class="iss-report-btn" @onclick="() => ViewReport(job)">
+                                <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor"
+                                     stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M14 2H6a2 2 0 00-2 2v12a2 2 0 002 2h8a2 2 0 002-2V8z"/>
+                                    <polyline points="14 2 14 8 20 8"/>
+                                    <line x1="8" y1="13" x2="12" y2="13"/>
+                                    <line x1="8" y1="10" x2="12" y2="10"/>
+                                </svg>
+                                View Report
+                            </button>
                         </div>
                     </div>
-                    <div class="iss-comp-divider"></div>
                 }
             }
             else if (!filtered.Any())
@@ -587,6 +596,12 @@
     {
         if (job == null) return;
         Navigation.NavigateTo($"/inspection-qc/{job.Id}");
+    }
+
+    private void ViewReport(JobItem? job)
+    {
+        if (job == null) return;
+        Navigation.NavigateTo($"/inspection-report/{job.Id}");
     }
 
     private static string GetStatusClass(string status) => status switch
@@ -1028,74 +1043,116 @@
     }
     .iss-start-btn:hover { box-shadow: 0 6px 20px rgba(39,174,96,.45); transform: translateY(-1px); }
 
-    /* ══════════ COMPLETED LIST ══════════ */
-    .iss-comp-item {
+    /* ══════════ COMPLETED — CARD GRID ══════════ */
+    .iss-section-title {
+        display: flex; align-items: center; gap: 10px;
+    }
+    .iss-section-count {
+        font-size: 12px; font-weight: 600;
+        color: #2D7DD2; background: #e8f0fe;
+        padding: 2px 9px; border-radius: 10px;
+        margin-left: auto;
+    }
+
+    .iss-comp-card {
         background: white;
-        padding: 14px 16px 10px;
+        border-radius: 14px;
+        margin-bottom: 12px;
+        box-shadow: 0 2px 10px rgba(0,0,0,.07);
+        border: 1px solid #e8edf6;
+        overflow: hidden;
+        transition: box-shadow .2s, transform .15s;
     }
-    .iss-comp-row {
-        display: flex;
-        gap: 12px;
+    .iss-comp-card:hover {
+        box-shadow: 0 6px 20px rgba(0,0,0,.11);
+        transform: translateY(-2px);
+    }
+
+    /* Card header */
+    .iss-comp-card-header {
+        display: flex; align-items: center; justify-content: space-between;
+        padding: 12px 16px 10px;
+        border-bottom: 1px solid #f0f3f8;
+        background: #fafbfe;
+    }
+    .iss-comp-card-left  { display: flex; align-items: center; gap: 8px; }
+    .iss-comp-card-right { display: flex; align-items: center; }
+    .iss-comp-jobno {
+        font-size: 13px; font-weight: 800;
+        color: #1565c0; letter-spacing: -.2px;
+    }
+
+    /* Card body */
+    .iss-comp-card-body {
+        padding: 10px 16px 6px;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 2px 16px;
+    }
+    @@media (max-width: 480px) {
+        .iss-comp-card-body { grid-template-columns: 1fr; }
+    }
+
+    .iss-comp-field {
+        display: flex; flex-direction: column;
         padding: 6px 0;
-        align-items: baseline;
+        border-bottom: 1px solid #f5f7fa;
     }
+    .iss-comp-field:nth-last-child(-n+2) { border-bottom: none; }
+    @@media (max-width: 480px) {
+        .iss-comp-field:last-child { border-bottom: none; }
+        .iss-comp-field:nth-last-child(2) { border-bottom: 1px solid #f5f7fa; }
+    }
+
     .iss-comp-label {
-        font-size: 13px;
-        color: #1565c0;
-        font-weight: 600;
-        min-width: 130px;
-        flex-shrink: 0;
+        font-size: 10px; font-weight: 600;
+        color: #aab; text-transform: uppercase;
+        letter-spacing: .06em;
+        display: flex; align-items: center; gap: 4px;
+        margin-bottom: 2px;
     }
     .iss-comp-val {
-        font-size: 13px;
-        color: #1a1a2e;
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        flex-wrap: wrap;
+        font-size: 13px; color: #1a1a2e;
+        font-weight: 500;
+        white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
     }
-    .iss-comp-na { color: #bbb; }
-    .iss-comp-divider {
-        height: 1px;
-        background: linear-gradient(90deg, #4dd9d9 0%, #4dd9d9 60%, transparent 100%);
-        margin: 0;
+
+    /* Card footer */
+    .iss-comp-card-footer {
+        padding: 10px 16px 12px;
+        border-top: 1px solid #f0f3f8;
+        display: flex; justify-content: flex-end;
+        background: #fafbfe;
     }
+
+    .iss-report-btn {
+        display: inline-flex; align-items: center; gap: 6px;
+        background: linear-gradient(135deg, #2D7DD2, #1a5fa8);
+        color: white; border: none; border-radius: 9px;
+        padding: 8px 18px;
+        font-size: 13px; font-weight: 700;
+        cursor: pointer;
+        transition: all .2s;
+        box-shadow: 0 3px 10px rgba(45,125,210,.35);
+        letter-spacing: .01em;
+    }
+    .iss-report-btn:hover {
+        background: linear-gradient(135deg, #1a5fa8, #134d8f);
+        box-shadow: 0 5px 16px rgba(45,125,210,.45);
+        transform: translateY(-1px);
+    }
+    .iss-report-btn:active { transform: translateY(0); }
 
     /* Result badge */
     .iss-result-badge {
-        font-size: 11px;
-        font-weight: 700;
-        padding: 3px 10px;
-        border-radius: 10px;
-        text-transform: uppercase;
-        letter-spacing: .04em;
+        display: inline-flex; align-items: center; gap: 4px;
+        font-size: 11px; font-weight: 700;
+        padding: 3px 10px; border-radius: 10px;
+        text-transform: uppercase; letter-spacing: .04em;
     }
-    .res-pass { background: #e8f5e9; color: #2e7d32; }
-    .res-fail { background: #fce4ec; color: #c62828; }
+    .res-pass, .res-passed { background: #e8f5e9; color: #2e7d32; }
+    .res-fail, .res-failed { background: #fce4ec; color: #c62828; }
+    .res-na   { background: #f5f5f5; color: #999; }
 
-    /* PDF download button */
-    .iss-pdf-btn {
-        display: inline-flex;
-        align-items: center;
-        gap: 5px;
-        background: #f0f3f8;
-        color: #1565c0;
-        border: 1px solid #bbd9f8;
-        border-radius: 8px;
-        padding: 4px 12px;
-        font-size: 12px;
-        font-weight: 600;
-        text-decoration: none;
-        transition: background .15s, border-color .15s;
-    }
-    .iss-pdf-btn:hover {
-        background: #ddeeff;
-        border-color: #2D7DD2;
-    }
-
-    @@media (min-width: 640px) {
-        .iss-comp-label { min-width: 150px; font-size: 14px; }
-        .iss-comp-val   { font-size: 14px; }
-        .iss-comp-item  { padding: 16px 0 12px; }
-    }
+    .iss-comp-na { color: #bbb; }
 </style>

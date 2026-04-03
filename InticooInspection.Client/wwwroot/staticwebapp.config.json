@@ -1,11 +1,20 @@
 {
-    "trailingSlash": "auto",
-    "navigationFallback": {
-        "rewrite": "/index.html"
-    },
-    "globalHeaders": {
-        "Access-Control-Allow-Origin": "http://localhost:5186",
-        "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
-        "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Requested-With"
-    }
+  "trailingSlash": "auto",
+  "navigationFallback": {
+    "rewrite": "/index.html"
+  },
+  "mimeTypes": {
+    ".wasm": "application/wasm",
+    ".dll": "application/octet-stream",
+    ".pdb": "application/octet-stream",
+    ".br": "application/x-brotli",
+    ".dat": "application/octet-stream",
+    ".json": "application/json"
+  },
+  "globalHeaders": {
+    "Access-Control-Allow-Origin": "http://localhost:5186",
+    "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Requested-With",
+    "Content-Security-Policy": "default-src 'self'; script-src 'self' 'unsafe-eval' 'sha256-v8v3RKRPmN4odZ1CWM5gw80QKPCCWMcpNeOmimNL2AA='; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' http://localhost:5186 https://*.azurewebsites.net;"
+  }
 }

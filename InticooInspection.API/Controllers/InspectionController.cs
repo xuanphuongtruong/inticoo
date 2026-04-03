@@ -202,6 +202,17 @@ namespace InticooInspection.API.Controllers
                     .Select(p => new { p.ProductCode })
                     .FirstOrDefaultAsync())?.ProductCode ?? "";
 
+            // Lookup Country của Inspector từ AspNetUsers (dùng làm Inspection Location)
+            var inspectorCountry = "";
+            if (!string.IsNullOrEmpty(inspection.InspectorId))
+            {
+                inspectorCountry = await _userManager.Users
+                    .AsNoTracking()
+                    .Where(u => u.InspectorId == inspection.InspectorId)
+                    .Select(u => u.Country)
+                    .FirstOrDefaultAsync() ?? "";
+            }
+
             // MapStatus: nhất quán với GetAll (0=New,1=OnGoing,2=Completed,3=Pending,4=Cancel)
             static string MapStatusForEdit(InspectionStatus st) => st switch
             {
@@ -275,7 +286,9 @@ namespace InticooInspection.API.Controllers
                 customerId = inspection.CustomerId,
                 vendorName = inspection.VendorName,
                 vendorId = inspection.VendorId,
-                inspectionLocation = inspection.InspectionLocation,
+                inspectionLocation = !string.IsNullOrEmpty(inspectorCountry)
+                    ? inspectorCountry
+                    : inspection.InspectionLocation,
                 poNumber = inspection.PoNumber,
                 inspectionDate = inspection.InspectionDate,
                 itemNumber = inspection.ItemNumber,
@@ -307,8 +320,12 @@ namespace InticooInspection.API.Controllers
                 aqlMinorSampleSize = inspection.MinorSampleSize,
                 aqlMinorAccept = inspection.MinorAccept,
                 aqlMinorReject = inspection.MinorReject,
-                photo1Url = inspection.Photo1Url,
-                photo2Url = inspection.Photo2Url,
+                photo1Url           = inspection.Photo1Url,
+                photo2Url           = inspection.Photo2Url,
+                finalResult         = inspection.FinalResult,
+                inspectorComments   = inspection.InspectorComments,
+                signatureUrl        = inspection.SignatureUrl,
+                inspectionReference = inspection.QcInspectionRef,
 
                 // Packaging
                 packaging = inspection.Packaging == null ? null : new
@@ -380,7 +397,10 @@ namespace InticooInspection.API.Controllers
                     label = o.Label,
                     compliance = o.Compliance.ToString(),
                     remark = o.Remark
-                })
+                }),
+
+                // QC Result — raw JSON string, client tự parse
+                qcResultJson = inspection.QcResultJson ?? ""
             });
         }
 
@@ -405,19 +425,21 @@ namespace InticooInspection.API.Controllers
             }
 
             // ── Sinh JobNumber tự động theo InspectionType ──
-            var prefix = (request.InspectionType?.ToUpper()) switch
+            // Format: {TYPE}-JN{100001+n}-{YY}
+            // Ví dụ: DPI-JN100001-26, PPT-JN100003-26
+            var typePrefix = (request.InspectionType?.ToUpper()) switch
             {
-                "PPT" => "PPT-IP-",
-                "PST" => "PST-IP-",
-                _ => "DPI-IP-"   // mặc định DPI
+                "PPT" => "PPT",
+                "PST" => "PST",
+                _     => "DPI"
             };
+            var yearSuffix = (DateTime.UtcNow.Year % 100).ToString("D2"); // "26", "27", ...
+            var jnPrefix   = $"{typePrefix}-JN";
 
-            // Đếm số inspection cùng prefix để lấy số thứ tự tiếp theo
+            // Đếm số inspection cùng loại để lấy số thứ tự tiếp theo
             var count = await _db.Inspections
-                .CountAsync(i => i.JobNumber != null && i.JobNumber.StartsWith(prefix));
-            var jobNumber = $"{prefix}{(count + 1):D6}";  // e.g. PPT-IP-100001 → dùng 6 chữ số bắt đầu từ 100001
-            // Nếu muốn bắt đầu từ 100001 thay vì 000001:
-            jobNumber = $"{prefix}{(100000 + count + 1)}";
+                .CountAsync(i => i.JobNumber != null && i.JobNumber.StartsWith(jnPrefix));
+            var jobNumber = $"{typePrefix}-JN{100000 + count + 1}-{yearSuffix}";
 
             var inspType = Enum.TryParse<InspectionType>(request.InspectionType, true, out var parsedType)
                 ? parsedType
@@ -1186,18 +1208,41 @@ namespace InticooInspection.API.Controllers
 
     public class QcPackagingResultDto
     {
-        public string?         CartonSizeResult       { get; set; }   // "Passed"|"Failed"|"NA"
-        public string?         ShippingMarkResult     { get; set; }
-        public string?         CartonWeightResult     { get; set; }
-        public string?         PkgLabelResult         { get; set; }
-        public string?         AssemblyResult         { get; set; }
-        public string?         HardwareResult         { get; set; }
-        public List<object>?   CartonSizes            { get; set; }   // [{cartonNo, l, w, h}]
-        public List<object>?   CartonWeights          { get; set; }   // [{label, weight}]
-        public List<string>?   ShippingMarkPhotos     { get; set; }
-        public List<string>?   PkgLabelPhotos         { get; set; }
-        public List<string>?   AssemblyPhotos         { get; set; }
-        public List<string>?   HardwarePhotos         { get; set; }
+        public string?                 CartonSizeResult   { get; set; }
+        public string?                 ShippingMarkResult { get; set; }
+        public string?                 CartonWeightResult { get; set; }
+        public string?                 PkgLabelResult     { get; set; }
+        public string?                 AssemblyResult     { get; set; }
+        public string?                 HardwareResult     { get; set; }
+        public List<object>?           CartonSizes        { get; set; }
+        public List<object>?           CartonWeights      { get; set; }
+        // Legacy photo lists (single carton)
+        public List<string>?           ShippingMarkPhotos { get; set; }
+        public List<string>?           PkgLabelPhotos     { get; set; }
+        public List<string>?           AssemblyPhotos     { get; set; }
+        public List<string>?           HardwarePhotos     { get; set; }
+        // Mới: data theo từng carton (B-i đến B-vi × CartonNumber)
+        public List<QcCartonDataDto>?  CartonDataList     { get; set; }
+    }
+
+    public class QcCartonDataDto
+    {
+        public int          CartonIndex        { get; set; }
+        public double       SizeL              { get; set; }
+        public double       SizeW              { get; set; }
+        public double       SizeH              { get; set; }
+        public string?      CartonSizeResult   { get; set; }
+        public List<string> SizePhotos         { get; set; } = new();
+        public string?      ShippingMarkResult { get; set; }
+        public List<string> ShippingMarkPhotos { get; set; } = new();
+        public string?      CartonWeightResult { get; set; }
+        public double       Weight             { get; set; }
+        public string?      PkgLabelResult     { get; set; }
+        public List<string> PkgLabelPhotos     { get; set; } = new();
+        public string?      AssemblyResult     { get; set; }
+        public List<string> AssemblyPhotos     { get; set; } = new();
+        public string?      HardwareResult     { get; set; }
+        public List<string> HardwarePhotos     { get; set; } = new();
     }
 
     public class QcProductSpecResultDto
@@ -1205,6 +1250,7 @@ namespace InticooInspection.API.Controllers
         public string?         SizeResult      { get; set; }
         public string?         GoldenResult    { get; set; }
         public string?         AdditionalText  { get; set; }
+        public List<string>?   SizePhotos      { get; set; }   // ảnh C-i Product Size
         public List<object>?   SizeRows        { get; set; }   // [{photoUrl, l, w, h, note}]
         public List<string>?   GoldenPhotos    { get; set; }
         public List<string>?   SwatchPhotos    { get; set; }
@@ -1247,8 +1293,9 @@ namespace InticooInspection.API.Controllers
 
     public class QcDefectDto
     {
-        public string  Type     { get; set; } = "";  // "Critical"|"Major"|"Minor"
-        public string? PhotoUrl { get; set; }
-        public string? Remark   { get; set; }
+        public string       Type     { get; set; } = "";  // "Critical"|"Major"|"Minor"
+        public string?      PhotoUrl { get; set; }        // legacy — giữ tương thích
+        public List<string> Photos   { get; set; } = new(); // mới — danh sách nhiều ảnh
+        public string?      Remark   { get; set; }
     }
 }

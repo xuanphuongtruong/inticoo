@@ -10,6 +10,8 @@
     <link rel="stylesheet" href="css/app.css" />
     <link rel="icon" type="image/png" href="logo.png" />
     <link href="InticooInspection.Client.styles.css" rel="stylesheet" />
+    <link href="manifest.json" rel="manifest" />
+    <link rel="apple-touch-icon" sizes="512x512" href="icon-512.png" />
 </head>
 
 <body>
@@ -26,7 +28,28 @@
         <a href="." class="reload">Reload</a>
         <span class="dismiss">ðŸ—™</span>
     </div>
-    <script src="_framework/blazor.webassembly.js"></script>
-</body>
-
+    <div id="app-updated-notification" style="display:none; position:fixed; bottom:20px; right:20px; background:white; padding:15px; border:1px solid #2196F3; z-index:1000; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+    Một bản cập nhật mới đã sẵn sàng.
+    <button class="btn btn-primary" onclick="location.reload()">Cập nhật ngay</button>
+    </div>
+        <script src="_framework/blazor.webassembly.js"></script>
+    </body>
+    <script>
+    navigator.serviceWorker.register('service-worker.js');
+    </script>
+    <script>
+    navigator.serviceWorker.register('service-worker.js').then(registration => {
+        registration.onupdatefound = () => {
+            const installingWorker = registration.installing;
+            installingWorker.onstatechange = () => {
+                if (installingWorker.state === 'installed') {
+                    if (navigator.serviceWorker.controller) {
+                        // Hiện thông báo khi có bản cập nhật mới
+                        document.getElementById('app-updated-notification').style.display = 'block';
+                    }
+                }
+            };
+        };
+    });
+</script>
 </html>

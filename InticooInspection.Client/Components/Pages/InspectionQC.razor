@@ -4,6 +4,7 @@
 @using System.Text.Json.Serialization
 @inject HttpClient Http
 @inject NavigationManager Navigation
+@inject IJSRuntime JS
 
 @* ═══════════════════════════════════════════════════════════════
    QC Inspection Wizard — theo giao diện chính PDF
@@ -65,13 +66,13 @@ else
                     @if (!string.IsNullOrEmpty(_data.Photo1Url))
                     {
                         <div class="qc-photo-box qc-photo-readonly">
-                            <img src="@_data.Photo1Url" class="qc-photo-img"/>
+                            <img src="@GetImageUrl(_data.Photo1Url)" class="qc-photo-img"/>
                         </div>
                     }
                     @if (!string.IsNullOrEmpty(_data.Photo2Url))
                     {
                         <div class="qc-photo-box qc-photo-readonly">
-                            <img src="@_data.Photo2Url" class="qc-photo-img"/>
+                            <img src="@GetImageUrl(_data.Photo2Url)" class="qc-photo-img"/>
                         </div>
                     }
                     @if (string.IsNullOrEmpty(_data.Photo1Url) && string.IsNullOrEmpty(_data.Photo2Url))
@@ -87,8 +88,6 @@ else
                         </div>
                     }
                 </div>
-                <!-- input camera dùng chung cho toàn trang — HTML thuần, tránh lỗi Blazor AdditionalAttributes -->
-
 
                 <div class="qc-section-title" style="margin-top:18px">General Information</div>
                 <div class="qc-info-table">
@@ -97,7 +96,7 @@ else
                     <div class="qc-info-row"><span class="qc-info-lbl">Vendor Name</span><span class="qc-info-val">@_inspection.VendorName</span></div>
                     <div class="qc-info-row"><span class="qc-info-lbl">Vendor ID</span><span class="qc-info-val">@(_inspection.VendorId ?? "—")</span></div>
                     <div class="qc-info-row"><span class="qc-info-lbl">Inspection Location</span>
-                        <input class="qc-info-input" @bind="_data.InspectionLocation" placeholder="Enter location"/></div>
+                        <span class="qc-info-val">@(!string.IsNullOrEmpty(_data.InspectionLocation) ? _data.InspectionLocation : "—")</span></div>
                     <div class="qc-info-row"><span class="qc-info-lbl">Inspection Date &amp; Time</span>
                         <span class="qc-info-val qc-auto">@DateTime.Now.ToString("dd MMM yyyy HH:mm")</span></div>
                     <div class="qc-info-row"><span class="qc-info-lbl">Inspection Type</span><span class="qc-info-val">@_inspection.InspectionType</span></div>
@@ -127,17 +126,30 @@ else
                                 <td class="td-center fw-bold">@oc.Letter</td>
                                 <td>
                                     <div class="td-label">@oc.Label</div>
-                                    <div class="td-remark">
-                                        <input class="qc-inline-input" @bind="oc.Remark" placeholder="Remark…"/>
+                                    <div style="font-size:11px;color:#aaa;font-weight:600;margin-top:4px">Remark:</div>
+                                    <div style="font-size:12px;color:#555;margin-top:2px;min-height:16px">
+                                        @(string.IsNullOrEmpty(oc.Remark) ? "—" : oc.Remark)
                                     </div>
                                 </td>
                                 <td class="td-center">
-                                    <select class="qc-select-sm" @bind="oc.Compliance">
-                                        <option value="">—</option>
-                                        <option value="Pass">Pass</option>
-                                        <option value="Fail">Fail</option>
-                                        <option value="NA">NA</option>
-                                    </select>
+                                    @{
+                                        var (bgColor, label) = oc.Compliance switch {
+                                            "Pass" => ("#27ae60", "Pass"),
+                                            "Fail" => ("#e74c3c", "Fail"),
+                                            "N/A" => ("#888888", "N/A"),
+                                            _      => ("", "")
+                                        };
+                                    }
+                                    @if (!string.IsNullOrEmpty(bgColor))
+                                    {
+                                        <span style="background:@bgColor;color:#fff;padding:3px 12px;border-radius:12px;font-size:11px;font-weight:700;white-space:nowrap">
+                                            @label
+                                        </span>
+                                    }
+                                    else
+                                    {
+                                        <span style="color:#bbb;font-size:13px">—</span>
+                                    }
                                 </td>
                             </tr>
                         }
@@ -157,40 +169,65 @@ else
                     <div class="qc-info-row"><span class="qc-info-lbl">Item per Carton</span>
                         <input class="qc-info-input" type="number" @bind="_data.QuantityConformity.ItemPerCarton" placeholder="0"/></div>
                     <div class="qc-info-row"><span class="qc-info-lbl">Shipment Qty</span><span class="qc-info-val">@_inspection.TotalShipmentQty</span></div>
-                    <div class="qc-info-row qc-sub-row">
-                        <span class="qc-info-lbl">Presented Qty for Inspection</span>
+                    <div class="qc-info-row" style="flex-direction:column;align-items:flex-start;gap:6px">
+                        <span class="qc-info-lbl" style="padding-top:0">Presented Qty for Inspection <span style="color:#e74c3c">*</span></span>
                         <div class="qc-split-val">
-                            <div class="qc-split-item"><span class="qc-sub-lbl">Packed</span>
-                                <input class="qc-info-input sm" type="number" @bind="_data.QuantityConformity.PresentedPacked" placeholder="0"/></div>
-                            <div class="qc-split-item"><span class="qc-sub-lbl">Not Packed</span>
-                                <input class="qc-info-input sm" type="number" @bind="_data.QuantityConformity.PresentedNotPacked" placeholder="0"/></div>
+                            <div class="qc-split-item">
+                                <span class="qc-sub-lbl">Packed <span style="color:#e74c3c">*</span></span>
+                                <input class="qc-info-input sm @(_qtyValidated && (_data.QuantityConformity.PresentedPacked + _data.QuantityConformity.PresentedNotPacked) <= 0 ? "input-error" : "")"
+                                       type="number" @bind="_data.QuantityConformity.PresentedPacked" placeholder="0"/>
+                            </div>
+                            <div class="qc-split-item">
+                                <span class="qc-sub-lbl">Not Packed <span style="color:#e74c3c">*</span></span>
+                                <input class="qc-info-input sm @(_qtyValidated && (_data.QuantityConformity.PresentedPacked + _data.QuantityConformity.PresentedNotPacked) <= 0 ? "input-error" : "")"
+                                       type="number" @bind="_data.QuantityConformity.PresentedNotPacked" placeholder="0"/>
+                            </div>
                         </div>
                     </div>
-                    <div class="qc-info-row qc-sub-row">
-                        <span class="qc-info-lbl">Number of Cartons</span>
+                    <div class="qc-info-row" style="flex-direction:column;align-items:flex-start;gap:6px">
+                        <span class="qc-info-lbl" style="padding-top:0">Number of Cartons <span style="color:#e74c3c">*</span></span>
                         <div class="qc-split-val">
-                            <div class="qc-split-item"><span class="qc-sub-lbl">Packed</span>
-                                <input class="qc-info-input sm" type="number" @bind="_data.QuantityConformity.CartonsPacked" placeholder="0"/></div>
-                            <div class="qc-split-item"><span class="qc-sub-lbl">Not Packed</span>
-                                <input class="qc-info-input sm" type="number" @bind="_data.QuantityConformity.CartonsNotPacked" placeholder="0"/></div>
+                            <div class="qc-split-item">
+                                <span class="qc-sub-lbl">Packed <span style="color:#e74c3c">*</span></span>
+                                <input class="qc-info-input sm @(_qtyValidated && (_data.QuantityConformity.CartonsPacked + _data.QuantityConformity.CartonsNotPacked) <= 0 ? "input-error" : "")"
+                                       type="number" @bind="_data.QuantityConformity.CartonsPacked" placeholder="0"/>
+                            </div>
+                            <div class="qc-split-item">
+                                <span class="qc-sub-lbl">Not Packed <span style="color:#e74c3c">*</span></span>
+                                <input class="qc-info-input sm @(_qtyValidated && (_data.QuantityConformity.CartonsPacked + _data.QuantityConformity.CartonsNotPacked) <= 0 ? "input-error" : "")"
+                                       type="number" @bind="_data.QuantityConformity.CartonsNotPacked" placeholder="0"/>
+                            </div>
                         </div>
                     </div>
-                    <div class="qc-info-row"><span class="qc-info-lbl">Qty Not Finished</span>
-                        <input class="qc-info-input" type="number" @bind="_data.QuantityConformity.QtyNotFinished" placeholder="0"/></div>
+                    <div class="qc-info-row"><span class="qc-info-lbl">Qty Not Finished <span style="color:#e74c3c">*</span></span>
+                        <input class="qc-info-input @(_qtyValidated && _data.QuantityConformity.QtyNotFinished < 0 ? "input-error" : "")"
+                               type="number" @bind="_data.QuantityConformity.QtyNotFinished" placeholder="0"/></div>
                 </div>
-                <!-- Photo slots (3 bắt buộc) -->
+                <!-- Photo slots - at least 1 photo required -->
+                <div style="display:flex;align-items:center;justify-content:space-between;margin:10px 0 4px">
+                    <span style="font-size:12px;font-weight:600;color:#555">Photos <span style="color:#e74c3c">*</span> <span style="color:#aaa;font-weight:400">(min. 1 photo)</span></span>
+                    @if (_qtyValidated && !_data.QuantityConformity.Photos.Any(p => !string.IsNullOrEmpty(p)))
+                    {
+                        <span style="color:#e74c3c;font-size:11px;font-weight:600">⚠ At least 1 photo required</span>
+                    }
+                </div>
                 <div class="qc-photo3-row">
                     @for (int i = 0; i < 3; i++)
                     {
                         var idx = i;
-                        <label class="qc-photo-box3">
-                            @if (_data.QuantityConformity.Photos.Count > idx && !string.IsNullOrEmpty(_data.QuantityConformity.Photos[idx]))
+                        var isFirst = idx == 0;
+                        var hasPhoto = _data.QuantityConformity.Photos.Count > idx && !string.IsNullOrEmpty(_data.QuantityConformity.Photos[idx]);
+                        <label class="qc-photo-box3 @(_qtyValidated && isFirst && !hasPhoto ? "photo-required" : "")">
+                            @if (hasPhoto)
                             {
-                                <img src="@_data.QuantityConformity.Photos[idx]" class="qc-photo-img"/>
+                                <img src="@GetImageUrl(_data.QuantityConformity.Photos[idx])" class="qc-photo-img"/>
                                 <button class="qc-photo-del" @onclick:stopPropagation="true"
                                         @onclick="() => { var i2=idx; SetPhotoInList(_data.QuantityConformity.Photos,i2,string.Empty); }">✕</button>
                             }
-                            else { <span class="qc-photo-add">📷</span> }
+                            else
+                            {
+                                <span class="qc-photo-add">@(isFirst ? "📷 *" : "📷")</span>
+                            }
                             <InputFile OnChange="@(async e => await HandlePhoto(e, 'A', idx))"
                                        accept="image/*" capture="environment" style="display:none"/>
                         </label>
@@ -199,367 +236,360 @@ else
             </div>
         }
 
-        @* ── STEP 3: B. Packaging & Identification ── *@
+        @* ── STEP 3: B. Packaging & Identification — READONLY từ DB ── *@
         else if (_currentStepIdx == 3)
         {
             <div class="qc-card">
                 <div class="qc-section-title">B. Packaging &amp; Identification</div>
                 <div class="qc-info-table">
-                    <div class="qc-info-row"><span class="qc-info-lbl">Item Number</span><span class="qc-info-val">@(_inspection.ItemNumber ?? "—")</span></div>
+                    <div class="qc-info-row"><span class="qc-info-lbl">Item Number</span>
+                        <span class="qc-info-val">@(string.IsNullOrEmpty(_data.Packaging.ItemNumber) ? (_inspection.ItemNumber ?? "—") : _data.Packaging.ItemNumber)</span></div>
                     <div class="qc-info-row"><span class="qc-info-lbl">Carton Number</span>
-                        <input class="qc-info-input" @bind="_data.Packaging.CartonNumber" placeholder="e.g. 1, 2, 3"/></div>
+                        <span class="qc-info-val">@(string.IsNullOrEmpty(_data.Packaging.CartonNumber) ? "—" : _data.Packaging.CartonNumber)</span></div>
                     <div class="qc-info-row"><span class="qc-info-lbl">Type of Packaging</span>
-                        <input class="qc-info-input" @bind="_data.Packaging.PackagingType" placeholder="Type…"/></div>
+                        <span class="qc-info-val">@(string.IsNullOrEmpty(_data.Packaging.PackagingType) ? "—" : _data.Packaging.PackagingType)</span></div>
                     <div class="qc-info-row"><span class="qc-info-lbl">Color of Carton</span>
-                        <input class="qc-info-input" @bind="_data.Packaging.CartonColor" placeholder="Color…"/></div>
+                        <span class="qc-info-val">@(string.IsNullOrEmpty(_data.Packaging.CartonColor) ? "—" : _data.Packaging.CartonColor)</span></div>
                     <div class="qc-info-row"><span class="qc-info-lbl">Type of Cardboard</span>
-                        <input class="qc-info-input" @bind="_data.Packaging.CardboardType" placeholder="Type…"/></div>
+                        <span class="qc-info-val">@(string.IsNullOrEmpty(_data.Packaging.CardboardType) ? "—" : _data.Packaging.CardboardType)</span></div>
                     <div class="qc-info-row"><span class="qc-info-lbl">Shipping Mark</span>
-                        <input class="qc-info-input" @bind="_data.Packaging.ShippingMark" placeholder="Mark…"/></div>
+                        <span class="qc-info-val">@(string.IsNullOrEmpty(_data.Packaging.ShippingMark) ? "—" : _data.Packaging.ShippingMark)</span></div>
                     <div class="qc-info-row"><span class="qc-info-lbl">Barcode / QR Code</span>
-                        <label class="qc-toggle"><input type="checkbox" @bind="_data.Packaging.HasBarcode"/>
-                            <span>@(_data.Packaging.HasBarcode ? "Yes" : "No")</span></label></div>
-                    <div class="qc-info-row qc-sub-row">
-                        <span class="qc-info-lbl">Inner Packing</span>
-                        <div class="qc-split-val">
-                            <div class="qc-split-item"><span class="qc-sub-lbl">Qty</span>
-                                <input class="qc-info-input sm" type="number" @bind="_data.Packaging.InnerPackingQty" placeholder="0"/></div>
-                            <div class="qc-split-item"><span class="qc-sub-lbl">Remark</span>
-                                <input class="qc-info-input sm" @bind="_data.Packaging.InnerPackingRemark" placeholder="…"/></div>
-                        </div>
-                    </div>
-                    <div class="qc-info-row qc-sub-row">
-                        <span class="qc-info-lbl">Outer Packing (mm)</span>
-                        <div class="qc-split-val qc-lwh">
-                            <div class="qc-split-item"><span class="qc-sub-lbl">L</span>
-                                <input class="qc-info-input sm" type="number" @bind="_data.Packaging.OuterL" placeholder="0"/></div>
-                            <div class="qc-split-item"><span class="qc-sub-lbl">W</span>
-                                <input class="qc-info-input sm" type="number" @bind="_data.Packaging.OuterW" placeholder="0"/></div>
-                            <div class="qc-split-item"><span class="qc-sub-lbl">H</span>
-                                <input class="qc-info-input sm" type="number" @bind="_data.Packaging.OuterH" placeholder="0"/></div>
-                        </div>
-                    </div>
+                        <span class="qc-info-val">@(_data.Packaging.HasBarcode ? "Yes" : "No")</span></div>
+                    <div class="qc-info-row"><span class="qc-info-lbl">Inner Packing Qty</span>
+                        <span class="qc-info-val">@_data.Packaging.InnerPackingQty</span></div>
+                    <div class="qc-info-row"><span class="qc-info-lbl">Inner Packing Remark</span>
+                        <span class="qc-info-val">@(string.IsNullOrEmpty(_data.Packaging.InnerPackingRemark) ? "—" : _data.Packaging.InnerPackingRemark)</span></div>
+                    <div class="qc-info-row"><span class="qc-info-lbl">Outer Packing (mm)</span>
+                        <span class="qc-info-val">L: @_data.Packaging.OuterL &nbsp; W: @_data.Packaging.OuterW &nbsp; H: @_data.Packaging.OuterH</span></div>
                     <div class="qc-info-row"><span class="qc-info-lbl">Weight (Kgs)</span>
-                        <input class="qc-info-input" type="number" @bind="_data.Packaging.OuterWeight" placeholder="0.0"/></div>
-                </div>
-            </div>
-        }
-
-        @* ── STEP 4-7: B sub-steps (Carton Size, Shipping Mark, Weight, Pkg Spec, Assembly, Hardware) ── *@
-        else if (_currentStepIdx == 4)
-        {
-            <!-- B-i: Carton Size -->
-            <div class="qc-card">
-                <div class="qc-section-title">B-i. Carton Size</div>
-                <table class="qc-table">
-                    <thead><tr><th>Carton No</th><th>L (mm)</th><th>W (mm)</th><th>H (mm)</th><th></th></tr></thead>
-                    <tbody>
-                        @foreach (var cs in _data.Packaging.CartonSizes)
-                        {
-                            <tr>
-                                <td><input class="qc-cell-input" @bind="cs.CartonNo" placeholder="No"/></td>
-                                <td><input class="qc-cell-input num" type="number" @bind="cs.L" placeholder="0"/></td>
-                                <td><input class="qc-cell-input num" type="number" @bind="cs.W" placeholder="0"/></td>
-                                <td><input class="qc-cell-input num" type="number" @bind="cs.H" placeholder="0"/></td>
-                                <td><button class="qc-del-btn" @onclick="() => _data.Packaging.CartonSizes.Remove(cs)">✕</button></td>
-                            </tr>
-                        }
-                    </tbody>
-                </table>
-                <button class="qc-add-row-btn" @onclick="AddCartonSize">+ Add Row</button>
-                <!-- Photo 3 ô -->
-                <div class="qc-photo3-row">
-                    @for (int i = 0; i < 3; i++)
-                    {
-                        var idx = i;
-                        <label class="qc-photo-box3">
-                            @if (_data.Packaging.Photos.Count > idx && !string.IsNullOrEmpty(_data.Packaging.Photos[idx]))
-                            { <img src="@_data.Packaging.Photos[idx]" class="qc-photo-img"/> }
-                            else { <span class="qc-photo-add">📷</span> }
-                            <InputFile OnChange="@(async e => await HandlePhoto(e, 'B', idx))"
-                                       accept="image/*" capture="environment" style="display:none"/>
-                        </label>
-                    }
-                </div>
-                <div class="qc-result-box">
-                    <div class="qc-result-lbl">Result</div>
-                    <div class="qc-result-btns">
-                        @foreach (var r in new[]{"Passed","Failed","NA"})
-                        { <button class="qc-result-btn @(_data.Packaging.CartonSizeResult == r ? "res-active" : "")"
-                                  @onclick='() => _data.Packaging.CartonSizeResult = r'>@r</button> }
-                    </div>
-                </div>
-            </div>
-        }
-        else if (_currentStepIdx == 5)
-        {
-            <!-- B-ii: Shipping Mark / Labeling / Barcode -->
-            <div class="qc-card">
-                <div class="qc-section-title">B-ii. Shipping Mark / Labeling / Barcode</div>
-                <div class="qc-photo3-row">
-                    @for (int i = 0; i < 3; i++)
-                    {
-                        var idx = i;
-                        <label class="qc-photo-box3 tall">
-                            @if (_data.Packaging.ShippingMarkPhotos.Count > idx && !string.IsNullOrEmpty(_data.Packaging.ShippingMarkPhotos[idx]))
-                            { <img src="@_data.Packaging.ShippingMarkPhotos[idx]" class="qc-photo-img"/> }
-                            else { <span class="qc-photo-add">📷</span> }
-                            <InputFile OnChange="@(async e => await HandlePhoto(e, 'S', idx))"
-                                       accept="image/*" capture="environment" style="display:none"/>
-                        </label>
-                    }
-                </div>
-                <div class="qc-result-box">
-                    <div class="qc-result-lbl">Result</div>
-                    <div class="qc-result-btns">
-                        @foreach (var r in new[]{"Passed","Failed","NA"})
-                        { <button class="qc-result-btn @(_data.Packaging.ShippingMarkResult == r ? "res-active" : "")"
-                                  @onclick='() => _data.Packaging.ShippingMarkResult = r'>@r</button> }
-                    </div>
-                </div>
-            </div>
-        }
-        else if (_currentStepIdx == 6)
-        {
-            <!-- B-iii: Carton Weight -->
-            <div class="qc-card">
-                <div class="qc-section-title">B-iii. Carton Weight</div>
-                <div class="qc-info-table" style="margin-bottom:12px">
-                    <div class="qc-info-row"><span class="qc-info-lbl">Spec Weight (Kgs)</span>
                         <span class="qc-info-val">@_data.Packaging.OuterWeight</span></div>
                 </div>
-                <table class="qc-table">
-                    <thead><tr><th>Sample</th><th>Weight (Kgs)</th><th></th></tr></thead>
-                    <tbody>
-                        @foreach (var cw in _data.Packaging.CartonWeights)
-                        {
-                            <tr>
-                                <td><input class="qc-cell-input" @bind="cw.Label" placeholder="Carton #"/></td>
-                                <td><input class="qc-cell-input num" type="number" @bind="cw.Weight" placeholder="0.0"/></td>
-                                <td><button class="qc-del-btn" @onclick="() => _data.Packaging.CartonWeights.Remove(cw)">✕</button></td>
-                            </tr>
-                        }
-                    </tbody>
-                </table>
-                <button class="qc-add-row-btn" @onclick="AddCartonWeight">+ Add Row</button>
-                <div class="qc-result-box">
-                    <div class="qc-result-lbl">Result</div>
-                    <div class="qc-result-btns">
-                        @foreach (var r in new[]{"Passed","Failed","NA"})
-                        { <button class="qc-result-btn @(_data.Packaging.CartonWeightResult == r ? "res-active" : "")"
-                                  @onclick='() => _data.Packaging.CartonWeightResult = r'>@r</button> }
-                    </div>
-                </div>
-            </div>
-        }
-        else if (_currentStepIdx == 7)
-        {
-            <!-- B-iv: Packaging & Labeling Specs -->
-            <div class="qc-card">
-                <div class="qc-section-title">B-iv. Packaging &amp; Labeling Specifications</div>
-                <div class="qc-photo3-row">
-                    @for (int i = 0; i < 3; i++)
-                    {
-                        var idx = i;
-                        <label class="qc-photo-box3 tall">
-                            @if (_data.Packaging.PkgLabelPhotos.Count > idx && !string.IsNullOrEmpty(_data.Packaging.PkgLabelPhotos[idx]))
-                            { <img src="@_data.Packaging.PkgLabelPhotos[idx]" class="qc-photo-img"/> }
-                            else { <span class="qc-photo-add">📷</span> }
-                            <InputFile OnChange="@(async e => await HandlePhoto(e, 'P', idx))"
-                                       accept="image/*" capture="environment" style="display:none"/>
-                        </label>
-                    }
-                </div>
-                <div class="qc-result-box">
-                    <div class="qc-result-lbl">Result</div>
-                    <div class="qc-result-btns">
-                        @foreach (var r in new[]{"Passed","Failed","NA"})
-                        { <button class="qc-result-btn @(_data.Packaging.PkgLabelResult == r ? "res-active" : "")"
-                                  @onclick='() => _data.Packaging.PkgLabelResult = r'>@r</button> }
-                    </div>
-                </div>
-            </div>
-        }
-        else if (_currentStepIdx == 8)
-        {
-            <!-- B-v: Assembly Instruction Specifications -->
-            <div class="qc-card">
-                <div class="qc-section-title">B-v. Assembly Instruction Specifications</div>
-                <div class="qc-photo3-row">
-                    @for (int i = 0; i < 3; i++)
-                    {
-                        var idx = i;
-                        <label class="qc-photo-box3 tall">
-                            @if (_data.Packaging.AssemblyPhotos.Count > idx && !string.IsNullOrEmpty(_data.Packaging.AssemblyPhotos[idx]))
-                            { <img src="@_data.Packaging.AssemblyPhotos[idx]" class="qc-photo-img"/> }
-                            else { <span class="qc-photo-add">📷</span> }
-                            <InputFile OnChange="@(async e => await HandlePhoto(e, 'I', idx))"
-                                       accept="image/*" capture="environment" style="display:none"/>
-                        </label>
-                    }
-                </div>
-                <div class="qc-result-box">
-                    <div class="qc-result-lbl">Result</div>
-                    <div class="qc-result-btns">
-                        @foreach (var r in new[]{"Passed","Failed","NA"})
-                        { <button class="qc-result-btn @(_data.Packaging.AssemblyResult == r ? "res-active" : "")"
-                                  @onclick='() => _data.Packaging.AssemblyResult = r'>@r</button> }
-                    </div>
-                </div>
-            </div>
-        }
-        else if (_currentStepIdx == 9)
-        {
-            <!-- B-vi: Hardware Specifications -->
-            <div class="qc-card">
-                <div class="qc-section-title">B-vi. Hardware Specifications</div>
-                <div class="qc-photo3-row">
-                    @for (int i = 0; i < 3; i++)
-                    {
-                        var idx = i;
-                        <label class="qc-photo-box3 tall">
-                            @if (_data.Packaging.HardwarePhotos.Count > idx && !string.IsNullOrEmpty(_data.Packaging.HardwarePhotos[idx]))
-                            { <img src="@_data.Packaging.HardwarePhotos[idx]" class="qc-photo-img"/> }
-                            else { <span class="qc-photo-add">📷</span> }
-                            <InputFile OnChange="@(async e => await HandlePhoto(e, 'H', idx))"
-                                       accept="image/*" capture="environment" style="display:none"/>
-                        </label>
-                    }
-                </div>
-                <div class="qc-result-box">
-                    <div class="qc-result-lbl">Result</div>
-                    <div class="qc-result-btns">
-                        @foreach (var r in new[]{"Passed","Failed","NA"})
-                        { <button class="qc-result-btn @(_data.Packaging.HardwareResult == r ? "res-active" : "")"
-                                  @onclick='() => _data.Packaging.HardwareResult = r'>@r</button> }
-                    </div>
-                </div>
             </div>
         }
 
-        @* ── STEP 10: C. Product Specification - Product Size ── *@
-        else if (_currentStepIdx == 10)
+        @* ── STEPS B-i to B-vi: dynamic per carton ── *@
+        else if (GetCurrentCartonStep() is var (cartonIdx, bSub) && cartonIdx >= 0
+                 && cartonIdx < _data.Packaging.CartonDataList.Count)
+        {
+            var cd = _data.Packaging.CartonDataList[cartonIdx];
+            var cartonLabel = _cartonCount > 1 ? $" — Carton {cd.CartonIndex}" : "";
+
+            @* B-i: Carton Size — 1 dòng cố định *@
+            @if (bSub == 0)
+            {
+                <div class="qc-card">
+                    <div class="qc-section-title">B-i. Carton Size@(cartonLabel)</div>
+                    <table class="qc-table">
+                        <thead><tr><th>Carton No</th><th>L (mm)</th><th>W (mm)</th><th>H (mm)</th></tr></thead>
+                        <tbody>
+                            <tr>
+                                <td><span class="qc-info-val">@cd.CartonIndex</span></td>
+                                <td><input class="qc-cell-input num" type="number" @bind="cd.SizeL" placeholder="0"/></td>
+                                <td><input class="qc-cell-input num" type="number" @bind="cd.SizeW" placeholder="0"/></td>
+                                <td><input class="qc-cell-input num" type="number" @bind="cd.SizeH" placeholder="0"/></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    <div class="qc-photo3-row">
+                        @for (int i = 0; i < 3; i++)
+                        {
+                            var idx = i; var cdRef = cd;
+                            <label class="qc-photo-box3">
+                                @if (cdRef.SizePhotos.Count > idx && !string.IsNullOrEmpty(cdRef.SizePhotos[idx]))
+                                { <img src="@GetImageUrl(cdRef.SizePhotos[idx])" class="qc-photo-img"/> }
+                                else { <span class="qc-photo-add">📷</span> }
+                                <InputFile OnChange="@(async e => { var url = await UploadPhoto(e); if(!string.IsNullOrEmpty(url)) SetPhotoInList(cdRef.SizePhotos, idx, url); StateHasChanged(); })"
+                                           accept="image/*" capture="environment" style="display:none"/>
+                            </label>
+                        }
+                    </div>
+
+                </div>
+            }
+
+            @* B-ii: Shipping Mark *@
+            else if (bSub == 1)
+            {
+                <div class="qc-card">
+                    <div class="qc-section-title">B-ii. Shipping Mark / Labeling / Barcode@(cartonLabel)</div>
+                    <div class="qc-photo3-row">
+                        @for (int i = 0; i < 3; i++)
+                        {
+                            var idx = i; var cdRef = cd;
+                            <label class="qc-photo-box3 tall">
+                                @if (cdRef.ShippingMarkPhotos.Count > idx && !string.IsNullOrEmpty(cdRef.ShippingMarkPhotos[idx]))
+                                { <img src="@GetImageUrl(cdRef.ShippingMarkPhotos[idx])" class="qc-photo-img"/> }
+                                else { <span class="qc-photo-add">📷</span> }
+                                <InputFile OnChange="@(async e => { var url = await UploadPhoto(e); if(!string.IsNullOrEmpty(url)) SetPhotoInList(cdRef.ShippingMarkPhotos, idx, url); StateHasChanged(); })"
+                                           accept="image/*" capture="environment" style="display:none"/>
+                            </label>
+                        }
+                    </div>
+
+                </div>
+            }
+
+            @* B-iii: Carton Weight *@
+            else if (bSub == 2)
+            {
+                <div class="qc-card">
+                    <div class="qc-section-title">B-iii. Carton Weight@(cartonLabel)</div>
+                    <div class="qc-info-table" style="margin-bottom:12px">
+                        <div class="qc-info-row"><span class="qc-info-lbl">Spec Weight (Kgs)</span>
+                            <span class="qc-info-val">@_data.Packaging.OuterWeight</span></div>
+                    </div>
+                    <div class="qc-info-table">
+                        <div class="qc-info-row">
+                            <span class="qc-info-lbl">Actual Weight (Kgs)</span>
+                            <input class="qc-info-input" type="number" @bind="cd.Weight" placeholder="0.0"/>
+                        </div>
+                    </div>
+                    <div class="qc-photo3-row">
+                        @for (int i = 0; i < 3; i++)
+                        {
+                            var idx = i; var cdRef = cd;
+                            <label class="qc-photo-box3">
+                                @if (cdRef.WeightPhotos.Count > idx && !string.IsNullOrEmpty(cdRef.WeightPhotos[idx]))
+                                { <img src="@GetImageUrl(cdRef.WeightPhotos[idx])" class="qc-photo-img"/> }
+                                else { <span class="qc-photo-add">📷</span> }
+                                <InputFile OnChange="@(async e => { var url = await UploadPhoto(e); if(!string.IsNullOrEmpty(url)) SetPhotoInList(cdRef.WeightPhotos, idx, url); StateHasChanged(); })"
+                                           accept="image/*" capture="environment" style="display:none"/>
+                            </label>
+                        }
+                    </div>
+
+                </div>
+            }
+
+            @* B-iv: Packaging & Labeling *@
+            else if (bSub == 3)
+            {
+                <div class="qc-card">
+                    <div class="qc-section-title">B-iv. Packaging &amp; Labeling Specifications@(cartonLabel)</div>
+                    <div class="qc-photo3-row">
+                        @for (int i = 0; i < 3; i++)
+                        {
+                            var idx = i; var cdRef = cd;
+                            <label class="qc-photo-box3 tall">
+                                @if (cdRef.PkgLabelPhotos.Count > idx && !string.IsNullOrEmpty(cdRef.PkgLabelPhotos[idx]))
+                                { <img src="@GetImageUrl(cdRef.PkgLabelPhotos[idx])" class="qc-photo-img"/> }
+                                else { <span class="qc-photo-add">📷</span> }
+                                <InputFile OnChange="@(async e => { var url = await UploadPhoto(e); if(!string.IsNullOrEmpty(url)) SetPhotoInList(cdRef.PkgLabelPhotos, idx, url); StateHasChanged(); })"
+                                           accept="image/*" capture="environment" style="display:none"/>
+                            </label>
+                        }
+                    </div>
+
+                </div>
+            }
+
+            @* B-v: Assembly Instruction *@
+            else if (bSub == 4)
+            {
+                <div class="qc-card">
+                    <div class="qc-section-title">B-v. Assembly Instruction Specifications@(cartonLabel)</div>
+                    <div class="qc-photo3-row">
+                        @for (int i = 0; i < 3; i++)
+                        {
+                            var idx = i; var cdRef = cd;
+                            <label class="qc-photo-box3 tall">
+                                @if (cdRef.AssemblyPhotos.Count > idx && !string.IsNullOrEmpty(cdRef.AssemblyPhotos[idx]))
+                                { <img src="@GetImageUrl(cdRef.AssemblyPhotos[idx])" class="qc-photo-img"/> }
+                                else { <span class="qc-photo-add">📷</span> }
+                                <InputFile OnChange="@(async e => { var url = await UploadPhoto(e); if(!string.IsNullOrEmpty(url)) SetPhotoInList(cdRef.AssemblyPhotos, idx, url); StateHasChanged(); })"
+                                           accept="image/*" capture="environment" style="display:none"/>
+                            </label>
+                        }
+                    </div>
+
+                </div>
+            }
+
+            @* B-vi: Hardware Specifications *@
+            else if (bSub == 5)
+            {
+                <div class="qc-card">
+                    <div class="qc-section-title">B-vi. Hardware Specifications@(cartonLabel)</div>
+                    <div class="qc-photo3-row">
+                        @for (int i = 0; i < 3; i++)
+                        {
+                            var idx = i; var cdRef = cd;
+                            <label class="qc-photo-box3 tall">
+                                @if (cdRef.HardwarePhotos.Count > idx && !string.IsNullOrEmpty(cdRef.HardwarePhotos[idx]))
+                                { <img src="@GetImageUrl(cdRef.HardwarePhotos[idx])" class="qc-photo-img"/> }
+                                else { <span class="qc-photo-add">📷</span> }
+                                <InputFile OnChange="@(async e => { var url = await UploadPhoto(e); if(!string.IsNullOrEmpty(url)) SetPhotoInList(cdRef.HardwarePhotos, idx, url); StateHasChanged(); })"
+                                           accept="image/*" capture="environment" style="display:none"/>
+                            </label>
+                        }
+                    </div>
+
+                </div>
+            }
+        }
+
+        @* ── C-i Product Size: step index = 4 + cartonCount*6 ── *@
+        else if (_currentStepIdx == 4 + _cartonCount * B_STEPS_PER_CARTON)
         {
             <div class="qc-card">
                 <div class="qc-section-title">C-i. Product Size</div>
-                <div class="qc-spec-header-row">
-                    <div class="qc-spec-col">
-                        <div class="qc-spec-lbl">L</div>
-                        <input class="qc-info-input sm" type="number" @bind="_data.ProductSpec.SpecL" placeholder="spec"/>
+                <!-- Nhập kích thước thực tế -->
+                <div class="qc-info-table" style="margin-bottom:12px">
+                    <div class="qc-info-row qc-sub-row" style="flex-direction:column;align-items:flex-start;gap:6px">
+                        <span class="qc-info-lbl" style="padding-top:0">Product Size (mm)</span>
+                        <div class="qc-split-val qc-lwh">
+                            <div class="qc-split-item">
+                                <span class="qc-sub-lbl">L</span>
+                                <input class="qc-info-input sm" type="number" @bind="_data.ProductSpec.SpecL" placeholder="0"/>
+                            </div>
+                            <div class="qc-split-item">
+                                <span class="qc-sub-lbl">W</span>
+                                <input class="qc-info-input sm" type="number" @bind="_data.ProductSpec.SpecW" placeholder="0"/>
+                            </div>
+                            <div class="qc-split-item">
+                                <span class="qc-sub-lbl">H</span>
+                                <input class="qc-info-input sm" type="number" @bind="_data.ProductSpec.SpecH" placeholder="0"/>
+                            </div>
+                        </div>
                     </div>
-                    <div class="qc-spec-col">
-                        <div class="qc-spec-lbl">W</div>
-                        <input class="qc-info-input sm" type="number" @bind="_data.ProductSpec.SpecW" placeholder="spec"/>
-                    </div>
-                    <div class="qc-spec-col">
-                        <div class="qc-spec-lbl">H</div>
-                        <input class="qc-info-input sm" type="number" @bind="_data.ProductSpec.SpecH" placeholder="spec"/>
-                    </div>
-                    <div class="qc-spec-col">
-                        <div class="qc-spec-lbl">Additional</div>
-                        <input class="qc-info-input sm" @bind="_data.ProductSpec.AdditionalText" placeholder="text"/>
-                    </div>
-                </div>
-                <table class="qc-table" style="margin-top:10px">
-                    <thead><tr><th>Photo</th><th>L</th><th>W</th><th>H</th><th>Note</th><th></th></tr></thead>
-                    <tbody>
-                        @foreach (var ps in _data.ProductSpec.SizeRows)
-                        {
-                            <tr>
-                                <td>
-                                    <label class="qc-cell-photo">
-                                        @if (!string.IsNullOrEmpty(ps.PhotoUrl))
-                                        { <img src="@ps.PhotoUrl" class="qc-cell-img"/> }
-                                        else { <span>📷</span> }
-                                        <InputFile OnChange="@(async e => await HandleSizeRowPhoto(e, ps))"
-                                                   accept="image/*" capture="environment" style="display:none"/>
-                                    </label>
-                                </td>
-                                <td><input class="qc-cell-input num" type="number" @bind="ps.L" placeholder="0"/></td>
-                                <td><input class="qc-cell-input num" type="number" @bind="ps.W" placeholder="0"/></td>
-                                <td><input class="qc-cell-input num" type="number" @bind="ps.H" placeholder="0"/></td>
-                                <td><input class="qc-cell-input" @bind="ps.Note" placeholder="…"/></td>
-                                <td><button class="qc-del-btn" @onclick="() => _data.ProductSpec.SizeRows.Remove(ps)">✕</button></td>
-                            </tr>
-                        }
-                    </tbody>
-                </table>
-                <button class="qc-add-row-btn" @onclick="AddSizeRow">+ Add Row (min 3)</button>
-                <div class="qc-result-box">
-                    <div class="qc-result-lbl">Result</div>
-                    <div class="qc-result-btns">
-                        @foreach (var r in new[]{"Passed","Failed","NA"})
-                        { <button class="qc-result-btn @(_data.ProductSpec.SizeResult == r ? "res-active" : "")"
-                                  @onclick='() => _data.ProductSpec.SizeResult = r'>@r</button> }
+                    <div class="qc-info-row">
+                        <span class="qc-info-lbl">Additional</span>
+                        <input class="qc-info-input" @bind="_data.ProductSpec.AdditionalText" placeholder="Enter additional info…"/>
                     </div>
                 </div>
+                <!-- 4 ô ảnh — bắt buộc tối thiểu 2 hình -->
+                @{
+                    int sizePhotoCount = _data.ProductSpec.SizePhotos.Count(p => !string.IsNullOrEmpty(p));
+                    bool sizePhotoOk   = sizePhotoCount >= 2;
+                }
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+                    <span style="font-size:12px;font-weight:600;color:#555">
+                        Photos <span style="color:#e74c3c">*</span>
+                        <span style="color:#aaa;font-weight:400">(min. 2 photos)</span>
+                        <span style="color:@(sizePhotoOk ? "#27ae60" : "#aaa");font-weight:700"> @sizePhotoCount/2</span>
+                    </span>
+                    @if (_sizeValidated && !sizePhotoOk)
+                    {
+                        <span style="color:#e74c3c;font-size:11px;font-weight:600">⚠ At least 2 photos required</span>
+                    }
+                </div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px">
+                    @for (int i = 0; i < 4; i++)
+                    {
+                        var idx = i;
+                        var hasP = _data.ProductSpec.SizePhotos.Count > idx && !string.IsNullOrEmpty(_data.ProductSpec.SizePhotos[idx]);
+                        var isRequired = _sizeValidated && !sizePhotoOk && idx < 2;
+                        <label class="qc-photo-box @(isRequired ? "photo-required" : "")" style="aspect-ratio:4/3;min-height:100px">
+                            @if (hasP)
+                            {
+                                <img src="@GetImageUrl(_data.ProductSpec.SizePhotos[idx])" class="qc-photo-img"/>
+                                <button class="qc-photo-del" @onclick:stopPropagation="true"
+                                        @onclick="() => SetPhotoInList(_data.ProductSpec.SizePhotos, idx, string.Empty)">✕</button>
+                            }
+                            else
+                            {
+                                <span class="qc-photo-add">@(idx < 2 ? "📷 *" : "📷")</span>
+                            }
+                            <InputFile OnChange="@(async e => { var url = await UploadPhoto(e); if(!string.IsNullOrEmpty(url)) SetPhotoInList(_data.ProductSpec.SizePhotos, idx, url); StateHasChanged(); })"
+                                       accept="image/*" capture="environment" style="display:none"/>
+                        </label>
+                    }
+                </div>
+
             </div>
         }
 
-        @* ── STEP 11: C-ii Compare Golden Sample ── *@
-        else if (_currentStepIdx == 11)
+        else if (_currentStepIdx == 5 + _cartonCount * B_STEPS_PER_CARTON)
         {
             <div class="qc-card">
                 <div class="qc-section-title">C-ii. Compare Golden Sample</div>
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+                    <span style="font-size:12px;font-weight:600;color:#555">
+                        Photos <span style="color:#e74c3c">*</span>
+                        <span style="color:#aaa;font-weight:400">(min. 2 photos)</span>
+                        <span style="color:@(_data.ProductSpec.GoldenPhotos.Count(p=>!string.IsNullOrEmpty(p))>=2?"#27ae60":"#aaa");font-weight:700">
+                            @(_data.ProductSpec.GoldenPhotos.Count(p=>!string.IsNullOrEmpty(p)))/2
+                        </span>
+                    </span>
+                    @if (_goldenValidated && _data.ProductSpec.GoldenPhotos.Count(p=>!string.IsNullOrEmpty(p)) < 2)
+                    {
+                        <span style="color:#e74c3c;font-size:11px;font-weight:600">⚠ At least 2 photos required</span>
+                    }
+                </div>
                 <div class="qc-photo3-row">
                     @for (int i = 0; i < 3; i++)
                     {
                         var idx = i;
-                        <label class="qc-photo-box3 tall">
-                            @if (_data.ProductSpec.GoldenPhotos.Count > idx && !string.IsNullOrEmpty(_data.ProductSpec.GoldenPhotos[idx]))
-                            { <img src="@_data.ProductSpec.GoldenPhotos[idx]" class="qc-photo-img"/> }
-                            else { <span class="qc-photo-add">📷</span> }
+                        var hasG = _data.ProductSpec.GoldenPhotos.Count > idx && !string.IsNullOrEmpty(_data.ProductSpec.GoldenPhotos[idx]);
+                        var reqG = _goldenValidated && _data.ProductSpec.GoldenPhotos.Count(p=>!string.IsNullOrEmpty(p)) < 2 && idx < 2;
+                        <label class="qc-photo-box3 tall @(reqG ? "photo-required" : "")">
+                            @if (hasG)
+                            {
+                                <img src="@GetImageUrl(_data.ProductSpec.GoldenPhotos[idx])" class="qc-photo-img"/>
+                            }
+                            else { <span class="qc-photo-add">@(idx < 2 ? "📷 *" : "📷")</span> }
                             <InputFile OnChange="@(async e => await HandlePhoto(e, 'G', idx))"
                                        accept="image/*" capture="environment" style="display:none"/>
                         </label>
                     }
                 </div>
-                <div class="qc-result-box">
-                    <div class="qc-result-lbl">Result</div>
-                    <div class="qc-result-btns">
-                        @foreach (var r in new[]{"Passed","Failed","NA"})
-                        { <button class="qc-result-btn @(_data.ProductSpec.GoldenResult == r ? "res-active" : "")"
-                                  @onclick='() => _data.ProductSpec.GoldenResult = r'>@r</button> }
-                    </div>
-                </div>
             </div>
         }
 
-        @* ── STEP 12: C-iii Colour Swatch ── *@
-        else if (_currentStepIdx == 12)
+        else if (_currentStepIdx == 6 + _cartonCount * B_STEPS_PER_CARTON)
         {
             <div class="qc-card">
                 <div class="qc-section-title">C-iii. Colour Swatch Comparison</div>
+                <!-- Material readonly từ DB InspectionColourSwatches -->
                 <table class="qc-table">
                     <thead><tr><th>No</th><th>Material</th><th>Result</th></tr></thead>
                     <tbody>
                         @foreach (var cs in _data.ProductSpec.ColourSwatches)
                         {
                             <tr>
-                                <td class="td-center">@cs.No</td>
-                                <td><input class="qc-cell-input" @bind="cs.Material" placeholder="Material…"/></td>
+                                <td class="td-center fw-bold">@cs.No</td>
+                                <td>
+                                    <span class="qc-info-val" style="font-size:13px">
+                                        @(string.IsNullOrEmpty(cs.Material) ? "—" : cs.Material)
+                                    </span>
+                                </td>
                                 <td>
                                     <select class="qc-select-sm" @bind="cs.Result">
                                         <option value="">—</option>
                                         <option value="Passed">Passed</option>
                                         <option value="Failed">Failed</option>
-                                        <option value="NA">NA</option>
+                                        <option value="N/A">N/A</option>
                                     </select>
                                 </td>
                             </tr>
                         }
                     </tbody>
                 </table>
-                <button class="qc-add-row-btn" @onclick="AddColourSwatch">+ Add Row (min 2)</button>
-                <!-- Photo 3 ô -->
-                <div class="qc-photo3-row" style="margin-top:10px">
+                <!-- Photos — bắt buộc tối thiểu 2 hình -->
+                <div style="display:flex;align-items:center;justify-content:space-between;margin:10px 0 6px">
+                    <span style="font-size:12px;font-weight:600;color:#555">
+                        Photos <span style="color:#e74c3c">*</span>
+                        <span style="color:#aaa;font-weight:400">(min. 2 photos)</span>
+                        <span style="color:@(_data.ProductSpec.SwatchPhotos.Count(p=>!string.IsNullOrEmpty(p))>=2?"#27ae60":"#aaa");font-weight:700">
+                            @(_data.ProductSpec.SwatchPhotos.Count(p=>!string.IsNullOrEmpty(p)))/2
+                        </span>
+                    </span>
+                    @if (_swatchValidated && _data.ProductSpec.SwatchPhotos.Count(p=>!string.IsNullOrEmpty(p)) < 2)
+                    {
+                        <span style="color:#e74c3c;font-size:11px;font-weight:600">⚠ At least 2 photos required</span>
+                    }
+                </div>
+                <div class="qc-photo3-row">
                     @for (int i = 0; i < 3; i++)
                     {
                         var idx = i;
-                        <label class="qc-photo-box3">
-                            @if (_data.ProductSpec.SwatchPhotos.Count > idx && !string.IsNullOrEmpty(_data.ProductSpec.SwatchPhotos[idx]))
-                            { <img src="@_data.ProductSpec.SwatchPhotos[idx]" class="qc-photo-img"/> }
-                            else { <span class="qc-photo-add">📷</span> }
+                        var hasS = _data.ProductSpec.SwatchPhotos.Count > idx && !string.IsNullOrEmpty(_data.ProductSpec.SwatchPhotos[idx]);
+                        var reqS = _swatchValidated && _data.ProductSpec.SwatchPhotos.Count(p=>!string.IsNullOrEmpty(p)) < 2 && idx < 2;
+                        <label class="qc-photo-box3 @(reqS ? "photo-required" : "")">
+                            @if (hasS)
+                            { <img src="@GetImageUrl(_data.ProductSpec.SwatchPhotos[idx])" class="qc-photo-img"/> }
+                            else { <span class="qc-photo-add">@(idx < 2 ? "📷 *" : "📷")</span> }
                             <InputFile OnChange="@(async e => await HandlePhoto(e, 'C', idx))"
                                        accept="image/*" capture="environment" style="display:none"/>
                         </label>
@@ -568,58 +598,91 @@ else
             </div>
         }
 
-        @* ── STEP 13: D. Performance Testing ── *@
-        else if (_currentStepIdx == 13)
+        @* ── D. Performance Testing — mỗi test = 1 step ── *@
+        else if (_currentStepIdx >= 7 + _cartonCount * B_STEPS_PER_CARTON &&
+                 _currentStepIdx <  7 + _cartonCount * B_STEPS_PER_CARTON + Math.Max(1, _data.PerformanceTests.Count))
         {
-            <div class="qc-card">
-                <div class="qc-section-title">D. Performance Testing</div>
-                @foreach (var pt in _data.PerformanceTests)
-                {
+            var dIdx = _currentStepIdx - (7 + _cartonCount * B_STEPS_PER_CARTON);
+            @if (_data.PerformanceTests.Any() && dIdx < _data.PerformanceTests.Count)
+            {
+                var pt = _data.PerformanceTests[dIdx];
+                int perfPhotoCount = pt.Photos.Count(p => !string.IsNullOrEmpty(p));
+                <div class="qc-card">
+                    <div class="qc-section-title">D. Performance Testing</div>
                     <div class="qc-perf-block">
-                        <div class="qc-perf-title">@pt.TestItem</div>
-                        <div class="qc-info-table">
-                            <div class="qc-info-row"><span class="qc-info-lbl">Test Requirement</span>
-                                <span class="qc-info-val small">@pt.TestRequirement</span></div>
-                            <div class="qc-info-row"><span class="qc-info-lbl">Test Quantity</span>
-                                <input class="qc-info-input" type="number" @bind="pt.TestQuantity" placeholder="0"/></div>
-                            <div class="qc-info-row"><span class="qc-info-lbl">Remark</span>
-                                <input class="qc-info-input" @bind="pt.Remark" placeholder="Remark…"/></div>
-                        </div>
-                        <!-- Photo min 2 hình -->
-                        <div class="qc-photo3-row">
-                            @for (int i = 0; i < 3; i++)
+                        <!-- Bảng theo mẫu PDF -->
+                        <table class="qc-table" style="margin-bottom:12px">
+                            <thead>
+                                <tr>
+                                    <th style="width:35%">Test Item</th>
+                                    <th style="font-weight:700;color:#1a1a2e">@pt.TestItem</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td class="qc-info-lbl" style="vertical-align:top;padding:8px 6px">Test Requirement</td>
+                                    <td style="font-size:13px;color:#333;padding:8px 6px;line-height:1.5">@pt.TestRequirement</td>
+                                </tr>
+                                <tr>
+                                    <td class="qc-info-lbl" style="padding:8px 6px">Test Quantity</td>
+                                    <td style="padding:4px 6px">
+                                        <input class="qc-info-input" type="number" @bind="pt.TestQuantity" placeholder="0" style="max-width:120px"/>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td class="qc-info-lbl" style="padding:8px 6px">Remark</td>
+                                    <td style="padding:4px 6px">
+                                        <input class="qc-info-input" @bind="pt.Remark" placeholder="Remark…"/>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                        <!-- 4 ảnh — bắt buộc tối thiểu 2 hình -->
+                        <div style="display:flex;align-items:center;justify-content:space-between;margin:10px 0 6px">
+                            <span style="font-size:12px;font-weight:600;color:#555">
+                                Photos <span style="color:#e74c3c">*</span>
+                                <span style="color:#aaa;font-weight:400">(min. 2 photos)</span>
+                                <span style="color:@(perfPhotoCount>=2?"#27ae60":"#aaa");font-weight:700"> @perfPhotoCount/2</span>
+                            </span>
+                            @if ((dIdx < _perfValidated.Length && _perfValidated[dIdx]) && perfPhotoCount < 2)
                             {
-                                var idx = i;
-                                var ptRef = pt;
-                                <label class="qc-photo-box3">
-                                    @if (ptRef.Photos.Count > idx && !string.IsNullOrEmpty(ptRef.Photos[idx]))
-                                    { <img src="@ptRef.Photos[idx]" class="qc-photo-img"/> }
-                                    else { <span class="qc-photo-add">📷</span> }
-                                    <InputFile OnChange="@(async e => await HandlePerfPhoto(e, ptRef, idx))"
+                                <span style="color:#e74c3c;font-size:11px;font-weight:600">⚠ At least 2 photos required</span>
+                            }
+                        </div>
+                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px">
+                            @for (int i = 0; i < 4; i++)
+                            {
+                                var idx = i; var ptRef = pt; var dIdxRef = dIdx;
+                                var hasP = ptRef.Photos.Count > idx && !string.IsNullOrEmpty(ptRef.Photos[idx]);
+                                var reqP = (dIdxRef < _perfValidated.Length && _perfValidated[dIdxRef]) && ptRef.Photos.Count(p=>!string.IsNullOrEmpty(p)) < 2 && idx < 2;
+                                <label class="qc-photo-box @(reqP ? "photo-required" : "")" style="aspect-ratio:4/3;min-height:90px">
+                                    @if (hasP)
+                                    {
+                                        <img src="@GetImageUrl(ptRef.Photos[idx])" class="qc-photo-img"/>
+                                        <button class="qc-photo-del" @onclick:stopPropagation="true"
+                                                @onclick="() => SetPhotoInList(ptRef.Photos, idx, string.Empty)">✕</button>
+                                    }
+                                    else { <span class="qc-photo-add">@(idx < 2 ? "📷 *" : "📷")</span> }
+                                    <InputFile OnChange="@(async e => { var url = await UploadPhoto(e); if(!string.IsNullOrEmpty(url)) SetPhotoInList(ptRef.Photos, idx, url); StateHasChanged(); })"
                                                accept="image/*" capture="environment" style="display:none"/>
                                 </label>
                             }
                         </div>
-                        <div class="qc-result-box">
-                            <div class="qc-result-lbl">Result</div>
-                            <div class="qc-result-btns">
-                                @foreach (var r in new[]{"Passed","Failed","NA"})
-                                { var ptRef2 = pt;
-                                  <button class="qc-result-btn @(ptRef2.Result == r ? "res-active" : "")"
-                                          @onclick='() => ptRef2.Result = r'>@r</button> }
-                            </div>
-                        </div>
+
                     </div>
-                }
-                @if (!_data.PerformanceTests.Any())
-                {
+                </div>
+            }
+            else
+            {
+                <div class="qc-card">
+                    <div class="qc-section-title">D. Performance Testing</div>
                     <div class="qc-empty-msg">No performance tests configured.</div>
-                }
-            </div>
+                </div>
+            }
         }
 
-        @* ── STEP 14: E. Appearance & Craftsmanship (AQL) ── *@
-        else if (_currentStepIdx == 14)
+        @* ── E. Appearance & Craftsmanship (AQL) ── *@
+        else if (_currentStepIdx == 7 + _cartonCount * B_STEPS_PER_CARTON + Math.Max(1, _data.PerformanceTests.Count))
         {
             <div class="qc-card">
                 <div class="qc-section-title">E. Appearance &amp; Craftsmanship</div>
@@ -644,7 +707,6 @@ else
                         </select>
                     </div>
                 </div>
-                <!-- 3 defect columns -->
                 <div class="qc-aql-cols">
                     @foreach (var dc in new[]{ ("Critical", "aql-critical"), ("Major", "aql-major"), ("Minor", "aql-minor") })
                     {
@@ -675,8 +737,6 @@ else
                         </div>
                     }
                 </div>
-
-                <!-- RESULT table -->
                 <div class="qc-section-title" style="margin-top:18px">RESULT</div>
                 <table class="qc-table">
                     <thead><tr><th>Details of Defect Found</th><th>Critical</th><th>Major</th><th>Minor</th></tr></thead>
@@ -704,47 +764,91 @@ else
             </div>
         }
 
-        @* ── STEP 15-17: F. Details of Defect Found (Critical / Major / Minor) ── *@
-        else if (_currentStepIdx == 15 || _currentStepIdx == 16 || _currentStepIdx == 17)
+        @* ── F. Details of Defect Found ── *@
+        else if (_currentStepIdx == 8 + _cartonCount * B_STEPS_PER_CARTON + Math.Max(1, _data.PerformanceTests.Count) ||
+                 _currentStepIdx == 9 + _cartonCount * B_STEPS_PER_CARTON + Math.Max(1, _data.PerformanceTests.Count) ||
+                 _currentStepIdx == 10 + _cartonCount * B_STEPS_PER_CARTON + Math.Max(1, _data.PerformanceTests.Count))
         {
-            var defType = _currentStepIdx == 15 ? "Critical" : _currentStepIdx == 16 ? "Major" : "Minor";
-            var defClass = _currentStepIdx == 15 ? "def-critical" : _currentStepIdx == 16 ? "def-major" : "def-minor";
+            int fBase    = 8 + _cartonCount * B_STEPS_PER_CARTON + Math.Max(1, _data.PerformanceTests.Count);
+            var defType  = _currentStepIdx == fBase ? "Critical" : _currentStepIdx == fBase+1 ? "Major" : "Minor";
+            var defColor = defType == "Critical" ? "#e74c3c" : defType == "Major" ? "#e67e22" : "#3498db";
+
             var defItems = _data.Defects.Where(d => d.Type == defType).ToList();
 
             <div class="qc-card">
                 <div class="qc-section-title">F. Details of Defect Found</div>
-                <div class="qc-defect-type @defClass">@defType</div>
+                <div style="font-size:15px;font-weight:800;color:@defColor;margin-bottom:12px">@defType</div>
 
-                @if (!defItems.Any())
+                @foreach (var d in defItems)
                 {
-                    <div class="qc-empty-msg">No @defType defects recorded.</div>
-                }
-                <div class="qc-defect-grid">
-                    @foreach (var d in defItems)
-                    {
-                        var dRef = d;
-                        <div class="qc-defect-item">
-                            <label class="qc-defect-photo">
-                                @if (!string.IsNullOrEmpty(dRef.PhotoUrl))
-                                { <img src="@dRef.PhotoUrl" class="qc-photo-img"/> }
-                                else { <span class="qc-photo-add">📷 Add</span> }
-                                <InputFile OnChange="@(async e => await HandleDefectPhoto(e, dRef))"
-                                           accept="image/*" capture="environment" style="display:none"/>
-                            </label>
-                            <textarea class="qc-defect-remark" @bind="dRef.Remark" placeholder="Remark…" rows="2"></textarea>
-                            <button class="qc-del-btn-sm" @onclick="() => _data.Defects.Remove(dRef)">✕</button>
+                    var dRef = d;
+                    <div style="border:1px solid #e8eef8;border-radius:10px;padding:10px;margin-bottom:10px;background:#fafcff">
+                        <!-- Grid ảnh 2 cột — mỗi ô có ảnh + remark riêng -->
+                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:8px">
+                            @for (int pi = 0; pi < dRef.Photos.Count; pi++)
+                            {
+                                var pIdx = pi; var dRef2 = dRef;
+                                var hasPhoto = !string.IsNullOrEmpty(dRef2.Photos[pIdx]);
+                                // Ensure Remarks slot
+                                while (dRef2.Remarks.Count <= pIdx) dRef2.Remarks.Add(string.Empty);
+                                <div style="display:flex;flex-direction:column;gap:0">
+                                    <!-- Ô ảnh -->
+                                    <label style="aspect-ratio:1;background:#f0f5ff;border:2px dashed #b0c8f0;
+                                                  border-bottom:none;border-radius:8px 8px 0 0;
+                                                  display:flex;align-items:center;justify-content:center;cursor:pointer;
+                                                  overflow:hidden;position:relative;min-height:120px">
+                                        @if (hasPhoto)
+                                        {
+                                            <img src="@GetImageUrl(dRef2.Photos[pIdx])" style="width:100%;height:100%;object-fit:cover"/>
+                                            <button style="position:absolute;top:4px;right:4px;background:rgba(0,0,0,.55);color:#fff;
+                                                           border:none;border-radius:50%;width:22px;height:22px;font-size:11px;cursor:pointer;line-height:1"
+                                                    @onclick:stopPropagation="true"
+                                                    @onclick="() => { var dr2=dRef2; int pi2=pIdx; if(pi2<dr2.Photos.Count) dr2.Photos[pi2]=string.Empty; var i2=_data.Defects.IndexOf(dr2); if(i2>=0) _data.Defects[i2]=dr2; StateHasChanged(); }">✕</button>
+                                        }
+                                        else { <span style="font-size:28px;color:#c0cce0">📷</span> }
+                                        <InputFile OnChange="@(async e => await UploadDefectPhoto(e, dRef2, pIdx))"
+                                                   accept="image/*" capture="environment" style="display:none;position:absolute;inset:0"/>
+                                    </label>
+                                    <!-- Remark của ảnh này -->
+                                    <input type="text"
+                                           style="width:100%;border:1px solid #dce6f8;border-top:1px solid #eef1f8;
+                                                  border-radius:0 0 8px 8px;padding:6px 8px;font-size:11px;
+                                                  background:#f8faff;outline:none;box-sizing:border-box;color:#555"
+                                           placeholder="Remark…"
+                                           value="@dRef2.Remarks[pIdx]"
+                                           @onchange="e => { dRef2.Remarks[pIdx] = e.Value?.ToString() ?? string.Empty; var i2=_data.Defects.IndexOf(dRef2); if(i2>=0) _data.Defects[i2]=dRef2; }" />
+                                </div>
+                            }
+                            <!-- Nút + thêm ô ảnh -->
+                            <button style="aspect-ratio:1;min-height:120px;background:#eef4ff;border:2px dashed #2D7DD2;border-radius:8px;
+                                           display:flex;flex-direction:column;align-items:center;justify-content:center;
+                                           cursor:pointer;color:#2D7DD2;font-size:30px;gap:4px;font-weight:300"
+                                    @onclick="() => { var dr = dRef; dr.Photos.Add(string.Empty); dr.Remarks.Add(string.Empty); var i2=_data.Defects.IndexOf(dr); if(i2>=0) _data.Defects[i2]=dr; StateHasChanged(); }">
+                                <span>+</span>
+                            </button>
                         </div>
-                    }
-                </div>
-                <button class="qc-add-row-btn" @onclick='() => AddDefect(defType)'>+ Add @defType Defect</button>
+                        @if (defItems.Count > 1)
+                        {
+                            <div style="display:flex;justify-content:flex-end;margin-top:6px">
+                                <button class="qc-del-btn-sm" @onclick="() => { _data.Defects.Remove(dRef); StateHasChanged(); }">✕ Remove</button>
+                            </div>
+                        }
+                    </div>
+                }
+
+                <!-- Add thêm defect cùng loại -->
+                <button class="qc-add-row-btn" @onclick='() => { _data.Defects.Add(new QcDefect { Type = defType, Photos = new List<string>{"",""}, Remarks = new List<string>{"",""} }); StateHasChanged(); }'>
+                    + Add @defType Defect
+                </button>
             </div>
         }
 
-        @* ── STEP 18: Inspector Comments & Final Result ── *@
-        else if (_currentStepIdx == 18)
+        @* ── Step: Inspector Comments & Final Result ── *@
+        else if (_currentStepIdx == 11 + _cartonCount * B_STEPS_PER_CARTON + Math.Max(1, _data.PerformanceTests.Count))
         {
             <div class="qc-card">
-                <div class="qc-logo-row">
+                <!-- Logo inticoo -->
+                <div class="qc-logo-row" style="margin-bottom:16px">
                     <svg width="28" height="28" viewBox="0 0 32 32" fill="none">
                         <polygon points="16,2 28,9 28,23 16,30 4,23 4,9" fill="#2D7DD2" opacity="0.85"/>
                         <polygon points="16,6 25,11 25,21 16,26 7,21 7,11" fill="#1a5fa8"/>
@@ -754,46 +858,112 @@ else
                     <span class="qc-logo-text">inticoo</span>
                 </div>
 
-                <div class="qc-info-table" style="margin-bottom:16px">
-                    <div class="qc-info-row">
-                        <span class="qc-info-lbl">Inspector Comments</span>
-                        <textarea class="qc-info-textarea" @bind="_data.InspectorComments" rows="4"
-                                  placeholder="Enter comments…"></textarea>
-                    </div>
+                <!-- Bảng Inspector Comments theo mẫu PDF -->
+                <table class="qc-table" style="margin-bottom:16px;border:1px solid #ddd">
+                    <tbody>
+                        <tr>
+                            <td style="width:35%;font-weight:700;color:#1a1a2e;padding:14px 10px;vertical-align:middle;
+                                       border-right:1px solid #ddd;background:#f8faff;line-height:1.4">
+                                Inspector<br/>Comments
+                            </td>
+                            <td style="padding:8px 10px">
+                                <textarea class="qc-info-textarea" @bind="_data.InspectorComments" rows="4"
+                                          placeholder="Enter comments…" style="width:100%;box-sizing:border-box;border:none;background:transparent;outline:none;resize:none"></textarea>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <!-- Final Result theo mẫu PDF: FINAL RESULT | PASSED / FAILED / NA -->
+                <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:6px">
+                    <span style="font-size:13px;font-weight:700;color:#1a1a2e;white-space:nowrap">FINAL RESULT</span>
+                    @if (_finalValidated && string.IsNullOrEmpty(_data.FinalResult))
+                    {
+                        <span style="color:#e74c3c;font-size:11px">⚠ Please select a result</span>
+                    }
+                </div>
+                <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:6px">
+                    @foreach (var r in new[]{"PASSED","FAILED","N/A"})
+                    {
+                        var bg  = _data.FinalResult == r ? (r=="PASSED"?"#27ae60":r=="FAILED"?"#e74c3c":"#888") : "#f0f5ff";
+                        var txt = _data.FinalResult == r ? "#fff" : "#555";
+                        var bdr = _data.FinalResult == r ? bg : "#dce6f8";
+                        <button style="padding:12px 28px;border-radius:10px;font-size:15px;font-weight:700;
+                                       border:2px solid @bdr;background:@bg;color:@txt;cursor:pointer;transition:all .2s"
+                                @onclick='() => _data.FinalResult = r'>@r</button>
+                    }
+                </div>
+            </div>
+        }
+
+        @* ── Step: Compliance & Signature ── *@
+        else if (_currentStepIdx == 12 + _cartonCount * B_STEPS_PER_CARTON + Math.Max(1, _data.PerformanceTests.Count))
+        {
+            <div class="qc-card">
+                <!-- Logo -->
+                <div class="qc-logo-row" style="margin-bottom:14px">
+                    <svg width="28" height="28" viewBox="0 0 32 32" fill="none">
+                        <polygon points="16,2 28,9 28,23 16,30 4,23 4,9" fill="#2D7DD2" opacity="0.85"/>
+                        <polygon points="16,6 25,11 25,21 16,26 7,21 7,11" fill="#1a5fa8"/>
+                        <rect x="13" y="10" width="6" height="12" rx="1" fill="white" opacity="0.9"/>
+                        <rect x="10" y="13" width="12" height="6" rx="1" fill="white" opacity="0.6"/>
+                    </svg>
+                    <span class="qc-logo-text">inticoo</span>
                 </div>
 
-                <div class="qc-final-result-row">
-                    <span class="qc-final-lbl">FINAL RESULT</span>
-                    <div class="qc-result-btns">
-                        @foreach (var r in new[]{"PASSED","FAILED","NA"})
-                        { <button class="qc-result-btn lg @(_data.FinalResult == r ? "res-active res-" + r.ToLower() : "")"
-                                  @onclick='() => _data.FinalResult = r'>@r</button> }
-                    </div>
+                <!-- Compliance clause -->
+                <div style="margin-bottom:14px;padding:12px;background:#fffbf0;border-left:3px solid #e67e22;border-radius:0 8px 8px 0">
+                    <div style="font-size:13px;font-weight:700;color:#e67e22;margin-bottom:6px">Compliance &amp; Integrity Clause</div>
+                    <p style="font-size:12px;color:#555;line-height:1.6;margin:0;font-style:italic">
+                        All inspections follow the customer protocol, and any attempt to bribe, pressure, or threaten the inspector will render the inspection invalid and may lead to termination of the agreement and legal consequences.
+                    </p>
                 </div>
 
-                <div class="qc-compliance-clause">
-                    <strong>Compliance &amp; Integrity Clause</strong>
-                    <p>All inspections follow the customer protocol, and any attempt to bribe, pressure, or threaten the inspector will render the inspection invalid and may lead to termination of the agreement and legal consequences.</p>
-                </div>
-
-                <div class="qc-info-table">
-                    <div class="qc-info-row"><span class="qc-info-lbl">Inspection by</span>
-                        <span class="qc-info-val">@_inspection.InspectorName</span></div>
-                    <div class="qc-info-row">
-                        <span class="qc-info-lbl">Confirmed by</span>
-                        <div class="qc-sig-box">
-                            @if (!string.IsNullOrEmpty(_data.SignatureUrl))
-                            {
-                                <img src="@_data.SignatureUrl" class="qc-sig-img"/>
-                                <button class="qc-clear-sig" @onclick="() => { _data.SignatureUrl = string.Empty; }">Clear</button>
-                            }
-                            else
-                            {
-                                <button class="qc-add-sig-btn" @onclick="OpenSignature">✍ Add Signature</button>
-                            }
-                        </div>
-                    </div>
-                </div>
+                <!-- Bảng Inspection by / Confirmed by theo mẫu PDF -->
+                <table class="qc-table">
+                    <tbody>
+                        <tr>
+                            <td style="width:35%;font-weight:700;color:#1a1a2e;padding:12px 8px;vertical-align:top">Inspection by</td>
+                            <td style="padding:10px 8px">
+                                <div style="color:#e74c3c;font-size:12px;font-weight:600;margin-bottom:4px">Auto</div>
+                                <div style="font-size:13px;font-weight:600;color:#1a1a2e">@_inspection.InspectorName</div>
+                                @if (!string.IsNullOrEmpty(_inspection.InspectorId))
+                                {
+                                    <div style="font-size:12px;color:#888;margin-top:2px">ID: @_inspection.InspectorId</div>
+                                }
+                            </td>
+                        </tr>
+                        <tr>
+                            <td style="font-weight:700;color:#1a1a2e;padding:12px 8px;vertical-align:top">Confirmed by</td>
+                            <td style="padding:10px 8px">
+                                @if (!string.IsNullOrEmpty(_data.SignatureUrl))
+                                {
+                                    <img src="@_data.SignatureUrl" style="max-height:80px;object-fit:contain;display:block"/>
+                                    <button style="margin-top:6px;background:#fee;color:#e74c3c;border:none;border-radius:5px;padding:4px 10px;font-size:11px;cursor:pointer"
+                                            @onclick="() => _data.SignatureUrl = string.Empty">Clear Signature</button>
+                                }
+                                else
+                                {
+                                    @if (_sigValidated)
+                                    {
+                                        <div style="color:#e74c3c;font-size:11px;font-weight:600;margin-bottom:4px">⚠ Signature is required</div>
+                                    }
+                                    <div style="color:#e74c3c;font-size:12px;font-weight:600;margin-bottom:8px">Add Signature</div>
+                                    <!-- Canvas ký tay -->
+                                    <canvas id="sig-canvas" width="300" height="120"
+                                            style="border:1px dashed #b0c8f0;border-radius:8px;background:#f8faff;touch-action:none;display:block;max-width:100%">
+                                    </canvas>
+                                    <div style="display:flex;gap:8px;margin-top:8px">
+                                        <button style="background:#2D7DD2;color:#fff;border:none;border-radius:7px;padding:7px 16px;font-size:12px;font-weight:600;cursor:pointer"
+                                                @onclick="SaveSignature">✔ Save</button>
+                                        <button style="background:#f0f3f8;color:#555;border:none;border-radius:7px;padding:7px 16px;font-size:12px;cursor:pointer"
+                                                @onclick="ClearCanvas">↺ Clear</button>
+                                    </div>
+                                }
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
             </div>
         }
 
@@ -802,7 +972,19 @@ else
     <!-- BOTTOM NAV BUTTONS -->
     <div class="qc-nav-bar">
         <button class="qc-nav-btn btn-back" @onclick="HandleBack">Back</button>
-        @if (CurrentStep.CanSkip)
+        @{
+            int _fBase2 = 8 + _cartonCount * B_STEPS_PER_CARTON + Math.Max(1, _data.PerformanceTests.Count);
+            bool _isFStep = _currentStepIdx == _fBase2 || _currentStepIdx == _fBase2+1 || _currentStepIdx == _fBase2+2;
+        }
+        @if (_isFStep)
+        {
+            var _fDefType = _currentStepIdx == _fBase2 ? "Critical" : _currentStepIdx == _fBase2+1 ? "Major" : "Minor";
+            <button class="qc-nav-btn btn-skip" style="background:#eef4ff;color:#2D7DD2;flex:0 0 auto;padding:13px 16px"
+                    @onclick='() => { _data.Defects.Add(new QcDefect { Type = _fDefType, Photos = new List<string>{"",""}, Remarks = new List<string>{"",""} }); StateHasChanged(); }'>
+                Add
+            </button>
+        }
+        else if (CurrentStep.CanSkip)
         {
             <button class="qc-nav-btn btn-skip" @onclick="SkipStep">Skip</button>
         }
@@ -836,10 +1018,7 @@ else
     InspectionDetailDto? _inspection;
     QcFormData _data = new();
     int _currentStepIdx = 0;
-    char _currentPhotoSection;
-    int _currentPhotoSlot;
-
-
+    int _cartonCount = 1;       // số carton từ DB (CartonNumber)
 
     // ── Step definitions ──
     record StepDef(string StepLabel, string Title, bool CanSkip = false);
@@ -848,37 +1027,20 @@ else
     StepDef CurrentStep => _steps[_currentStepIdx];
     double ProgressPct => (_currentStepIdx + 1.0) / _steps.Count * 100;
 
-
+    // ── Helper: build đúng URL ảnh từ API server ──────────────────
+    // - Nếu đã là full URL (http/https) hoặc base64 data: → giữ nguyên
+    // - Nếu là relative path (uploads/photos/xxx.png) → gắn BaseAddress của API
+    string GetImageUrl(string? url)
+    {
+        if (string.IsNullOrEmpty(url)) return "";
+        if (url.StartsWith("data:") || url.StartsWith("http://") || url.StartsWith("https://"))
+            return url;
+        var baseUrl = Http.BaseAddress?.ToString().TrimEnd('/') ?? "";
+        return $"{baseUrl}/{url.TrimStart('/')}";
+    }
 
     protected override async Task OnInitializedAsync()
     {
-        _steps = new List<StepDef>
-        {
-            new("Step 1 of 19", "Product Overview",          false),
-            new("Step 2 of 19", "Overall Conclusion",        false),
-            new("Step 3 of 19", "A. Quantity Conformity",    false),
-            new("Step 4 of 19", "B. Packaging & ID",         false),
-            new("Step 5 of 19", "B-i. Carton Size",          true),
-            new("Step 6 of 19", "B-ii. Shipping Mark",       true),
-            new("Step 7 of 19", "B-iii. Carton Weight",      true),
-            new("Step 8 of 19", "B-iv. Pkg & Label Spec",    true),
-            new("Step 9 of 19", "B-v. Assembly Instruction", true),
-            new("Step 10 of 19","B-vi. Hardware Spec",       true),
-            new("Step 11 of 19","C-i. Product Size",         false),
-            new("Step 12 of 19","C-ii. Golden Sample",       true),
-            new("Step 13 of 19","C-iii. Colour Swatch",      true),
-            new("Step 14 of 19","D. Performance Testing",    true),
-            new("Step 15 of 19","E. Appearance & AQL",       false),
-            new("Step 16 of 19","F. Critical Defects",       true),
-            new("Step 17 of 19","F. Major Defects",          true),
-            new("Step 18 of 19","F. Minor Defects",          true),
-            new("Step 19 of 19","Inspector Comments & Sign", false),
-        };
-
-        // Fix step labels
-        for (int i = 0; i < _steps.Count; i++)
-            _steps[i] = _steps[i] with { StepLabel = $"Step {i+1} of {_steps.Count}" };
-
         await LoadInspection();
     }
 
@@ -888,8 +1050,13 @@ else
         {
             _inspection = await Http.GetFromJsonAsync<InspectionDetailDto>($"api/inspections/{InspectionId}");
             if (_inspection != null) InitFormData();
+            else { _saveMsg = $"Inspection #{InspectionId} not found."; _saveError = true; }
         }
-        catch { }
+        catch (Exception ex)
+        {
+            _saveMsg = $"Load error: {ex.Message}";
+            _saveError = true;
+        }
         _loading = false;
     }
 
@@ -897,30 +1064,73 @@ else
     {
         if (_inspection == null) return;
 
-        // ── Load ảnh sản phẩm từ DB — normalize URL (thêm / nếu thiếu) ──
-        _data.Photo1Url = NormalizeUrl(_inspection.Photo1Url);
-        _data.Photo2Url = NormalizeUrl(_inspection.Photo2Url);
+        _data.Photo1Url = _inspection.Photo1Url ?? "";
+        _data.Photo2Url = _inspection.Photo2Url ?? "";
+        _data.InspectionLocation = _inspection.InspectionLocation ?? "";
 
-        // Overall conclusions from inspection template
-        _data.OverallConclusions = new List<QcOverallConclusion>
+        _data.OverallConclusions = _inspection.OverallConclusions?.Any() == true
+            ? _inspection.OverallConclusions.Select(o => new QcOverallConclusion
+            {
+                Letter     = o.Letter,
+                Label      = o.Label,
+                Compliance = (o.Compliance == "None" || o.Compliance == "NA") ? "" : o.Compliance,
+                Remark     = o.Remark ?? ""
+            }).ToList()
+            : new List<QcOverallConclusion>
+            {
+                new() { Letter = "A", Label = "Quantity Conformity" },
+                new() { Letter = "B", Label = "Packaging & Identification" },
+                new() { Letter = "C", Label = "Product Specification Compliance" },
+                new() { Letter = "D", Label = "Performance Testing" },
+                new() { Letter = "E", Label = "Appearance & Craftsmanship" },
+                new() { Letter = "F", Label = "Details of Defect Found" },
+            };
+
+        // Load Packaging từ DB
+        if (_inspection.Packaging != null)
         {
-            new() { Letter = "A", Label = "Quantity Conformity" },
-            new() { Letter = "B", Label = "Packaging & Identification" },
-            new() { Letter = "C", Label = "Product Specification Compliance" },
-            new() { Letter = "D", Label = "Performance Testing" },
-            new() { Letter = "E", Label = "Appearance & Craftsmanship" },
-            new() { Letter = "F", Label = "Details of Defect Found" },
-        };
+            var p = _inspection.Packaging;
+            _data.Packaging.ItemNumber         = p.ItemNumber         ?? "";
+            _data.Packaging.CartonNumber       = p.CartonNumber       ?? "";
+            _data.Packaging.PackagingType      = p.PackagingType      ?? "";
+            _data.Packaging.CartonColor        = p.CartonColor        ?? "";
+            _data.Packaging.CardboardType      = p.CardboardType      ?? "";
+            _data.Packaging.ShippingMark       = p.ShippingMark       ?? "";
+            _data.Packaging.HasBarcode         = p.HasBarcode;
+            _data.Packaging.InnerPackingQty    = p.InnerPackingQty    ?? 0;
+            _data.Packaging.InnerPackingRemark = p.InnerPackingRemark ?? "";
+            _data.Packaging.OuterL             = p.OuterL             ?? 0;
+            _data.Packaging.OuterW             = p.OuterW             ?? 0;
+            _data.Packaging.OuterH             = p.OuterH             ?? 0;
+            _data.Packaging.OuterWeight        = p.OuterWeight        ?? 0;
+        }
 
-        // AQL defaults from inspection
-        _data.Aql.Quantity       = _inspection.AqlQuantity > 0 ? _inspection.AqlQuantity : _inspection.TotalShipmentQty;
-        _data.Aql.InspectionLevel= _inspection.AqlLevel ?? "II";
-        _data.Aql.CriticalAql   = _inspection.AqlCritical ?? "Not Allowed";
-        _data.Aql.MajorAql      = _inspection.AqlMajor ?? "2.5";
-        _data.Aql.MinorAql      = _inspection.AqlMinor ?? "4.0";
+        // Parse CartonNumber → số carton để lặp B-i đến B-vi
+        _cartonCount = 1;
+        if (!string.IsNullOrEmpty(_data.Packaging.CartonNumber) &&
+            int.TryParse(_data.Packaging.CartonNumber.Trim(), out var parsedCarton) && parsedCarton > 0)
+            _cartonCount = parsedCarton;
+
+        // Khởi tạo CartonDataList cho từng carton
+        _data.Packaging.CartonDataList = Enumerable.Range(1, _cartonCount)
+            .Select(i => new QcCartonData
+            {
+                CartonIndex  = i,
+                SizePhotos         = new List<string> { "", "", "" },
+                WeightPhotos       = new List<string> { "", "", "" },
+                ShippingMarkPhotos = new List<string> { "", "", "" },
+                PkgLabelPhotos     = new List<string> { "", "", "" },
+                AssemblyPhotos     = new List<string> { "", "", "" },
+                HardwarePhotos     = new List<string> { "", "", "" },
+            }).ToList();
+
+        _data.Aql.Quantity        = _inspection.AqlQuantity > 0 ? _inspection.AqlQuantity : _inspection.TotalShipmentQty;
+        _data.Aql.InspectionLevel = _inspection.AqlLevel ?? "II";
+        _data.Aql.CriticalAql     = _inspection.AqlCritical ?? "Not Allowed";
+        _data.Aql.MajorAql        = _inspection.AqlMajor ?? "2.5";
+        _data.Aql.MinorAql        = _inspection.AqlMinor ?? "4.0";
         RecalcAql();
 
-        // Performance tests from template
         if (_inspection.PerformanceTests?.Any() == true)
         {
             _data.PerformanceTests = _inspection.PerformanceTests.Select(pt => new QcPerformanceTest
@@ -928,21 +1138,23 @@ else
                 TestItem        = pt.TestItem ?? "",
                 TestRequirement = pt.TestRequirement ?? "",
                 Category        = pt.Category ?? "",
-                Photos          = new List<string>()
+                Photos          = new List<string> { "", "", "", "" }
             }).ToList();
         }
         else
         {
-            // Default: transport drop test
             _data.PerformanceTests = new List<QcPerformanceTest>
             {
                 new() { TestItem = "Transportation drop test",
                         TestRequirement = "No critical & major issue found on package/product after 9 times drop. Please refer to ISTA 3A drop test standard.",
-                        Photos = new List<string>() }
+                        Photos = new List<string> { "", "", "", "" } }
             };
         }
 
-        // Colour swatches from template
+        // Sinh steps động SAU KHI đã load PerformanceTests (để BuildSteps biết đúng số bước D)
+        _perfValidated = new bool[Math.Max(1, _data.PerformanceTests.Count)];
+        BuildSteps();
+
         if (_inspection.ColourSwatches?.Any() == true)
         {
             _data.ProductSpec.ColourSwatches = _inspection.ColourSwatches
@@ -956,11 +1168,9 @@ else
             };
         }
 
-        // Ensure at least 3 size rows
         for (int i = _data.ProductSpec.SizeRows.Count; i < 3; i++)
             _data.ProductSpec.SizeRows.Add(new QcSizeRow());
 
-        // Packaging photo lists
         EnsureList(_data.Packaging.CartonSizes, 0);
         EnsurePhotoList(_data.Packaging.Photos, 3);
         EnsurePhotoList(_data.Packaging.ShippingMarkPhotos, 3);
@@ -977,13 +1187,199 @@ else
     void EnsurePhotoList(List<string> list, int count)
     { while (list.Count < count) list.Add(""); }
 
+    // ── Build steps động theo carton count ──
+    // Step layout: [Overview][OverallConclusion][QuantityConformity][PackagingID]
+    //              [B-i..B-vi × cartonCount]
+    //              [C-i][C-ii][C-iii][D][E][F-Crit][F-Maj][F-Min][Final]
+    const int STEP_OVERVIEW    = 0;
+    const int STEP_CONCLUSION  = 1;
+    const int STEP_QTY         = 2;
+    const int STEP_PKG_ID      = 3;
+    // B-i=4, B-ii=5, B-iii=6, B-iv=7, B-v=8, B-vi=9  (repeated × cartonCount)
+    const int B_STEPS_PER_CARTON = 6; // B-i đến B-vi
+
+    void BuildSteps()
+    {
+        var list = new List<StepDef>
+        {
+            new("", "Product Overview",       false),
+            new("", "Overall Conclusion",     false),
+            new("", "A. Quantity Conformity", false),
+            new("", "B. Packaging & ID",      false),
+        };
+
+        for (int c = 1; c <= _cartonCount; c++)
+        {
+            string suffix = _cartonCount > 1 ? $" (Carton {c})" : "";
+            list.Add(new("", $"B-i. Carton Size{suffix}",          true));
+            list.Add(new("", $"B-ii. Shipping Mark{suffix}",       true));
+            list.Add(new("", $"B-iii. Carton Weight{suffix}",      true));
+            list.Add(new("", $"B-iv. Pkg & Label{suffix}",         true));
+            list.Add(new("", $"B-v. Assembly{suffix}",             true));
+            list.Add(new("", $"B-vi. Hardware{suffix}",            true));
+        }
+
+        list.Add(new("", "C-i. Product Size",         false));
+        list.Add(new("", "C-ii. Golden Sample",       true));
+        list.Add(new("", "C-iii. Colour Swatch",      true));
+        // D: mỗi performance test = 1 step riêng
+        for (int d = 0; d < _data.PerformanceTests.Count; d++)
+        {
+            var testName = _data.PerformanceTests[d].TestItem;
+            var suffix = _data.PerformanceTests.Count > 1 ? $" ({d+1}/{_data.PerformanceTests.Count})" : "";
+            list.Add(new("", $"D. {(string.IsNullOrEmpty(testName) ? "Performance Test" : testName)}{suffix}", true));
+        }
+        if (!_data.PerformanceTests.Any())
+            list.Add(new("", "D. Performance Testing", true));
+        list.Add(new("", "E. Appearance & AQL",       false));
+        list.Add(new("", "F. Critical Defects",       true));
+        list.Add(new("", "F. Major Defects",          true));
+        list.Add(new("", "F. Minor Defects",          true));
+        list.Add(new("", "Inspector Comments",          false));
+        list.Add(new("", "Compliance & Signature",        false));
+
+        _steps = list;
+        for (int i = 0; i < _steps.Count; i++)
+            _steps[i] = _steps[i] with { StepLabel = $"Step {i+1} of {_steps.Count}" };
+
+        // Đảm bảo _perfValidated đủ kích thước
+        int perfCount2 = Math.Max(1, _data.PerformanceTests.Count);
+        if (_perfValidated.Length != perfCount2)
+            _perfValidated = new bool[perfCount2];
+    }
+
+    // Lấy carton index hiện tại và sub-step trong B (0=B-i .. 5=B-vi)
+    // Trả về (-1, -1) nếu không phải bước B
+    (int cartonIdx, int bSubStep) GetCurrentCartonStep()
+    {
+        int idx = _currentStepIdx - (STEP_PKG_ID + 1); // offset sau B. Packaging & ID
+        if (idx < 0) return (-1, -1);
+        int totalBSteps = _cartonCount * B_STEPS_PER_CARTON;
+        if (idx >= totalBSteps) return (-1, -1);
+        return (idx / B_STEPS_PER_CARTON, idx % B_STEPS_PER_CARTON);
+    }
+
     // ── Navigation ──
     void HandleBack()
     {
         if (_currentStepIdx > 0) _currentStepIdx--;
         else GoBack();
     }
-    void HandleNext() { if (_currentStepIdx < _steps.Count - 1) _currentStepIdx++; }
+    bool _qtyValidated    = false;
+    bool _sizeValidated   = false;
+    bool _goldenValidated = false;
+    bool _swatchValidated = false;
+    bool[] _perfValidated = Array.Empty<bool>();
+
+    void HandleNext()
+    {
+        // Validate Step 2 — A. Quantity Conformity
+        if (_currentStepIdx == 2)
+        {
+            _qtyValidated = true;
+            var qc = _data.QuantityConformity;
+            bool hasPhoto = qc.Photos.Any(p => !string.IsNullOrEmpty(p));
+            // Chỉ cần 1 trong 2 (Packed hoặc Not Packed) > 0
+            bool presentedOk = (qc.PresentedPacked + qc.PresentedNotPacked) > 0;
+            bool cartonsOk   = (qc.CartonsPacked   + qc.CartonsNotPacked)   > 0;
+            bool fieldsOk    = presentedOk && cartonsOk;
+            if (!fieldsOk || !hasPhoto)
+            {
+                if (!fieldsOk)
+                    _saveMsg = "Please enter at least one value for Presented Qty and Number of Cartons.";
+                else
+                    _saveMsg = "Please take at least 1 photo.";
+                _saveError = true;
+                StateHasChanged();
+                return;
+            }
+            _saveMsg = "";
+            _saveError = false;
+        }
+        // Validate D — Performance Testing: bắt buộc tối thiểu 2 hình
+        int dBase = 7 + _cartonCount * B_STEPS_PER_CARTON;
+        if (_currentStepIdx >= dBase && _currentStepIdx < dBase + Math.Max(1, _data.PerformanceTests.Count))
+        {
+            int dIdx = _currentStepIdx - dBase;
+            if (dIdx < _data.PerformanceTests.Count)
+            {
+                if (_perfValidated.Length > dIdx) _perfValidated[dIdx] = true;
+                int perfCount = _data.PerformanceTests[dIdx].Photos.Count(p => !string.IsNullOrEmpty(p));
+                if (perfCount < 2)
+                {
+                    _saveMsg = $"Please take at least 2 photos for: {_data.PerformanceTests[dIdx].TestItem}";
+                    _saveError = true;
+                    StateHasChanged();
+                    return;
+                }
+                _saveMsg = ""; _saveError = false;
+            }
+        }
+        // Validate C-ii — Golden Sample: bắt buộc tối thiểu 2 hình
+        if (_currentStepIdx == 5 + _cartonCount * B_STEPS_PER_CARTON)
+        {
+            _goldenValidated = true;
+            int goldenCount = _data.ProductSpec.GoldenPhotos.Count(p => !string.IsNullOrEmpty(p));
+            if (goldenCount < 2)
+            {
+                _saveMsg = "Please take at least 2 photos for Golden Sample.";
+                _saveError = true;
+                StateHasChanged();
+                return;
+            }
+            _saveMsg = ""; _saveError = false;
+        }
+        // Validate C-iii — Colour Swatch: bắt buộc tối thiểu 2 hình
+        if (_currentStepIdx == 6 + _cartonCount * B_STEPS_PER_CARTON)
+        {
+            _swatchValidated = true;
+            int swatchCount = _data.ProductSpec.SwatchPhotos.Count(p => !string.IsNullOrEmpty(p));
+            if (swatchCount < 2)
+            {
+                _saveMsg = "Please take at least 2 photos for Colour Swatch.";
+                _saveError = true;
+                StateHasChanged();
+                return;
+            }
+            _saveMsg = ""; _saveError = false;
+        }
+        // Validate C-i — Product Size: bắt buộc tối thiểu 2 hình
+        if (_currentStepIdx == 4 + _cartonCount * B_STEPS_PER_CARTON)
+        {
+            _sizeValidated = true;
+            int sizeCount = _data.ProductSpec.SizePhotos.Count(p => !string.IsNullOrEmpty(p));
+            if (sizeCount < 2)
+            {
+                _saveMsg = "Please take at least 2 photos for Product Size.";
+                _saveError = true;
+                StateHasChanged();
+                return;
+            }
+            _saveMsg = ""; _saveError = false;
+        }
+
+        if (_currentStepIdx < _steps.Count - 1) _currentStepIdx++;
+        // Khi vào F step, đảm bảo có default defect cho mỗi loại
+        EnsureDefaultDefects();
+    }
+
+    void EnsureDefaultDefects()
+    {
+        int fBase2 = 8 + _cartonCount * B_STEPS_PER_CARTON + Math.Max(1, _data.PerformanceTests.Count);
+        bool isFStep = _currentStepIdx < _steps.Count - 2 &&
+                      (_currentStepIdx == fBase2 || _currentStepIdx == fBase2+1 || _currentStepIdx == fBase2+2);
+        if (!isFStep) return;
+        foreach (var t in new[] { "Critical", "Major", "Minor" })
+        {
+            if (!_data.Defects.Any(d => d.Type == t))
+                _data.Defects.Add(new QcDefect
+                {
+                    Type    = t,
+                    Photos  = new List<string> { "", "" },
+                    Remarks = new List<string> { "", "" }
+                });
+        }
+    }
     void SkipStep()   { if (_currentStepIdx < _steps.Count - 1) _currentStepIdx++; }
     void GoBack()     => Navigation.NavigateTo("/inspection-schedule");
 
@@ -1008,15 +1404,6 @@ else
         StateHasChanged();
     }
 
-    // Đảm bảo URL ảnh server luôn bắt đầu bằng /
-    // Base64 data: URL thì giữ nguyên
-    static string NormalizeUrl(string? url)
-    {
-        if (string.IsNullOrEmpty(url)) return "";
-        if (url.StartsWith("data:") || url.StartsWith("http")) return url;
-        return url.StartsWith("/") ? url : "/" + url;
-    }
-
     void SetAql(string defectType, string value)
     {
         if (defectType == "Critical") _data.Aql.CriticalAql = value;
@@ -1027,7 +1414,6 @@ else
 
     string GetAqlCodeLetter(int qty, string level)
     {
-        // ANSI/ASQ Z1.4 General Inspection Level table
         if (level == "I")
         {
             if (qty <= 8) return "A";
@@ -1075,7 +1461,6 @@ else
     (int Accept, int Reject) GetAcceptReject(string code, string aql)
     {
         if (aql == "Not Allowed") return (0, 1);
-        // Simplified AQL table (Level II normal inspection)
         return (aql, code) switch
         {
             ("1.0", "D") => (0, 1), ("1.0", "E") => (0, 1), ("1.0", "F") => (1, 2),
@@ -1098,25 +1483,51 @@ else
     }
 
     // ── Photo helpers ──
-    // ── Đọc file ảnh → base64 data URL ──────────────────────────
-    async Task<string> ReadFileAsDataUrl(InputFileChangeEventArgs e)
+    // Upload file lên server, trả về URL tương đối (uploads/photos/xxx.jpg)
+    async Task<string> UploadPhoto(InputFileChangeEventArgs e)
     {
         var file = e.File;
         if (file == null) return "";
-        const long maxSize = 5 * 1024 * 1024;
-        await using var stream = file.OpenReadStream(maxSize);
-        using var ms = new System.IO.MemoryStream();
-        await stream.CopyToAsync(ms);
-        var base64 = Convert.ToBase64String(ms.ToArray());
-        return $"data:{file.ContentType};base64,{base64}";
+        try
+        {
+            const long maxSize = 10 * 1024 * 1024; // 10MB
+            using var content2 = new MultipartFormDataContent();
+            var stream = file.OpenReadStream(maxSize);
+            var sc = new StreamContent(stream);
+            sc.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue(file.ContentType);
+            content2.Add(sc, "file", file.Name);
+            var resp = await Http.PostAsync("api/upload/photo", content2);
+            if (!resp.IsSuccessStatusCode)
+            {
+                _saveMsg = $"Upload failed: {(int)resp.StatusCode}";
+                _saveError = true;
+                return "";
+            }
+            var result = await resp.Content.ReadFromJsonAsync<UploadResult>();
+            return result?.Url ?? "";
+        }
+        catch (Exception ex)
+        {
+            _saveMsg = $"Upload error: {ex.Message}";
+            _saveError = true;
+            return "";
+        }
     }
 
-    // ── Photo handlers — mỗi loại section gọi thẳng, không qua JS ──
+    // Dùng cho các chỗ inline lambda cần ReadFileAsDataUrl
+    async Task<string> ReadFileAsDataUrl(InputFileChangeEventArgs e)
+        => await UploadPhoto(e);
+
+    class UploadResult
+    {
+        [JsonPropertyName("url")] public string Url { get; set; } = "";
+    }
+
     async Task HandlePhoto(InputFileChangeEventArgs e, char section, int slot)
     {
         try
         {
-            var url = await ReadFileAsDataUrl(e);
+            var url = await UploadPhoto(e);
             if (string.IsNullOrEmpty(url)) return;
             switch (section)
             {
@@ -1136,7 +1547,7 @@ else
 
     async Task HandleSizeRowPhoto(InputFileChangeEventArgs e, QcSizeRow row)
     {
-        try { row.PhotoUrl = await ReadFileAsDataUrl(e); StateHasChanged(); }
+        try { row.PhotoUrl = await UploadPhoto(e); StateHasChanged(); }
         catch (Exception ex) { _saveMsg = $"Lỗi ảnh: {ex.Message}"; _saveError = true; }
     }
 
@@ -1144,8 +1555,8 @@ else
     {
         try
         {
-            var url = await ReadFileAsDataUrl(e);
-            SetPhotoInList(pt.Photos, slot, url);
+            var url = await UploadPhoto(e);
+            if (!string.IsNullOrEmpty(url)) SetPhotoInList(pt.Photos, slot, url);
             StateHasChanged();
         }
         catch (Exception ex) { _saveMsg = $"Lỗi ảnh: {ex.Message}"; _saveError = true; }
@@ -1153,8 +1564,35 @@ else
 
     async Task HandleDefectPhoto(InputFileChangeEventArgs e, QcDefect d)
     {
-        try { d.PhotoUrl = await ReadFileAsDataUrl(e); StateHasChanged(); }
-        catch (Exception ex) { _saveMsg = $"Lỗi ảnh: {ex.Message}"; _saveError = true; }
+        try
+        {
+            var url = await UploadPhoto(e);
+            if (!string.IsNullOrEmpty(url)) d.Photos.Add(url);
+            StateHasChanged();
+        }
+        catch (Exception ex) { _saveMsg = $"Photo error: {ex.Message}"; _saveError = true; }
+    }
+
+    // Upload ảnh cho defect slot cụ thể — đảm bảo cập nhật đúng object
+    async Task UploadDefectPhoto(InputFileChangeEventArgs e, QcDefect defect, int slotIdx)
+    {
+        try
+        {
+            var url = await UploadPhoto(e);
+            if (string.IsNullOrEmpty(url)) return;
+            // Ensure Photo slot exists
+            while (defect.Photos.Count <= slotIdx)
+                defect.Photos.Add(string.Empty);
+            defect.Photos[slotIdx] = url;
+            // Ensure Remarks slot exists (sync with Photos)
+            while (defect.Remarks.Count <= slotIdx)
+                defect.Remarks.Add(string.Empty);
+            // Force update reference in _data.Defects list
+            var idx = _data.Defects.IndexOf(defect);
+            if (idx >= 0) _data.Defects[idx] = defect;
+            StateHasChanged();
+        }
+        catch (Exception ex) { _saveMsg = $"Photo error: {ex.Message}"; _saveError = true; }
     }
 
     static void SetPhotoInList(List<string> list, int slot, string url)
@@ -1173,11 +1611,72 @@ else
         _data.ProductSpec.ColourSwatches.Add(new QcColourSwatch { No = no });
     }
     void AddDefect(string type) => _data.Defects.Add(new QcDefect { Type = type });
-    void OpenSignature() { /* launch signature pad modal */ }
+    void OpenSignature() { }
+
+    bool _finalValidated = false;
+    bool _sigValidated   = false;
+
+    async Task SaveSignature()
+    {
+        var dataUrl = await JS.InvokeAsync<string>("getSignatureDataUrl", "sig-canvas");
+        if (string.IsNullOrEmpty(dataUrl) || dataUrl == "data:,") return;
+
+        try
+        {
+            // Convert base64 dataUrl → byte[] → upload lên server
+            var base64 = dataUrl.Substring(dataUrl.IndexOf(',') + 1);
+            var bytes   = Convert.FromBase64String(base64);
+            using var ms      = new System.IO.MemoryStream(bytes);
+            using var content = new MultipartFormDataContent();
+            var sc = new StreamContent(ms);
+            sc.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("image/png");
+            content.Add(sc, "file", $"signature_{InspectionId}.png");
+            var resp = await Http.PostAsync("api/upload/photo", content);
+            if (resp.IsSuccessStatusCode)
+            {
+                var result = await resp.Content.ReadFromJsonAsync<UploadResult>();
+                _data.SignatureUrl = result?.Url ?? dataUrl; // fallback về dataUrl nếu upload lỗi
+            }
+            else
+            {
+                // Upload lỗi → vẫn lưu dataUrl tạm để không mất chữ ký
+                _data.SignatureUrl = dataUrl;
+            }
+        }
+        catch
+        {
+            // Fallback: lưu dataUrl nếu exception
+            _data.SignatureUrl = dataUrl;
+        }
+        StateHasChanged();
+    }
+
+    async Task ClearCanvas()
+    {
+        await JS.InvokeVoidAsync("clearCanvas", "sig-canvas");
+    }
 
     // ── Save to API ──
     async Task SaveAndDone()
     {
+        // Bắt buộc chọn Final Result
+        _finalValidated = true;
+        if (string.IsNullOrEmpty(_data.FinalResult))
+        {
+            _saveMsg = "Please select a Final Result (PASSED / FAILED / NA).";
+            _saveError = true;
+            StateHasChanged();
+            return;
+        }
+        // Bắt buộc có chữ ký
+        _sigValidated = true;
+        if (string.IsNullOrEmpty(_data.SignatureUrl))
+        {
+            _saveMsg = "Please add a signature before completing.";
+            _saveError = true;
+            StateHasChanged();
+            return;
+        }
         _saving = true;
         _saveMsg = "";
         try
@@ -1193,7 +1692,7 @@ else
             }
             else
             {
-                _saveMsg = $"Error: {(int)resp.StatusCode}";
+                _saveMsg = $"Save failed ({(int)resp.StatusCode}): {await resp.Content.ReadAsStringAsync()}";
                 _saveError = true;
             }
         }
@@ -1210,16 +1709,14 @@ else
     {
         return new
         {
-            // ── Fields lưu thẳng vào DB column (không vào QcResultJson) ──
             inspectionLocation  = _data.InspectionLocation,
             inspectionReference = _data.InspectionReference,
             inspectorComments   = _data.InspectorComments,
-            finalResult         = _data.FinalResult,         // → Inspection.FinalResult
-            signatureUrl        = _data.SignatureUrl,        // → Inspection.SignatureUrl
-            inspectionDate      = DateTime.Now,              // → Inspection.InspectionDate
+            finalResult         = _data.FinalResult,
+            signatureUrl        = _data.SignatureUrl,
+            inspectionDate      = DateTime.Now,
             photo1Url           = _data.Photo1Url,
             photo2Url           = _data.Photo2Url,
-            // ── QC data (serialize vào QcResultJson) ──
             overallConclusions  = _data.OverallConclusions.Select(oc => new
             {
                 letter     = oc.Letter,
@@ -1259,34 +1756,62 @@ else
                 hardwareResult      = _data.Packaging.HardwareResult,
                 cartonSizes         = _data.Packaging.CartonSizes,
                 cartonWeights       = _data.Packaging.CartonWeights,
+                // Photos theo từng carton (B-i đến B-vi)
+                cartonDataList      = _data.Packaging.CartonDataList.Select(cd => new
+                {
+                    cartonIndex          = cd.CartonIndex,
+                    sizeL                = cd.SizeL,
+                    sizeW                = cd.SizeW,
+                    sizeH                = cd.SizeH,
+                    cartonSizeResult     = cd.CartonSizeResult,
+                    sizePhotos           = cd.SizePhotos.Where(p => !string.IsNullOrEmpty(p)).ToList(),
+                    shippingMarkResult   = cd.ShippingMarkResult,
+                    shippingMarkPhotos   = cd.ShippingMarkPhotos.Where(p => !string.IsNullOrEmpty(p)).ToList(),
+                    cartonWeightResult   = cd.CartonWeightResult,
+                    weight               = cd.Weight,
+                    weightPhotos         = cd.WeightPhotos.Where(p => !string.IsNullOrEmpty(p)).ToList(),
+                    pkgLabelResult       = cd.PkgLabelResult,
+                    pkgLabelPhotos       = cd.PkgLabelPhotos.Where(p => !string.IsNullOrEmpty(p)).ToList(),
+                    assemblyResult       = cd.AssemblyResult,
+                    assemblyPhotos       = cd.AssemblyPhotos.Where(p => !string.IsNullOrEmpty(p)).ToList(),
+                    hardwareResult       = cd.HardwareResult,
+                    hardwarePhotos       = cd.HardwarePhotos.Where(p => !string.IsNullOrEmpty(p)).ToList(),
+                }).ToList(),
             },
             productSpec = new
             {
-                specL             = _data.ProductSpec.SpecL,
-                specW             = _data.ProductSpec.SpecW,
-                specH             = _data.ProductSpec.SpecH,
-                additionalText    = _data.ProductSpec.AdditionalText,
-                sizeResult        = _data.ProductSpec.SizeResult,
-                goldenResult      = _data.ProductSpec.GoldenResult,
-                sizeRows          = _data.ProductSpec.SizeRows,
-                colourSwatches    = _data.ProductSpec.ColourSwatches,
+                specL          = _data.ProductSpec.SpecL,
+                specW          = _data.ProductSpec.SpecW,
+                specH          = _data.ProductSpec.SpecH,
+                additionalText = _data.ProductSpec.AdditionalText,
+                sizeResult     = _data.ProductSpec.SizeResult,
+                sizePhotos     = _data.ProductSpec.SizePhotos.Where(p => !string.IsNullOrEmpty(p)).ToList(),
+                goldenResult   = _data.ProductSpec.GoldenResult,
+                goldenPhotos   = _data.ProductSpec.GoldenPhotos.Where(p => !string.IsNullOrEmpty(p)).ToList(),
+                swatchPhotos   = _data.ProductSpec.SwatchPhotos.Where(p => !string.IsNullOrEmpty(p)).ToList(),
+                sizeRows       = _data.ProductSpec.SizeRows.Select(r => new
+                {
+                    photoUrl = r.PhotoUrl,
+                    l = r.L, w = r.W, h = r.H, note = r.Note
+                }).ToList(),
+                colourSwatches = _data.ProductSpec.ColourSwatches,
             },
             aql = new
             {
-                quantity         = _data.Aql.Quantity,
-                inspectionLevel  = _data.Aql.InspectionLevel,
-                criticalAql      = _data.Aql.CriticalAql,
-                majorAql         = _data.Aql.MajorAql,
-                minorAql         = _data.Aql.MinorAql,
-                criticalFound    = _data.Aql.CriticalFound,
-                majorFound       = _data.Aql.MajorFound,
-                minorFound       = _data.Aql.MinorFound,
+                quantity           = _data.Aql.Quantity,
+                inspectionLevel    = _data.Aql.InspectionLevel,
+                criticalAql        = _data.Aql.CriticalAql,
+                majorAql           = _data.Aql.MajorAql,
+                minorAql           = _data.Aql.MinorAql,
+                criticalFound      = _data.Aql.CriticalFound,
+                majorFound         = _data.Aql.MajorFound,
+                minorFound         = _data.Aql.MinorFound,
                 criticalSampleSize = _data.Aql.CriticalSampleSize,
                 majorSampleSize    = _data.Aql.MajorSampleSize,
                 minorSampleSize    = _data.Aql.MinorSampleSize,
-                criticalAccept   = _data.Aql.CriticalAccept,
-                majorAccept      = _data.Aql.MajorAccept,
-                minorAccept      = _data.Aql.MinorAccept,
+                criticalAccept     = _data.Aql.CriticalAccept,
+                majorAccept        = _data.Aql.MajorAccept,
+                minorAccept        = _data.Aql.MinorAccept,
             },
             performanceTests = _data.PerformanceTests.Select(pt => new
             {
@@ -1298,12 +1823,14 @@ else
                 result          = pt.Result,
                 photos          = pt.Photos
             }).ToArray(),
-            defects = _data.Defects.Select(d => new
-            {
-                type     = d.Type,
-                photoUrl = d.PhotoUrl,
-                remark   = d.Remark
-            }).ToArray()
+            defects = _data.Defects
+                .Select(d => new
+                {
+                    type    = d.Type,
+                    photos  = d.Photos.Where(p => !string.IsNullOrEmpty(p)).ToList(),
+                    remarks = d.Remarks.Take(d.Photos.Count).ToList()
+                })
+                .ToArray()
         };
     }
 
@@ -1311,29 +1838,60 @@ else
 
     class InspectionDetailDto
     {
-        [JsonPropertyName("id")]                public int    Id                 { get; set; }
-        [JsonPropertyName("customerName")]      public string CustomerName       { get; set; } = "";
-        [JsonPropertyName("customerId")]        public string? CustomerId        { get; set; }
-        [JsonPropertyName("vendorName")]        public string VendorName         { get; set; } = "";
-        [JsonPropertyName("vendorId")]          public string? VendorId          { get; set; }
-        [JsonPropertyName("inspectionType")]    public string InspectionType     { get; set; } = "";
-        [JsonPropertyName("inspectionDate")]    public DateTime InspectionDate   { get; set; }
-        [JsonPropertyName("productCategory")]   public string? ProductCategory   { get; set; }
-        [JsonPropertyName("productName")]       public string? ProductName       { get; set; }
-        [JsonPropertyName("poNumber")]          public string? PoNumber          { get; set; }
-        [JsonPropertyName("itemNumber")]        public string? ItemNumber        { get; set; }
-        [JsonPropertyName("totalShipmentQty")]  public int    TotalShipmentQty  { get; set; }
-        [JsonPropertyName("totalCartonBoxes")]  public int    TotalCartonBoxes  { get; set; }
-        [JsonPropertyName("inspectorName")]     public string InspectorName     { get; set; } = "";
-        [JsonPropertyName("aqlQuantity")]       public int    AqlQuantity       { get; set; }
-        [JsonPropertyName("aqlLevel")]          public string? AqlLevel         { get; set; }
-        [JsonPropertyName("aqlCritical")]       public string? AqlCritical      { get; set; }
-        [JsonPropertyName("aqlMajor")]          public string? AqlMajor         { get; set; }
-        [JsonPropertyName("aqlMinor")]          public string? AqlMinor         { get; set; }
-        [JsonPropertyName("performanceTests")]  public List<PtDto>? PerformanceTests { get; set; }
-        [JsonPropertyName("colourSwatches")]    public List<string>? ColourSwatches  { get; set; }
-        [JsonPropertyName("photo1Url")]         public string? Photo1Url            { get; set; }
-        [JsonPropertyName("photo2Url")]         public string? Photo2Url            { get; set; }
+        [JsonPropertyName("id")]               public int     Id               { get; set; }
+        [JsonPropertyName("customerName")]     public string  CustomerName     { get; set; } = "";
+        [JsonPropertyName("customerId")]       public string? CustomerId       { get; set; }
+        [JsonPropertyName("vendorName")]       public string  VendorName       { get; set; } = "";
+        [JsonPropertyName("vendorId")]         public string? VendorId         { get; set; }
+        [JsonPropertyName("inspectionType")]   public string  InspectionType   { get; set; } = "";
+        [JsonPropertyName("inspectionDate")]   public DateTime InspectionDate  { get; set; }
+        [JsonPropertyName("productCategory")] public string? ProductCategory   { get; set; }
+        [JsonPropertyName("productName")]      public string? ProductName      { get; set; }
+        [JsonPropertyName("poNumber")]         public string? PoNumber         { get; set; }
+        [JsonPropertyName("itemNumber")]       public string? ItemNumber       { get; set; }
+        [JsonPropertyName("totalShipmentQty")] public int    TotalShipmentQty { get; set; }
+        [JsonPropertyName("totalCartonBoxes")] public int    TotalCartonBoxes { get; set; }
+        [JsonPropertyName("inspectorName")]    public string  InspectorName    { get; set; } = "";
+        [JsonPropertyName("inspectorId")]      public string? InspectorId      { get; set; }
+        [JsonPropertyName("inspectionLocation")] public string? InspectionLocation { get; set; }
+        [JsonPropertyName("aqlQuantity")]      public int     AqlQuantity      { get; set; }
+        [JsonPropertyName("aqlLevel")]         public string? AqlLevel         { get; set; }
+        [JsonPropertyName("aqlCritical")]      public string? AqlCritical      { get; set; }
+        [JsonPropertyName("aqlMajor")]         public string? AqlMajor         { get; set; }
+        [JsonPropertyName("aqlMinor")]         public string? AqlMinor         { get; set; }
+        [JsonPropertyName("performanceTests")]    public List<PtDto>?    PerformanceTests    { get; set; }
+        [JsonPropertyName("colourSwatches")]      public List<string>?   ColourSwatches      { get; set; }
+        [JsonPropertyName("photo1Url")]           public string? Photo1Url                   { get; set; }
+        [JsonPropertyName("photo2Url")]           public string? Photo2Url                   { get; set; }
+        [JsonPropertyName("overallConclusions")]  public List<OcDto>?    OverallConclusions  { get; set; }
+        [JsonPropertyName("packaging")]           public PackagingDto?   Packaging           { get; set; }
+    }
+
+    class PackagingDto
+    {
+        [JsonPropertyName("itemNumber")]          public string? ItemNumber         { get; set; }
+        [JsonPropertyName("cartonNumber")]        public string? CartonNumber       { get; set; }
+        [JsonPropertyName("packagingType")]       public string? PackagingType      { get; set; }
+        [JsonPropertyName("cartonColor")]         public string? CartonColor        { get; set; }
+        [JsonPropertyName("cardboardType")]       public string? CardboardType      { get; set; }
+        [JsonPropertyName("shippingMark")]        public string? ShippingMark       { get; set; }
+        [JsonPropertyName("hasBarcode")]          public bool    HasBarcode         { get; set; }
+        [JsonPropertyName("innerPackingQty")]     public int?    InnerPackingQty    { get; set; }
+        [JsonPropertyName("innerPackingRemark")]  public string? InnerPackingRemark { get; set; }
+        [JsonPropertyName("outerL")]              public double? OuterL             { get; set; }
+        [JsonPropertyName("outerW")]              public double? OuterW             { get; set; }
+        [JsonPropertyName("outerH")]              public double? OuterH             { get; set; }
+        [JsonPropertyName("outerWeight")]         public double? OuterWeight        { get; set; }
+        [JsonPropertyName("assemblyInstruction")] public bool    AssemblyInstruction { get; set; }
+        [JsonPropertyName("hardware")]            public bool    Hardware           { get; set; }
+    }
+
+    class OcDto
+    {
+        [JsonPropertyName("letter")]     public string  Letter     { get; set; } = "";
+        [JsonPropertyName("label")]      public string  Label      { get; set; } = "";
+        [JsonPropertyName("compliance")] public string  Compliance { get; set; } = "";
+        [JsonPropertyName("remark")]     public string? Remark     { get; set; }
     }
 
     class PtDto
@@ -1344,24 +1902,23 @@ else
         [JsonPropertyName("remark")]          public string? Remark          { get; set; }
     }
 
-    // ── Form data models ──
     class QcFormData
     {
-        public string InspectionLocation  { get; set; } = "";
-        public string InspectionReference { get; set; } = "";
-        public string? Photo1Url          { get; set; }
-        public string? Photo2Url          { get; set; }
-        public string InspectorComments   { get; set; } = "";
-        public string FinalResult         { get; set; } = "";
-        public string? SignatureUrl       { get; set; }
+        public string  InspectionLocation  { get; set; } = "";
+        public string  InspectionReference { get; set; } = "";
+        public string? Photo1Url           { get; set; }
+        public string? Photo2Url           { get; set; }
+        public string  InspectorComments   { get; set; } = "";
+        public string  FinalResult         { get; set; } = "";
+        public string? SignatureUrl        { get; set; }
 
-        public List<QcOverallConclusion>  OverallConclusions { get; set; } = new();
-        public QcQuantityConformity       QuantityConformity { get; set; } = new();
-        public QcPackaging                Packaging          { get; set; } = new();
-        public QcProductSpec              ProductSpec        { get; set; } = new();
-        public QcAql                      Aql                { get; set; } = new();
-        public List<QcPerformanceTest>    PerformanceTests   { get; set; } = new();
-        public List<QcDefect>             Defects            { get; set; } = new();
+        public List<QcOverallConclusion> OverallConclusions { get; set; } = new();
+        public QcQuantityConformity      QuantityConformity { get; set; } = new();
+        public QcPackaging               Packaging          { get; set; } = new();
+        public QcProductSpec             ProductSpec        { get; set; } = new();
+        public QcAql                     Aql                { get; set; } = new();
+        public List<QcPerformanceTest>   PerformanceTests   { get; set; } = new();
+        public List<QcDefect>            Defects            { get; set; } = new();
     }
 
     class QcOverallConclusion
@@ -1374,58 +1931,90 @@ else
 
     class QcQuantityConformity
     {
-        public int           ItemPerCarton       { get; set; }
-        public int           PresentedPacked     { get; set; }
-        public int           PresentedNotPacked  { get; set; }
-        public int           CartonsPacked       { get; set; }
-        public int           CartonsNotPacked    { get; set; }
-        public int           QtyNotFinished      { get; set; }
-        public List<string>  Photos              { get; set; } = new();
+        public int          ItemPerCarton      { get; set; }
+        public int          PresentedPacked    { get; set; }
+        public int          PresentedNotPacked { get; set; }
+        public int          CartonsPacked      { get; set; }
+        public int          CartonsNotPacked   { get; set; }
+        public int          QtyNotFinished     { get; set; }
+        public List<string> Photos             { get; set; } = new();
     }
 
     class QcPackaging
     {
-        public string  CartonNumber       { get; set; } = "";
-        public string  PackagingType      { get; set; } = "";
-        public string  CartonColor        { get; set; } = "";
-        public string  CardboardType      { get; set; } = "";
-        public string  ShippingMark       { get; set; } = "";
-        public bool    HasBarcode         { get; set; }
-        public int     InnerPackingQty    { get; set; }
-        public string  InnerPackingRemark { get; set; } = "";
-        public double  OuterL             { get; set; }
-        public double  OuterW             { get; set; }
-        public double  OuterH             { get; set; }
-        public double  OuterWeight        { get; set; }
-        public string  CartonSizeResult   { get; set; } = "";
-        public string  ShippingMarkResult { get; set; } = "";
-        public string  CartonWeightResult { get; set; } = "";
-        public string  PkgLabelResult     { get; set; } = "";
-        public string  AssemblyResult     { get; set; } = "";
-        public string  HardwareResult     { get; set; } = "";
+        public string ItemNumber         { get; set; } = "";
+        public string CartonNumber       { get; set; } = "";
+        public string PackagingType      { get; set; } = "";
+        public string CartonColor        { get; set; } = "";
+        public string CardboardType      { get; set; } = "";
+        public string ShippingMark       { get; set; } = "";
+        public bool   HasBarcode         { get; set; }
+        public int    InnerPackingQty    { get; set; }
+        public string InnerPackingRemark { get; set; } = "";
+        public double OuterL             { get; set; }
+        public double OuterW             { get; set; }
+        public double OuterH             { get; set; }
+        public double OuterWeight        { get; set; }
+        public string CartonSizeResult   { get; set; } = "";
+        public string ShippingMarkResult { get; set; } = "";
+        public string CartonWeightResult { get; set; } = "";
+        public string PkgLabelResult     { get; set; } = "";
+        public string AssemblyResult     { get; set; } = "";
+        public string HardwareResult     { get; set; } = "";
 
-        public List<QcCartonSize>   CartonSizes         { get; set; } = new();
-        public List<QcCartonWeight> CartonWeights       { get; set; } = new();
-        public List<string>         Photos              { get; set; } = new();
-        public List<string>         ShippingMarkPhotos  { get; set; } = new();
-        public List<string>         PkgLabelPhotos      { get; set; } = new();
-        public List<string>         AssemblyPhotos      { get; set; } = new();
-        public List<string>         HardwarePhotos      { get; set; } = new();
+        public List<QcCartonSize>   CartonSizes        { get; set; } = new();
+        public List<QcCartonWeight> CartonWeights      { get; set; } = new();
+        public List<string>         Photos             { get; set; } = new();
+        public List<string>         ShippingMarkPhotos { get; set; } = new();
+        public List<string>         PkgLabelPhotos     { get; set; } = new();
+        public List<string>         AssemblyPhotos     { get; set; } = new();
+        public List<string>         HardwarePhotos     { get; set; } = new();
+        // Dữ liệu theo từng carton (B-i đến B-vi lặp theo CartonNumber)
+        public List<QcCartonData>   CartonDataList     { get; set; } = new();
     }
 
-    class QcCartonSize  { public string CartonNo { get; set; } = ""; public double L { get; set; } public double W { get; set; } public double H { get; set; } }
-    class QcCartonWeight { public string Label { get; set; } = ""; public double Weight { get; set; } }
+    class QcCartonSize   { public string CartonNo { get; set; } = ""; public double L { get; set; } public double W { get; set; } public double H { get; set; } }
+    class QcCartonWeight { public string Label    { get; set; } = ""; public double Weight { get; set; } }
+
+    // Dữ liệu B-i đến B-vi cho từng carton
+    class QcCartonData
+    {
+        public int    CartonIndex         { get; set; }  // 1-based
+        // B-i Carton Size — 1 dòng cố định
+        public double SizeL               { get; set; }
+        public double SizeW               { get; set; }
+        public double SizeH               { get; set; }
+        public string CartonSizeResult    { get; set; } = "";
+        public List<string> SizePhotos    { get; set; } = new();
+        // B-ii Shipping Mark
+        public string ShippingMarkResult  { get; set; } = "";
+        public List<string> ShippingMarkPhotos { get; set; } = new();
+        // B-iii Carton Weight
+        public double Weight              { get; set; }
+        public string CartonWeightResult  { get; set; } = "";
+        public List<string> WeightPhotos  { get; set; } = new();
+        // B-iv Pkg Label
+        public string PkgLabelResult      { get; set; } = "";
+        public List<string> PkgLabelPhotos { get; set; } = new();
+        // B-v Assembly
+        public string AssemblyResult      { get; set; } = "";
+        public List<string> AssemblyPhotos { get; set; } = new();
+        // B-vi Hardware
+        public string HardwareResult      { get; set; } = "";
+        public List<string> HardwarePhotos { get; set; } = new();
+    }
 
     class QcProductSpec
     {
-        public double  SpecL           { get; set; }
-        public double  SpecW           { get; set; }
-        public double  SpecH           { get; set; }
-        public string  AdditionalText  { get; set; } = "";
-        public string  SizeResult      { get; set; } = "";
-        public string  GoldenResult    { get; set; } = "";
+        public double SpecL          { get; set; }
+        public double SpecW          { get; set; }
+        public double SpecH          { get; set; }
+        public string AdditionalText { get; set; } = "";
+        public string SizeResult     { get; set; } = "";
+        public string GoldenResult   { get; set; } = "";
         public List<QcSizeRow>      SizeRows       { get; set; } = new();
         public List<QcColourSwatch> ColourSwatches { get; set; } = new();
+        public List<string>         SizePhotos     { get; set; } = new() { "", "", "", "" }; // 4 ảnh C-i
         public List<string>         GoldenPhotos   { get; set; } = new();
         public List<string>         SwatchPhotos   { get; set; } = new();
     }
@@ -1448,7 +2037,7 @@ else
 
     class QcAql
     {
-        public int    Quantity           { get; set; } = 0;
+        public int    Quantity           { get; set; }
         public string InspectionLevel    { get; set; } = "II";
         public string CriticalAql        { get; set; } = "Not Allowed";
         public string MajorAql           { get; set; } = "2.5";
@@ -1473,22 +2062,21 @@ else
         public string       TestItem        { get; set; } = "";
         public string       TestRequirement { get; set; } = "";
         public int          TestQuantity    { get; set; }
-        public string       Remark          { get; set; } = "";
-        public string       Result          { get; set; } = "";
-        public List<string> Photos          { get; set; } = new();
+        public string       Remark         { get; set; } = "";
+        public string       Result         { get; set; } = "";
+        public List<string> Photos         { get; set; } = new() { "", "", "", "" }; // 4 ảnh
     }
 
     class QcDefect
     {
-        public string Type     { get; set; } = "";
-        public string PhotoUrl { get; set; } = "";
-        public string Remark   { get; set; } = "";
+        public string       Type    { get; set; } = "";
+        public List<string> Photos  { get; set; } = new() { "", "" }; // bắt đầu 2 slot
+        public List<string> Remarks { get; set; } = new() { "", "" }; // remark per ảnh
     }
 }
 
 <!-- ═══════════════════════ STYLES ═══════════════════════ -->
 <style>
-    /* ── Base ── */
     .qc-loading {
         display: flex; flex-direction: column; align-items: center;
         justify-content: center; height: 60vh; gap: 14px; color: #666;
@@ -1502,7 +2090,6 @@ else
     }
     @@keyframes spin { to { transform: rotate(360deg); } }
 
-    /* ── Progress bar ── */
     .qc-progress-wrap {
         position: sticky; top: 0; z-index: 100;
         height: 4px; background: #e8eef8;
@@ -1512,7 +2099,6 @@ else
         transition: width .4s ease;
     }
 
-    /* ── Header ── */
     .qc-header {
         display: flex; align-items: center; gap: 10px;
         padding: 12px 16px 8px;
@@ -1532,7 +2118,6 @@ else
     .qc-step-counter { font-size: 12px; color: #2D7DD2; font-weight: 700;
         background: #eef4ff; padding: 4px 10px; border-radius: 20px; }
 
-    /* ── Step dots ── */
     .qc-dots {
         display: flex; gap: 4px; padding: 8px 16px;
         background: #fff; flex-wrap: wrap;
@@ -1545,7 +2130,6 @@ else
     .qc-dot.dot-active { background: #2D7DD2; transform: scale(1.4); }
     .qc-dot.dot-done   { background: #27ae60; }
 
-    /* ── Body ── */
     .qc-body {
         padding: 12px 14px 100px;
         max-width: 680px; margin: 0 auto;
@@ -1564,13 +2148,13 @@ else
         border-bottom: 2px solid #eef4ff;
     }
 
-    /* ── Photo boxes ── */
     .qc-photo-row { display: flex; gap: 10px; margin-bottom: 14px; }
     .qc-photo-box {
         flex: 1; aspect-ratio: 4/3; background: #f0f5ff;
         border: 2px dashed #b0c8f0; border-radius: 10px;
         display: flex; align-items: center; justify-content: center;
         cursor: pointer; overflow: hidden; transition: border-color .2s;
+        position: relative;
     }
     .qc-photo-box:hover { border-color: #2D7DD2; }
     .qc-photo-add { color: #2D7DD2; font-size: 13px; font-weight: 600; }
@@ -1583,12 +2167,10 @@ else
         cursor: pointer; display: flex; align-items: center; justify-content: center;
         line-height: 1;
     }
-    .qc-photo-box { position: relative; }
     .qc-photo-readonly {
         cursor: default !important;
         border-style: solid;
         border-color: #dce6f8;
-        display: flex;
         flex-direction: column;
         align-items: center;
         justify-content: center;
@@ -1597,16 +2179,15 @@ else
     .qc-photo3-row { display: flex; gap: 8px; margin: 10px 0; }
     .qc-photo-box3 {
         flex: 1; aspect-ratio: 1/1; background: #f0f5ff;
-        cursor: pointer;
         border: 2px dashed #b0c8f0; border-radius: 8px;
         display: flex; align-items: center; justify-content: center;
         cursor: pointer; overflow: hidden;
         min-height: 80px; transition: border-color .2s;
+        position: relative;
     }
     .qc-photo-box3.tall { aspect-ratio: 3/4; }
     .qc-photo-box3:hover { border-color: #2D7DD2; }
 
-    /* ── Info table ── */
     .qc-info-table { margin-bottom: 6px; }
     .qc-info-row {
         display: flex; align-items: flex-start; gap: 10px;
@@ -1629,6 +2210,9 @@ else
     }
     .qc-info-input:focus { border-color: #2D7DD2; box-shadow: 0 0 0 3px rgba(45,125,210,.12); }
     .qc-info-input.sm { max-width: 90px; }
+    .qc-info-input.input-error { border-color: #e74c3c !important; background: #fff5f5; }
+    .qc-info-input.input-error:focus { box-shadow: 0 0 0 3px rgba(231,76,60,.12); }
+    .qc-photo-box3.photo-required { border-color: #e74c3c; background: #fff5f5; }
     .qc-info-textarea {
         flex: 1; border: 1px solid #dce6f8; border-radius: 7px;
         padding: 8px 10px; font-size: 13px; color: #1a1a2e;
@@ -1643,11 +2227,9 @@ else
     .qc-sub-lbl { font-size: 10px; color: #888; font-weight: 600; }
     .qc-lwh { flex-wrap: nowrap; }
 
-    /* ── Toggle ── */
     .qc-toggle { display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 13px; padding-top: 5px; }
     .qc-toggle input { accent-color: #2D7DD2; width: 16px; height: 16px; }
 
-    /* ── Table ── */
     .qc-table {
         width: 100%; border-collapse: collapse;
         font-size: 12px; margin-bottom: 8px;
@@ -1672,8 +2254,7 @@ else
 
     .qc-cell-input {
         width: 100%; border: 1px solid #e0e8f8; border-radius: 5px;
-        padding: 5px 6px; font-size: 12px; background: #f8faff;
-        outline: none;
+        padding: 5px 6px; font-size: 12px; background: #f8faff; outline: none;
     }
     .qc-cell-input.num { max-width: 70px; }
     .qc-cell-input:focus { border-color: #2D7DD2; }
@@ -1711,7 +2292,6 @@ else
     }
     .qc-add-row-btn:hover { background: #ddeeff; }
 
-    /* ── Result buttons ── */
     .qc-result-box {
         margin-top: 12px; padding: 10px 12px;
         background: #f8faff; border-radius: 10px;
@@ -1730,7 +2310,6 @@ else
     .qc-result-btn.res-active.res-passed { background: #27ae60; border-color: #27ae60; }
     .qc-result-btn.res-active.res-failed { background: #e74c3c; border-color: #e74c3c; }
 
-    /* ── AQL ── */
     .qc-aql-header {
         font-size: 12px; font-weight: 600; color: #888;
         border-bottom: 1px solid #eef1f8; padding-bottom: 6px; margin-bottom: 10px;
@@ -1765,17 +2344,14 @@ else
         font-size: 11px; color: #555; margin-top: 3px; }
     .red-stat { color: #e74c3c; font-weight: 700; }
 
-    /* ── Product spec ── */
     .qc-spec-header-row { display: flex; gap: 8px; flex-wrap: wrap; }
     .qc-spec-col { display: flex; flex-direction: column; gap: 4px; }
     .qc-spec-lbl { font-size: 11px; font-weight: 700; color: #2D7DD2; }
 
-    /* ── Performance ── */
     .qc-perf-block { border: 1px solid #e8eef8; border-radius: 10px;
         padding: 12px; margin-bottom: 12px; background: #fafcff; }
     .qc-perf-title { font-size: 14px; font-weight: 700; color: #1a1a2e; margin-bottom: 10px; }
 
-    /* ── Defects ── */
     .qc-defect-type { font-size: 14px; font-weight: 800; margin-bottom: 12px; }
     .def-critical { color: #e74c3c; }
     .def-major    { color: #e67e22; }
@@ -1797,7 +2373,6 @@ else
         outline: none; resize: vertical;
     }
 
-    /* ── Final page ── */
     .qc-logo-row { display: flex; align-items: center; gap: 8px; margin-bottom: 16px; }
     .qc-logo-text { font-size: 18px; font-weight: 800; color: #1a1a2e; letter-spacing: -.01em; }
     .qc-final-result-row {
@@ -1825,7 +2400,6 @@ else
         padding: 4px 10px; border-radius: 5px; cursor: pointer; font-size: 11px; }
     .qc-empty-msg { font-size: 13px; color: #aaa; text-align: center; padding: 20px; }
 
-    /* ── Bottom nav ── */
     .qc-nav-bar {
         position: fixed; bottom: 0; left: 0; right: 0;
         display: flex; gap: 8px; padding: 12px 16px;
@@ -1849,7 +2423,6 @@ else
     .btn-done:hover { box-shadow: 0 6px 18px rgba(39,174,96,.45); }
     .btn-done.saving { opacity: .7; cursor: not-allowed; }
 
-    /* ── Toast ── */
     .qc-toast {
         position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%);
         padding: 10px 24px; border-radius: 30px; font-size: 13px; font-weight: 600;
@@ -1860,7 +2433,6 @@ else
     .toast-err { background: #e74c3c; color: #fff; }
     @@keyframes fadeIn { from { opacity: 0; transform: translateX(-50%) translateY(10px); } }
 
-    /* ── Error ── */
     .qc-error { display: flex; flex-direction: column; align-items: center; padding: 60px 20px; gap: 14px; color: #888; }
     .qc-error button { background: #2D7DD2; color: #fff; border: none;
         border-radius: 8px; padding: 10px 24px; cursor: pointer; font-size: 14px; }
@@ -1870,3 +2442,60 @@ else
         .qc-info-lbl { min-width: 160px; font-size: 13px; }
     }
 </style>
+
+<script>
+    // Signature canvas
+    (function() {
+        let drawing = false;
+        let lastX = 0, lastY = 0;
+
+        function initCanvas(id) {
+            const canvas = document.getElementById(id);
+            if (!canvas || canvas._sigInited) return;
+            canvas._sigInited = true;
+            const ctx = canvas.getContext('2d');
+            ctx.strokeStyle = '#1a1a2e';
+            ctx.lineWidth = 2;
+            ctx.lineCap = 'round';
+
+            function getPos(e) {
+                const r = canvas.getBoundingClientRect();
+                const src = e.touches ? e.touches[0] : e;
+                return { x: src.clientX - r.left, y: src.clientY - r.top };
+            }
+            function start(e) { e.preventDefault(); drawing = true; const p = getPos(e); lastX = p.x; lastY = p.y; }
+            function move(e) {
+                if (!drawing) return; e.preventDefault();
+                const p = getPos(e);
+                ctx.beginPath(); ctx.moveTo(lastX, lastY); ctx.lineTo(p.x, p.y); ctx.stroke();
+                lastX = p.x; lastY = p.y;
+            }
+            function stop() { drawing = false; }
+
+            canvas.addEventListener('mousedown', start);
+            canvas.addEventListener('mousemove', move);
+            canvas.addEventListener('mouseup', stop);
+            canvas.addEventListener('mouseleave', stop);
+            canvas.addEventListener('touchstart', start, { passive: false });
+            canvas.addEventListener('touchmove', move, { passive: false });
+            canvas.addEventListener('touchend', stop);
+        }
+
+        window.getSignatureDataUrl = function(id) {
+            initCanvas(id);
+            const c = document.getElementById(id);
+            return c ? c.toDataURL('image/png') : '';
+        };
+        window.clearCanvas = function(id) {
+            const c = document.getElementById(id);
+            if (c) { const ctx = c.getContext('2d'); ctx.clearRect(0, 0, c.width, c.height); }
+        };
+
+        // Auto-init khi DOM thay đổi (Blazor re-render)
+        const observer = new MutationObserver(() => {
+            const c = document.getElementById('sig-canvas');
+            if (c) initCanvas('sig-canvas');
+        });
+        observer.observe(document.body, { childList: true, subtree: true });
+    })();
+</script>

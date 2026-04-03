@@ -1,0 +1,1992 @@
+@page "/inspection-report/{InspectionId:int}"
+@using System.Net.Http.Json
+@using System.Text.Json
+@inject HttpClient Http
+@inject NavigationManager Navigation
+@inject IJSRuntime JS
+
+@if (_loading)
+{
+    <div class="rpt-loading">
+        <div class="rpt-spinner"></div>
+        <span>Loading report…</span>
+    </div>
+}
+else if (_error != null)
+{
+    <div class="rpt-error">
+        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#e53e3e" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>
+        <p>@_error</p>
+        <button class="rpt-back-btn" @onclick="GoBack">← Back</button>
+    </div>
+}
+else if (_data != null)
+{
+    <div class="rpt-page" id="rpt-root">
+
+        <!-- ══════ TOOLBAR ══════ -->
+        <div class="rpt-toolbar no-print">
+            <button class="rpt-back-btn" @onclick="GoBack">
+                <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 15l-5-5 5-5"/></svg>
+                Back
+            </button>
+            <button class="rpt-print-btn" @onclick="PrintReport">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+                Print / Save PDF
+            </button>
+        </div>
+
+        <!-- ══════ REPORT CONTENT ══════ -->
+        <div class="rpt-paper">
+
+            <!-- PAGE 1: COVER -->
+            <div class="rpt-section page-break-after">
+
+                <!-- Header -->
+                <div class="rpt-cover-header">
+                    <div class="rpt-logo-wrap">
+                        <img src="/logo.png" class="rpt-logo-img" alt="inticoo logo"/>
+                    </div>
+                    <div class="rpt-title-block">
+                        <div class="rpt-main-title">INSPECTION REPORT</div>
+                        <div class="rpt-job-no">Job No: @(_data.JobNumber ?? "—")</div>
+                    </div>
+                </div>
+
+                <!-- Product Overview photo -->
+                <div class="rpt-section-title">Product Overview</div>
+                <div class="rpt-overview-photo-wrap">
+                    @if (!string.IsNullOrEmpty(_data.Photo1Url))
+                    {
+                        <div class="rpt-overview-photo-cell">
+                            <img src="@NormalizeUrl(_data.Photo1Url)" class="rpt-overview-img" alt="Product Photo"/>
+                            <div class="rpt-photo-label">Product Photo</div>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="rpt-overview-photo-cell rpt-photo-empty-lg">No Photo</div>
+                    }
+                </div>
+
+                <!-- General Information -->
+                <div class="rpt-section-title">General Information</div>
+                <table class="rpt-info-table">
+                    <tbody>
+                        <tr>
+                            <td class="rpt-info-label">Customer Name</td>
+                            <td class="rpt-info-val">@(_data.CustomerName ?? "—")</td>
+                            <td class="rpt-info-label">Customer ID</td>
+                            <td class="rpt-info-val">@(_data.CustomerId ?? "—")</td>
+                        </tr>
+                        <tr>
+                            <td class="rpt-info-label">Vendor Name</td>
+                            <td class="rpt-info-val">@(_data.VendorName ?? "—")</td>
+                            <td class="rpt-info-label">Vendor ID</td>
+                            <td class="rpt-info-val">@(_data.VendorId ?? "—")</td>
+                        </tr>
+                        <tr>
+                            <td class="rpt-info-label">Inspection Location</td>
+                            <td class="rpt-info-val">@(_data.InspectionLocation ?? "—")</td>
+                            <td class="rpt-info-label">P.O. Number</td>
+                            <td class="rpt-info-val">@(_data.PoNumber ?? "—")</td>
+                        </tr>
+                        <tr>
+                            <td class="rpt-info-label">Inspection Date &amp; Time</td>
+                            <td class="rpt-info-val">
+                                @(_data.InspectionDate.HasValue ? _data.InspectionDate.Value.ToString("d MMM yyyy HH:mm") : "—")
+                            </td>
+                            <td class="rpt-info-label">Item Number</td>
+                            <td class="rpt-info-val">@(_data.ItemNumber ?? "—")</td>
+                        </tr>
+                        <tr>
+                            <td class="rpt-info-label">Inspection Type</td>
+                            <td class="rpt-info-val">@(_data.InspectionType ?? "—")</td>
+                            <td class="rpt-info-label">Product Name</td>
+                            <td class="rpt-info-val">@(_data.ProductName ?? "—")</td>
+                        </tr>
+                        <tr>
+                            <td class="rpt-info-label">Inspection Reference</td>
+                            <td class="rpt-info-val">@(string.IsNullOrEmpty(_data.InspectionReference) ? "—" : _data.InspectionReference)</td>
+                            <td class="rpt-info-label">Total Shipment Qty</td>
+                            <td class="rpt-info-val">@(_data.TotalShipmentQty > 0 ? _data.TotalShipmentQty.ToString() : "—")</td>
+                        </tr>
+                        <tr>
+                            <td class="rpt-info-label">Product Category</td>
+                            <td class="rpt-info-val">@(_data.ProductCategory ?? "—")</td>
+                            <td class="rpt-info-label">Total Carton Boxes</td>
+                            <td class="rpt-info-val">@(_data.TotalCartonBoxes > 0 ? _data.TotalCartonBoxes.ToString() : "—")</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <!-- Inspection Results Summary -->
+                <div class="rpt-section-title">Inspection Results</div>
+                <table class="rpt-result-table">
+                    <thead>
+                        <tr>
+                            <th class="rpt-th-label">OVERALL CONCLUSION</th>
+                            <th class="rpt-th-comp">COMPLIANCE</th>
+                            <th class="rpt-th-remark">REMARK</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (_qcData?.OverallConclusions?.Any() == true)
+                        {
+                            @foreach (var oc in _qcData!.OverallConclusions)
+                            {
+                                <tr>
+                                    <td>@oc.Letter. @oc.Label</td>
+                                    <td class="rpt-td-center">
+                                        <span class="rpt-compliance-badge comp-@(oc.Compliance?.ToLower() ?? "na")">
+                                            @(oc.Compliance ?? "NA")
+                                        </span>
+                                    </td>
+                                    <td>@(oc.Remark ?? "")</td>
+                                </tr>
+                            }
+                        }
+                        else if (_data.OverallConclusions?.Any() == true)
+                        {
+                            @foreach (var oc in _data.OverallConclusions)
+                            {
+                                <tr>
+                                    <td>@oc.Letter. @oc.Label</td>
+                                    <td class="rpt-td-center">
+                                        <span class="rpt-compliance-badge comp-@(oc.Compliance?.ToLower() ?? "na")">
+                                            @(oc.Compliance ?? "NA")
+                                        </span>
+                                    </td>
+                                    <td>@(oc.Remark ?? "")</td>
+                                </tr>
+                            }
+                        }
+                        else
+                        {
+                            string[] defaultRows = { "A. Quantity Conformity", "B. Packaging & Identification",
+                                "C. Product Specification Compliance", "D. Performance Testing",
+                                "E. Appearance & Craftsmanship", "F. Details of Defect Found" };
+                            @foreach (var row in defaultRows)
+                            {
+                                <tr><td>@row</td><td class="rpt-td-center">—</td><td></td></tr>
+                            }
+                        }
+                    </tbody>
+                </table>
+
+                <!-- Footer -->
+                <div class="rpt-footer">
+                    <div class="rpt-footer-inner">
+                        <span class="rpt-footer-text">www.inticoo.com — The results presented herein reflect our findings at the time and place of inspection. This report does not release the seller or manufacturer from their contractual obligations, nor does it prejudice the buyer's right to seek compensation for any apparent or latent defects not identified during our random inspection or arising thereafter. This document does not constitute evidence of shipment. Final approval from the client is required prior to the release of the goods.</span>
+                        <span class="rpt-footer-page">@(1) / @TotalPages</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ══ SECTION A: Quantity Conformity ══ -->
+            <div class="rpt-section page-break-after">
+                <div class="rpt-section-title rpt-section-title-lg">A. Quantity Conformity</div>
+
+                @{
+                    var qc = _qcData?.QuantityConformity;
+                }
+
+                <!-- Bảng luôn hiển thị theo mẫu PDF -->
+                <table class="rpt-qty-table">
+                    <thead>
+                        <tr>
+                            <th rowspan="2">P.O. No</th>
+                            <th rowspan="2">Item Number</th>
+                            <th rowspan="2">Item per Carton</th>
+                            <th rowspan="2">Shipment Qty</th>
+                            <th colspan="2">Presented Qty for Inspection</th>
+                            <th colspan="2">Number of Cartons</th>
+                            <th rowspan="2">Qty Not Finished</th>
+                        </tr>
+                        <tr>
+                            <th>Packed</th><th>Not Packed</th>
+                            <th>Packed</th><th>Not Packed</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr class="rpt-qty-data-row">
+                            <td>@(_data.PoNumber ?? "")</td>
+                            <td>@(_data.ItemNumber ?? "")</td>
+                            <td>@(qc?.ItemPerCarton > 0 ? qc.ItemPerCarton.ToString() : "")</td>
+                            <td>@(_data.TotalShipmentQty > 0 ? _data.TotalShipmentQty.ToString() : "")</td>
+                            <td>@(qc?.PresentedPacked > 0 ? qc.PresentedPacked.ToString() : "")</td>
+                            <td>@(qc?.PresentedNotPacked > 0 ? qc.PresentedNotPacked.ToString() : "")</td>
+                            <td>@(qc?.CartonsPacked > 0 ? qc.CartonsPacked.ToString() : "")</td>
+                            <td>@(qc?.CartonsNotPacked > 0 ? qc.CartonsNotPacked.ToString() : "")</td>
+                            <td>@(qc?.QtyNotFinished > 0 ? qc.QtyNotFinished.ToString() : "")</td>
+                        </tr>
+                        <tr class="rpt-total-row">
+                            <td colspan="3" class="rpt-total-label">Total</td>
+                            <td>@(_data.TotalShipmentQty > 0 ? _data.TotalShipmentQty.ToString() : "")</td>
+                            <td>@(qc?.PresentedPacked > 0 ? qc.PresentedPacked.ToString() : "")</td>
+                            <td>@(qc?.PresentedNotPacked > 0 ? qc.PresentedNotPacked.ToString() : "")</td>
+                            <td>@(qc?.CartonsPacked > 0 ? qc.CartonsPacked.ToString() : "")</td>
+                            <td>@(qc?.CartonsNotPacked > 0 ? qc.CartonsNotPacked.ToString() : "")</td>
+                            <td>@(qc?.QtyNotFinished > 0 ? qc.QtyNotFinished.ToString() : "")</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <!-- Photo grid 3 cột × 2 hàng — luôn hiển thị theo mẫu PDF -->
+                @{
+                    var qcPhotos = (qc?.Photos ?? new List<string>()).Where(p => !string.IsNullOrWhiteSpace(p)).ToList();
+                    // Đảm bảo đủ 6 slot (3 cột × 2 hàng)
+                    var photoSlots = qcPhotos.Cast<string?>().Concat(Enumerable.Repeat<string?>(null, Math.Max(0, 4 - qcPhotos.Count))).Take(4).ToList();
+                }
+                <div class="rpt-qty-photo-grid">
+                    @foreach (var slot in photoSlots)
+                    {
+                        <div class="rpt-qty-photo-cell">
+                            @if (!string.IsNullOrEmpty(slot))
+                            {
+                                <img src="@NormalizeUrl(slot)" class="rpt-qty-photo-img" alt="Quantity photo"/>
+                            }
+                        </div>
+                    }
+                </div>
+
+                <div class="rpt-footer">
+                    <div class="rpt-footer-inner">
+                        <span class="rpt-footer-text">www.inticoo.com — The results presented herein reflect our findings at the time and place of inspection. This report does not release the seller or manufacturer from their contractual obligations, nor does it prejudice the buyer's right to seek compensation for any apparent or latent defects not identified during our random inspection or arising thereafter. This document does not constitute evidence of shipment. Final approval from the client is required prior to the release of the goods.</span>
+                        <span class="rpt-footer-page">@(2) / @TotalPages</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ══ SECTION B: Packaging & Identification ══ -->
+            @{
+                var pr = _qcData?.Packaging;
+                // Lấy CartonDataList — nếu có thì lặp theo carton, không thì dùng legacy single
+                var cartonDataList = pr?.CartonDataList;
+                int cartonCount = cartonDataList?.Count > 0 ? cartonDataList.Count : 1;
+            }
+
+            @for (int ci = 0; ci < cartonCount; ci++)
+            {
+                var cIdx = ci;
+                var cd = cartonDataList != null && cIdx < cartonDataList.Count ? cartonDataList[cIdx] : null;
+                var cartonSuffix = cartonCount > 1 ? $" — Carton {cIdx + 1}" : "";
+
+                // ── Trang B: Header + Info table + i. Carton Size ──
+                <div class="rpt-section page-break-after">
+                    <div class="rpt-section-title rpt-section-title-lg">B. Packaging &amp; Identification@cartonSuffix</div>
+
+                    @if (_data.Packaging != null)
+                    {
+                        var pkg = _data.Packaging;
+                        <table class="rpt-info-table rpt-pkg-table">
+                            <tbody>
+                                <tr>
+                                    <td class="rpt-info-label">Item Number</td>
+                                    <td class="rpt-info-val">@(pkg.ItemNumber ?? "—")</td>
+                                    <td class="rpt-info-label">Carton Number</td>
+                                    <td class="rpt-info-val">@(cartonCount > 1 ? (cIdx + 1).ToString() : (pkg.CartonNumber ?? "—"))</td>
+                                </tr>
+                                <tr>
+                                    <td class="rpt-info-label">Type of Packaging</td>
+                                    <td class="rpt-info-val" colspan="3">@(pkg.PackagingType ?? "—")</td>
+                                </tr>
+                                <tr>
+                                    <td class="rpt-info-label">Color of Carton</td>
+                                    <td class="rpt-info-val">@(pkg.CartonColor ?? "—")</td>
+                                    <td class="rpt-info-label">Type of Cardboard</td>
+                                    <td class="rpt-info-val">@(pkg.CardboardType ?? "—")</td>
+                                </tr>
+                                <tr>
+                                    <td class="rpt-info-label">Shipping Mark</td>
+                                    <td class="rpt-info-val">@(pkg.ShippingMark ?? "—")</td>
+                                    <td class="rpt-info-label">Barcode / QR Code</td>
+                                    <td class="rpt-info-val">@(pkg.HasBarcode ? "Yes" : "No")</td>
+                                </tr>
+                                <tr>
+                                    <td class="rpt-info-label">Inner Packing</td>
+                                    <td class="rpt-info-val">Qty: @pkg.InnerPackingQty — @(pkg.InnerPackingRemark ?? "")</td>
+                                    <td class="rpt-info-label">Outer Packing (mm)</td>
+                                    <td class="rpt-info-val">
+                                        @if (cd != null && (cd.SizeL > 0 || cd.SizeW > 0 || cd.SizeH > 0))
+                                        { @($"L: {cd.SizeL}  W: {cd.SizeW}  H: {cd.SizeH}  Wt: {cd.Weight} kg") }
+                                        else
+                                        { @($"L: {pkg.OuterL}  W: {pkg.OuterW}  H: {pkg.OuterH}  Wt: {pkg.OuterWeight} kg") }
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    }
+
+                    <!-- i. Carton Size -->
+                    <div class="rpt-sub-title">i. Carton Size</div>
+                    @{
+                        var _pCartonSize = (cd?.SizePhotos ?? pr?.CartonSizePhotos ?? new List<string>())
+                            .Where(p => !string.IsNullOrWhiteSpace(p)).ToList();
+                        var _sCartonSize = _pCartonSize.Cast<string?>()
+                            .Concat(Enumerable.Repeat<string?>(null, Math.Max(0, 4 - _pCartonSize.Count)))
+                            .Take(4).ToList();
+                    }
+                    <div class="rpt-photo-grid-2">
+                        @foreach (var _u in _sCartonSize)
+                        {
+                            <div class="rpt-photo-cell">
+                                @if (!string.IsNullOrEmpty(_u))
+                                { <img src="@NormalizeUrl(_u)" class="rpt-photo" alt="Carton size"/> }
+                            </div>
+                        }
+                    </div>
+                    @{ var _csResult = cd?.CartonSizeResult ?? pr?.CartonSizeResult; }
+                    @if (!string.IsNullOrEmpty(_csResult))
+                    {
+                        <div style="text-align:right;margin-top:4px">
+                            <span class="rpt-compliance-badge comp-@(_csResult.ToLower())">@_csResult</span>
+                        </div>
+                    }
+
+                    <div class="rpt-footer">
+                        <div class="rpt-footer-inner">
+                            <span class="rpt-footer-text">www.inticoo.com — The results presented herein reflect our findings at the time and place of inspection. This report does not release the seller or manufacturer from their contractual obligations, nor does it prejudice the buyer's right to seek compensation for any apparent or latent defects not identified during our random inspection or arising thereafter. This document does not constitute evidence of shipment. Final approval from the client is required prior to the release of the goods.</span>
+                            <span class="rpt-footer-page">@(3 + cIdx * 6) / @TotalPages</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ── Trang ii. Shipping Mark ── -->
+                <div class="rpt-section page-break-after">
+                    <div class="rpt-section-title rpt-section-title-lg">B. Packaging &amp; Identification@cartonSuffix</div>
+                    <div class="rpt-sub-title">ii. Shipping Mark / Labeling / Barcode</div>
+                    @{
+                        var _pShipping = (cd?.ShippingMarkPhotos ?? pr?.ShippingMarkPhotos ?? new List<string>())
+                            .Where(p => !string.IsNullOrWhiteSpace(p)).ToList();
+                        var _sShipping = _pShipping.Cast<string?>()
+                            .Concat(Enumerable.Repeat<string?>(null, Math.Max(0, 4 - _pShipping.Count)))
+                            .Take(4).ToList();
+                    }
+                    <div class="rpt-photo-grid-2">
+                        @foreach (var _u in _sShipping)
+                        {
+                            <div class="rpt-photo-cell">
+                                @if (!string.IsNullOrEmpty(_u))
+                                { <img src="@NormalizeUrl(_u)" class="rpt-photo" alt="Shipping mark"/> }
+                            </div>
+                        }
+                    </div>
+                    @{ var _smResult = cd?.ShippingMarkResult ?? pr?.ShippingMarkResult; }
+                    @if (!string.IsNullOrEmpty(_smResult))
+                    {
+                        <div style="text-align:right;margin-top:4px">
+                            <span class="rpt-compliance-badge comp-@(_smResult.ToLower())">@_smResult</span>
+                        </div>
+                    }
+                    <div class="rpt-footer">
+                        <div class="rpt-footer-inner">
+                            <span class="rpt-footer-text">www.inticoo.com — The results presented herein reflect our findings at the time and place of inspection. This report does not release the seller or manufacturer from their contractual obligations, nor does it prejudice the buyer's right to seek compensation for any apparent or latent defects not identified during our random inspection or arising thereafter. This document does not constitute evidence of shipment. Final approval from the client is required prior to the release of the goods.</span>
+                            <span class="rpt-footer-page">@(3 + cIdx * 6 + 1) / @TotalPages</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ── Trang iii. Carton Weight ── -->
+                <div class="rpt-section page-break-after">
+                    <div class="rpt-section-title rpt-section-title-lg">B. Packaging &amp; Identification@cartonSuffix</div>
+                    <div class="rpt-sub-title">iii. Carton Weight</div>
+                    @if (cd != null && cd.Weight > 0)
+                    {
+                        <div style="font-size:12px;color:#555;margin-bottom:8px">Actual Weight: <strong>@cd.Weight kg</strong></div>
+                    }
+                    @{
+                        var _pWeight = (cd?.SizePhotos ?? pr?.WeightPhotos ?? new List<string>())
+                            .Where(p => !string.IsNullOrWhiteSpace(p)).ToList();
+                        var _sWeight = _pWeight.Cast<string?>()
+                            .Concat(Enumerable.Repeat<string?>(null, Math.Max(0, 4 - _pWeight.Count)))
+                            .Take(4).ToList();
+                    }
+                    <div class="rpt-photo-grid-2">
+                        @foreach (var _u in _sWeight)
+                        {
+                            <div class="rpt-photo-cell">
+                                @if (!string.IsNullOrEmpty(_u))
+                                { <img src="@NormalizeUrl(_u)" class="rpt-photo" alt="Carton weight"/> }
+                            </div>
+                        }
+                    </div>
+                    @{ var _cwResult = cd?.CartonWeightResult ?? pr?.CartonWeightResult; }
+                    @if (!string.IsNullOrEmpty(_cwResult))
+                    {
+                        <div style="text-align:right;margin-top:4px">
+                            <span class="rpt-compliance-badge comp-@(_cwResult.ToLower())">@_cwResult</span>
+                        </div>
+                    }
+                    <div class="rpt-footer">
+                        <div class="rpt-footer-inner">
+                            <span class="rpt-footer-text">www.inticoo.com — The results presented herein reflect our findings at the time and place of inspection. This report does not release the seller or manufacturer from their contractual obligations, nor does it prejudice the buyer's right to seek compensation for any apparent or latent defects not identified during our random inspection or arising thereafter. This document does not constitute evidence of shipment. Final approval from the client is required prior to the release of the goods.</span>
+                            <span class="rpt-footer-page">@(3 + cIdx * 6 + 2) / @TotalPages</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ── Trang iv. Packaging & Labeling ── -->
+                <div class="rpt-section page-break-after">
+                    <div class="rpt-section-title rpt-section-title-lg">B. Packaging &amp; Identification@cartonSuffix</div>
+                    <div class="rpt-sub-title">iv. Packaging &amp; Labeling Specifications</div>
+                    @{
+                        var _pPkgLabel = (cd?.PkgLabelPhotos ?? pr?.PkgLabelPhotos ?? new List<string>())
+                            .Where(p => !string.IsNullOrWhiteSpace(p)).ToList();
+                        var _sPkgLabel = _pPkgLabel.Cast<string?>()
+                            .Concat(Enumerable.Repeat<string?>(null, Math.Max(0, 4 - _pPkgLabel.Count)))
+                            .Take(4).ToList();
+                    }
+                    <div class="rpt-photo-grid-2">
+                        @foreach (var _u in _sPkgLabel)
+                        {
+                            <div class="rpt-photo-cell">
+                                @if (!string.IsNullOrEmpty(_u))
+                                { <img src="@NormalizeUrl(_u)" class="rpt-photo" alt="Pkg label"/> }
+                            </div>
+                        }
+                    </div>
+                    @{ var _plResult = cd?.PkgLabelResult ?? pr?.PkgLabelResult; }
+                    @if (!string.IsNullOrEmpty(_plResult))
+                    {
+                        <div style="text-align:right;margin-top:4px">
+                            <span class="rpt-compliance-badge comp-@(_plResult.ToLower())">@_plResult</span>
+                        </div>
+                    }
+                    <div class="rpt-footer">
+                        <div class="rpt-footer-inner">
+                            <span class="rpt-footer-text">www.inticoo.com — The results presented herein reflect our findings at the time and place of inspection. This report does not release the seller or manufacturer from their contractual obligations, nor does it prejudice the buyer's right to seek compensation for any apparent or latent defects not identified during our random inspection or arising thereafter. This document does not constitute evidence of shipment. Final approval from the client is required prior to the release of the goods.</span>
+                            <span class="rpt-footer-page">@(3 + cIdx * 6 + 3) / @TotalPages</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ── Trang v. Assembly Instruction ── -->
+                <div class="rpt-section page-break-after">
+                    <div class="rpt-section-title rpt-section-title-lg">B. Packaging &amp; Identification@cartonSuffix</div>
+                    <div class="rpt-sub-title">v. Assembly Instruction Specifications</div>
+                    @{
+                        var _pAssembly = (cd?.AssemblyPhotos ?? pr?.AssemblyPhotos ?? new List<string>())
+                            .Where(p => !string.IsNullOrWhiteSpace(p)).ToList();
+                        var _sAssembly = _pAssembly.Cast<string?>()
+                            .Concat(Enumerable.Repeat<string?>(null, Math.Max(0, 4 - _pAssembly.Count)))
+                            .Take(4).ToList();
+                    }
+                    <div class="rpt-photo-grid-2">
+                        @foreach (var _u in _sAssembly)
+                        {
+                            <div class="rpt-photo-cell">
+                                @if (!string.IsNullOrEmpty(_u))
+                                { <img src="@NormalizeUrl(_u)" class="rpt-photo" alt="Assembly"/> }
+                            </div>
+                        }
+                    </div>
+                    @{ var _asResult = cd?.AssemblyResult ?? pr?.AssemblyResult; }
+                    @if (!string.IsNullOrEmpty(_asResult))
+                    {
+                        <div style="text-align:right;margin-top:4px">
+                            <span class="rpt-compliance-badge comp-@(_asResult.ToLower())">@_asResult</span>
+                        </div>
+                    }
+                    <div class="rpt-footer">
+                        <div class="rpt-footer-inner">
+                            <span class="rpt-footer-text">www.inticoo.com — The results presented herein reflect our findings at the time and place of inspection. This report does not release the seller or manufacturer from their contractual obligations, nor does it prejudice the buyer's right to seek compensation for any apparent or latent defects not identified during our random inspection or arising thereafter. This document does not constitute evidence of shipment. Final approval from the client is required prior to the release of the goods.</span>
+                            <span class="rpt-footer-page">@(3 + cIdx * 6 + 4) / @TotalPages</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ── Trang vi. Hardware ── -->
+                <div class="rpt-section page-break-after">
+                    <div class="rpt-section-title rpt-section-title-lg">B. Packaging &amp; Identification@cartonSuffix</div>
+                    <div class="rpt-sub-title">vi. Hardware Specifications</div>
+                    @{
+                        var _pHardware = (cd?.HardwarePhotos ?? pr?.HardwarePhotos ?? new List<string>())
+                            .Where(p => !string.IsNullOrWhiteSpace(p)).ToList();
+                        var _sHardware = _pHardware.Cast<string?>()
+                            .Concat(Enumerable.Repeat<string?>(null, Math.Max(0, 4 - _pHardware.Count)))
+                            .Take(4).ToList();
+                    }
+                    <div class="rpt-photo-grid-2">
+                        @foreach (var _u in _sHardware)
+                        {
+                            <div class="rpt-photo-cell">
+                                @if (!string.IsNullOrEmpty(_u))
+                                { <img src="@NormalizeUrl(_u)" class="rpt-photo" alt="Hardware"/> }
+                            </div>
+                        }
+                    </div>
+                    @{ var _hwResult = cd?.HardwareResult ?? pr?.HardwareResult; }
+                    @if (!string.IsNullOrEmpty(_hwResult))
+                    {
+                        <div style="text-align:right;margin-top:4px">
+                            <span class="rpt-compliance-badge comp-@(_hwResult.ToLower())">@_hwResult</span>
+                        </div>
+                    }
+                    <div class="rpt-footer">
+                        <div class="rpt-footer-inner">
+                            <span class="rpt-footer-text">www.inticoo.com — The results presented herein reflect our findings at the time and place of inspection. This report does not release the seller or manufacturer from their contractual obligations, nor does it prejudice the buyer's right to seek compensation for any apparent or latent defects not identified during our random inspection or arising thereafter. This document does not constitute evidence of shipment. Final approval from the client is required prior to the release of the goods.</span>
+                            <span class="rpt-footer-page">@(3 + cIdx * 6 + 5) / @TotalPages</span>
+                        </div>
+                    </div>
+                </div>
+            }
+
+            <!-- ══ SECTION C: Product Specification Compliance ══ -->
+            <div class="rpt-section page-break-after">
+                <div class="rpt-section-title rpt-section-title-lg">C. Product Specification Compliance</div>
+
+                @if (_data.ProductSpec != null || _qcData?.ProductSpec != null)
+                {
+                    <!-- i. Product Size -->
+                    <div class="rpt-sub-title">i. Product Size
+
+                    </div>
+                    @if (_data.ProductSpec != null)
+                    {
+                        <table class="rpt-spec-table">
+                            <thead>
+                                <tr>
+                                    <th colspan="3">Product Size (mm)</th>
+                                    <th>Additional</th>
+                                </tr>
+                                <tr><th>L</th><th>W</th><th>H</th><th></th></tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>@_data.ProductSpec.SizeL</td>
+                                    <td>@_data.ProductSpec.SizeW</td>
+                                    <td>@_data.ProductSpec.SizeH</td>
+                                    <td>@(_qcData?.ProductSpec?.AdditionalText ?? "")</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    }
+                    @if (_qcData?.ProductSpec?.SizeRows?.Any() == true)
+                    {
+                        <div class="rpt-photo-grid-2">
+                            @foreach (var row in _qcData.ProductSpec.SizeRows)
+                            {
+                                var url = row.GetProperty("photoUrl").GetString();
+                                if (!string.IsNullOrEmpty(url))
+                                {
+                                    <div class="rpt-photo-cell"><img src="@NormalizeUrl(url)" class="rpt-photo" alt="Product size photo"/></div>
+                                }
+                            }
+                        </div>
+                    }
+
+                    <!-- ii. Compare Golden Sample -->
+                    <div class="rpt-sub-title">ii. Compare Golden Sample
+
+                    </div>
+                    @if (_qcData?.ProductSpec?.GoldenPhotos?.Any() == true)
+                    {
+                        <div class="rpt-photo-grid-2">
+                            @foreach (var url in _qcData.ProductSpec.GoldenPhotos)
+                            {
+                                <div class="rpt-photo-cell"><img src="@NormalizeUrl(url)" class="rpt-photo" alt="Golden sample photo"/></div>
+                            }
+                        </div>
+                    }
+
+                    <!-- iii. Colour Swatch Comparison -->
+                    <div class="rpt-sub-title">iii. Colour Swatch Comparison</div>
+                    @if (_qcData?.ProductSpec?.ColourSwatches?.Any() == true)
+                    {
+                        <table class="rpt-swatch-table">
+                            <thead>
+                                <tr>
+                                    <th style="width:10%">No</th>
+                                    <th style="width:55%">Material</th>
+                                    <th style="width:35%">Result</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var sw in _qcData.ProductSpec.ColourSwatches)
+                                {
+                                    <tr>
+                                        <td>@sw.No</td>
+                                        <td>@(sw.Material ?? "—")</td>
+                                        <td>
+                                            @if (!string.IsNullOrEmpty(sw.Result))
+                                            {
+                                                <span class="rpt-compliance-badge comp-@sw.Result.ToLower()">@sw.Result</span>
+                                            }
+                                            else
+                                            {
+                                                <span style="color:#bbb">Passed / Failed / NA</span>
+                                            }
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    }
+                    @if (_qcData?.ProductSpec?.SwatchPhotos?.Any() == true)
+                    {
+                        <div class="rpt-photo-grid-2">
+                            @foreach (var url in _qcData.ProductSpec.SwatchPhotos)
+                            {
+                                <div class="rpt-photo-cell"><img src="@NormalizeUrl(url)" class="rpt-photo" alt="Swatch photo"/></div>
+                            }
+                        </div>
+                    }
+                }
+                else
+                {
+                    <div class="rpt-no-data">No product specification data recorded.</div>
+                }
+
+                <div class="rpt-footer">
+                    <div class="rpt-footer-inner">
+                        <span class="rpt-footer-text">www.inticoo.com — The results presented herein reflect our findings at the time and place of inspection. This report does not release the seller or manufacturer from their contractual obligations, nor does it prejudice the buyer's right to seek compensation for any apparent or latent defects not identified during our random inspection or arising thereafter. This document does not constitute evidence of shipment. Final approval from the client is required prior to the release of the goods.</span>
+                        <span class="rpt-footer-page">@(2 + CartonPageCount + 1) / @TotalPages</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ══ SECTION D: Performance Testing — mỗi test 1 trang riêng ══ -->
+            @{
+                var _qcPerf     = _qcData?.PerformanceTests?.Any() == true ? _qcData.PerformanceTests : null;
+                var _legacyPerf = _data.PerformanceTests?.Any() == true ? _data.PerformanceTests : null;
+            }
+            @if (_qcPerf != null)
+            {
+                @for (int di = 0; di < _qcPerf.Count; di++)
+                {
+                    var dIdx  = di;
+                    var test  = _qcPerf[dIdx];
+                    var dSuffix = _qcPerf.Count > 1 ? $" ({dIdx + 1}/{_qcPerf.Count})" : "";
+                    var dPhotos = test.Photos?.Where(p => !string.IsNullOrWhiteSpace(p)).ToList() ?? new();
+                    <div class="rpt-section page-break-after">
+                        <div class="rpt-section-title rpt-section-title-lg">D. Performance Testing@dSuffix</div>
+                        <table class="rpt-perf-table">
+                            <tbody>
+                                <tr>
+                                    <td class="rpt-info-label">Test Item</td>
+                                    <td class="rpt-info-val" colspan="3">@(test.TestItem ?? "—")</td>
+                                </tr>
+                                <tr>
+                                    <td class="rpt-info-label">Test Requirement</td>
+                                    <td class="rpt-info-val" colspan="3">@(test.TestRequirement ?? "—")</td>
+                                </tr>
+                                <tr>
+                                    <td class="rpt-info-label">Test Quantity</td>
+                                    <td class="rpt-info-val" colspan="3">@test.TestQuantity</td>
+                                </tr>
+                                <tr>
+                                    <td class="rpt-info-label">Remark</td>
+                                    <td class="rpt-info-val" colspan="3">@(test.Remark ?? "—")</td>
+                                </tr>
+                                @if (!string.IsNullOrEmpty(test.Result))
+                                {
+                                    <tr>
+                                        <td class="rpt-info-label">Result</td>
+                                        <td class="rpt-info-val" colspan="3">
+                                            <span class="rpt-compliance-badge comp-@(test.Result.ToLower())">@test.Result</span>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                        @if (dPhotos.Any())
+                        {
+                            <div class="rpt-photo-grid-2">
+                                @foreach (var url in dPhotos)
+                                {
+                                    <div class="rpt-photo-cell">
+                                        <img src="@NormalizeUrl(url)" class="rpt-photo" alt="Performance test photo"/>
+                                    </div>
+                                }
+                            </div>
+                        }
+                        <div class="rpt-footer">
+                            <div class="rpt-footer-inner">
+                                <span class="rpt-footer-text">www.inticoo.com — The results presented herein reflect our findings at the time and place of inspection. This report does not release the seller or manufacturer from their contractual obligations, nor does it prejudice the buyer's right to seek compensation for any apparent or latent defects not identified during our random inspection or arising thereafter. This document does not constitute evidence of shipment. Final approval from the client is required prior to the release of the goods.</span>
+                                <span class="rpt-footer-page">@(2 + CartonPageCount + 2 + dIdx) / @TotalPages</span>
+                            </div>
+                        </div>
+                    </div>
+                }
+            }
+            else if (_legacyPerf != null)
+            {
+                @for (int di = 0; di < _legacyPerf.Count; di++)
+                {
+                    var dIdx    = di;
+                    var t       = _legacyPerf[dIdx];
+                    var dSuffix = _legacyPerf.Count > 1 ? $" ({dIdx + 1}/{_legacyPerf.Count})" : "";
+                    <div class="rpt-section page-break-after">
+                        <div class="rpt-section-title rpt-section-title-lg">D. Performance Testing@dSuffix</div>
+                        <table class="rpt-perf-table">
+                            <tbody>
+                                <tr><td class="rpt-info-label">Test Item</td><td class="rpt-info-val">@(t.TestItem ?? "—")</td></tr>
+                                <tr><td class="rpt-info-label">Test Requirement</td><td class="rpt-info-val">@(t.TestRequirement ?? "—")</td></tr>
+                                <tr><td class="rpt-info-label">Remark</td><td class="rpt-info-val">@(t.Remark ?? "—")</td></tr>
+                            </tbody>
+                        </table>
+                        <div class="rpt-footer">
+                            <div class="rpt-footer-inner">
+                                <span class="rpt-footer-text">www.inticoo.com — The results presented herein reflect our findings at the time and place of inspection. This report does not release the seller or manufacturer from their contractual obligations, nor does it prejudice the buyer's right to seek compensation for any apparent or latent defects not identified during our random inspection or arising thereafter. This document does not constitute evidence of shipment. Final approval from the client is required prior to the release of the goods.</span>
+                                <span class="rpt-footer-page">@(2 + CartonPageCount + 2 + dIdx) / @TotalPages</span>
+                            </div>
+                        </div>
+                    </div>
+                }
+            }
+            else
+            {
+                <div class="rpt-section page-break-after">
+                    <div class="rpt-section-title rpt-section-title-lg">D. Performance Testing</div>
+                    <div class="rpt-no-data">No performance testing data recorded.</div>
+                    <div class="rpt-footer">
+                        <div class="rpt-footer-inner">
+                            <span class="rpt-footer-text">www.inticoo.com — The results presented herein reflect our findings at the time and place of inspection. This report does not release the seller or manufacturer from their contractual obligations, nor does it prejudice the buyer's right to seek compensation for any apparent or latent defects not identified during our random inspection or arising thereafter. This document does not constitute evidence of shipment. Final approval from the client is required prior to the release of the goods.</span>
+                            <span class="rpt-footer-page">@(2 + CartonPageCount + 2) / @TotalPages</span>
+                        </div>
+                    </div>
+                </div>
+            }
+
+            <!-- ══ SECTION E: Appearance & Craftsmanship (AQL) ══ -->
+            <div class="rpt-section page-break-after">
+                <div class="rpt-section-title rpt-section-title-lg">E. Appearance &amp; Craftsmanship</div>
+
+                @{
+                    // DB values cho SampleSize/Accept/Reject (chính xác từ AQL table)
+                    var aqlQty     = _data.AqlQuantity > 0 ? _data.AqlQuantity : (_qcData?.Aql?.Quantity ?? 0);
+                    var aqlLvl     = _data.AqlLevel    ?? _qcData?.Aql?.InspectionLevel ?? "II";
+                    var aqlCritAql = _data.AqlCritical ?? _qcData?.Aql?.CriticalAql ?? "Not Allowed";
+                    var aqlMajAql  = _data.AqlMajor    ?? _qcData?.Aql?.MajorAql    ?? "2.5";
+                    var aqlMinAql  = _data.AqlMinor    ?? _qcData?.Aql?.MinorAql    ?? "4.0";
+                    var critSample = _data.AqlCriticalSampleSize > 0 ? _data.AqlCriticalSampleSize : (_qcData?.Aql?.CriticalSampleSize ?? 0);
+                    var critAccept = _data.AqlCriticalAccept     > 0 ? _data.AqlCriticalAccept     : (_qcData?.Aql?.CriticalAccept     ?? 0);
+                    var critReject = _data.AqlCriticalReject     > 0 ? _data.AqlCriticalReject     : (_qcData?.Aql?.CriticalReject     ?? 0);
+                    var majSample  = _data.AqlMajorSampleSize    > 0 ? _data.AqlMajorSampleSize    : (_qcData?.Aql?.MajorSampleSize    ?? 0);
+                    var majAccept  = _data.AqlMajorAccept        > 0 ? _data.AqlMajorAccept        : (_qcData?.Aql?.MajorAccept        ?? 0);
+                    var majReject  = _data.AqlMajorReject        > 0 ? _data.AqlMajorReject        : (_qcData?.Aql?.MajorReject        ?? 0);
+                    var minSample  = _data.AqlMinorSampleSize    > 0 ? _data.AqlMinorSampleSize    : (_qcData?.Aql?.MinorSampleSize    ?? 0);
+                    var minAccept  = _data.AqlMinorAccept        > 0 ? _data.AqlMinorAccept        : (_qcData?.Aql?.MinorAccept        ?? 0);
+                    var minReject  = _data.AqlMinorReject        > 0 ? _data.AqlMinorReject        : (_qcData?.Aql?.MinorReject        ?? 0);
+                    var critFound  = _qcData?.Aql?.CriticalFound ?? 0;
+                    var majFound   = _qcData?.Aql?.MajorFound    ?? 0;
+                    var minFound   = _qcData?.Aql?.MinorFound    ?? 0;
+                }
+                @if (aqlQty > 0 || critSample > 0 || _qcData?.Aql != null)
+                {
+                    <div class="rpt-aql-label">AQL Sampling Simulator</div>
+                    <div class="rpt-aql-row">
+                        <div class="rpt-aql-item"><span class="rpt-aql-key">Quantity</span><span class="rpt-aql-val">@aqlQty</span></div>
+                        <div class="rpt-aql-item"><span class="rpt-aql-key">Inspection Level</span><span class="rpt-aql-val">@aqlLvl</span></div>
+                    </div>
+                    <div class="rpt-aql-grid">
+                        <div class="rpt-aql-box aql-critical">
+                            <div class="rpt-aql-box-title">Critical Defects</div>
+                            <div class="rpt-aql-box-row"><span>Select AQL</span><span>@aqlCritAql</span></div>
+                            <div class="rpt-aql-box-row"><span>Sample Size</span><span>@critSample</span></div>
+                            <div class="rpt-aql-box-row"><span>Accept Point</span><span>@critAccept</span></div>
+                            <div class="rpt-aql-box-row"><span>Reject Point</span><span>@critReject</span></div>
+                        </div>
+                        <div class="rpt-aql-box aql-major">
+                            <div class="rpt-aql-box-title">Major Defects</div>
+                            <div class="rpt-aql-box-row"><span>Select AQL</span><span>@aqlMajAql</span></div>
+                            <div class="rpt-aql-box-row"><span>Sample Size</span><span>@majSample</span></div>
+                            <div class="rpt-aql-box-row"><span>Accept Point</span><span>@majAccept</span></div>
+                            <div class="rpt-aql-box-row"><span>Reject Point</span><span>@majReject</span></div>
+                        </div>
+                        <div class="rpt-aql-box aql-minor">
+                            <div class="rpt-aql-box-title">Minor Defects</div>
+                            <div class="rpt-aql-box-row"><span>Select AQL</span><span>@aqlMinAql</span></div>
+                            <div class="rpt-aql-box-row"><span>Sample Size</span><span>@minSample</span></div>
+                            <div class="rpt-aql-box-row"><span>Accept Point</span><span>@minAccept</span></div>
+                            <div class="rpt-aql-box-row"><span>Reject Point</span><span>@minReject</span></div>
+                        </div>
+                    </div>
+                    <div class="rpt-aql-label" style="margin-top:16px;">RESULT</div>
+                    <table class="rpt-result-table">
+                        <thead>
+                            <tr>
+                                <th class="rpt-th-label">Details of Defect Found</th>
+                                <th class="rpt-th-comp" style="color:#c0392b">Critical</th>
+                                <th class="rpt-th-comp" style="color:#e67e22">Major</th>
+                                <th class="rpt-th-comp" style="color:#27ae60">Minor</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Total Found</td>
+                                <td class="rpt-td-center">@critFound</td>
+                                <td class="rpt-td-center">@majFound</td>
+                                <td class="rpt-td-center">@minFound</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                }
+                else
+                {
+                    <div class="rpt-no-data">No AQL data recorded.</div>
+                }
+
+                <div class="rpt-footer">
+                    <div class="rpt-footer-inner">
+                        <span class="rpt-footer-text">www.inticoo.com — The results presented herein reflect our findings at the time and place of inspection. This report does not release the seller or manufacturer from their contractual obligations, nor does it prejudice the buyer's right to seek compensation for any apparent or latent defects not identified during our random inspection or arising thereafter. This document does not constitute evidence of shipment. Final approval from the client is required prior to the release of the goods.</span>
+                        <span class="rpt-footer-page">@(2 + CartonPageCount + PerfPageCount + 2) / @TotalPages</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ══ SECTION F: Details of Defect Found ══ -->
+            <div class="rpt-section page-break-after">
+                <div class="rpt-section-title rpt-section-title-lg">F. Details of Defect Found</div>
+
+                @foreach (var defType in new[] { "Critical", "Major", "Minor" })
+                {
+                    var typeDefects = _qcData?.Defects?.Where(d => d.Type == defType).ToList() ?? new();
+                    // Pad tối thiểu 2 slot
+                    var slots = typeDefects.Concat(
+                        Enumerable.Repeat<QcDefectDto?>(null, Math.Max(0, 2 - typeDefects.Count))
+                    ).Take(Math.Max(2, typeDefects.Count + (typeDefects.Count % 2 != 0 ? 1 : 0))).ToList();
+
+                    <div class="rpt-defect-type-title defect-@defType.ToLower()">@defType</div>
+                    <div class="rpt-photo-grid-2">
+                        @foreach (var def in slots)
+                        {
+                            <div class="rpt-defect-cell">
+                                <div class="rpt-defect-photo-wrap">
+                                    @if (def != null && !string.IsNullOrEmpty(def.PhotoUrl))
+                                    {
+                                        <img src="@NormalizeUrl(def.PhotoUrl)" class="rpt-defect-photo" alt="@defType defect photo"/>
+                                    }
+                                    else
+                                    {
+                                        <div class="rpt-defect-no-photo">No Photo</div>
+                                    }
+                                </div>
+                                <div class="rpt-defect-remark">Remark: @(def?.Remark ?? "—")</div>
+                            </div>
+                        }
+                    </div>
+                }
+
+                <div class="rpt-footer">
+                    <div class="rpt-footer-inner">
+                        <span class="rpt-footer-text">www.inticoo.com — The results presented herein reflect our findings at the time and place of inspection. This report does not release the seller or manufacturer from their contractual obligations, nor does it prejudice the buyer's right to seek compensation for any apparent or latent defects not identified during our random inspection or arising thereafter. This document does not constitute evidence of shipment. Final approval from the client is required prior to the release of the goods.</span>
+                        <span class="rpt-footer-page">@(2 + CartonPageCount + PerfPageCount + 3) / @TotalPages</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ══ FINAL PAGE: Conclusion & Signature ══ -->
+            <div class="rpt-section">
+                <div class="rpt-logo-wrap" style="margin-bottom:28px;">
+                    <img src="/logo.png" class="rpt-logo-img" alt="inticoo logo"/>
+                </div>
+
+                <!-- Inspector Comments -->
+                <table class="rpt-sign-table">
+                    <tbody>
+                        <tr>
+                            <td class="rpt-sign-label">Inspector Comments</td>
+                            <td class="rpt-sign-val rpt-comments-cell">
+                                @(_data.InspectorComments ?? "")
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <!-- Final Result -->
+                <div class="rpt-final-result-wrap">
+                    <span class="rpt-final-label">FINAL RESULT</span>
+                    <span class="rpt-final-badge @GetFinalBadgeClass(_data.FinalResult)">
+                        @(_data.FinalResult?.ToUpper() ?? "N/A")
+                    </span>
+                </div>
+
+                <!-- Compliance clause -->
+                <div class="rpt-compliance-clause">
+                    <strong>Compliance &amp; Integrity Clause</strong>
+                    <p><em>All inspections follow the customer protocol, and any attempt to bribe, pressure, or threaten the inspector will render the inspection invalid and may lead to termination of the agreement and legal consequences.</em></p>
+                </div>
+
+                <!-- Signatures -->
+                <table class="rpt-sign-table" style="margin-top:16px;">
+                    <tbody>
+                        <tr>
+                            <td class="rpt-sign-label">Inspection by</td>
+                            <td class="rpt-sign-val rpt-sign-cell">
+                                <span class="rpt-sign-name">@(_data.InspectorName ?? "—")</span>
+                                @if (!string.IsNullOrEmpty(_data.InspectorId))
+                                {
+                                    <span class="rpt-sign-id">ID: @_data.InspectorId</span>
+                                }
+                            </td>
+                        </tr>
+                        <tr>
+                            <td class="rpt-sign-label">Confirmed by</td>
+                            <td class="rpt-sign-val rpt-sign-cell">
+                                @if (!string.IsNullOrEmpty(_data.SignatureUrl))
+                                {
+                                    <img src="@NormalizeUrl(_data.SignatureUrl)" class="rpt-signature" alt="Signature"/>
+                                }
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <div class="rpt-end-line">
+                    <hr/>
+                    <span>End</span>
+                    <hr/>
+                </div>
+
+                <div class="rpt-footer">
+                    <div class="rpt-footer-inner">
+                        <span class="rpt-footer-text">www.inticoo.com — The results presented herein reflect our findings at the time and place of inspection. This report does not release the seller or manufacturer from their contractual obligations, nor does it prejudice the buyer's right to seek compensation for any apparent or latent defects not identified during our random inspection or arising thereafter. This document does not constitute evidence of shipment. Final approval from the client is required prior to the release of the goods.</span>
+                        <span class="rpt-footer-page">@(2 + CartonPageCount + PerfPageCount + 4) / @TotalPages</span>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+}
+
+@code {
+    private RenderFragment _Footer =>
+        @<div class="rpt-footer">www.inticoo.com<br/>
+        The results presented herein reflect our findings at the time and place of inspection. This report does not release the seller or manufacturer from <br/>
+        their contractual obligations, nor does it prejudice the buyer’s right to seek compensation for any apparent or latent defects not identified during <br/>
+        our random inspection or arising thereafter. This document does not constitute evidence of shipment. Final approval from the client is required <br/>
+        prior to the release of the goods.
+</div>;
+
+    [Parameter] public int InspectionId { get; set; }
+
+    private bool    _loading = true;
+    private string? _error;
+    private InspectionDetailDto? _data;
+    private QcResultDto?         _qcData;
+
+    // ─── Lifecycle ───
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadData();
+        _loading = false;
+    }
+
+    private async Task LoadData()
+    {
+        try
+        {
+            var opts = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+
+            // Load inspection detail (General info, Packaging, ProductSpec, etc.)
+            _data = await Http.GetFromJsonAsync<InspectionDetailDto>(
+                $"api/inspections/{InspectionId}", opts);
+
+            if (_data == null)
+            {
+                _error = "Inspection not found.";
+                return;
+            }
+
+            // Parse QcResultJson từ response (không cần endpoint riêng)
+            if (!string.IsNullOrWhiteSpace(_data.QcResultJson))
+            {
+                try
+                {
+                    _qcData = JsonSerializer.Deserialize<QcResultDto>(
+                        _data.QcResultJson, opts);
+                }
+                catch
+                {
+                    _qcData = null;
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _error = $"Failed to load report: {ex.Message}";
+        }
+    }
+
+    private void GoBack() => Navigation.NavigateTo("/inspection-schedule");
+
+    // Chuẩn hóa URL ảnh: prefix ApiBaseUrl cho relative path, encode ký tự đặc biệt
+    private string NormalizeUrl(string? url)
+    {
+        if (string.IsNullOrWhiteSpace(url)) return "";
+        // Full URL hoặc base64 data: → giữ nguyên
+        if (url.StartsWith("http://") || url.StartsWith("https://") || url.StartsWith("data:"))
+            return url;
+        // Relative path → gắn BaseAddress của API (từ ApiBaseUrl trong appsettings)
+        var baseUrl = Http.BaseAddress?.ToString().TrimEnd('/') ?? "";
+        // Encode từng segment để xử lý tên file có khoảng trắng/ký tự đặc biệt
+        var parts = url.TrimStart('/').Split('/');
+        for (int i = 0; i < parts.Length; i++)
+            parts[i] = Uri.EscapeDataString(parts[i]);
+        return $"{baseUrl}/{string.Join("/", parts)}";
+    }
+
+    private async Task PrintReport()
+    {
+        await JS.InvokeVoidAsync("window.print");
+    }
+
+    private static string GetFinalBadgeClass(string? result) => result?.ToUpper() switch
+    {
+        "PASSED" or "PASS" => "final-pass",
+        "FAILED" or "FAIL" => "final-fail",
+        _                  => "final-na"
+    };
+
+    // ── Computed page count properties ──
+    // Layout: 1(Cover) + 1(A) + cartonCount×6(B) + 1(C) + perfCount(D) + 3(E,F,Final)
+    int CartonPageCount => (_qcData?.Packaging?.CartonDataList?.Count > 0
+        ? _qcData.Packaging.CartonDataList.Count : 1) * 6;
+    int PerfPageCount   => _qcData?.PerformanceTests?.Count > 0
+        ? _qcData.PerformanceTests.Count
+        : (_data?.PerformanceTests?.Count > 0 ? _data.PerformanceTests.Count : 1);
+    int TotalPages => 2 + CartonPageCount + 1 + PerfPageCount + 3;
+
+    // ─── DTOs mirroring API shape ───
+
+    public class InspectionDetailDto
+    {
+        public int       Id                  { get; set; }
+        public string?   JobNumber           { get; set; }
+        public string?   Title               { get; set; }
+        public string?   Status              { get; set; }
+        public string?   FinalResult         { get; set; }
+        public string?   InspectorComments   { get; set; }
+        public string?   SignatureUrl        { get; set; }
+        public string?   CustomerName        { get; set; }
+        public string?   CustomerId          { get; set; }
+        public string?   VendorName          { get; set; }
+        public string?   VendorId            { get; set; }
+        public string?   InspectionLocation  { get; set; }
+        public string?   PoNumber            { get; set; }
+        public DateTime? InspectionDate      { get; set; }
+        public string?   ItemNumber          { get; set; }
+        public string?   InspectionType      { get; set; }
+        public string?   InspectionReference { get; set; }
+        public string?   ProductName         { get; set; }
+        public string?   ProductCategory     { get; set; }
+        public int       TotalShipmentQty    { get; set; }
+        public int       TotalCartonBoxes    { get; set; }
+        public string?   InspectorName       { get; set; }
+        public string?   InspectorId         { get; set; }
+        public string?   Photo1Url           { get; set; }
+        public string?   Photo2Url           { get; set; }
+
+        public PackagingDto?            Packaging           { get; set; }
+        public ProductSpecDto?          ProductSpec         { get; set; }
+        public List<OverallConclusionDto> OverallConclusions { get; set; } = new();
+        public List<PerfTestDto>        PerformanceTests    { get; set; } = new();
+        public string?                  QcResultJson        { get; set; }
+        // AQL từ DB
+        public string? AqlLevel              { get; set; }
+        public string? AqlCritical           { get; set; }
+        public string? AqlMajor              { get; set; }
+        public string? AqlMinor              { get; set; }
+        public int     AqlQuantity           { get; set; }
+        public int     AqlCriticalSampleSize { get; set; }
+        public int     AqlCriticalAccept     { get; set; }
+        public int     AqlCriticalReject     { get; set; }
+        public int     AqlMajorSampleSize    { get; set; }
+        public int     AqlMajorAccept        { get; set; }
+        public int     AqlMajorReject        { get; set; }
+        public int     AqlMinorSampleSize    { get; set; }
+        public int     AqlMinorAccept        { get; set; }
+        public int     AqlMinorReject        { get; set; }
+    }
+
+    public class OverallConclusionDto
+    {
+        public string  Letter     { get; set; } = "";
+        public string  Label      { get; set; } = "";
+        public string  Compliance { get; set; } = "";
+        public string? Remark     { get; set; }
+    }
+
+    public class PackagingDto
+    {
+        public string? ItemNumber         { get; set; }
+        public string? CartonNumber       { get; set; }
+        public string? PackagingType      { get; set; }
+        public string? CartonColor        { get; set; }
+        public string? CardboardType      { get; set; }
+        public string? ShippingMark       { get; set; }
+        public bool    HasBarcode         { get; set; }
+        public int     InnerPackingQty    { get; set; }
+        public string? InnerPackingRemark { get; set; }
+        public double  OuterL             { get; set; }
+        public double  OuterW             { get; set; }
+        public double  OuterH             { get; set; }
+        public double  OuterWeight        { get; set; }
+        public bool    AssemblyInstruction { get; set; }
+        public bool    Hardware           { get; set; }
+    }
+
+    public class ProductSpecDto
+    {
+        public double SizeL               { get; set; }
+        public double SizeW               { get; set; }
+        public double SizeH               { get; set; }
+        public double Weight              { get; set; }
+        public bool   CompareGoldenSample { get; set; }
+    }
+
+    public class PerfTestDto
+    {
+        public string? TestItem        { get; set; }
+        public string? TestRequirement { get; set; }
+        public string? Remark          { get; set; }
+    }
+
+    // ── QC Result (from PUT/GET qc-result endpoint) ──
+    public class QcResultDto
+    {
+        public List<QcOverallDto>          OverallConclusions { get; set; } = new();
+        public QcQuantityConformityDto?    QuantityConformity { get; set; }
+        public QcPackagingResultDto?       Packaging          { get; set; }
+        public QcProductSpecResultDto?     ProductSpec        { get; set; }
+        public QcAqlResultDto?             Aql                { get; set; }
+        public List<QcPerformanceTestDto>  PerformanceTests   { get; set; } = new();
+        public List<QcDefectDto>           Defects            { get; set; } = new();
+    }
+
+    public class QcOverallDto
+    {
+        public string  Letter     { get; set; } = "";
+        public string  Label      { get; set; } = "";
+        public string  Compliance { get; set; } = "";
+        public string? Remark     { get; set; }
+    }
+
+    public class QcQuantityConformityDto
+    {
+        public int          ItemPerCarton      { get; set; }
+        public int          PresentedPacked    { get; set; }
+        public int          PresentedNotPacked { get; set; }
+        public int          CartonsPacked      { get; set; }
+        public int          CartonsNotPacked   { get; set; }
+        public int          QtyNotFinished     { get; set; }
+        public List<string> Photos             { get; set; } = new();
+    }
+
+    public class QcPackagingResultDto
+    {
+        public string?                 CartonSizeResult   { get; set; }
+        public string?                 ShippingMarkResult { get; set; }
+        public string?                 CartonWeightResult { get; set; }
+        public string?                 PkgLabelResult     { get; set; }
+        public string?                 AssemblyResult     { get; set; }
+        public string?                 HardwareResult     { get; set; }
+        public List<string>?           CartonSizePhotos   { get; set; }
+        public List<string>?           WeightPhotos       { get; set; }
+        public List<string>?           ShippingMarkPhotos { get; set; }
+        public List<string>?           PkgLabelPhotos     { get; set; }
+        public List<string>?           AssemblyPhotos     { get; set; }
+        public List<string>?           HardwarePhotos     { get; set; }
+        public List<QcCartonDataDto>?  CartonDataList     { get; set; }
+    }
+
+    public class QcProductSpecResultDto
+    {
+        public string?                 SizeResult     { get; set; }
+        public string?                 GoldenResult   { get; set; }
+        public string?                 AdditionalText { get; set; }
+        public List<JsonElement>?      SizeRows       { get; set; }
+        public List<string>?           GoldenPhotos   { get; set; }
+        public List<string>?           SwatchPhotos   { get; set; }
+        public List<QcColourSwatchDto> ColourSwatches { get; set; } = new();
+    }
+
+    public class QcColourSwatchDto
+    {
+        public int     No       { get; set; }
+        public string? Material { get; set; }
+        public string? Result   { get; set; }
+    }
+
+    public class QcAqlResultDto
+    {
+        public int    Quantity           { get; set; }
+        public string InspectionLevel    { get; set; } = "II";
+        public string CriticalAql        { get; set; } = "Not Allowed";
+        public string MajorAql           { get; set; } = "2.5";
+        public string MinorAql           { get; set; } = "4.0";
+        public int    CriticalSampleSize { get; set; }
+        public int    MajorSampleSize    { get; set; }
+        public int    MinorSampleSize    { get; set; }
+        public int    CriticalAccept     { get; set; }
+        public int    MajorAccept        { get; set; }
+        public int    MinorAccept        { get; set; }
+        public int    CriticalReject     { get; set; }
+        public int    MajorReject        { get; set; }
+        public int    MinorReject        { get; set; }
+        public int    CriticalFound      { get; set; }
+        public int    MajorFound         { get; set; }
+        public int    MinorFound         { get; set; }
+    }
+
+    public class QcPerformanceTestDto
+    {
+        public string?      TestItem        { get; set; }
+        public string?      TestRequirement { get; set; }
+        public string?      Remark          { get; set; }
+        public string?      Result          { get; set; }
+        public int          TestQuantity    { get; set; }
+        public List<string> Photos          { get; set; } = new();
+    }
+
+    public class QcDefectDto
+    {
+        public string       Type     { get; set; } = "";
+        public string?      PhotoUrl { get; set; }
+        public List<string> Photos   { get; set; } = new();
+        public List<string> Remarks  { get; set; } = new();
+        public string?      Remark   { get; set; }
+    }
+
+    public class QcCartonDataDto
+    {
+        public int          CartonIndex        { get; set; }
+        public double       SizeL              { get; set; }
+        public double       SizeW              { get; set; }
+        public double       SizeH              { get; set; }
+        public string?      CartonSizeResult   { get; set; }
+        public List<string> SizePhotos         { get; set; } = new();
+        public string?      ShippingMarkResult { get; set; }
+        public List<string> ShippingMarkPhotos { get; set; } = new();
+        public string?      CartonWeightResult { get; set; }
+        public double       Weight             { get; set; }
+        public string?      PkgLabelResult     { get; set; }
+        public List<string> PkgLabelPhotos     { get; set; } = new();
+        public string?      AssemblyResult     { get; set; }
+        public List<string> AssemblyPhotos     { get; set; } = new();
+        public string?      HardwareResult     { get; set; }
+        public List<string> HardwarePhotos     { get; set; } = new();
+    }
+}
+
+<style>
+    /* ══════════════════════════════════════════
+       GLOBAL IMG RESET
+       Fix Blazor reboot.css vertical-align: middle
+       và các global override làm vỡ layout ảnh
+    ══════════════════════════════════════════ */
+    /* Fix Blazor global CSS override — đảm bảo mọi text trong report đều tối màu */
+    .rpt-paper td, .rpt-paper th, .rpt-paper span, .rpt-paper div {
+        color: inherit;
+    }
+    .rpt-paper {
+        color: #1a1a2e;
+    }
+    .rpt-page img {
+        vertical-align: top !important;
+        max-width: 100%;
+        height: auto;
+        border: none;
+        margin: 0;
+        padding: 0;
+    }
+    /* Ảnh fill theo khung — override Blazor reboot global */
+    .rpt-page .rpt-photo-cell img,
+    .rpt-page .rpt-photo-cell .rpt-photo {
+        width: 100% !important;
+        height: 300px !important;
+        object-fit: cover !important;
+        object-position: center !important;
+        display: block !important;
+        vertical-align: top !important;
+        min-height: unset !important;
+        max-width: unset !important;
+    }
+    .rpt-page .rpt-overview-photo-cell img,
+    .rpt-page .rpt-overview-photo-cell .rpt-overview-img {
+        width: 100% !important;
+        height: 300px !important;
+        object-fit: cover !important;
+        object-position: center !important;
+        display: block !important;
+        vertical-align: top !important;
+    }
+
+    /* ══════════════════════════════════════════
+       BASE
+    ══════════════════════════════════════════ */
+    :root {
+        --brand: #2D7DD2;
+        --brand-dark: #1a5fa8;
+        --border: #d9e4f0;
+        --bg-light: #f7f9fc;
+        --text: #1a1a2e;
+        --text-muted: #888;
+    }
+
+    .rpt-page {
+        font-family: 'SF Pro Display', -apple-system, 'Segoe UI', Arial, sans-serif;
+        background: #e8edf5;
+        min-height: 100vh;
+        padding-bottom: 60px;
+    }
+
+    /* ══════════════════════════════════════════
+       TOOLBAR (screen only)
+    ══════════════════════════════════════════ */
+    .rpt-toolbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 12px 20px;
+        background: white;
+        border-bottom: 1px solid var(--border);
+        position: sticky;
+        top: 0;
+        z-index: 100;
+        box-shadow: 0 2px 8px rgba(0,0,0,.07);
+    }
+
+    .rpt-back-btn {
+        display: flex; align-items: center; gap: 4px;
+        background: none; border: none;
+        font-size: 14px; color: var(--brand); font-weight: 600;
+        cursor: pointer; padding: 6px 10px;
+        border-radius: 8px;
+        transition: background .15s;
+    }
+    .rpt-back-btn:hover { background: #f0f5ff; }
+
+    .rpt-print-btn {
+        display: flex; align-items: center; gap: 6px;
+        background: var(--brand); color: white;
+        border: none; border-radius: 8px;
+        padding: 8px 18px;
+        font-size: 13px; font-weight: 600;
+        cursor: pointer;
+        transition: background .2s;
+    }
+    .rpt-print-btn:hover { background: var(--brand-dark); }
+
+    /* ══════════════════════════════════════════
+       PAPER CONTAINER
+    ══════════════════════════════════════════ */
+    .rpt-paper {
+        max-width: 860px;
+        margin: 24px auto;
+        background: transparent;
+    }
+
+    .rpt-section {
+        background: white;
+        border-radius: 10px;
+        padding: 28px 32px 24px;
+        margin-bottom: 20px;
+        box-shadow: 0 2px 12px rgba(0,0,0,.07);
+    }
+
+    /* ══════════════════════════════════════════
+       COVER HEADER
+    ══════════════════════════════════════════ */
+    .rpt-cover-header {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        margin-bottom: 24px;
+        padding-bottom: 20px;
+        border-bottom: 2px solid var(--border);
+    }
+
+    .rpt-logo-img {
+        height: 40px;
+        width: auto;
+        object-fit: contain;
+        display: block;
+    }
+
+    .rpt-logo-wrap {
+        display: flex; 
+        align-items: center; 
+        gap: 10px;
+        width: 120px;
+    }
+    .rpt-logo-text {
+        font-size: 22px; font-weight: 800;
+        color: var(--brand);
+        letter-spacing: -0.5px;
+    }
+
+    .rpt-title-block { text-align: right; }
+    .rpt-main-title {
+        font-size: 22px; font-weight: 800;
+        color: var(--text);
+        letter-spacing: .04em;
+    }
+    .rpt-job-no {
+        font-size: 13px; font-weight: 600;
+        color: var(--brand); margin-top: 4px;
+    }
+
+    /* ══════════════════════════════════════════
+       SECTION TITLES
+    ══════════════════════════════════════════ */
+    .rpt-section-title {
+        font-size: 13px;
+        font-weight: 700;
+        color: var(--text);
+        text-align: center;
+        letter-spacing: .08em;
+        text-transform: uppercase;
+        margin: 18px 0 10px;
+    }
+    .rpt-section-title-lg {
+        font-size: 16px;
+        text-align: left;
+        padding-bottom: 8px;
+        border-bottom: 2px solid var(--brand);
+        color: var(--brand-dark);
+        margin-top: 0;
+    }
+
+    .rpt-sub-title {
+        font-size: 13px; font-weight: 700;
+        color: var(--text);
+        margin: 14px 0 6px;
+        display: flex; align-items: center; gap: 12px;
+    }
+    .rpt-result-inline { display: none; }
+
+    /* ══════════════════════════════════════════
+       GENERAL INFO TABLE
+    ══════════════════════════════════════════ */
+    .rpt-info-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 12px;
+        margin-bottom: 6px;
+    }
+    .rpt-info-table td { padding: 7px 10px; border: 1px solid var(--border); }
+    .rpt-info-label {
+        background: #f4f7fc;
+        font-weight: 600;
+        color: var(--text);
+        width: 150px;
+        white-space: nowrap;
+    }
+    .rpt-info-val { color: var(--text); }
+
+    /* ══════════════════════════════════════════
+       RESULT TABLE (Overall Conclusions)
+    ══════════════════════════════════════════ */
+    .rpt-result-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 12px;
+        margin-top: 6px;
+    }
+    .rpt-result-table th, .rpt-result-table td {
+        border: 1px solid var(--border);
+        padding: 7px 10px;
+        color: var(--text);
+    }
+    .rpt-result-table tbody td {
+        color: #1a1a2e;
+        background: white;
+    }
+    .rpt-result-table tbody tr:nth-child(even) td {
+        background: #fafbfc;
+    }
+    .rpt-result-table thead th {
+        background: #1a2a4a;
+        color: white !important;
+        font-weight: 700;
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: .04em;
+    }
+    .rpt-th-label  { width: 38%; }
+    .rpt-th-comp   { width: 14%; text-align: center; }
+    .rpt-th-remark { width: 48%; }
+    .rpt-td-center { text-align: center; }
+
+    /* ══════════════════════════════════════════
+       COMPLIANCE BADGE
+    ══════════════════════════════════════════ */
+    .rpt-compliance-badge {
+        display: inline-block;
+        font-size: 10px; font-weight: 700;
+        padding: 2px 9px; border-radius: 10px;
+        text-transform: uppercase;
+        letter-spacing: .04em;
+    }
+    .comp-passed, .comp-pass   { background: #e8f5e9; color: #2e7d32; }
+    .comp-failed, .comp-fail   { background: #fce4ec; color: #c62828; }
+    .comp-na, .comp-none, .comp- { background: #f0f0f0; color: #555; }
+    .comp-yes                  { background: #e8f5e9; color: #2e7d32; }
+    .comp-no                   { background: #fce4ec; color: #c62828; }
+    /* Fallback: mọi badge chưa match đều có color tối */
+    .rpt-compliance-badge      { color: #333; }
+
+    /* ══════════════════════════════════════════
+       PHOTO GRID — 2 columns
+    ══════════════════════════════════════════ */
+    .rpt-photo-grid-2 {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+        margin: 10px 0;
+    }
+
+    .rpt-photo-cell {
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        overflow: hidden;
+        background: #fafbfc;
+        height: 300px;
+        display: block;
+        width: 100%;
+    }
+    .rpt-photo-cell img.rpt-photo {
+        width: 100%;
+        height: 100% !important;
+        object-fit: cover;
+        display: block;
+    }
+
+    /* Ảnh trong 2-col grid */
+    .rpt-photo {
+        width: 100%;
+        height: 300px;
+        object-fit: cover;
+        object-position: center;
+        display: block;
+        vertical-align: top;
+        flex-shrink: 0;
+    }
+
+    /* Overview photo — 1 ảnh full width */
+    .rpt-overview-photo-wrap {
+        margin: 10px 0;
+    }
+    .rpt-overview-photo-cell {
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        overflow: hidden;
+        background: #fafbfc;
+        display: block;
+    }
+    .rpt-overview-img {
+        width: 100%;
+        height: 300px;
+        object-fit: cover;
+        object-position: center;
+        display: block;
+        vertical-align: top;
+    }
+    .rpt-photo-empty-lg {
+        height: 300px;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 13px; color: #bbb;
+        background: #fafbfc;
+        border-radius: 8px;
+        border: 1px dashed #ddd;
+    }
+
+    .rpt-photo-label {
+        padding: 6px 10px;
+        font-size: 11px; color: var(--text-muted);
+        background: #f9f9f9;
+        border-top: 1px solid var(--border);
+    }
+
+    .rpt-photo-remark {
+        padding: 6px 10px;
+        font-size: 11px; color: #555;
+        background: #f9f9f9;
+        border-top: 1px solid var(--border);
+    }
+
+    .rpt-photo-empty {
+        height: 210px;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 12px; color: #bbb;
+        background: #fafbfc;
+        border-radius: 6px;
+        border: 1px dashed #ddd;
+    }
+
+    .rpt-photo-placeholder {
+        background: transparent;
+        border: none;
+    }
+
+    /* ══════════════════════════════════════════
+       QTY TABLE — theo mẫu PDF
+    ══════════════════════════════════════════ */
+    .rpt-qty-table {
+        width: 100%; border-collapse: collapse;
+        font-size: 11px; margin-bottom: 14px;
+        border: 1px solid #b8c8de;
+    }
+    .rpt-qty-table th, .rpt-qty-table td {
+        border: 1px solid #b8c8de;
+        padding: 6px 7px; text-align: center;
+        color: #1a1a2e;
+    }
+    .rpt-qty-table thead th {
+        background: white;
+        color: #1a1a2e !important;
+        font-weight: 700; font-size: 10px;
+        border-bottom: 1px solid #b8c8de;
+    }
+    .rpt-qty-table tbody td {
+        color: #1a1a2e;
+        background: white;
+        height: 32px;
+    }
+    .rpt-qty-data-row td { height: 36px; }
+    .rpt-total-row td {
+        font-weight: 700; background: white;
+        color: #1a1a2e;
+        border-top: 1px solid #b8c8de;
+    }
+    .rpt-total-label { text-align: right; font-weight: 700; }
+
+    /* ── Qty photo grid: 2 cột × 2 hàng ── */
+    .rpt-qty-photo-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 0;
+        border: 1px solid #b8c8de;
+        margin-bottom: 12px;
+    }
+    .rpt-qty-photo-cell {
+        border: 1px solid #b8c8de;
+        min-height: 160px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: white;
+        overflow: hidden;
+        margin: -1px 0 0 -1px; /* collapse borders */
+    }
+    .rpt-qty-photo-img {
+        width: 100%;
+        height: 160px;
+        object-fit: cover;
+        display: block;
+        vertical-align: top;
+    }
+
+    /* ══════════════════════════════════════════
+       PACKAGING TABLE
+    ══════════════════════════════════════════ */
+    .rpt-pkg-table { margin-bottom: 16px; }
+
+    /* ══════════════════════════════════════════
+       PRODUCT SPEC TABLE
+    ══════════════════════════════════════════ */
+    .rpt-spec-table {
+        width: 100%; border-collapse: collapse;
+        font-size: 12px; margin-bottom: 10px;
+    }
+    .rpt-spec-table th, .rpt-spec-table td {
+        border: 1px solid var(--border);
+        padding: 7px 10px; text-align: center;
+    }
+    .rpt-spec-table thead th { background: #f4f7fc; font-weight: 700; color: #1a1a2e; }
+    .rpt-spec-table td { color: #1a1a2e; background: white; }
+
+    /* ══════════════════════════════════════════
+       SWATCH TABLE
+    ══════════════════════════════════════════ */
+    .rpt-swatch-table {
+        width: 100%; border-collapse: collapse;
+        font-size: 12px; margin-bottom: 10px;
+    }
+    .rpt-swatch-table th, .rpt-swatch-table td {
+        border: 1px solid var(--border); padding: 7px 10px;
+    }
+    .rpt-swatch-table thead th { background: #f4f7fc; font-weight: 700; color: #1a1a2e; }
+    .rpt-swatch-table td { color: #1a1a2e; background: white; }
+
+    /* ══════════════════════════════════════════
+       PERFORMANCE TEST TABLE
+    ══════════════════════════════════════════ */
+    .rpt-perf-table {
+        width: 100%; border-collapse: collapse;
+        font-size: 12px; margin-bottom: 14px;
+    }
+    .rpt-perf-table td {
+        border: 1px solid var(--border); padding: 7px 10px;
+        color: #1a1a2e; background: white;
+    }
+
+    /* ══════════════════════════════════════════
+       AQL SECTION
+    ══════════════════════════════════════════ */
+    .rpt-aql-label {
+        font-size: 12px; font-weight: 700;
+        color: var(--text); margin-bottom: 8px;
+    }
+    .rpt-aql-row {
+        display: flex; gap: 24px;
+        margin-bottom: 12px;
+    }
+    .rpt-aql-item {
+        display: flex; align-items: center; gap: 8px;
+        font-size: 12px;
+    }
+    .rpt-aql-key { font-weight: 600; color: var(--text-muted); }
+    .rpt-aql-val { font-weight: 700; color: var(--text); }
+
+    .rpt-aql-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr 1fr;
+        gap: 12px;
+        margin-bottom: 12px;
+    }
+    .rpt-aql-box {
+        border-radius: 8px;
+        padding: 12px;
+        font-size: 12px;
+        color: #333;
+    }
+    .aql-critical { background: #fff3f3; border: 1px solid #ffc0c0; }
+    .aql-major    { background: #fff8ee; border: 1px solid #ffd99f; }
+    .aql-minor    { background: #f0fff4; border: 1px solid #a3e4b7; }
+
+    .rpt-aql-box-title {
+        font-size: 11px; font-weight: 800;
+        text-transform: uppercase; letter-spacing: .05em;
+        margin-bottom: 8px;
+    }
+    .aql-critical .rpt-aql-box-title { color: #c0392b; }
+    .aql-major    .rpt-aql-box-title { color: #e67e22; }
+    .aql-minor    .rpt-aql-box-title { color: #27ae60; }
+
+    .rpt-aql-box-row {
+        display: flex; justify-content: space-between;
+        padding: 3px 0;
+        border-bottom: 1px solid rgba(0,0,0,.06);
+        font-size: 11px;
+        color: #333;
+    }
+    .rpt-aql-box-row:last-child { border-bottom: none; }
+
+    /* ══════════════════════════════════════════
+       DEFECT SECTION
+    ══════════════════════════════════════════ */
+    .rpt-defect-type-title {
+        font-size: 13px; font-weight: 800;
+        padding: 4px 12px; border-radius: 6px;
+        margin: 14px 0 8px;
+        display: inline-block;
+    }
+    .defect-critical { background: #fce4ec; color: #c62828; }
+    .defect-major    { background: #fff3e0; color: #e65100; }
+    .defect-minor    { background: #e8f5e9; color: #2e7d32; }
+
+    /* Defect cell: ảnh chiếm phần lớn, remark nhỏ bên dưới */
+    .rpt-defect-cell {
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        overflow: hidden;
+        background: #fafbfc;
+        display: flex;
+        flex-direction: column;
+    }
+    .rpt-defect-photo-wrap {
+        flex: 1;
+        overflow: hidden;
+        min-height: 200px;
+    }
+    .rpt-defect-photo {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        display: block;
+        vertical-align: top;
+        min-height: 200px;
+    }
+    .rpt-defect-no-photo {
+        width: 100%;
+        min-height: 200px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 12px;
+        color: #bbb;
+        background: #f5f7fb;
+        border: 1px dashed #ddd;
+        border-radius: 4px;
+    }
+    .rpt-defect-remark {
+        padding: 5px 10px;
+        font-size: 11px;
+        color: #555;
+        background: #f9f9f9;
+        border-top: 1px solid var(--border);
+        min-height: 28px;
+        max-height: 48px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    /* ══════════════════════════════════════════
+       FINAL RESULT & SIGNATURE
+    ══════════════════════════════════════════ */
+    .rpt-sign-table {
+        width: 100%; border-collapse: collapse;
+        font-size: 13px; margin-bottom: 16px;
+    }
+    .rpt-sign-table td {
+        border: 1px solid var(--border); padding: 14px 16px;
+        color: #1a1a2e !important; background: white;
+    }
+    .rpt-sign-label {
+        background: #f4f7fc !important; font-weight: 600;
+        color: #1a1a2e !important;
+        width: 160px; white-space: nowrap;
+    }
+    .rpt-comments-cell { min-height: 80px; }
+    .rpt-sign-cell { height: 90px; vertical-align: middle; }
+    .rpt-signature { max-height: 70px; max-width: 200px; object-fit: contain; }
+    .rpt-sign-name { font-size: 13px; font-weight: 600; color: #333 !important; display: block; margin-bottom: 4px; }
+    .rpt-sign-id   { font-size: 11px; color: #888 !important; display: block; }
+    .rpt-sign-placeholder { color: #bbb; font-size: 12px; }
+
+    .rpt-final-result-wrap {
+        display: flex; align-items: center; gap: 16px;
+        justify-content: flex-end;
+        margin: 12px 0 20px;
+        font-size: 14px; font-weight: 700; color: var(--text);
+    }
+    .rpt-final-label { font-size: 13px; color: var(--text-muted); }
+    .rpt-final-badge {
+        font-size: 14px; font-weight: 800;
+        padding: 6px 22px; border-radius: 8px;
+        letter-spacing: .06em; text-transform: uppercase;
+    }
+    .final-pass { background: #e8f5e9; color: #2e7d32; border: 2px solid #a5d6a7; }
+    .final-fail { background: #fce4ec; color: #c62828; border: 2px solid #ef9a9a; }
+    .final-na   { background: #f5f5f5; color: #888;    border: 2px solid #e0e0e0; }
+
+    .rpt-compliance-clause {
+        background: #f9f9f9; border-radius: 6px;
+        padding: 12px 16px; font-size: 11px; color: #555;
+        border-left: 3px solid var(--border);
+    }
+    .rpt-compliance-clause strong { font-size: 12px; color: var(--text); display: block; margin-bottom: 6px; }
+
+    .rpt-end-line {
+        display: flex; align-items: center; gap: 12px;
+        margin: 20px 0 4px;
+        font-size: 13px; color: var(--text-muted); font-weight: 600;
+    }
+    .rpt-end-line hr { flex: 1; border: none; border-top: 1px solid var(--border); }
+
+    /* ══════════════════════════════════════════
+       FOOTER
+    ══════════════════════════════════════════ */
+    .rpt-footer {
+        margin-top: 24px;
+        padding-top: 8px;
+        border-top: 1px solid #f0f0f0;
+    }
+    .rpt-footer-inner {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 12px;
+    }
+    .rpt-footer-text {
+        font-size: 9px;
+        color: #bbb;
+        line-height: 1.5;
+        flex: 1;
+        text-align: center;
+    }
+    .rpt-footer-page {
+        font-size: 11px;
+        font-weight: 700;
+        color: #aaa;
+        white-space: nowrap;
+        flex-shrink: 0;
+        align-self: flex-end;
+        padding-left: 12px;
+        border-left: 1px solid #e0e0e0;
+    }
+
+    /* ══════════════════════════════════════════
+       EMPTY / ERROR STATES
+    ══════════════════════════════════════════ */
+    .rpt-no-data {
+        font-size: 12px; color: var(--text-muted);
+        padding: 16px; background: #fafbfc;
+        border-radius: 6px; border: 1px dashed #ddd;
+        text-align: center;
+    }
+
+    .rpt-loading {
+        display: flex; flex-direction: column;
+        align-items: center; justify-content: center;
+        gap: 14px; min-height: 50vh;
+        color: #888; font-size: 14px;
+    }
+    .rpt-spinner {
+        width: 36px; height: 36px;
+        border: 3px solid #e0e7ef;
+        border-top-color: var(--brand);
+        border-radius: 50%;
+        animation: spin .8s linear infinite;
+    }
+    @@keyframes spin { to { transform: rotate(360deg); } }
+
+    .rpt-error {
+        display: flex; flex-direction: column;
+        align-items: center; gap: 12px;
+        padding: 48px 24px;
+        font-size: 14px; color: #555;
+    }
+
+    /* ══════════════════════════════════════════
+       PRINT STYLES
+    ══════════════════════════════════════════ */
+    @@media print {
+        .no-print { display: none !important; }
+        .rpt-page { background: white; padding: 0; }
+        .rpt-paper { max-width: 100%; margin: 0; counter-reset: page-counter; }
+        .rpt-section {
+            border-radius: 0; box-shadow: none;
+            margin-bottom: 0; padding: 20px 24px;
+            counter-increment: page-counter;
+        }
+        .page-break-after { page-break-after: always; }
+        .rpt-photo { height: 180px; }
+        .rpt-aql-grid { grid-template-columns: 1fr 1fr 1fr; }
+        /* Ẩn hardcoded page numbers khi in, dùng CSS counter thay thế */
+        .rpt-footer-page { display: none; }
+        .rpt-footer-inner::after {
+            content: counter(page-counter);
+            font-size: 11px;
+            font-weight: 700;
+            color: #aaa;
+            white-space: nowrap;
+            flex-shrink: 0;
+            align-self: flex-end;
+            padding-left: 12px;
+            border-left: 1px solid #e0e0e0;
+        }
+    }
+
+    @@media (max-width: 640px) {
+        .rpt-section { padding: 18px 16px; }
+        .rpt-aql-grid { grid-template-columns: 1fr; }
+        .rpt-cover-header { flex-direction: column; gap: 8px; }
+        .rpt-title-block { text-align: left; }
+    }
+</style>
