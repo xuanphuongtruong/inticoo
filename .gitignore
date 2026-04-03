@@ -1,0 +1,19 @@
+*.user
+*.userosscache
+*.sln.docstates
+.vs/
+
+obj/
+.svn/
+bin/
+
+
+# Chặn tất cả thư mục bin và obj ở bất kỳ đâu trong project
+**/bin/
+**/obj/
+
+# Các tệp tạm của Visual Studio
+.vs/
+*.user
+*.userosscache
+*.sln.docstates
