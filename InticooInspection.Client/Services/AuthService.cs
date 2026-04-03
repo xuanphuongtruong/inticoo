@@ -77,6 +77,13 @@ namespace InticooInspection.Client.Services
         public async Task<AuthResponseDto> LoginAsync(LoginDto dto)
         {
             var response = await _http.PostAsJsonAsync("api/auth/login", dto);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                var errorText = await response.Content.ReadAsStringAsync();
+                return new AuthResponseDto { Success = false, Message = errorText };
+            }
+
             var result = await response.Content.ReadFromJsonAsync<AuthResponseDto>();
 
             if (result?.Success == true && result.Token != null)

@@ -50,42 +50,19 @@ builder.Services.AddAuthentication(options =>
     };
 });
 
-// CORS
+// CORS — dùng WithOrigins cụ thể, bỏ AllowAnyOrigin (xung đột với SetIsOriginAllowed)
 builder.Services.AddCors(options =>
 {
-    //options.AddPolicy("BlazorClient", policy =>
-    //    policy.SetIsOriginAllowed(origin =>
-    //    {
-    //        // Cho phép tất cả localhost (mọi port) trong môi trường dev
-    //        var uri = new Uri(origin);
-    //        return uri.Host == "localhost" || uri.Host == "127.0.0.1" ||
-    //               uri.Host.EndsWith("azurewebsites.net") ||
-    //               uri.Host.EndsWith("azurestaticapps.net");
-    //    })
-    //          .AllowAnyHeader()
-    //          .AllowAnyMethod());
     options.AddPolicy("BlazorClient", policy =>
-        policy.SetIsOriginAllowed(origin =>
-        {
-            if (string.IsNullOrWhiteSpace(origin)) return false;
-
-            // Thử parse origin để kiểm tra host
-            //if (Uri.TryCreate(origin, UriKind.Absolute, out var uri))
-            //{
-            //    return uri.Host == "localhost" ||
-            //           uri.Host == "127.0.0.1" ||
-            //           uri.Host == "black-grass-002608310.2.azurestaticapps.net" ||
-            //           uri.Host.EndsWith("azurewebsites.net");
-
-            //}
-            return origin.StartsWith("http://localhost:5186") ||
-               origin.StartsWith("https://localhost:5186") ||
-               origin.EndsWith("azurestaticapps.net");
-            //return false;
-        })
-        .AllowAnyOrigin()
-        .AllowAnyHeader()
-        .AllowAnyMethod());
+        policy
+            .WithOrigins(
+                "http://localhost:5186",
+                "https://localhost:5186",
+                "https://black-grass-002608310.2.azurestaticapps.net"
+            )
+            .AllowAnyHeader()
+            .AllowAnyMethod()
+            .AllowCredentials());
 });
 
 builder.Services.AddAuthorization(options =>
@@ -97,7 +74,7 @@ builder.Services.AddHttpContextAccessor();
 builder.Services.AddControllers().AddJsonOptions(options =>
 {
     options.JsonSerializerOptions.PropertyNameCaseInsensitive = true;
-}); ;
+});
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
@@ -112,6 +89,7 @@ using (var scope = app.Services.CreateScope())
     await db.Database.MigrateAsync();
     await DbSeeder.SeedAsync(userManager, roleManager);
 }
+
 app.UseDeveloperExceptionPage();
 app.UseSwagger();
 app.UseSwaggerUI(c =>
@@ -120,20 +98,15 @@ app.UseSwaggerUI(c =>
     c.RoutePrefix = "swagger";
 });
 
-// ── Middleware order (quan trọng) ──────────────────────────────
-// 1. Static files phải đứng TRƯỚC UseCors để browser nhận được
-//    header Access-Control trên file ảnh khi Blazor WebAssembly gọi cross-origin
-
 // Tạo thư mục wwwroot/uploads nếu chưa có
 var wwwrootPath = Path.Combine(builder.Environment.ContentRootPath, "wwwroot");
 Directory.CreateDirectory(Path.Combine(wwwrootPath, "uploads", "photos"));
 Directory.CreateDirectory(Path.Combine(wwwrootPath, "uploads", "references"));
 Directory.CreateDirectory(Path.Combine(wwwrootPath, "uploads", "cv"));
 
-// Static files — phải đứng trước UseCors và UseHttpsRedirection
-app.UseStaticFiles(); // serve wwwroot/ → URL /uploads/photos/...
+// Static files
+app.UseStaticFiles();
 
-// Explicit fallback cho uploads nếu WebRootPath bị null (trường hợp IIS/hosting)
 app.UseStaticFiles(new StaticFileOptions
 {
     FileProvider = new Microsoft.Extensions.FileProviders.PhysicalFileProvider(
@@ -143,7 +116,7 @@ app.UseStaticFiles(new StaticFileOptions
 
 app.UseHttpsRedirection();
 
-// CORS sau static files
+// CORS phải đứng TRƯỚC Authentication/Authorization
 app.UseCors("BlazorClient");
 
 app.UseAuthentication();
