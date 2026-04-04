@@ -1957,6 +1957,9 @@ else if (_data != null)
        PRINT STYLES
     ══════════════════════════════════════════ */
     @@media print {
+        /* Ẩn header/footer mặc định của browser (URL, ngày giờ, tên trang) */
+        @@page { margin: 0; size: A4 portrait; }
+        body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
         .no-print { display: none !important; }
         .rpt-page { background: white; padding: 0; }
         .rpt-paper { max-width: 100%; margin: 0; counter-reset: page-counter; }
