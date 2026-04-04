@@ -938,7 +938,7 @@ else
                             <td style="padding:10px 8px">
                                 @if (!string.IsNullOrEmpty(_data.SignatureUrl))
                                 {
-                                    <img src="@_data.SignatureUrl" style="max-height:80px;object-fit:contain;display:block"/>
+                                    <img src="@GetImageUrl(_data.SignatureUrl)" style="max-height:80px;object-fit:contain;display:block"/>
                                     <button style="margin-top:6px;background:#fee;color:#e74c3c;border:none;border-radius:5px;padding:4px 10px;font-size:11px;cursor:pointer"
                                             @onclick="() => _data.SignatureUrl = string.Empty">Clear Signature</button>
                                 }
@@ -1363,6 +1363,36 @@ else
             if (sizeCount < 2)
             {
                 _saveMsg = "Please take at least 2 photos for Product Size.";
+                _saveError = true;
+                StateHasChanged();
+                return;
+            }
+            _saveMsg = ""; _saveError = false;
+        }
+
+        // Validate Final Result — step 11 + carton*B + max(1,perf)
+        int finalResultStep = 11 + _cartonCount * B_STEPS_PER_CARTON + Math.Max(1, _data.PerformanceTests.Count);
+        if (_currentStepIdx == finalResultStep)
+        {
+            _finalValidated = true;
+            if (string.IsNullOrEmpty(_data.FinalResult))
+            {
+                _saveMsg  = "Please select a Final Result (PASSED / FAILED / N/A).";
+                _saveError = true;
+                StateHasChanged();
+                return;
+            }
+            _saveMsg = ""; _saveError = false;
+        }
+
+        // Validate Signature — step 12 + carton*B + max(1,perf)
+        int sigStep = 12 + _cartonCount * B_STEPS_PER_CARTON + Math.Max(1, _data.PerformanceTests.Count);
+        if (_currentStepIdx == sigStep)
+        {
+            _sigValidated = true;
+            if (string.IsNullOrEmpty(_data.SignatureUrl))
+            {
+                _saveMsg  = "Please add a signature before proceeding.";
                 _saveError = true;
                 StateHasChanged();
                 return;
