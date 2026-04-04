@@ -2000,33 +2000,4 @@ else if (_data != null)
     }
 </style>
 
-<script>
-    window.printReportOnly = function () {
-        // Tìm tất cả elements ngoài .rpt-page và ẩn tạm
-        const hidden = [];
-        document.querySelectorAll('body > *').forEach(el => {
-            if (!el.contains(document.querySelector('.rpt-page')) &&
-                !el.classList.contains('rpt-page')) {
-                hidden.push({ el, display: el.style.display });
-                el.style.display = 'none';
-            }
-        });
-
-        // Ẩn thêm nav/header bất kể cấp độ nào
-        document.querySelectorAll('nav, header, .navbar, .sidebar, .top-bar, .nav-bar, [class*="nav-menu"], [class*="app-bar"], [class*="sidebar"]').forEach(el => {
-            if (!el.closest('.rpt-page')) {
-                hidden.push({ el, display: el.style.display });
-                el.style.display = 'none';
-            }
-        });
-
-        window.print();
-
-        // Restore sau khi print dialog đóng
-        setTimeout(() => {
-            hidden.forEach(({ el, display }) => {
-                el.style.display = display;
-            });
-        }, 1000);
-    };
-</script>
+<script src="/js/print-report.js"></script>
