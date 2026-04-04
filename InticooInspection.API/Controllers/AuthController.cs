@@ -24,6 +24,9 @@ namespace InticooInspection.API.Controllers
         [HttpPost("login")]
         public async Task<IActionResult> Login([FromBody] LoginRequest request)
         {
+            if (request == null)
+                return BadRequest(new { success = false, message = "Request body is null." });
+
             if (string.IsNullOrWhiteSpace(request.Username) || string.IsNullOrWhiteSpace(request.Password))
                 return BadRequest(new { success = false, message = "Username and password are required." });
 

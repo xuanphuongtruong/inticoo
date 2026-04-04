@@ -99,11 +99,25 @@ var app = builder.Build();
 // Seed database
 using (var scope = app.Services.CreateScope())
 {
-    var db          = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-    var userManager = scope.ServiceProvider.GetRequiredService<UserManager<AppUser>>();
-    var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
-    await db.Database.MigrateAsync();
-    await DbSeeder.SeedAsync(userManager, roleManager);
+    // var db          = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    // var userManager = scope.ServiceProvider.GetRequiredService<UserManager<AppUser>>();
+    // var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
+    // await db.Database.MigrateAsync();
+    // await DbSeeder.SeedAsync(userManager, roleManager);
+    try
+    {
+        var db          = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var userManager = scope.ServiceProvider.GetRequiredService<UserManager<AppUser>>();
+        var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
+        await db.Database.MigrateAsync();
+        await DbSeeder.SeedAsync(userManager, roleManager);
+    }
+    catch (Exception ex)
+    {
+        var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+        logger.LogError(ex, "Lỗi khi seed database");
+        // Không throw — app vẫn chạy tiếp
+    }
 }
 
 app.UseDeveloperExceptionPage();
