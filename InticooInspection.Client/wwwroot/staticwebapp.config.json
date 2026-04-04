@@ -1,21 +1,49 @@
 {
   "trailingSlash": "auto",
   "navigationFallback": {
-    "rewrite": "/index.html"
+    "rewrite": "/index.html",
+    "exclude": [
+      "/_framework/*",
+      "/js/*",
+      "/css/*",
+      "/images/*",
+      "*.{png,jpg,jpeg,gif,webp,svg,ico,woff,woff2,ttf,eot,wasm,dll,dat,blat,pdb}"
+    ]
   },
   "mimeTypes": {
     ".wasm": "application/wasm",
-    ".dll": "application/octet-stream",
-    ".pdb": "application/octet-stream",
-    ".br": "application/x-brotli",
-    ".dat": "application/octet-stream",
-    ".json": "application/json"
+    ".dll":  "application/octet-stream",
+    ".pdb":  "application/octet-stream",
+    ".br":   "application/x-brotli",
+    ".gz":   "application/gzip",
+    ".dat":  "application/octet-stream",
+    ".blat": "application/octet-stream",
+    ".json": "application/json",
+    ".js":   "text/javascript",
+    ".css":  "text/css"
   },
   "globalHeaders": {
-    "Access-Control-Allow-Origin": "http://localhost:5186",
-    "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Requested-With",
-    "Content-Security-Policy": "script-src 'self' 'unsafe-eval' 'sha256-INTRR93shvyJbfhKCSIBjnwp0wkHJwR+kVj65P0+tTA=' 'sha256-VU+DO7X23WpDAIsbTMcwDhl+DiFngTatd3JjSOvvd2U=' https://gc.kis.v2.scr.kaspersky-labs.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://gc.kis.v2.scr.kaspersky-labs.com;"
-  }
-  
+    "Cache-Control": "no-cache",
+    "Content-Security-Policy": "script-src 'self' 'unsafe-eval' 'sha256-INTRR93shvyJbfhKCSIBjnwp0wkHJwR+kVj65P0+tTA=' 'sha256-VU+DO7X23WpDAIsbTMcwDhl+DiFngTatd3JjSOvvd2U=' https://gc.kis.v2.scr.kaspersky-labs.com wss://gc.kis.v2.scr.kaspersky-labs.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://gc.kis.v2.scr.kaspersky-labs.com wss://gc.kis.v2.scr.kaspersky-labs.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https:; connect-src 'self' https://inticoo-e4hrerayb4b7h4fk.southeastasia-01.azurewebsites.net wss: https:; worker-src 'self' blob:;"
+  },
+  "routes": [
+    {
+      "route": "/_framework/*",
+      "headers": {
+        "Cache-Control": "public, max-age=31536000, immutable"
+      }
+    },
+    {
+      "route": "/js/*",
+      "headers": {
+        "Cache-Control": "public, max-age=3600"
+      }
+    },
+    {
+      "route": "/css/*",
+      "headers": {
+        "Cache-Control": "public, max-age=3600"
+      }
+    }
+  ]
 }
