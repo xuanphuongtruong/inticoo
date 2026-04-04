@@ -1031,7 +1031,7 @@ else if (_data != null)
 
     private async Task PrintReport()
     {
-        await JS.InvokeVoidAsync("window.print");
+        await JS.InvokeVoidAsync("printReportOnly");
     }
 
     private static string GetFinalBadgeClass(string? result) => result?.ToUpper() switch
@@ -1961,6 +1961,12 @@ else if (_data != null)
         @@page { margin: 0; size: A4 portrait; }
         body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
         .no-print { display: none !important; }
+
+        /* Ẩn MainLayout navbar và tất cả UI elements ngoài report */
+        nav, header, .navbar, .sidebar,
+        .top-bar, .main-nav, .nav-bar, .app-nav,
+        .top-menu, .side-menu, .menu-bar,
+        [class*="nav"], [class*="header"]:not(.rpt-cover-header):not(.rpt-section-header) { display: none !important; }
         .rpt-page { background: white; padding: 0; }
         .rpt-paper { max-width: 100%; margin: 0; counter-reset: page-counter; }
         .rpt-section {
@@ -1993,3 +1999,34 @@ else if (_data != null)
         .rpt-title-block { text-align: left; }
     }
 </style>
+
+<script>
+    window.printReportOnly = function () {
+        // Tìm tất cả elements ngoài .rpt-page và ẩn tạm
+        const hidden = [];
+        document.querySelectorAll('body > *').forEach(el => {
+            if (!el.contains(document.querySelector('.rpt-page')) &&
+                !el.classList.contains('rpt-page')) {
+                hidden.push({ el, display: el.style.display });
+                el.style.display = 'none';
+            }
+        });
+
+        // Ẩn thêm nav/header bất kể cấp độ nào
+        document.querySelectorAll('nav, header, .navbar, .sidebar, .top-bar, .nav-bar, [class*="nav-menu"], [class*="app-bar"], [class*="sidebar"]').forEach(el => {
+            if (!el.closest('.rpt-page')) {
+                hidden.push({ el, display: el.style.display });
+                el.style.display = 'none';
+            }
+        });
+
+        window.print();
+
+        // Restore sau khi print dialog đóng
+        setTimeout(() => {
+            hidden.forEach(({ el, display }) => {
+                el.style.display = display;
+            });
+        }, 1000);
+    };
+</script>

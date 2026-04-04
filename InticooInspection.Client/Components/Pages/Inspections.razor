@@ -131,13 +131,25 @@
                                     }
                                     else
                                     {
-                                        @* Completed / Cancel → chỉ xem *@
-                                        <button class="bico bview" @onclick="() => GoToDetail(it.Id)" title="View">
-                                            <svg width="13" height="13" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8">
-                                                <path d="M2 10s3-6 8-6 8 6 8 6-3 6-8 6-8-6-8-6z" stroke-linecap="round"/>
-                                                <circle cx="10" cy="10" r="2.5"/>
-                                            </svg>
-                                        </button>
+                                        @* Completed → Inspection Report | Cancel → Detail *@
+                                        @if (it.Status == "Completed")
+                                        {
+                                            <button class="bico bview bview-report" @onclick="() => GoToReport(it.Id)" title="View Report">
+                                                <svg width="13" height="13" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8">
+                                                    <path d="M2 10s3-6 8-6 8 6 8 6-3 6-8 6-8-6-8-6z" stroke-linecap="round"/>
+                                                    <circle cx="10" cy="10" r="2.5"/>
+                                                </svg>
+                                            </button>
+                                        }
+                                        else
+                                        {
+                                            <button class="bico bview" @onclick="() => GoToDetail(it.Id)" title="View">
+                                                <svg width="13" height="13" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8">
+                                                    <path d="M2 10s3-6 8-6 8 6 8 6-3 6-8 6-8-6-8-6z" stroke-linecap="round"/>
+                                                    <circle cx="10" cy="10" r="2.5"/>
+                                                </svg>
+                                            </button>
+                                        }
                                     }
                                 </td>
                             </tr>
@@ -215,6 +227,7 @@
     private void GoToNew()          => Navigation.NavigateTo("/inspections/new");
     private void GoToEdit(int id)   => Navigation.NavigateTo($"/inspections/{id}/edit");
     private void GoToDetail(int id) => Navigation.NavigateTo($"/inspections/{id}");
+    private void GoToReport(int id)  => Navigation.NavigateTo($"/inspection-report/{id}");
     private async Task PrevPage()   => await LoadPage(_page - 1);
     private async Task NextPage()   => await LoadPage(_page + 1);
     private int TotalPages()        => (_total + _pageSize - 1) / _pageSize;
@@ -398,6 +411,7 @@
     .bedit { background:#e8f0fe; color:#1565c0; } .bedit:hover { background:#1565c0; color:#fff; }
     .bdel  { background:#fee2e2; color:#dc2626; } .bdel:hover  { background:#dc2626; color:#fff; }
     .bview { background:#f0f4fb; color:#7a8fad;  } .bview:hover { background:#e0eaf7; color:#1a2d5a; }
+    .bview-report { background:#e6f4ff; color:#1e90d6; } .bview-report:hover { background:#1e90d6; color:#fff; }
 
     /* Status badges */
     .badge      { display:inline-block; padding:3px 10px; border-radius:20px; font-size:11px; font-weight:600; white-space:nowrap; }
