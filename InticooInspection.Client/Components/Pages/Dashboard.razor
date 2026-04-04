@@ -15,19 +15,19 @@
     <div class="cfg-banner" id="cfg-banner" style="display:none">
         <div style="font-size:18px">⚙️</div>
         <div style="flex:1;min-width:140px">
-            <div style="font-weight:700;color:var(--db-amber);margin-bottom:3px">Kết nối API Server</div>
-            <div style="font-size:12px;color:var(--db-muted)">Nhập Base URL — ví dụ: <code style="color:var(--db-text)">http://localhost:5000</code></div>
+            <div style="font-weight:700;color:var(--db-amber);margin-bottom:3px">Connect API Server</div>
+            <div style="font-size:12px;color:var(--db-muted)">Enter Base URL — e.g. <code style="color:var(--db-text)">http://localhost:5000</code></div>
         </div>
         <input type="text" id="api-input" placeholder="https://your-api.inticoo.com" />
-        <button class="cfg-btn" onclick="dbSaveUrl()">Kết nối →</button>
+        <button class="cfg-btn" onclick="dbSaveUrl()">Connect →</button>
     </div>
 
     <!-- Page header -->
     <div class="db-ph">
         <div class="db-bc"><span>Home</span><span style="color:var(--db-border);margin:0 4px">/</span><span class="db-cur">Dashboard</span></div>
         <h1>Overview</h1>
-        <p><span class="db-ldot-live"></span>Dữ liệu thực từ API · <span id="last-upd">Chưa kết nối</span>
-            <button class="db-ref-btn" title="Làm mới" onclick="dbLoadAll()" id="ref-btn">
+        <p><span class="db-ldot-live"></span>Live data from API · <span id="last-upd">Not connected</span>
+            <button class="db-ref-btn" title="Refresh" onclick="dbLoadAll()" id="ref-btn">
                 <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
             </button>
         </p>
@@ -41,7 +41,7 @@
                 <span class="db-kdelta up" id="d1">—</span>
             </div>
             <div class="db-kval" id="k1">—</div>
-            <div class="db-klbl">Tổng Inspections</div>
+            <div class="db-klbl">Total Inspections</div>
         </div>
         <div class="db-kcard c2">
             <div class="db-ktop">
@@ -49,7 +49,7 @@
                 <span class="db-kdelta up" id="d2">—</span>
             </div>
             <div class="db-kval" id="k2">—</div>
-            <div class="db-klbl">Đang thực hiện</div>
+            <div class="db-klbl">In Progress</div>
         </div>
         <div class="db-kcard c3">
             <div class="db-ktop">
@@ -57,7 +57,7 @@
                 <span class="db-kdelta up" id="d3">—</span>
             </div>
             <div class="db-kval" id="k3">—</div>
-            <div class="db-klbl">Khách hàng</div>
+            <div class="db-klbl">Customers</div>
         </div>
         <div class="db-kcard c4">
             <div class="db-ktop">
@@ -65,7 +65,7 @@
                 <span class="db-kdelta up" id="d4">—</span>
             </div>
             <div class="db-kval" id="k4">—</div>
-            <div class="db-klbl">Nhà cung cấp</div>
+            <div class="db-klbl">Vendors</div>
         </div>
         <div class="db-kcard c5">
             <div class="db-ktop">
@@ -73,7 +73,7 @@
                 <span class="db-kdelta up" id="d5">—</span>
             </div>
             <div class="db-kval" id="k5">—</div>
-            <div class="db-klbl">Sản phẩm</div>
+            <div class="db-klbl">Products</div>
         </div>
     </div>
 
@@ -82,12 +82,12 @@
         <div class="db-panel" style="animation-delay:.2s">
             <div class="db-ph2">
                 <div>
-                    <div class="db-ptitle">Inspections theo tháng</div>
-                    <div class="db-psub">12 tháng gần nhất</div>
+                    <div class="db-ptitle">Inspections by Month</div>
+                    <div class="db-psub">Last 12 months</div>
                 </div>
                 <div style="display:flex;gap:10px">
-                    <span style="display:flex;align-items:center;gap:4px;font-size:10px;color:var(--db-muted)"><span style="width:8px;height:3px;border-radius:2px;background:var(--db-accent);display:inline-block"></span>Hoàn thành</span>
-                    <span style="display:flex;align-items:center;gap:4px;font-size:10px;color:var(--db-muted)"><span style="width:8px;height:3px;border-radius:2px;background:var(--db-blue);display:inline-block"></span>Tạo mới</span>
+                    <span style="display:flex;align-items:center;gap:4px;font-size:10px;color:var(--db-muted)"><span style="width:8px;height:3px;border-radius:2px;background:var(--db-accent);display:inline-block"></span>Completed</span>
+                    <span style="display:flex;align-items:center;gap:4px;font-size:10px;color:var(--db-muted)"><span style="width:8px;height:3px;border-radius:2px;background:var(--db-blue);display:inline-block"></span>Created</span>
                 </div>
             </div>
             <div class="db-pbody">
@@ -95,15 +95,15 @@
                 <div style="display:flex;justify-content:space-between;margin-top:6px" id="bar-lbls"></div>
             </div>
             <div class="db-mstats" id="mstats">
-                <div class="db-ms"><div class="db-sk" style="height:18px;width:40px;margin-bottom:4px"></div><div class="db-msl">Hoàn thành</div></div>
-                <div class="db-ms"><div class="db-sk" style="height:18px;width:40px;margin-bottom:4px"></div><div class="db-msl">Tháng này</div></div>
-                <div class="db-ms"><div class="db-sk" style="height:18px;width:40px;margin-bottom:4px"></div><div class="db-msl">Chờ duyệt</div></div>
+                <div class="db-ms"><div class="db-sk" style="height:18px;width:40px;margin-bottom:4px"></div><div class="db-msl">Completed</div></div>
+                <div class="db-ms"><div class="db-sk" style="height:18px;width:40px;margin-bottom:4px"></div><div class="db-msl">This month</div></div>
+                <div class="db-ms"><div class="db-sk" style="height:18px;width:40px;margin-bottom:4px"></div><div class="db-msl">Pending</div></div>
             </div>
         </div>
 
         <div class="db-panel" style="animation-delay:.24s">
             <div class="db-ph2">
-                <div><div class="db-ptitle">Trạng thái</div><div class="db-psub">Phân bổ hiện tại</div></div>
+                <div><div class="db-ptitle">Status</div><div class="db-psub">Current distribution</div></div>
             </div>
             <div class="db-pbody">
                 <div class="db-dwrap" id="donut-wrap">
@@ -123,41 +123,41 @@
     <div class="db-g2">
         <div class="db-panel" style="animation-delay:.28s">
             <div class="db-ftabs" id="ftabs">
-                <button class="db-ftab on" data-f="all">Tất cả</button>
-                <button class="db-ftab" data-f="ongoing">Đang chạy</button>
-                <button class="db-ftab" data-f="completed">Hoàn thành</button>
-                <button class="db-ftab" data-f="pending">Chờ</button>
-                <button class="db-ftab" data-f="cancelled">Huỷ</button>
+                <button class="db-ftab on" data-f="all">All</button>
+                <button class="db-ftab" data-f="ongoing">Ongoing</button>
+                <button class="db-ftab" data-f="completed">Completed</button>
+                <button class="db-ftab" data-f="pending">Pending</button>
+                <button class="db-ftab" data-f="cancelled">Cancelled</button>
             </div>
             <div class="db-ph2" style="padding-top:10px">
-                <div><div class="db-ptitle">Inspection gần đây</div><div class="db-psub" id="tbl-sub">—</div></div>
-                <button class="db-pact">Xem tất cả →</button>
+                <div><div class="db-ptitle">Recent Inspections</div><div class="db-psub" id="tbl-sub">—</div></div>
+                <button class="db-pact">View all →</button>
             </div>
             <div class="db-twrap">
                 <table>
-                    <thead><tr><th>Job #</th><th>Khách hàng / Sản phẩm</th><th>Inspector</th><th>Trạng thái</th><th>Ngày</th></tr></thead>
-                    <tbody id="tbody"><tr><td colspan="5"><div class="db-errmsg"><div class="db-ei">⚙️</div>Cấu hình API URL để xem dữ liệu</div></td></tr></tbody>
+                    <thead><tr><th>Job #</th><th>Customers / Products</th><th>Inspector</th><th>Status</th><th>Date</th></tr></thead>
+                    <tbody id="tbody"><tr><td colspan="5"><div class="db-errmsg"><div class="db-ei">⚙️</div>Configure API URL to view data</div></td></tr></tbody>
                 </table>
             </div>
         </div>
 
         <div style="display:flex;flex-direction:column;gap:18px">
             <div class="db-panel" style="animation-delay:.32s">
-                <div class="db-ph2"><div class="db-ptitle">Thao tác nhanh</div></div>
+                <div class="db-ph2"><div class="db-ptitle">Quick Actions</div></div>
                 <div class="db-pbody">
                     <div class="db-qgrid">
-                        <a class="db-qbtn" href="/inspections/new"><div class="db-qico" style="background:rgba(0,212,170,.1)">📋</div><div><div class="db-qlbl">Tạo Inspection</div><div class="db-qdesc">Job mới</div></div></a>
-                        <a class="db-qbtn" href="/customers"><div class="db-qico" style="background:rgba(59,130,246,.1)">🏢</div><div><div class="db-qlbl">Thêm KH</div><div class="db-qdesc">Đăng ký client</div></div></a>
-                        <a class="db-qbtn" href="/products"><div class="db-qico" style="background:rgba(245,158,11,.1)">📦</div><div><div class="db-qlbl">Thêm SP</div><div class="db-qdesc">SKU mới</div></div></a>
-                        <a class="db-qbtn" href="#"><div class="db-qico" style="background:rgba(239,68,68,.1)">📊</div><div><div class="db-qlbl">Xuất báo cáo</div><div class="db-qdesc">PDF / Excel</div></div></a>
+                        <a class="db-qbtn" href="/inspections/new"><div class="db-qico" style="background:rgba(0,212,170,.1)">📋</div><div><div class="db-qlbl">New Inspection</div><div class="db-qdesc">New job</div></div></a>
+                        <a class="db-qbtn" href="/customers"><div class="db-qico" style="background:rgba(59,130,246,.1)">🏢</div><div><div class="db-qlbl">Add Customer</div><div class="db-qdesc">Register client</div></div></a>
+                        <a class="db-qbtn" href="/products"><div class="db-qico" style="background:rgba(245,158,11,.1)">📦</div><div><div class="db-qlbl">Add Product</div><div class="db-qdesc">New SKU</div></div></a>
+                        <a class="db-qbtn" href="#"><div class="db-qico" style="background:rgba(239,68,68,.1)">📊</div><div><div class="db-qlbl">Export Report</div><div class="db-qdesc">PDF / Excel</div></div></a>
                     </div>
                 </div>
             </div>
 
             <div class="db-panel" style="animation-delay:.36s">
                 <div class="db-ph2">
-                    <div><div class="db-ptitle">Top Inspectors</div><div class="db-psub">Nhiều job nhất</div></div>
-                    <button class="db-pact">Tất cả →</button>
+                    <div><div class="db-ptitle">Top Inspectors</div><div class="db-psub">Most jobs</div></div>
+                    <button class="db-pact">All →</button>
                 </div>
                 <div class="db-pbody"><div class="db-ilist" id="ilist"><div class="db-sk" style="height:130px;width:100%;border-radius:8px"></div></div></div>
             </div>
@@ -167,23 +167,23 @@
     <!-- Activity + Type -->
     <div class="db-g2">
         <div class="db-panel" style="animation-delay:.4s">
-            <div class="db-ph2"><div><div class="db-ptitle">Hoạt động gần đây</div><div class="db-psub">Từ inspections thực</div></div></div>
+            <div class="db-ph2"><div><div class="db-ptitle">Recent Activity</div><div class="db-psub">From live inspections</div></div></div>
             <div class="db-pbody"><div class="db-afeed" id="afeed"><div class="db-sk" style="height:180px;width:100%;border-radius:8px"></div></div></div>
         </div>
 
         <div class="db-panel" style="animation-delay:.44s">
-            <div class="db-ph2"><div><div class="db-ptitle">Phân loại Inspection</div><div class="db-psub">DPI · PPT · PST</div></div></div>
+            <div class="db-ph2"><div><div class="db-ptitle">Inspection Types</div><div class="db-psub">DPI · PPT · PST</div></div></div>
             <div class="db-pbody"><div id="tbreak"><div class="db-sk" style="height:130px;width:100%;border-radius:8px"></div></div></div>
             <div class="db-mstats">
                 <div class="db-ms"><div class="db-msv" id="ms1" style="color:var(--db-blue)">—</div><div class="db-msl">Vendors active</div></div>
-                <div class="db-ms"><div class="db-msv" id="ms2" style="color:var(--db-accent)">—</div><div class="db-msl">Users hệ thống</div></div>
+                <div class="db-ms"><div class="db-msv" id="ms2" style="color:var(--db-accent)">—</div><div class="db-msl">System Users</div></div>
             </div>
         </div>
     </div>
 
 </div>
 
-@* ══════════════ CSS — dùng prefix "db-" tránh xung đột với MainLayout ══════════════ *@
+@* ══════════════ CSS — using "db-" prefix to avoid conflicts with MainLayout ══════════════ *@
 <style>
     :root {
         --db-card: #161d2e; --db-border: #1e293b; --db-surface: #111827;
@@ -387,45 +387,45 @@
         let BASE = '';
         let allItems = [], activeFilter = 'all';
 
-        // Lấy ApiBaseUrl từ Blazor config (appsettings.json)
+        // Get ApiBaseUrl from Blazor config (appsettings.json)
         function dbGetBaseUrl() {
             const el = document.getElementById('blazor-api-base');
             if (el) {
                 const url = (el.getAttribute('data-url') || '').trim().replace(/\/$/, '');
                 if (url) return url;
             }
-            // Fallback: localStorage nếu config không có
+            // Fallback: localStorage if config not available
             return localStorage.getItem('ic_base') || '';
         }
 
-        // Auto-init sau khi DOM sẵn sàng
+        // Auto-init after DOM is ready
         function dbInit() {
             BASE = dbGetBaseUrl();
             if (BASE) {
                 document.getElementById('cfg-banner').style.display = 'none';
                 dbLoadAll();
             } else {
-                // Chỉ hiện banner nếu không có config
+                // Show banner only if no config
                 document.getElementById('cfg-banner').style.display = 'flex';
             }
         }
 
         window.dbSaveUrl = function () {
             const v = (document.getElementById('api-input').value || '').trim().replace(/\/$/, '');
-            if (!v) { alert('Vui lòng nhập URL'); return; }
+            if (!v) { alert('Please enter URL'); return; }
             BASE = v;
             localStorage.setItem('ic_base', v);
             document.getElementById('cfg-banner').style.display = 'none';
             dbLoadAll();
         };
 
-        // Chờ Blazor render xong rồi mới init
+        // Wait for Blazor to finish rendering
         setTimeout(dbInit, 100);
 
         window.dbLoadAll = async function () {
             if (!BASE) return;
             dbSpin(true);
-            document.getElementById('last-upd').textContent = 'Đang tải…';
+            document.getElementById('last-upd').textContent = 'Loading…';
 
             const [iR, cR, vR, pR, uR] = await Promise.allSettled([
                 dbGet('/api/inspections?pageSize=500'),
@@ -452,11 +452,11 @@
                 dbRenderTypes(allItems);
                 dbRenderInspectors(allItems);
                 document.getElementById('mstats').innerHTML =
-                    `<div class="db-ms"><div class="db-msv" style="color:var(--db-accent)">${cmpCnt}</div><div class="db-msl">Hoàn thành</div></div>
-                     <div class="db-ms"><div class="db-msv" style="color:var(--db-blue)">${thisMo}</div><div class="db-msl">Tháng này</div></div>
-                     <div class="db-ms"><div class="db-msv" style="color:var(--db-amber)">${penCnt}</div><div class="db-msl">Chờ duyệt</div></div>`;
+                    `<div class="db-ms"><div class="db-msv" style="color:var(--db-accent)">${cmpCnt}</div><div class="db-msl">Completed</div></div>
+                     <div class="db-ms"><div class="db-msv" style="color:var(--db-blue)">${thisMo}</div><div class="db-msl">This month</div></div>
+                     <div class="db-ms"><div class="db-msv" style="color:var(--db-amber)">${penCnt}</div><div class="db-msl">Pending</div></div>`;
             } else {
-                dbErrTable('Không thể tải từ ' + BASE + '<br><small>' + iR.reason.message + '</small>');
+                dbErrTable('Failed to load from ' + BASE + '<br><small>' + iR.reason.message + '</small>');
             }
             if (cR.status === 'fulfilled') dbSetKpi('k3', cR.value.total || 0, 'd3', (cR.value.total||0) + ' clients');
             if (vR.status === 'fulfilled') { const t = vR.value.total||0; dbSetKpi('k4', t, 'd4', t+' vendors'); document.getElementById('ms1').textContent = t; }
@@ -464,7 +464,7 @@
             if (uR.status === 'fulfilled') { const t = uR.value.total||(uR.value.items||[]).length; document.getElementById('ms2').textContent = t; }
 
             const now = new Date();
-            document.getElementById('last-upd').textContent = 'Cập nhật ' + now.toLocaleTimeString('vi-VN',{hour:'2-digit',minute:'2-digit'});
+            document.getElementById('last-upd').textContent = 'Updated ' + now.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'});
             dbSpin(false);
         };
 
@@ -482,7 +482,7 @@
             if (l==='cancelled'||l==='cancel') return 'cancelled';
             return 'pending';
         }
-        const statusVI = { ongoing:'Đang chạy', completed:'Hoàn thành', pending:'Chờ', cancelled:'Huỷ', new:'Mới' };
+        const statusVI = { ongoing:'Ongoing', completed:'Completed', pending:'Pending', cancelled:'Cancelled', new:'New' };
 
         function dbRenderTable(filter) {
             activeFilter = filter;
@@ -490,10 +490,10 @@
             if (filter !== 'all') rows = rows.filter(r => dbNorm(r.status) === filter);
             const show = rows.slice(0, 10);
             document.getElementById('tbl-sub').textContent = show.length + ' / ' + rows.length + ' records';
-            if (!show.length) { document.getElementById('tbody').innerHTML = `<tr><td colspan="5"><div class="db-errmsg"><div class="db-ei">📭</div>Không có dữ liệu</div></td></tr>`; return; }
+            if (!show.length) { document.getElementById('tbody').innerHTML = `<tr><td colspan="5"><div class="db-errmsg"><div class="db-ei">📭</div>No data</div></td></tr>`; return; }
             document.getElementById('tbody').innerHTML = show.map(r => {
                 const n = dbNorm(r.status);
-                const d = (r.inspectionDate||r.createdAt) ? new Date(r.inspectionDate||r.createdAt).toLocaleDateString('vi-VN',{day:'2-digit',month:'2-digit'}) : '—';
+                const d = (r.inspectionDate||r.createdAt) ? new Date(r.inspectionDate||r.createdAt).toLocaleDateString('en-US',{day:'2-digit',month:'2-digit'}) : '—';
                 return `<tr>
                     <td><div class="tnum">${dbEsc(r.jobNumber||'#'+r.id)}</div></td>
                     <td><div class="tmain">${dbEsc(r.customerName||'—')}</div><div class="tsub">${dbEsc(r.productName||r.productCategory||'—')}</div></td>
@@ -516,10 +516,10 @@
         function dbRenderDonut(cmp, on, pen, can, total) {
             const C = 2 * Math.PI * 38;
             const segs = [
-                { label:'Hoàn thành', count:cmp, color:'var(--db-accent)' },
-                { label:'Đang chạy',  count:on,  color:'var(--db-blue)'   },
-                { label:'Chờ',         count:pen, color:'var(--db-amber)'  },
-                { label:'Huỷ',         count:can, color:'var(--db-red)'    },
+                { label:'Completed', count:cmp, color:'var(--db-accent)' },
+                { label:'Ongoing',  count:on,  color:'var(--db-blue)'   },
+                { label:'Pending',         count:pen, color:'var(--db-amber)'  },
+                { label:'Cancelled',         count:can, color:'var(--db-red)'    },
             ].filter(s => s.count > 0);
             let cum = 0;
             const circles = (total > 0 ? segs : []).map(s => {
@@ -535,12 +535,12 @@
                     <text x="50" y="46" text-anchor="middle" fill="var(--db-text)" font-size="13" font-weight="800" font-family="Syne,sans-serif">${total}</text>
                     <text x="50" y="57" text-anchor="middle" fill="var(--db-muted)" font-size="7.5">total</text>
                 </svg>
-                <div class="dleg">${legend||'<div style="color:var(--db-muted);font-size:12px">Chưa có dữ liệu</div>'}</div>`;
+                <div class="dleg">${legend||'<div style="color:var(--db-muted);font-size:12px">No data available</div>'}</div>`;
         }
 
         function dbRenderBarChart(items) {
             const now = new Date();
-            const mos = Array.from({length:12}, (_,i) => { const d = new Date(now.getFullYear(), now.getMonth()-11+i, 1); return {y:d.getFullYear(),m:d.getMonth(),lbl:d.toLocaleDateString('vi-VN',{month:'short'})}; });
+            const mos = Array.from({length:12}, (_,i) => { const d = new Date(now.getFullYear(), now.getMonth()-11+i, 1); return {y:d.getFullYear(),m:d.getMonth(),lbl:d.toLocaleDateString('en-US',{month:'short'})}; });
             const cmpArr = mos.map(mo => items.filter(x => { const d=x.completedAt?new Date(x.completedAt):null; return d&&d.getFullYear()===mo.y&&d.getMonth()===mo.m&&dbNorm(x.status)==='completed'; }).length);
             const newArr = mos.map(mo => items.filter(x => { const d=x.createdAt?new Date(x.createdAt):null; return d&&d.getFullYear()===mo.y&&d.getMonth()===mo.m; }).length);
             const maxV = Math.max(...cmpArr,...newArr,1);
@@ -557,7 +557,7 @@
             const ico = { completed:['✅','rgba(0,212,170,.12)'], ongoing:['🔄','rgba(59,130,246,.12)'], pending:['⏳','rgba(245,158,11,.12)'], cancelled:['❌','rgba(239,68,68,.12)'], new:['📋','rgba(139,92,246,.12)'] };
             document.getElementById('afeed').innerHTML = sorted.length
                 ? sorted.map(r => { const n=dbNorm(r.status),[ic,bg]=ico[n]||['📋','rgba(100,116,139,.12)']; return `<div class="aitem"><div class="aico" style="background:${bg}">${ic}</div><div class="atxt"><strong>${dbEsc(r.jobNumber||'#'+r.id)}</strong> — ${dbEsc(r.customerName||'N/A')} <span class="badge b-${n}" style="font-size:9px;padding:1px 6px;margin-left:4px">${statusVI[n]||n}</span><div class="atime">${dbEsc(r.inspectorName||r.inspectorId||'—')} · ${dbAgo(r.createdAt)}</div></div></div>`; }).join('')
-                : '<div class="db-errmsg"><div class="db-ei">📭</div>Không có hoạt động</div>';
+                : '<div class="db-errmsg"><div class="db-ei">📭</div>No activity yet</div>';
         }
 
         function dbRenderTypes(items) {
@@ -567,7 +567,7 @@
             const lbls={DPI:'DPI — During Production',PPT:'PPT — Pre-Production',PST:'PST — Pre-Shipment'};
             document.getElementById('tbreak').innerHTML = ['DPI','PPT','PST'].map(t => {
                 const p=Math.round(cnt[t]/total*100);
-                return `<div class="tbar-row"><div class="tbar-top"><span class="tbar-lbl">${lbls[t]}</span><span class="tbar-cnt" style="color:${cols[t]}">${cnt[t]}</span></div><div class="tbar-bg"><div class="tbar-fill" style="width:0%;background:${cols[t]}" data-w="${p}"></div></div><div class="tbar-pct">${p}% tổng số</div></div>`;
+                return `<div class="tbar-row"><div class="tbar-top"><span class="tbar-lbl">${lbls[t]}</span><span class="tbar-cnt" style="color:${cols[t]}">${cnt[t]}</span></div><div class="tbar-bg"><div class="tbar-fill" style="width:0%;background:${cols[t]}" data-w="${p}"></div></div><div class="tbar-pct">${p}% of total</div></div>`;
             }).join('');
             requestAnimationFrame(() => setTimeout(() => { document.querySelectorAll('.tbar-fill').forEach(f => { f.style.width = f.dataset.w + '%'; }); }, 80));
         }
@@ -580,16 +580,16 @@
             const pal=['#00d4aa','#3b82f6','#f59e0b','#ef4444','#8b5cf6','#ec4899'];
             document.getElementById('ilist').innerHTML = list.length
                 ? list.map((p,i) => { const c=pal[i%pal.length],ini=p.name.split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2); return `<div class="irow"><div class="iav" style="background:${c}">${ini}</div><div style="flex:1;min-width:0"><div class="iname">${dbEsc(p.name)}</div><div class="iid">${p.id}</div></div><div class="ibg"><div class="ifill" style="width:${Math.round(p.n/maxN*100)}%;background:${c}"></div></div><div class="inum" style="color:${c}">${p.n}</div></div>`; }).join('')
-                : '<div class="db-errmsg"><div class="db-ei">👤</div>Chưa có inspector</div>';
+                : '<div class="db-errmsg"><div class="db-ei">👤</div>No inspectors yet</div>';
         }
 
         function dbThisMonth(items) { const n=new Date(); return items.filter(r => { const d=r.createdAt?new Date(r.createdAt):null; return d&&d.getMonth()===n.getMonth()&&d.getFullYear()===n.getFullYear(); }); }
-        function dbAgo(ts) { if(!ts) return '—'; const m=Math.floor((Date.now()-new Date(ts))/60000); if(m<1) return 'Vừa xong'; if(m<60) return m+' phút trước'; const h=Math.floor(m/60); if(h<24) return h+' giờ trước'; const d=Math.floor(h/24); if(d<30) return d+' ngày trước'; return new Date(ts).toLocaleDateString('vi-VN'); }
+        function dbAgo(ts) { if(!ts) return '—'; const m=Math.floor((Date.now()-new Date(ts))/60000); if(m<1) return 'Just now'; if(m<60) return m+' min ago'; const h=Math.floor(m/60); if(h<24) return h+' hr ago'; const d=Math.floor(h/24); if(d<30) return d+' days ago'; return new Date(ts).toLocaleDateString('en-US'); }
         function dbEsc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
-        function dbSetKpi(id, val, did, delta) { let c=0; const el=document.getElementById(id); const t=setInterval(()=>{ c=Math.min(c+Math.max(1,Math.floor(val/40)),val); el.textContent=c.toLocaleString('vi-VN'); if(c>=val) clearInterval(t); },20); document.getElementById(did).textContent=delta; }
+        function dbSetKpi(id, val, did, delta) { let c=0; const el=document.getElementById(id); const t=setInterval(()=>{ c=Math.min(c+Math.max(1,Math.floor(val/40)),val); el.textContent=c.toLocaleString('en-US'); if(c>=val) clearInterval(t); },20); document.getElementById(did).textContent=delta; }
         function dbSpin(on) { document.getElementById('ref-btn').style.animation = on ? 'dbSpin 1s linear infinite' : ''; }
 
-        // Auto-refresh mỗi 2 phút
+        // Auto-refresh every 2 minutes
         setInterval(() => { if (BASE) dbLoadAll(); }, 120000);
     })();
 </script>
