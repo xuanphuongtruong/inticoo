@@ -30,6 +30,7 @@ namespace InticooInspection.API.Controllers
             var query = _db.Products
                            .Include(p => p.Customer)
                            .Include(p => p.Vendor)
+                           .Include(p => p.References.OrderBy(r => r.SortOrder))
                            .AsQueryable();
 
             if (!string.IsNullOrWhiteSpace(search))
@@ -58,10 +59,23 @@ namespace InticooInspection.API.Controllers
                     ProductType  = p.ProductType ?? "",
                     ProductName  = p.ProductName,
                     ProductCode  = p.ProductCode  ?? "",
+                    ItemNumber   = p.ItemNumber   ?? "",
                     ProductColor = p.ProductColor ?? "",
                     ProductSize  = p.ProductSize  ?? "",
+                    SizeL        = p.SizeL,
+                    SizeW        = p.SizeW,
+                    SizeH        = p.SizeH,
+                    Weight       = p.Weight,
                     PhotoUrl     = p.PhotoUrl     ?? "",
-                    Remark       = p.Remark       ?? ""
+                    Remark       = p.Remark       ?? "",
+                    References   = p.References.OrderBy(r => r.SortOrder).Select(r => new ProductReferenceDto
+                    {
+                        Id        = r.Id,
+                        SortOrder = r.SortOrder,
+                        Name      = r.Name,
+                        FileUrl   = r.FileUrl,
+                        FileName  = r.FileName
+                    }).ToList()
                 })
                 .ToListAsync();
 
@@ -121,6 +135,7 @@ namespace InticooInspection.API.Controllers
             var p = await _db.Products
                              .Include(x => x.Customer)
                              .Include(x => x.Vendor)
+                             .Include(x => x.References.OrderBy(r => r.SortOrder))
                              .FirstOrDefaultAsync(x => x.Id == id);
             if (p == null) return NotFound();
             return Ok(new ProductDto
@@ -134,10 +149,23 @@ namespace InticooInspection.API.Controllers
                 ProductType  = p.ProductType ?? "",
                 ProductName  = p.ProductName,
                 ProductCode  = p.ProductCode  ?? "",
+                ItemNumber   = p.ItemNumber   ?? "",
                 ProductColor = p.ProductColor ?? "",
                 ProductSize  = p.ProductSize  ?? "",
+                SizeL        = p.SizeL,
+                SizeW        = p.SizeW,
+                SizeH        = p.SizeH,
+                Weight       = p.Weight,
                 PhotoUrl     = p.PhotoUrl     ?? "",
-                Remark       = p.Remark       ?? ""
+                Remark       = p.Remark       ?? "",
+                References   = p.References.OrderBy(r => r.SortOrder).Select(r => new ProductReferenceDto
+                {
+                    Id        = r.Id,
+                    SortOrder = r.SortOrder,
+                    Name      = r.Name,
+                    FileUrl   = r.FileUrl,
+                    FileName  = r.FileName
+                }).ToList()
             });
         }
 
@@ -162,8 +190,13 @@ namespace InticooInspection.API.Controllers
                 ProductType  = req.ProductType,
                 ProductName  = req.ProductName,
                 ProductCode  = req.ProductCode,
+                ItemNumber   = req.ItemNumber,
                 ProductColor = req.ProductColor,
                 ProductSize  = req.ProductSize,
+                SizeL        = req.SizeL,
+                SizeW        = req.SizeW,
+                SizeH        = req.SizeH,
+                Weight       = req.Weight,
                 PhotoUrl     = req.PhotoUrl,
                 Remark       = req.Remark,
                 CreatedAt    = DateTime.UtcNow
@@ -171,6 +204,25 @@ namespace InticooInspection.API.Controllers
 
             _db.Products.Add(product);
             await _db.SaveChangesAsync();
+
+            // Save references (skip empty rows)
+            var refs = req.References
+                .Where(r => !string.IsNullOrWhiteSpace(r.Name) || !string.IsNullOrWhiteSpace(r.FileUrl))
+                .Select((r, i) => new ProductReference
+                {
+                    ProductId = product.Id,
+                    SortOrder = r.SortOrder > 0 ? r.SortOrder : i + 1,
+                    Name      = r.Name,
+                    FileUrl   = r.FileUrl,
+                    FileName  = r.FileName
+                }).ToList();
+
+            if (refs.Any())
+            {
+                _db.ProductReferences.AddRange(refs);
+                await _db.SaveChangesAsync();
+            }
+
             return Ok(new { success = true, id = product.Id });
         }
 
@@ -194,13 +246,38 @@ namespace InticooInspection.API.Controllers
             product.ProductType  = req.ProductType;
             product.ProductName  = req.ProductName;
             product.ProductCode  = req.ProductCode;
+            product.ItemNumber   = req.ItemNumber;
             product.ProductColor = req.ProductColor;
             product.ProductSize  = req.ProductSize;
+            product.SizeL        = req.SizeL;
+            product.SizeW        = req.SizeW;
+            product.SizeH        = req.SizeH;
+            product.Weight       = req.Weight;
             product.Remark       = req.Remark;
 
             // Only update photo if a new one was uploaded
             if (!string.IsNullOrWhiteSpace(req.PhotoUrl))
                 product.PhotoUrl = req.PhotoUrl;
+
+            // Replace references: delete old, insert new
+            var oldRefs = await _db.ProductReferences
+                .Where(r => r.ProductId == id)
+                .ToListAsync();
+            _db.ProductReferences.RemoveRange(oldRefs);
+
+            var newRefs = req.References
+                .Where(r => !string.IsNullOrWhiteSpace(r.Name) || !string.IsNullOrWhiteSpace(r.FileUrl))
+                .Select((r, i) => new ProductReference
+                {
+                    ProductId = id,
+                    SortOrder = r.SortOrder > 0 ? r.SortOrder : i + 1,
+                    Name      = r.Name,
+                    FileUrl   = r.FileUrl,
+                    FileName  = r.FileName
+                }).ToList();
+
+            if (newRefs.Any())
+                _db.ProductReferences.AddRange(newRefs);
 
             await _db.SaveChangesAsync();
             return Ok(new { success = true });
@@ -244,7 +321,9 @@ namespace InticooInspection.API.Controllers
                 DeletePhotoFile(product.PhotoUrl);
 
             // Save new photo
-            var uploadDir = Path.Combine(_env.ContentRootPath, "uploads", "products");
+            var wwwroot   = string.IsNullOrEmpty(_env.WebRootPath)
+                ? Path.Combine(_env.ContentRootPath, "wwwroot") : _env.WebRootPath;
+            var uploadDir = Path.Combine(wwwroot, "uploads", "products");
             Directory.CreateDirectory(uploadDir);
             var fileName = $"{id}_{Guid.NewGuid()}{Path.GetExtension(file.FileName)}";
             var filePath = Path.Combine(uploadDir, fileName);
@@ -288,14 +367,46 @@ namespace InticooInspection.API.Controllers
             return Ok(cats);
         }
 
+        // ── POST api/products/{id}/references/upload ──────────────────
+        [HttpPost("{id}/references/upload")]
+        public async Task<IActionResult> UploadReferenceFile(int id, IFormFile file)
+        {
+            var product = await _db.Products.FindAsync(id);
+            if (product == null) return NotFound();
+            if (file == null || file.Length == 0)
+                return BadRequest(new { message = "No file uploaded." });
+
+            if (file.Length > 20 * 1024 * 1024)
+                return BadRequest(new { message = "File size must be under 20MB." });
+
+            var wwwrootRef   = string.IsNullOrEmpty(_env.WebRootPath)
+                ? Path.Combine(_env.ContentRootPath, "wwwroot") : _env.WebRootPath;
+            var uploadDir = Path.Combine(wwwrootRef, "uploads", "product-references");
+            Directory.CreateDirectory(uploadDir);
+            var fileName = $"{id}_{Guid.NewGuid()}{Path.GetExtension(file.FileName)}";
+            var filePath = Path.Combine(uploadDir, fileName);
+
+            await using var stream = new FileStream(filePath, FileMode.Create);
+            await file.CopyToAsync(stream);
+
+            return Ok(new
+            {
+                success  = true,
+                fileUrl  = $"/uploads/product-references/{fileName}",
+                fileName = file.FileName
+            });
+        }
+
         // ── Helpers ───────────────────────────────────────────────────
         private void DeletePhotoFile(string photoUrl)
         {
             try
             {
                 // photoUrl = "/uploads/products/filename.jpg"
+                var wwwroot  = string.IsNullOrEmpty(_env.WebRootPath)
+                    ? Path.Combine(_env.ContentRootPath, "wwwroot") : _env.WebRootPath;
                 var relative = photoUrl.TrimStart('/').Replace('/', Path.DirectorySeparatorChar);
-                var fullPath = Path.Combine(_env.ContentRootPath, relative);
+                var fullPath = Path.Combine(wwwroot, relative);
                 if (System.IO.File.Exists(fullPath))
                     System.IO.File.Delete(fullPath);
             }
@@ -306,32 +417,61 @@ namespace InticooInspection.API.Controllers
     // ── DTOs ─────────────────────────────────────────────────────────
     public class ProductDto
     {
-        public int    Id           { get; set; }
-        public string CustomerId   { get; set; } = "";
-        public string CustomerName { get; set; } = "";
-        public string VendorId     { get; set; } = "";
-        public string VendorName   { get; set; } = "";
-        public string Category     { get; set; } = "";
-        public string ProductType  { get; set; } = "";
-        public string ProductName  { get; set; } = "";
-        public string ProductCode  { get; set; } = "";
-        public string ProductColor { get; set; } = "";
-        public string ProductSize  { get; set; } = "";
-        public string PhotoUrl     { get; set; } = "";
-        public string Remark       { get; set; } = "";
+        public int     Id           { get; set; }
+        public string  CustomerId   { get; set; } = "";
+        public string  CustomerName { get; set; } = "";
+        public string  VendorId     { get; set; } = "";
+        public string  VendorName   { get; set; } = "";
+        public string  Category     { get; set; } = "";
+        public string  ProductType  { get; set; } = "";
+        public string  ProductName  { get; set; } = "";
+        public string  ProductCode  { get; set; } = "";
+        public string  ItemNumber   { get; set; } = "";
+        public string  ProductColor { get; set; } = "";
+        public string  ProductSize  { get; set; } = "";
+        public decimal? SizeL       { get; set; }
+        public decimal? SizeW       { get; set; }
+        public decimal? SizeH       { get; set; }
+        public decimal? Weight      { get; set; }
+        public string  PhotoUrl     { get; set; } = "";
+        public string  Remark       { get; set; } = "";
+        public List<ProductReferenceDto> References { get; set; } = new();
     }
 
     public class ProductRequest
     {
-        public string  CustomerId   { get; set; } = "";
-        public string  VendorId     { get; set; } = "";
-        public string? Category     { get; set; }
-        public string? ProductType  { get; set; }
-        public string  ProductName  { get; set; } = "";
-        public string? ProductCode  { get; set; }
-        public string? ProductColor { get; set; }
-        public string? ProductSize  { get; set; }
-        public string? PhotoUrl     { get; set; }
-        public string? Remark       { get; set; }
+        public string   CustomerId   { get; set; } = "";
+        public string   VendorId     { get; set; } = "";
+        public string?  Category     { get; set; }
+        public string?  ProductType  { get; set; }
+        public string   ProductName  { get; set; } = "";
+        public string?  ProductCode  { get; set; }
+        public string?  ItemNumber   { get; set; }
+        public string?  ProductColor { get; set; }
+        public string?  ProductSize  { get; set; }
+        public decimal? SizeL        { get; set; }
+        public decimal? SizeW        { get; set; }
+        public decimal? SizeH        { get; set; }
+        public decimal? Weight       { get; set; }
+        public string?  PhotoUrl     { get; set; }
+        public string?  Remark       { get; set; }
+        public List<ProductReferenceRequest> References { get; set; } = new();
+    }
+
+    public class ProductReferenceDto
+    {
+        public int     Id        { get; set; }
+        public int     SortOrder { get; set; }
+        public string  Name      { get; set; } = "";
+        public string? FileUrl   { get; set; }
+        public string? FileName  { get; set; }
+    }
+
+    public class ProductReferenceRequest
+    {
+        public int     SortOrder { get; set; }
+        public string  Name      { get; set; } = "";
+        public string? FileUrl   { get; set; }
+        public string? FileName  { get; set; }
     }
 }

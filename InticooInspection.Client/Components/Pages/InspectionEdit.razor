@@ -202,19 +202,19 @@
                                 <input type="radio" name="inspType" value="PPT"
                                        checked="@(Model.InspectionType == InspectionTypeEnum.PPT)"
                                        @onchange="() => Model.InspectionType = InspectionTypeEnum.PPT" />
-                                <span>PPT</span>
+                                <span>PPT: Pre-Production Inspection</span>
                             </label>
                             <label class="radio-label">
                                 <input type="radio" name="inspType" value="DPI"
                                        checked="@(Model.InspectionType == InspectionTypeEnum.DPI)"
                                        @onchange="() => Model.InspectionType = InspectionTypeEnum.DPI" />
-                                <span>DPI</span>
+                                <span>DPI: During-Production Inspection</span>
                             </label>
                             <label class="radio-label">
                                 <input type="radio" name="inspType" value="PST"
                                        checked="@(Model.InspectionType == InspectionTypeEnum.PST)"
                                        @onchange="() => Model.InspectionType = InspectionTypeEnum.PST" />
-                                <span>PST</span>
+                                <span>PST: Pre-Shipment Inspection</span>
                             </label>
                         </div>
                     </div>

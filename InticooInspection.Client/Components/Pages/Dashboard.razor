@@ -24,7 +24,6 @@
 
     <!-- Page header -->
     <div class="db-ph">
-        <div class="db-bc"><span>Home</span><span style="color:var(--db-border);margin:0 4px">/</span><span class="db-cur">Dashboard</span></div>
         <h1>Overview</h1>
         <p><span class="db-ldot-live"></span>Live data from API · <span id="last-upd">Not connected</span>
             <button class="db-ref-btn" title="Refresh" onclick="dbLoadAll()" id="ref-btn">
@@ -186,13 +185,13 @@
 @* ══════════════ CSS — using "db-" prefix to avoid conflicts with MainLayout ══════════════ *@
 <style>
     :root {
-        --db-card: #161d2e; --db-border: #1e293b; --db-surface: #111827;
-        --db-accent: #00d4aa; --db-blue: #3b82f6; --db-amber: #f59e0b;
-        --db-red: #ef4444; --db-purple: #8b5cf6;
-        --db-text: #e2e8f0; --db-muted: #64748b; --db-r: 12px;
+        --db-card: #ffffff; --db-border: #e2e8f0; --db-surface: #f8fafc;
+        --db-accent: #00a884; --db-blue: #2563eb; --db-amber: #d97706;
+        --db-red: #dc2626; --db-purple: #7c3aed;
+        --db-text: #0f172a; --db-muted: #64748b; --db-r: 12px;
     }
 
-    .db-wrap { font-family: 'DM Sans', sans-serif; color: var(--db-text); padding: 8px 0; }
+    .db-wrap { font-family: Arial, sans-serif; color: var(--db-text); padding: 20px; background: #f1f5f9; border-radius: 8px; }
 
     /* ── CONFIG BANNER ── */
     .cfg-banner { background: rgba(245,158,11,.07); border: 1px solid rgba(245,158,11,.2);
@@ -221,7 +220,7 @@
     .db-kcard { background: var(--db-card); border: 1px solid var(--db-border); border-radius: var(--db-r);
         padding: 18px; position: relative; overflow: hidden; transition: transform .2s, box-shadow .2s;
         animation: dbUp .5s ease both; }
-    .db-kcard:hover { transform: translateY(-2px); box-shadow: 0 8px 32px rgba(0,0,0,.4); }
+    .db-kcard:hover { transform: translateY(-2px); box-shadow: 0 8px 32px rgba(0,0,0,.1); }
     .db-kcard::after { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; }
     .db-kcard.c1::after { background: linear-gradient(90deg, var(--db-accent), #00a884); }
     .db-kcard.c2::after { background: linear-gradient(90deg, var(--db-blue), #6366f1); }
@@ -285,7 +284,7 @@
     .db-twrap thead th { text-align: left; font-size: 10px; font-weight: 600; text-transform: uppercase;
         letter-spacing: .8px; color: var(--db-muted); padding: 0 14px 10px; }
     .db-twrap tbody tr { border-top: 1px solid var(--db-border); transition: background .12s; }
-    .db-twrap tbody tr:hover { background: rgba(255,255,255,.025); }
+    .db-twrap tbody tr:hover { background: rgba(0,0,0,.03); }
     .db-twrap tbody td { padding: 11px 14px; font-size: 13px; color: var(--db-text); }
     .tmain { font-weight: 500; }
     .tsub { font-size: 11px; color: var(--db-muted); margin-top: 1px; }

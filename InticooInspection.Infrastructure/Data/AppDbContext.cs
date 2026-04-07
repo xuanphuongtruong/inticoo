@@ -24,6 +24,7 @@ namespace InticooInspection.Infrastructure.Data
         public DbSet<InspectionQcAqlResult>          InspectionQcAqlResults           => Set<InspectionQcAqlResult>();
         public DbSet<InspectionQcDefect>             InspectionQcDefects              => Set<InspectionQcDefect>();
         public DbSet<ProductCategory>               ProductCategories               => Set<ProductCategory>();
+        public DbSet<ProductReference>              ProductReferences               => Set<ProductReference>();
         public DbSet<Country>                       Countries                       => Set<Country>();
         public DbSet<City>                          Cities                          => Set<City>();
 
@@ -69,6 +70,10 @@ namespace InticooInspection.Infrastructure.Data
                 e.Property(x => x.ProductCode).HasMaxLength(100);
                 e.Property(x => x.ProductColor).HasMaxLength(100);
                 e.Property(x => x.ProductSize).HasMaxLength(100);
+                e.Property(x => x.SizeL).HasColumnType("decimal(10,2)");
+                e.Property(x => x.SizeW).HasColumnType("decimal(10,2)");
+                e.Property(x => x.SizeH).HasColumnType("decimal(10,2)");
+                e.Property(x => x.Weight).HasColumnType("decimal(10,3)");
                 e.Property(x => x.PhotoUrl).HasMaxLength(500);
                 e.Property(x => x.Remark).HasMaxLength(500);
 
@@ -81,6 +86,19 @@ namespace InticooInspection.Infrastructure.Data
                  .WithMany()
                  .HasForeignKey(x => x.VendorId)
                  .OnDelete(DeleteBehavior.SetNull);
+
+                e.HasMany(x => x.References)
+                 .WithOne(r => r.Product)
+                 .HasForeignKey(r => r.ProductId)
+                 .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            builder.Entity<ProductReference>(e =>
+            {
+                e.HasKey(x => x.Id);
+                e.Property(x => x.Name).HasMaxLength(300);
+                e.Property(x => x.FileUrl).HasMaxLength(500);
+                e.Property(x => x.FileName).HasMaxLength(300);
             });
 
             // ── Inspection child entities ─────────────────────────

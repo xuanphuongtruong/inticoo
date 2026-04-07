@@ -1,3 +1,4 @@
+using InticooInspection.API.Helpers;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -10,7 +11,7 @@ namespace InticooInspection.API.Controllers
     {
         private readonly IWebHostEnvironment _env;
 
-        private static readonly string[] AllowedCvExtensions = { ".pdf", ".doc", ".docx" };
+        private static readonly string[] AllowedCvExtensions    = { ".pdf", ".doc", ".docx" };
         private static readonly string[] AllowedImageExtensions = { ".jpg", ".jpeg", ".png", ".webp", ".gif" };
         private const long MaxCvSize    = 10 * 1024 * 1024;  // 10 MB
         private const long MaxImageSize =  5 * 1024 * 1024;  //  5 MB
@@ -54,7 +55,7 @@ namespace InticooInspection.API.Controllers
             return Ok(new { success = true, url = $"/uploads/cv/{uniqueName}" });
         }
 
-        /// <summary>POST api/files/upload-photo — Upload ảnh inspection, trả về { url, fileName }</summary>
+        /// <summary>POST api/files/upload-photo — Upload ảnh, nén về ~300-400 KB, trả về { url, fileName }</summary>
         [HttpPost("upload-photo")]
         public async Task<IActionResult> UploadPhoto(IFormFile file)
         {
@@ -67,18 +68,25 @@ namespace InticooInspection.API.Controllers
             if (!AllowedImageExtensions.Contains(ext))
                 return BadRequest(new { error = "Only JPG, PNG, WEBP or GIF images are allowed." });
 
+            // Nén ảnh về ~300-400 KB
+            await using var inputStream = file.OpenReadStream();
+            var (compressed, compressedExt) = await ImageCompressor.CompressAsync(inputStream);
+
             var safeName   = Path.GetFileNameWithoutExtension(file.FileName)
                                  .Replace(" ", "_").Replace("..", "");
-            var uniqueName = $"{safeName}_{Guid.NewGuid():N}{ext}";
+            var uniqueName = $"{safeName}_{Guid.NewGuid():N}{compressedExt}";
             var filePath   = Path.Combine(GetUploadDir("photos"), uniqueName);
 
-            using (var stream = new FileStream(filePath, FileMode.Create))
-                await file.CopyToAsync(stream);
+            await using (var fs = new FileStream(filePath, FileMode.Create))
+                await compressed.CopyToAsync(fs);
+
+            await compressed.DisposeAsync();
 
             return Ok(new { url = $"/uploads/photos/{uniqueName}", fileName = file.FileName });
         }
 
-        /// <summary>POST api/files/upload — Upload file tham chiếu, trả về { url, fileName }</summary>
+        /// <summary>POST api/files/upload — Upload file tham chiếu.
+        /// Nếu là ảnh thì nén ~300-400 KB, trả về { url, fileName }</summary>
         [HttpPost("upload")]
         public async Task<IActionResult> Upload(IFormFile file)
         {
@@ -87,14 +95,36 @@ namespace InticooInspection.API.Controllers
             if (file.Length > MaxFileSize)
                 return BadRequest(new { error = "File exceeds 20 MB limit." });
 
-            var ext        = Path.GetExtension(file.FileName);
-            var safeName   = Path.GetFileNameWithoutExtension(file.FileName)
-                                 .Replace(" ", "_").Replace("..", "");
-            var uniqueName = $"{safeName}_{Guid.NewGuid():N}{ext}";
-            var filePath   = Path.Combine(GetUploadDir("references"), uniqueName);
+            var ext      = Path.GetExtension(file.FileName).ToLowerInvariant();
+            var safeName = Path.GetFileNameWithoutExtension(file.FileName)
+                               .Replace(" ", "_").Replace("..", "");
 
-            using (var stream = new FileStream(filePath, FileMode.Create))
+            string uniqueName;
+            string filePath;
+
+            if (ImageCompressor.IsImageExtension(ext))
+            {
+                // Ảnh → nén trước khi lưu
+                await using var inputStream = file.OpenReadStream();
+                var (compressed, compressedExt) = await ImageCompressor.CompressAsync(inputStream);
+
+                uniqueName = $"{safeName}_{Guid.NewGuid():N}{compressedExt}";
+                filePath   = Path.Combine(GetUploadDir("references"), uniqueName);
+
+                await using (var fs = new FileStream(filePath, FileMode.Create))
+                    await compressed.CopyToAsync(fs);
+
+                await compressed.DisposeAsync();
+            }
+            else
+            {
+                // File không phải ảnh (PDF, DOCX, ...) → lưu thẳng
+                uniqueName = $"{safeName}_{Guid.NewGuid():N}{ext}";
+                filePath   = Path.Combine(GetUploadDir("references"), uniqueName);
+
+                using var stream = new FileStream(filePath, FileMode.Create);
                 await file.CopyToAsync(stream);
+            }
 
             return Ok(new { url = $"/uploads/references/{uniqueName}", fileName = file.FileName });
         }

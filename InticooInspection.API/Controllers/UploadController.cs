@@ -1,3 +1,4 @@
+using InticooInspection.API.Helpers;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -16,35 +17,36 @@ namespace InticooInspection.API.Controllers
         }
 
         // POST api/upload/photo
-        // Nhận file ảnh, lưu vào wwwroot/uploads/photos/, trả về URL tương đối
+        // Nhận file ảnh, nén về ~300-400 KB, lưu vào wwwroot/uploads/photos/, trả về URL tương đối
         [HttpPost("photo")]
-        [AllowAnonymous] // QC inspector có thể chưa login khi upload
+        [AllowAnonymous]
         [RequestSizeLimit(10 * 1024 * 1024)] // 10 MB
         public async Task<IActionResult> UploadPhoto(IFormFile file)
         {
             if (file == null || file.Length == 0)
                 return BadRequest(new { error = "No file provided." });
 
-            // Chỉ chấp nhận ảnh
             var allowedTypes = new[] { "image/jpeg", "image/jpg", "image/png", "image/webp", "image/gif" };
             if (!allowedTypes.Contains(file.ContentType.ToLower()))
                 return BadRequest(new { error = "Only image files are allowed." });
 
-            // Tạo tên file unique
-            var ext      = Path.GetExtension(file.FileName).ToLower();
-            if (string.IsNullOrEmpty(ext)) ext = ".jpg";
-            var fileName = $"{Path.GetFileNameWithoutExtension(file.FileName)}_{Guid.NewGuid():N}{ext}";
+            // Nén ảnh về ~300-400 KB
+            await using var inputStream = file.OpenReadStream();
+            var (compressed, ext) = await ImageCompressor.CompressAsync(inputStream);
 
-            // Đường dẫn lưu file
+            // Tên file luôn là .jpg sau khi nén
+            var baseName = Path.GetFileNameWithoutExtension(file.FileName);
+            var fileName = $"{baseName}_{Guid.NewGuid():N}{ext}";
+
             var uploadDir = Path.Combine(_env.ContentRootPath, "wwwroot", "uploads", "photos");
             Directory.CreateDirectory(uploadDir);
             var filePath = Path.Combine(uploadDir, fileName);
 
-            // Lưu file
-            await using var stream = new FileStream(filePath, FileMode.Create);
-            await file.CopyToAsync(stream);
+            await using (var fs = new FileStream(filePath, FileMode.Create))
+                await compressed.CopyToAsync(fs);
 
-            // Trả về URL tương đối — client sẽ gắn API BaseAddress vào trước
+            await compressed.DisposeAsync();
+
             var relativeUrl = $"uploads/photos/{fileName}";
             return Ok(new { url = relativeUrl });
         }
