@@ -1376,18 +1376,21 @@ namespace InticooInspection.API.Controllers
 
     public class QcPerformanceTestDto
     {
-        public string?      TestItem     { get; set; }
-        public string?      Remark       { get; set; }
-        public string?      Result       { get; set; }  // "Passed"|"Failed"|"NA"
-        public int          TestQuantity { get; set; }
-        public List<string> Photos       { get; set; } = new();
+        public string?      TestItem        { get; set; }
+        public string?      TestRequirement { get; set; } // nhận từ client
+        public string?      Category        { get; set; }
+        public string?      Remark          { get; set; }
+        public string?      Result          { get; set; }  // "Passed"|"Failed"|"NA"
+        public int          TestQuantity    { get; set; }
+        public List<string> Photos          { get; set; } = new();
     }
 
     public class QcDefectDto
     {
         public string       Type     { get; set; } = "";  // "Critical"|"Major"|"Minor"
         public string?      PhotoUrl { get; set; }        // legacy — giữ tương thích
-        public List<string> Photos   { get; set; } = new(); // mới — danh sách nhiều ảnh
-        public string?      Remark   { get; set; }
+        public List<string> Photos   { get; set; } = new(); // danh sách ảnh
+        public List<string> Remarks  { get; set; } = new(); // remark riêng cho từng ảnh
+        public string?      Remark   { get; set; }        // legacy — giữ tương thích
     }
 }
