@@ -139,7 +139,7 @@ else if (_data != null)
                                     <td>@oc.Letter. @oc.Label</td>
                                     <td class="rpt-td-center">
                                         <span class="rpt-compliance-badge comp-@(oc.Compliance?.ToLower() ?? "na")">
-                                            @(oc.Compliance ?? "NA")
+                                            @(oc.Compliance switch { "Pass" => "Yes", "Fail" => "No", _ => oc.Compliance ?? "NA" })
                                         </span>
                                     </td>
                                     <td>@(oc.Remark ?? "")</td>
@@ -154,7 +154,7 @@ else if (_data != null)
                                     <td>@oc.Letter. @oc.Label</td>
                                     <td class="rpt-td-center">
                                         <span class="rpt-compliance-badge comp-@(oc.Compliance?.ToLower() ?? "na")">
-                                            @(oc.Compliance ?? "NA")
+                                            @(oc.Compliance switch { "Pass" => "Yes", "Fail" => "No", _ => oc.Compliance ?? "NA" })
                                         </span>
                                     </td>
                                     <td>@(oc.Remark ?? "")</td>
@@ -1958,7 +1958,7 @@ else if (_data != null)
     ══════════════════════════════════════════ */
     @@media print {
         /* Ẩn header/footer mặc định của browser (URL, ngày giờ, tên trang) */
-        @@page { margin: 0; size: A4 portrait; }
+        @@page { margin: 12mm 10mm; size: A4 portrait; }
         body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
         .no-print { display: none !important; }
 
@@ -1967,17 +1967,54 @@ else if (_data != null)
         .top-bar, .main-nav, .nav-bar, .app-nav,
         .top-menu, .side-menu, .menu-bar,
         [class*="nav"], [class*="header"]:not(.rpt-cover-header):not(.rpt-section-header) { display: none !important; }
+
         .rpt-page { background: white; padding: 0; }
-        .rpt-paper { max-width: 100%; margin: 0; counter-reset: page-counter; }
-        .rpt-section {
-            border-radius: 0; box-shadow: none;
-            margin-bottom: 0; padding: 20px 24px;
-            counter-increment: page-counter;
+        .rpt-paper {
+            max-width: 100%; margin: 0;
+            counter-reset: page-counter;
         }
-        .page-break-after { page-break-after: always; }
-        .rpt-photo { height: 180px; }
-        .rpt-aql-grid { grid-template-columns: 1fr 1fr 1fr; }
-        /* Ẩn hardcoded page numbers khi in, dùng CSS counter thay thế */
+
+        /* Mỗi section là 1 trang riêng — không bị cắt đôi */
+        .rpt-section {
+            border-radius: 0;
+            box-shadow: none;
+            margin-bottom: 0;
+            padding: 16px 20px;
+            counter-increment: page-counter;
+            /* Giữ nguyên trong 1 trang, không bị cắt */
+            break-inside: avoid;
+            page-break-inside: avoid;
+        }
+
+        /* Section có page-break-after thì xuống trang mới sau đó */
+        .page-break-after {
+            break-after: page;
+            page-break-after: always;
+        }
+
+        /* Ngăn bảng bị cắt giữa 2 trang */
+        table { break-inside: avoid; page-break-inside: avoid; }
+        tr    { break-inside: avoid; page-break-inside: avoid; }
+
+        /* Ngăn các block ảnh, grid bị cắt */
+        .rpt-overview-photo-wrap,
+        .rpt-overview-photo-cell,
+        .rpt-qty-photo-grid,
+        .rpt-qty-photo-cell,
+        .rpt-photo-grid-2,
+        .rpt-photo-cell,
+        .rpt-perf-block,
+        .rpt-defect-item,
+        .rpt-sig-row,
+        .rpt-aql-grid    { break-inside: avoid; page-break-inside: avoid; }
+
+        /* Ảnh giữ kích thước vừa trang A4 */
+        .rpt-photo       { height: 150px; max-width: 100%; object-fit: cover; }
+
+        /* AQL 3 cột */
+        .rpt-aql-grid    { grid-template-columns: 1fr 1fr 1fr; }
+
+        /* Page number */
         .rpt-footer-page { display: none; }
         .rpt-footer-inner::after {
             content: counter(page-counter);

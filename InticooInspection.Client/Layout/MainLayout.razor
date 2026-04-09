@@ -1,6 +1,7 @@
 @inherits LayoutComponentBase
 @inject IAuthService AuthService
 @inject NavigationManager Navigation
+@inject WaitingService Waiting
 @using InticooInspection.Client.Services
 
 <div class="app-layout">
@@ -23,8 +24,8 @@
                  ═══════════════════════════════════════════════ -->
             <nav class="navbar-links">
 
-                <!-- Dashboard: Admin + Inspector — link thẳng, KHÔNG có trong dropdown -->
-                <AuthorizeView Roles="Admin,Inspector">
+                <!-- ── Dashboard: Admin only — link thẳng ── -->
+                <AuthorizeView Roles="Admin">
                     <NavLink href="/dashboard" class="nav-link" Match="NavLinkMatch.All">
                         <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" style="vertical-align:-2px;margin-right:5px">
                             <rect x="2" y="2" width="7" height="7" rx="1"/>
@@ -37,21 +38,42 @@
                     <div class="nav-divider"></div>
                 </AuthorizeView>
 
-                <!-- Dashboard: Customer — link thẳng -->
+                <!-- ── Inspector: Inspection Schedule link thẳng (thay Dashboard) ── -->
+                <AuthorizeView Roles="Inspector">
+                    <NavLink href="/inspection-schedule" class="nav-link" Match="NavLinkMatch.All">
+                        <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" style="vertical-align:-2px;margin-right:5px">
+                            <rect x="2" y="4" width="16" height="13" rx="2"/>
+                            <path d="M6 2v4M14 2v4M2 9h16" stroke-linecap="round"/>
+                            <circle cx="7" cy="13" r="1.2" fill="currentColor" stroke="none"/>
+                            <circle cx="10" cy="13" r="1.2" fill="currentColor" stroke="none"/>
+                            <circle cx="13" cy="13" r="1.2" fill="currentColor" stroke="none"/>
+                        </svg>
+                        Inspection Schedule
+                    </NavLink>
+                </AuthorizeView>
+
+                <!-- ── Customer: Inspection List + Inspection Schedule ── -->
                 <AuthorizeView Roles="Customer">
-                    <NavLink href="/dashboard" class="nav-link" Match="NavLinkMatch.All">
+                    <NavLink href="/inspections" class="nav-link">
                         <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" style="vertical-align:-2px;margin-right:5px">
-                            <rect x="2" y="2" width="7" height="7" rx="1"/>
-                            <rect x="11" y="2" width="7" height="7" rx="1"/>
-                            <rect x="2" y="11" width="7" height="7" rx="1"/>
-                            <rect x="11" y="11" width="7" height="7" rx="1"/>
+                            <path d="M4 3h12a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z"/>
+                            <path d="M7 7l1.5 1.5L11 6M7 11l1.5 1.5L11 10" stroke-linecap="round" stroke-linejoin="round"/>
+                            <path d="M7 14.5h4" stroke-linecap="round"/>
                         </svg>
-                        Dashboard
+                        Inspection List
+                    </NavLink>
+                    <div class="nav-divider"></div>
+                    <NavLink href="/inspection-schedule" class="nav-link">
+                        <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" style="vertical-align:-2px;margin-right:5px">
+                            <rect x="3" y="3" width="14" height="14" rx="2"/>
+                            <path d="M7 7h6M7 10h6M7 13h4" stroke-linecap="round"/>
+                        </svg>
+                        Inspection Schedule
                     </NavLink>
                     <div class="nav-divider"></div>
                 </AuthorizeView>
 
-                <!-- System: Admin only -->
+                <!-- ── System: Admin only ── -->
                 <AuthorizeView Roles="Admin">
                     <div class="nav-dropdown">
                         <button class="nav-link nav-dropdown-btn">
@@ -107,41 +129,10 @@
                     <div class="nav-divider"></div>
                 </AuthorizeView>
 
-                <!-- Customer: Customer role -->
-                <AuthorizeView Roles="Customer">
-                    <div class="nav-dropdown">
-                        <button class="nav-link nav-dropdown-btn">
-                            <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" style="vertical-align:-2px;margin-right:5px">
-                                <circle cx="8" cy="7" r="3"/>
-                                <path d="M2 17c0-3.314 2.686-6 6-6s6 2.686 6 6"/>
-                            </svg>
-                            Customer
-                            <svg width="10" height="10" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-left:3px">
-                                <path d="M5 8l5 5 5-5"/>
-                            </svg>
-                        </button>
-                        <div class="nav-dropdown-menu">
-                            <NavLink href="/inspection-schedule" class="nav-dropdown-item">
-                                <svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5">
-                                    <rect x="3" y="3" width="14" height="14" rx="2"/>
-                                    <path d="M7 7h6M7 10h6M7 13h4" stroke-linecap="round"/>
-                                </svg>
-                                Inspection Plan Schedule
-                            </NavLink>
-                            <NavLink href="/inspection-report" class="nav-dropdown-item">
-                                <svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5">
-                                    <path d="M4 3h12a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z"/>
-                                    <path d="M8 8h4M8 11h4M8 14h2" stroke-linecap="round"/>
-                                </svg>
-                                Inspection Report
-                            </NavLink>
-                        </div>
-                    </div>
-                    <div class="nav-divider"></div>
-                </AuthorizeView>
 
-                <!-- Inspector: Admin + Inspector -->
-                <AuthorizeView Roles="Admin,Inspector" Context="inspectorCtx">
+
+                <!-- ── Inspector dropdown: Admin only ── -->
+                <AuthorizeView Roles="Admin" Context="inspectorCtx">
                     <div class="nav-dropdown">
                         <button class="nav-link nav-dropdown-btn">
                             <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" style="vertical-align:-2px;margin-right:5px">
@@ -233,8 +224,8 @@
         {
             <div class="mobile-menu">
 
-                <!-- ── Dashboard: Admin + Inspector ── -->
-                <AuthorizeView Roles="Admin,Inspector">
+                <!-- ── Admin: Dashboard ── -->
+                <AuthorizeView Roles="Admin">
                     <NavLink href="/dashboard" class="mobile-nav-item" Match="NavLinkMatch.All" @onclick="CloseMobileMenu">
                         <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5">
                             <rect x="2" y="2" width="7" height="7" rx="1"/><rect x="11" y="2" width="7" height="7" rx="1"/>
@@ -244,14 +235,36 @@
                     </NavLink>
                 </AuthorizeView>
 
-                <!-- ── Dashboard: Customer ── -->
-                <AuthorizeView Roles="Customer">
-                    <NavLink href="/dashboard" class="mobile-nav-item" Match="NavLinkMatch.All" @onclick="CloseMobileMenu">
+                <!-- ── Inspector: Inspection Schedule (thay Dashboard) ── -->
+                <AuthorizeView Roles="Inspector">
+                    <NavLink href="/inspection-schedule" class="mobile-nav-item" Match="NavLinkMatch.All" @onclick="CloseMobileMenu">
                         <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5">
-                            <rect x="2" y="2" width="7" height="7" rx="1"/><rect x="11" y="2" width="7" height="7" rx="1"/>
-                            <rect x="2" y="11" width="7" height="7" rx="1"/><rect x="11" y="11" width="7" height="7" rx="1"/>
+                            <rect x="2" y="4" width="16" height="13" rx="2"/>
+                            <path d="M6 2v4M14 2v4M2 9h16" stroke-linecap="round"/>
+                            <circle cx="7" cy="13" r="1.2" fill="currentColor" stroke="none"/>
+                            <circle cx="10" cy="13" r="1.2" fill="currentColor" stroke="none"/>
+                            <circle cx="13" cy="13" r="1.2" fill="currentColor" stroke="none"/>
                         </svg>
-                        Dashboard
+                        Inspection Schedule
+                    </NavLink>
+                </AuthorizeView>
+
+                <!-- ── Customer: Inspection List + Schedule ── -->
+                <AuthorizeView Roles="Customer">
+                    <NavLink href="/inspections" class="mobile-nav-item" @onclick="CloseMobileMenu">
+                        <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5">
+                            <path d="M4 3h12a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z"/>
+                            <path d="M7 7l1.5 1.5L11 6M7 11l1.5 1.5L11 10" stroke-linecap="round" stroke-linejoin="round"/>
+                            <path d="M7 14.5h4" stroke-linecap="round"/>
+                        </svg>
+                        Inspection List
+                    </NavLink>
+                    <NavLink href="/inspection-schedule" class="mobile-nav-item" @onclick="CloseMobileMenu">
+                        <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5">
+                            <rect x="3" y="3" width="14" height="14" rx="2"/>
+                            <path d="M7 7h6M7 10h6M7 13h4" stroke-linecap="round"/>
+                        </svg>
+                        Inspection Schedule
                     </NavLink>
                 </AuthorizeView>
 
@@ -299,36 +312,6 @@
                         </svg>
                         New Inspection
                     </NavLink>
-                </AuthorizeView>
-
-                <!-- ── Customer: Customer role ── -->
-                <AuthorizeView Roles="Customer">
-                    <div class="mobile-nav-divider"></div>
-                    <div class="mobile-nav-group-label">
-                        <svg width="12" height="12" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:5px">
-                            <circle cx="8" cy="7" r="3"/>
-                            <path d="M2 17c0-3.314 2.686-6 6-6s6 2.686 6 6"/>
-                        </svg>
-                        Customer
-                    </div>
-                    <NavLink href="/inspection-schedule" class="mobile-nav-item mobile-nav-sub" @onclick="CloseMobileMenu">
-                        <svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5">
-                            <rect x="3" y="3" width="14" height="14" rx="2"/>
-                            <path d="M7 7h6M7 10h6M7 13h4" stroke-linecap="round"/>
-                        </svg>
-                        Inspection Plan Schedule
-                    </NavLink>
-                    <NavLink href="/inspection-report" class="mobile-nav-item mobile-nav-sub" @onclick="CloseMobileMenu">
-                        <svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5">
-                            <path d="M4 3h12a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z"/>
-                            <path d="M8 8h4M8 11h4M8 14h2" stroke-linecap="round"/>
-                        </svg>
-                        Inspection Report
-                    </NavLink>
-                </AuthorizeView>
-
-                <!-- ── Inspector: Admin + Inspector ── -->
-                <AuthorizeView Roles="Admin,Inspector" Context="mobileInspectorCtx">
                     <div class="mobile-nav-divider"></div>
                     <div class="mobile-nav-group-label">
                         <svg width="12" height="12" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:5px">
@@ -348,17 +331,14 @@
                         </svg>
                         Inspector Schedule
                     </NavLink>
-                    <AuthorizeView Roles="Admin" Context="mobileAdminInspCtx">
-                        <NavLink href="/inspections" class="mobile-nav-item mobile-nav-sub" @onclick="CloseMobileMenu">
-                            <svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5">
-                                <path d="M4 3h12a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z"/>
-                                <path d="M7 7l1.5 1.5L11 6M7 11l1.5 1.5L11 10" stroke-linecap="round" stroke-linejoin="round"/>
-                                <path d="M7 14.5h4" stroke-linecap="round"/>
-                            </svg>
-                            Inspection List
-                            <span class="badge-admin">Admin</span>
-                        </NavLink>
-                    </AuthorizeView>
+                    <NavLink href="/inspections" class="mobile-nav-item mobile-nav-sub" @onclick="CloseMobileMenu">
+                        <svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5">
+                            <path d="M4 3h12a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z"/>
+                            <path d="M7 7l1.5 1.5L11 6M7 11l1.5 1.5L11 10" stroke-linecap="round" stroke-linejoin="round"/>
+                            <path d="M7 14.5h4" stroke-linecap="round"/>
+                        </svg>
+                        Inspection List
+                    </NavLink>
                 </AuthorizeView>
 
                 <!-- Sign Out -->
@@ -386,7 +366,7 @@
     <footer class="bottom-footer">
         <div class="footer-inner">
             <div class="footer-copy">
-                <span>© 2024 Inticoo. All Rights Reserved.</span>
+                <span>© 2026 Inticoo. All Rights Reserved.</span>
                 <div class="footer-socials">
                     <a href="#" class="social-icon" title="Facebook">
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
@@ -411,6 +391,8 @@
     </footer>
 </div>
 
+<WaitingOverlay />
+
 @code {
     private bool _mobileMenuOpen = false;
 
@@ -419,7 +401,9 @@
 
     private async Task Logout()
     {
+        Waiting.Show("Logging out...");
         await AuthService.LogoutAsync();
+        Waiting.Hide();
         Navigation.NavigateTo("/login");
     }
 
@@ -428,13 +412,15 @@
 }
 
 <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; font-family: Arial, sans-serif; }
+    @@import url("https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700&family=DM+Sans:wght@300;400;500&display=swap");
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     body {
         background: linear-gradient(160deg, #1a3a6b 0%, #1565c0 40%, #1976d2 70%, #1e88e5 100%);
         min-height: 100vh;
         color: #fff;
-        font-family: Arial, sans-serif;
+        font-family: "DM Sans", sans-serif;
         position: relative;
     }
 
@@ -487,7 +473,7 @@
         padding: 6px 18px;
         transition: color .2s;
         white-space: nowrap;
-        font-family: Arial, sans-serif;
+        font-family: "DM Sans", sans-serif;
     }
 
     .nav-link:hover { color: #1565c0; }
@@ -576,7 +562,7 @@
         width: 100%;
         text-align: left;
         transition: background .15s;
-        font-family: Arial, sans-serif;
+        font-family: "DM Sans", sans-serif;
     }
 
     .dropdown-item:hover { background: #f0f5ff; }
@@ -600,7 +586,7 @@
         font-size: 14px;
         font-weight: 500;
         padding: 6px 18px;
-        font-family: Arial, sans-serif;
+        font-family: "DM Sans", sans-serif;
         transition: color .2s;
     }
 
@@ -642,7 +628,7 @@
         font-size: 13.5px;
         color: #1a3a6b;
         text-decoration: none;
-        font-family: Arial, sans-serif;
+        font-family: "DM Sans", sans-serif;
         font-weight: 500;
         transition: background .15s, color .15s;
     }
@@ -771,7 +757,7 @@
         font-weight: 500;
         color: #1a3a6b;
         text-decoration: none;
-        font-family: Arial, sans-serif;
+        font-family: "DM Sans", sans-serif;
         transition: background .15s, color .15s;
         background: none;
         border: none;

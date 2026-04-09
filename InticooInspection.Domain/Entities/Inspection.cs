@@ -132,6 +132,10 @@ namespace InticooInspection.Domain.Entities
 
         // Inner Packing
         public int?    InnerPackingQty    { get; set; }
+        public double? InnerSizeL         { get; set; }   // mm
+        public double? InnerSizeW         { get; set; }   // mm
+        public double? InnerSizeH         { get; set; }   // mm
+        public double? InnerWeight        { get; set; }   // kg
         public string? InnerPackingRemark { get; set; }
 
         // Outer Packing

@@ -7,6 +7,7 @@
 @inject HttpClient Http
 @inject NavigationManager Navigation
 @inject Blazored.SessionStorage.ISessionStorageService SessionStorage
+@inject WaitingService Waiting
 
 <PageTitle>New Inspection - Inticoo</PageTitle>
 
@@ -152,10 +153,6 @@
                     <input type="date" @bind="Model.InspectionDate" />
                 </div>
                 <div class="field-group">
-                    <label>Item Number</label>
-                    <input @bind="Model.ItemNumber" placeholder="Enter item number" />
-                </div>
-                <div class="field-group">
                     <label>Inspection Type</label>
                     <div class="radio-group">
                         <label class="radio-label">
@@ -179,7 +176,11 @@
                     </div>
                 </div>
                 <div class="field-group">
-                    <label>Product ID</label>
+                    <label>Item Number</label>
+                    <input value="@Model.ItemNumber" @onchange="OnItemNumberChanged" placeholder="Enter item number" class="highlight-field" />
+                </div>
+                <div class="field-group">
+                    <label>Product Name</label>
                     @if (_loadingProducts)
                     {
                         <div class="field-loading">Loading...</div>
@@ -196,9 +197,9 @@
                     }
                 </div>
                 <div class="field-group">
-                    <label>Product Name</label>
-                    <div class="readonly-field @(string.IsNullOrEmpty(Model.ProductName) ? "" : "accent")">
-                        @(string.IsNullOrEmpty(Model.ProductName) ? "Auto-filled from Product ID" : Model.ProductName)
+                    <label>Product Type</label>
+                    <div class="readonly-field @(string.IsNullOrEmpty(Model.ProductType) ? "" : "accent")">
+                        @(string.IsNullOrEmpty(Model.ProductType) ? "Auto-filled from Product" : Model.ProductType)
                     </div>
                 </div>
                 <div class="field-group">
@@ -210,7 +211,7 @@
                 </div>
                 <div class="field-group">
                     <label>Total Shipment Quantity</label>
-                    <input type="number" @bind="Model.TotalShipmentQty" placeholder="0" />
+                    <input type="number" value="@Model.TotalShipmentQty" @onchange="OnTotalShipmentQtyChanged" placeholder="0" />
                 </div>
                 <div class="field-group">
                     <label>Product Category</label>
@@ -394,7 +395,7 @@
             <div class="ni-grid-2" style="margin-bottom:14px;">
                 <div class="field-group">
                     <label>Item Number</label>
-                    <input @bind="Packaging.ItemNumber" placeholder="Enter item number" />
+                    <div class="readonly-field accent">@(string.IsNullOrEmpty(Packaging.ItemNumber) ? "Auto-filled from General Information" : Packaging.ItemNumber)</div>
                 </div>
                 <div class="field-group">
                     <label>Carton Number</label>
@@ -473,15 +474,13 @@
             <!-- Inner Packing -->
             <div class="pkg-sub-section">
                 <span class="pkg-sub-title">Inner Packing</span>
-                <div class="ni-grid-2">
-                    <div class="field-group">
-                        <label>Quantity</label>
-                        <input type="number" @bind="Packaging.InnerPackingQty" placeholder="0" />
-                    </div>
-                    <div class="field-group">
-                        <label>Remark</label>
-                        <input @bind="Packaging.InnerPackingRemark" placeholder="Remark..." />
-                    </div>
+                <div class="ni-grid-6">
+                    <div class="field-group"><label>Quantity</label><input type="number" @bind="Packaging.InnerPackingQty" placeholder="0" /></div>
+                    <div class="field-group"><label>L (mm)</label><input type="number" @bind="Packaging.InnerL" placeholder="0" /></div>
+                    <div class="field-group"><label>W (mm)</label><input type="number" @bind="Packaging.InnerW" placeholder="0" /></div>
+                    <div class="field-group"><label>H (mm)</label><input type="number" @bind="Packaging.InnerH" placeholder="0" /></div>
+                    <div class="field-group"><label>Weight (Kgs)</label><input type="number" step="0.01" @bind="Packaging.InnerWeight" placeholder="0.00" /></div>
+                    <div class="field-group"><label>Remark</label><input @bind="Packaging.InnerPackingRemark" placeholder="Remark..." /></div>
                 </div>
             </div>
 
@@ -536,58 +535,135 @@
         <!-- D. Performance Testing -->
         <div class="ni-card">
             <div class="ni-section-title"><span class="section-alpha">D</span> Performance Testing</div>
-            <div class="data-table">
-                <div class="data-table-header">
-                    <div class="col-no">No</div>
-                    <div class="col-flex">Category</div>
-                    <div class="col-flex">Test Item</div>
-                    <div class="col-flex2">Test Requirement</div>
-                    <div class="col-flex">Remark</div>
+            @if (_loadingPerfMaster)
+            {
+                <div class="field-loading">Loading test master data...</div>
+            }
+            else if (!string.IsNullOrEmpty(_perfMasterError))
+            {
+                <div style="color:#dc2626;font-size:12px;background:#fff5f5;border:1px solid #fecaca;border-radius:8px;padding:10px 14px;margin-bottom:12px;">
+                    ⚠ @_perfMasterError
                 </div>
-                @for (int i = 0; i < PerformanceTests.Count; i++)
-                {
-                    var idx = i;
-                    var test = PerformanceTests[idx];
-                    <div class="data-table-row">
-                        <div class="col-no">@(idx + 1)</div>
-                        <div class="col-flex"><input @bind="test.Category" placeholder="Category..." class="table-input" /></div>
-                        <div class="col-flex"><input @bind="test.TestItem" placeholder="Test item..." class="table-input" /></div>
-                        <div class="col-flex2"><input @bind="test.TestRequirement" placeholder="Requirement..." class="table-input" /></div>
-                        <div class="col-flex"><input @bind="test.Remark" placeholder="Remark..." class="table-input" /></div>
+                <div class="data-table">
+                    <div class="data-table-header">
+                        <div class="col-no">No</div>
+                        <div class="col-flex">Category</div>
+                        <div class="col-flex">Test Item</div>
+                        <div class="col-flex2">Test Requirement</div>
+                        <div class="col-flex">Remark</div>
                     </div>
-                }
-                <button class="add-row-btn" @onclick="AddPerformanceTest">+ Add Row</button>
-            </div>
+                    @for (int i = 0; i < PerformanceTests.Count; i++)
+                    {
+                        var idx  = i;
+                        var test = PerformanceTests[idx];
+                        <div class="data-table-row">
+                            <div class="col-no">@(idx + 1)</div>
+                            <div class="col-flex"><input @bind="test.Category" placeholder="Category..." class="table-input" /></div>
+                            <div class="col-flex"><input @bind="test.TestItem" placeholder="Test item..." class="table-input" /></div>
+                            <div class="col-flex2"><input @bind="test.TestRequirement" placeholder="Requirement..." class="table-input" /></div>
+                            <div class="col-flex"><input @bind="test.Remark" placeholder="Remark..." class="table-input" /></div>
+                        </div>
+                    }
+                    <button class="add-row-btn" @onclick="AddPerformanceTest">+ Add Row</button>
+                </div>
+            }
+            else
+            {
+                <div class="data-table">
+                    <div class="data-table-header">
+                        <div class="col-no">No</div>
+                        <div class="col-flex">Category</div>
+                        <div class="col-flex">Test Item</div>
+                        <div class="col-flex2">Test Requirement</div>
+                        <div class="col-flex">Remark</div>
+                    </div>
+                    @for (int i = 0; i < PerformanceTests.Count; i++)
+                    {
+                        var idx  = i;
+                        var test = PerformanceTests[idx];
+                        var testItems = GetPerfTestItems(test.Category);
+                        <div class="data-table-row">
+                            <div class="col-no">@(idx + 1)</div>
+                            <div class="col-flex">
+                                <select class="table-select"
+                                        value="@test.Category"
+                                        @onchange="e => OnPerfCategoryChanged(e, idx)">
+                                    <option value="">Category...</option>
+                                    @foreach (var cat in _perfCategories)
+                                    {
+                                        <option value="@cat">@cat</option>
+                                    }
+                                </select>
+                            </div>
+                            <div class="col-flex">
+                                @if (string.IsNullOrEmpty(test.Category))
+                                {
+                                    <select class="table-select" disabled>
+                                        <option value="">Select category first...</option>
+                                    </select>
+                                }
+                                else
+                                {
+                                    <select class="table-select"
+                                            value="@test.TestItem"
+                                            @onchange="e => OnPerfTestItemChanged(e, idx)">
+                                        <option value="">Test item...</option>
+                                        @foreach (var item in testItems)
+                                        {
+                                            <option value="@item.ProtocolName">@item.ProtocolName</option>
+                                        }
+                                    </select>
+                                }
+                            </div>
+                            <div class="col-flex2">
+                                <textarea @bind="test.TestRequirement"
+                                          placeholder="Requirement auto-filled..."
+                                          class="table-textarea"
+                                          rows="2"></textarea>
+                            </div>
+                            <div class="col-flex">
+                                <input @bind="test.Remark" placeholder="Remark..." class="table-input" />
+                            </div>
+                        </div>
+                    }
+                    <button class="add-row-btn" @onclick="AddPerformanceTest">+ Add Row</button>
+                </div>
+            }
         </div>
 
         <!-- E. Reference -->
         <div class="ni-card">
             <div class="ni-section-title"><span class="section-alpha">E</span> Reference</div>
+            @if (!string.IsNullOrEmpty(_mSaveRefError))
+            {
+                <div style="color:#dc2626;font-size:12px;margin-bottom:8px;">@_mSaveRefError</div>
+            }
             <div class="data-table">
                 <div class="data-table-header">
                     <div class="col-no">No</div>
                     <div class="col-flex2">Reference</div>
                     <div class="col-flex">Attached File</div>
                     <div class="col-flex">Remark</div>
+                    <div style="width:80px;flex-shrink:0;"></div>
                 </div>
                 @for (int i = 0; i < References.Count; i++)
                 {
                     var idx = i;
                     var refItem = References[idx];
-                    @* FIX: dùng refItem.Id (Guid) thay vì idx làm @key để tránh InputFile bị gắn nhầm row *@
                     <div class="data-table-row" @key="refItem.Id">
                         <div class="col-no">@(idx + 1)</div>
-                        <div class="col-flex2"><input @bind="refItem.ReferenceName" placeholder="Reference name..." class="table-input" /></div>
+                        <div class="col-flex2">
+                            @if (refItem.FromProduct)
+                            {
+                                <span class="table-input" style="color:#1a2d5a;display:block;padding:5px 4px;">@refItem.ReferenceName</span>
+                            }
+                            else
+                            {
+                                <input @bind="refItem.ReferenceName" placeholder="Reference name..." class="table-input" />
+                            }
+                        </div>
                         <div class="col-flex">
-                            @* InputFile LUÔN tồn tại trong DOM — chỉ ẩn/hiện bằng display:none/block
-                               Tránh lỗi _blazorFilesById khi IsUploading làm mất InputFile khỏi DOM *@
-
-                            @* Trạng thái: Đang upload *@
-                            <span class="file-uploading" style="display:@(refItem.IsUploading ? "inline-flex" : "none")">
-                                ⏳ Uploading...
-                            </span>
-
-                            @* Trạng thái: Có lỗi *@
+                            <span class="file-uploading" style="display:@(refItem.IsUploading ? "inline-flex" : "none")">⏳ Uploading...</span>
                             <div style="display:@(!refItem.IsUploading && !string.IsNullOrEmpty(refItem.UploadError) ? "flex" : "none");align-items:center;gap:6px;">
                                 <span style="color:#dc2626;font-size:11.5px;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="@refItem.UploadError">⚠ @refItem.UploadError</span>
                                 <label class="file-attach-btn" style="padding:3px 8px;font-size:11px;" title="Retry">
@@ -595,35 +671,55 @@
                                     <InputFile OnChange="@(async e => await OnReferenceFileSelected(e, idx))" style="display:none;" />
                                 </label>
                             </div>
-
-                            @* Trạng thái: Đã có file *@
                             <div style="display:@(!refItem.IsUploading && string.IsNullOrEmpty(refItem.UploadError) && !string.IsNullOrEmpty(refItem.FileUrl) ? "flex" : "none");align-items:center;gap:6px;">
                                 @{ var fn = refItem.FileName ?? ""; }
                                 <a href="@refItem.FileUrl" target="_blank" class="file-link-btn" title="@refItem.FileName">
-                                    <svg width="12" height="12" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2">
-                                        <path d="M4 17h12M10 3v10M6 13l4 4 4-4" stroke-linecap="round" stroke-linejoin="round"/>
-                                    </svg>
+                                    <svg width="12" height="12" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 17h12M10 3v10M6 13l4 4 4-4" stroke-linecap="round" stroke-linejoin="round"/></svg>
                                     @(fn.Length > 20 ? fn[..20] + "…" : (fn.Length > 0 ? fn : "(file)"))
                                 </a>
-                                <label class="file-reupload-btn" title="Change file">
-                                    <svg width="11" height="11" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2">
-                                        <path d="M10 3v10M6 7l4-4 4 4" stroke-linecap="round" stroke-linejoin="round"/>
-                                    </svg>
+                                @if (!refItem.FromProduct)
+                                {
+                                    <label class="file-reupload-btn" title="Change file">
+                                        <svg width="11" height="11" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 3v10M6 7l4-4 4 4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                                        <InputFile OnChange="@(async e => await OnReferenceFileSelected(e, idx))" style="display:none;" />
+                                    </label>
+                                }
+                            </div>
+                            @if (!refItem.FromProduct)
+                            {
+                                <label class="file-attach-btn" style="display:@(!refItem.IsUploading && string.IsNullOrEmpty(refItem.UploadError) && string.IsNullOrEmpty(refItem.FileUrl) ? "inline-flex" : "none");">
+                                    <svg width="13" height="13" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 3v10M6 7l4-4 4 4" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 17h12" stroke-linecap="round"/></svg>
+                                    Attach File
                                     <InputFile OnChange="@(async e => await OnReferenceFileSelected(e, idx))" style="display:none;" />
                                 </label>
-                            </div>
-
-                            @* Trạng thái: Chưa có file (mặc định) *@
-                            <label class="file-attach-btn" style="display:@(!refItem.IsUploading && string.IsNullOrEmpty(refItem.UploadError) && string.IsNullOrEmpty(refItem.FileUrl) ? "inline-flex" : "none");">
-                                <svg width="13" height="13" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2">
-                                    <path d="M10 3v10M6 7l4-4 4 4" stroke-linecap="round" stroke-linejoin="round"/>
-                                    <path d="M4 17h12" stroke-linecap="round"/>
-                                </svg>
-                                Attach File
-                                <InputFile OnChange="@(async e => await OnReferenceFileSelected(e, idx))" style="display:none;" />
-                            </label>
+                            }
+                            else if (string.IsNullOrEmpty(refItem.FileUrl))
+                            {
+                                <span style="font-size:11px;color:#b0bdd4;font-style:italic;">No file</span>
+                            }
                         </div>
-                        <div class="col-flex"><input @bind="refItem.Remark" placeholder="Remark..." class="table-input" /></div>
+                        <div class="col-flex">
+                            @if (refItem.FromProduct)
+                            {
+                                <span style="font-size:12.5px;color:#4a6080;">@refItem.Remark</span>
+                            }
+                            else
+                            {
+                                <input @bind="refItem.Remark" placeholder="Remark..." class="table-input" />
+                            }
+                        </div>
+                        <div style="width:80px;flex-shrink:0;display:flex;align-items:center;justify-content:center;">
+                            @if (!refItem.FromProduct && _currentProductId > 0)
+                            {
+                                <button class="btn-ref-save" @onclick="() => SaveProductReference(idx)" disabled="@refItem.IsSaving">
+                                    @(refItem.IsSaving ? "..." : "Save")
+                                </button>
+                            }
+                            else if (refItem.FromProduct)
+                            {
+                                <span style="font-size:10px;color:#9baac8;">Product</span>
+                            }
+                        </div>
                     </div>
                 }
                 <button class="add-row-btn" @onclick="AddReference">+ Add Row</button>
@@ -784,6 +880,7 @@
         var mime      = SafeContentType(file.ContentType);
         PhotoPreview1 = $"data:{mime};base64,{Convert.ToBase64String(bytes)}";
         _photoUploading = true;
+        Waiting.Show("Uploading photo...");
         StateHasChanged();
 
         // 3. Upload lên server
@@ -821,6 +918,7 @@
         finally
         {
             _photoUploading = false;
+            Waiting.Hide();
             StateHasChanged();
         }
     }
@@ -848,9 +946,17 @@
     private int              _selectedCountryId = 0;
     private bool             _loadingCountries  = true;
 
+    // ── Performance Test Master ──
+    private List<PerformanceTestMasterDto> _perfMaster        = new();
+    private List<string>                   _perfCategories    = new();
+    private bool                           _loadingPerfMaster = true;
+    private string                         _perfMasterError   = "";
+
     protected override async Task OnInitializedAsync()
     {
-        await Task.WhenAll(LoadCustomers(), LoadVendors(), LoadProducts(), LoadInspectors(), LoadCountries());
+        await Task.WhenAll(LoadCustomers(), LoadVendors(), LoadProducts(), LoadInspectors(), LoadCountries(), LoadPerformanceMaster());
+        AqlQuantity = Model.TotalShipmentQty;
+        if (AqlQuantity > 0) RecalcAql();
     }
 
     private async Task LoadCustomers()
@@ -911,13 +1017,209 @@
         }
     }
 
+    private async Task OnItemNumberChanged(ChangeEventArgs e)
+    {
+        var itemNum = e.Value?.ToString()?.Trim() ?? "";
+        Model.ItemNumber     = itemNum;
+        Packaging.ItemNumber = itemNum;
+
+        if (string.IsNullOrEmpty(itemNum)) return;
+
+        // 1. Tìm trong _allProducts local trước
+        var found = _allProducts.FirstOrDefault(p =>
+            !string.IsNullOrEmpty(p.ItemNumber) &&
+            p.ItemNumber.Equals(itemNum, StringComparison.OrdinalIgnoreCase));
+
+        // 2. Nếu không có → gọi API search theo itemNumber
+        if (found == null)
+        {
+            try
+            {
+                var opts = new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+                var json = await Http.GetStringAsync($"api/products?pageSize=10&search={Uri.EscapeDataString(itemNum)}");
+                using var doc = System.Text.Json.JsonDocument.Parse(json);
+                var items = doc.RootElement.GetProperty("items");
+                foreach (var item in items.EnumerateArray())
+                {
+                    var itNum = item.TryGetProperty("itemNumber", out var itProp) ? itProp.GetString() ?? "" : "";
+                    if (itNum.Equals(itemNum, StringComparison.OrdinalIgnoreCase))
+                    {
+                        found = new ProductDropdownDto
+                        {
+                            Id          = item.TryGetProperty("id",          out var id) ? id.GetInt32()          : 0,
+                            ProductCode = item.TryGetProperty("productCode", out var pc) ? pc.GetString() ?? ""   : "",
+                            ProductName = item.TryGetProperty("productName", out var pn) ? pn.GetString() ?? ""   : "",
+                            ItemNumber  = itNum,
+                            ProductType = item.TryGetProperty("productType", out var pt) ? pt.GetString() ?? ""   : "",
+                            Category    = item.TryGetProperty("category",    out var ca) ? ca.GetString() ?? ""   : "",
+                            SizeL       = item.TryGetProperty("sizeL",   out var sl) && sl.ValueKind != System.Text.Json.JsonValueKind.Null ? sl.GetDouble() : null,
+                            SizeW       = item.TryGetProperty("sizeW",   out var sw) && sw.ValueKind != System.Text.Json.JsonValueKind.Null ? sw.GetDouble() : null,
+                            SizeH       = item.TryGetProperty("sizeH",   out var sh) && sh.ValueKind != System.Text.Json.JsonValueKind.Null ? sh.GetDouble() : null,
+                            Weight      = item.TryGetProperty("weight",  out var wt) && wt.ValueKind != System.Text.Json.JsonValueKind.Null ? wt.GetDouble() : null,
+                            PhotoUrl    = item.TryGetProperty("photoUrl",    out var ph) ? ph.GetString() ?? ""   : "",
+                            CustomerId  = item.TryGetProperty("customerId",  out var ci) ? ci.GetString() ?? ""   : "",
+                            VendorId    = item.TryGetProperty("vendorId",    out var vi) ? vi.GetString() ?? ""   : "",
+                        };
+                        break;
+                    }
+                }
+            }
+            catch { }
+        }
+
+        if (found != null)
+        {
+            ApplyProductToForm(found);
+            StateHasChanged();
+        }
+    }
+
     private void OnProductChanged(ChangeEventArgs e)
     {
-        Model.ProductCode     = e.Value?.ToString() ?? "";
-        var found             = _products.FirstOrDefault(p => p.ProductCode == Model.ProductCode);
-        Model.ProductName     = found?.ProductName ?? "";
-        Model.ProductCategory = found?.Category    ?? "";
+        Model.ProductCode = e.Value?.ToString() ?? "";
+        var found = _products.FirstOrDefault(p => p.ProductCode == Model.ProductCode);
+        if (found != null)
+            ApplyProductToForm(found);
+        else
+        {
+            Model.ProductName    = "";
+            Model.ProductType    = "";
+            Model.ProductCategory = "";
+            Photo1ServerUrl      = null;
+            PhotoPreview1        = null;
+            ProductSpec.SizeL    = 0;
+            ProductSpec.SizeW    = 0;
+            ProductSpec.SizeH    = 0;
+            ProductSpec.Weight   = 0;
+        }
     }
+
+    private int _currentProductId = 0;
+
+    private void ApplyProductToForm(ProductDropdownDto p)
+    {
+        _currentProductId     = p.Id;
+        Model.ProductCode     = p.ProductCode;
+        Model.ProductName     = p.ProductName;
+        Model.ProductType     = p.ProductType;
+        Model.ProductCategory = p.Category;
+        if (string.IsNullOrEmpty(Model.ItemNumber) && !string.IsNullOrEmpty(p.ItemNumber))
+            Model.ItemNumber = p.ItemNumber;
+        Packaging.ItemNumber = Model.ItemNumber;
+        ProductSpec.SizeL   = p.SizeL   ?? 0;
+        ProductSpec.SizeW   = p.SizeW   ?? 0;
+        ProductSpec.SizeH   = p.SizeH   ?? 0;
+        ProductSpec.Weight  = p.Weight  ?? 0;
+        if (!string.IsNullOrEmpty(p.PhotoUrl))
+        {
+            var baseUrl = Http.BaseAddress?.ToString().TrimEnd('/') ?? "";
+            PhotoPreview1   = p.PhotoUrl.StartsWith("http") ? p.PhotoUrl : $"{baseUrl}{p.PhotoUrl}";
+            Photo1ServerUrl = PhotoPreview1;
+        }
+        // Load product references
+        _ = LoadProductReferences(p.Id);
+    }
+
+    private async Task LoadProductReferences(int productId)
+    {
+        if (productId <= 0) return;
+        try
+        {
+            var baseUrl = Http.BaseAddress?.ToString().TrimEnd('/') ?? "";
+            var json = await Http.GetStringAsync($"api/products/{productId}");
+            using var doc = System.Text.Json.JsonDocument.Parse(json);
+            var refs = new List<ReferenceRow>();
+            if (doc.RootElement.TryGetProperty("references", out var refsEl))
+            {
+                int sort = 1;
+                foreach (var r in refsEl.EnumerateArray())
+                {
+                    var rawUrl = r.TryGetProperty("fileUrl", out var rfu) ? rfu.GetString() ?? "" : "";
+                    // Thêm base URL nếu là path tương đối
+                    var fullUrl = !string.IsNullOrEmpty(rawUrl) && !rawUrl.StartsWith("http")
+                        ? $"{baseUrl}{rawUrl}" : rawUrl;
+                    refs.Add(new ReferenceRow
+                    {
+                        ProductRefId  = r.TryGetProperty("id",        out var rid)  ? rid.GetInt32()         : 0,
+                        SortOrder     = sort++,
+                        ReferenceName = r.TryGetProperty("name",      out var rn)   ? rn.GetString()  ?? ""  : "",
+                        FileUrl       = fullUrl,
+                        FileName      = r.TryGetProperty("fileName",  out var rfn)  ? rfn.GetString() ?? ""  : "",
+                        FromProduct   = true
+                    });
+                }
+            }
+            // Giữ lại các row mới user đã thêm (không phải từ product)
+            var newRows = References.Where(r => !r.FromProduct).ToList();
+            References = refs.Concat(newRows).ToList();
+            StateHasChanged();
+        }
+        catch { }
+    }
+
+    private async Task SaveProductReference(int idx)
+    {
+        if (_currentProductId <= 0 || idx >= References.Count) return;
+        var row = References[idx];
+        row.IsSaving = true;
+        _mSaveRefError = "";
+        StateHasChanged();
+        try
+        {
+            // Lấy thông tin product hiện tại để giữ nguyên các field bắt buộc
+            var prod = _allProducts.FirstOrDefault(p => p.Id == _currentProductId);
+            if (prod == null)
+            {
+                _mSaveRefError = "Product not found.";
+                return;
+            }
+
+            // Build updated references: all FromProduct rows + new row being saved
+            var allRefs = References
+                .Where(r => r.FromProduct || r == row)
+                .Select((r, i) => new
+                {
+                    SortOrder = i + 1,
+                    Name      = r.ReferenceName,
+                    FileUrl   = r.FileUrl,
+                    FileName  = r.FileName
+                })
+                .ToList();
+
+            // PUT với đầy đủ fields bắt buộc
+            var resp = await Http.PutAsJsonAsync($"api/products/{_currentProductId}", new
+            {
+                customerId   = prod.CustomerId,
+                vendorId     = prod.VendorId,
+                category     = prod.Category,
+                productType  = prod.ProductType,
+                productName  = prod.ProductName,
+                productCode  = prod.ProductCode,
+                itemNumber   = prod.ItemNumber,
+                sizeL        = prod.SizeL,
+                sizeW        = prod.SizeW,
+                sizeH        = prod.SizeH,
+                weight       = prod.Weight,
+                photoUrl     = prod.PhotoUrl,
+                references   = allRefs
+            });
+
+            if (resp.IsSuccessStatusCode)
+            {
+                row.FromProduct = true;
+                await LoadProductReferences(_currentProductId);
+            }
+            else
+            {
+                var err = await resp.Content.ReadAsStringAsync();
+                _mSaveRefError = $"Save failed: {err}";
+            }
+        }
+        catch (Exception ex) { _mSaveRefError = ex.Message; }
+        finally { row.IsSaving = false; StateHasChanged(); }
+    }
+
+    private string _mSaveRefError = "";
 
     private async Task LoadInspectors()
     {
@@ -938,6 +1240,60 @@
         _selectedCountryId = int.TryParse(e.Value?.ToString(), out var id) ? id : 0;
         var country = _countries.FirstOrDefault(c => c.Id == _selectedCountryId);
         Model.InspectionLocation = country?.Name ?? "";
+    }
+
+    private async Task LoadPerformanceMaster()
+    {
+        try
+        {
+            var opts = new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+            var response = await Http.GetAsync("api/performance-test-master");
+            if (response.IsSuccessStatusCode)
+            {
+                _perfMaster = await response.Content.ReadFromJsonAsync<List<PerformanceTestMasterDto>>(opts) ?? new();
+                _perfCategories = _perfMaster.Select(x => x.Category).Distinct().ToList();
+            }
+            else
+            {
+                var body = await response.Content.ReadAsStringAsync();
+                _perfMasterError = $"API lỗi {(int)response.StatusCode}: {body}";
+                _perfMaster      = new();
+                _perfCategories  = new();
+            }
+        }
+        catch (Exception ex)
+        {
+            _perfMasterError = $"Không kết nối được API: {ex.Message}";
+            _perfMaster      = new();
+            _perfCategories  = new();
+        }
+        finally
+        {
+            _loadingPerfMaster = false;
+        }
+    }
+
+    private List<PerformanceTestMasterDto> GetPerfTestItems(string? category)
+    {
+        if (string.IsNullOrEmpty(category)) return new();
+        return _perfMaster.Where(x => x.Category == category).ToList();
+    }
+
+    private void OnPerfCategoryChanged(ChangeEventArgs e, int idx)
+    {
+        PerformanceTests[idx].Category        = e.Value?.ToString() ?? "";
+        PerformanceTests[idx].TestItem        = "";
+        PerformanceTests[idx].TestRequirement = "";
+    }
+
+    private void OnPerfTestItemChanged(ChangeEventArgs e, int idx)
+    {
+        var selected = e.Value?.ToString() ?? "";
+        PerformanceTests[idx].TestItem = selected;
+        var master = _perfMaster.FirstOrDefault(x =>
+            x.Category     == PerformanceTests[idx].Category &&
+            x.ProtocolName == selected);
+        PerformanceTests[idx].TestRequirement = master?.Requirements ?? "";
     }
 
     private void OnInspectorChanged(ChangeEventArgs e)
@@ -962,6 +1318,14 @@
     private int MajorSampleSize,    MajorAccept,    MajorReject;
     private int MinorSampleSize,    MinorAccept,    MinorReject;
     private string _currentCodeLetter = "";
+
+    private void OnTotalShipmentQtyChanged(ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out var v)) Model.TotalShipmentQty = v;
+        else Model.TotalShipmentQty = 0;
+        AqlQuantity = Model.TotalShipmentQty;
+        RecalcAql();
+    }
 
     private void OnAqlQuantityChanged(ChangeEventArgs e)
     {
@@ -1209,6 +1573,7 @@
 
         // 3. Bây giờ đã an toàn — gọi StateHasChanged sau khi đã có dữ liệu trong memory
         refItem.IsUploading = true;
+        Waiting.Show($"Uploading: {file.Name}");
         StateHasChanged();
 
         try
@@ -1265,6 +1630,7 @@
         finally
         {
             refItem.IsUploading = false;
+            Waiting.Hide();
             await ms.DisposeAsync();
             StateHasChanged();
         }
@@ -1332,6 +1698,7 @@
         }
 
         _saving = true;
+        Waiting.Show("Creating inspection...");
         try
         {
             var payload = new
@@ -1348,6 +1715,7 @@
                 itemNumber         = Model.ItemNumber,
                 inspectionType     = Model.InspectionType.ToString(),
                 productName        = Model.ProductName,
+                productType        = Model.ProductType,
                 productCategory    = Model.ProductCategory,
                 totalShipmentQty   = Model.TotalShipmentQty,
                 totalCartonBoxes   = Model.TotalCartonBoxes,
@@ -1382,6 +1750,10 @@
                     shippingMark         = Packaging.ShippingMark,
                     hasBarcode           = Packaging.HasBarcode,
                     innerPackingQty      = Packaging.InnerPackingQty,
+                    innerL               = Packaging.InnerL,
+                    innerW               = Packaging.InnerW,
+                    innerH               = Packaging.InnerH,
+                    innerWeight          = Packaging.InnerWeight,
                     innerPackingRemark   = Packaging.InnerPackingRemark,
                     outerL               = Packaging.OuterL,
                     outerW               = Packaging.OuterW,
@@ -1415,16 +1787,8 @@
                         remark          = t.Remark
                     }).ToArray(),
 
-                // References
-                references = References
-                    .Where(r => !string.IsNullOrWhiteSpace(r.ReferenceName))
-                    .Select(r => new
-                    {
-                        referenceName = r.ReferenceName,
-                        fileName      = r.FileName,
-                        fileUrl       = r.FileUrl,
-                        remark        = r.Remark
-                    }).ToArray(),
+                // References không lưu vào Inspection — đã lưu riêng vào Product
+                references = Array.Empty<object>(),
 
                 steps              = Array.Empty<object>(),
                 overallConclusions = OverallConclusions.Select(o => new
@@ -1464,6 +1828,7 @@
         finally
         {
             _saving = false;
+            Waiting.Hide();
         }
     }
 
@@ -1485,6 +1850,7 @@
         public InspectionTypeEnum InspectionType { get; set; } = InspectionTypeEnum.DPI;
         public string ProductCode        { get; set; } = "";
         public string ProductName        { get; set; } = "";
+        public string ProductType        { get; set; } = "";
         public bool   InspectionReference{ get; set; } = true;
         public int    TotalShipmentQty   { get; set; }
         public string ProductCategory    { get; set; } = "";
@@ -1501,6 +1867,10 @@
         public string ShippingMark        { get; set; } = "";
         public bool   HasBarcode          { get; set; }
         public int    InnerPackingQty     { get; set; }
+        public double InnerL              { get; set; }
+        public double InnerW              { get; set; }
+        public double InnerH              { get; set; }
+        public double InnerWeight         { get; set; }
         public string InnerPackingRemark  { get; set; } = "";
         public double OuterL              { get; set; }
         public double OuterW              { get; set; }
@@ -1537,12 +1907,16 @@
     private class ReferenceRow
     {
         public Guid   Id            { get; set; } = Guid.NewGuid();
+        public int    ProductRefId  { get; set; } = 0;  // 0 = new row, >0 = from product
+        public int    SortOrder     { get; set; } = 0;
         public string ReferenceName { get; set; } = "";
         public string FileName      { get; set; } = "";
         public string FileUrl       { get; set; } = "";
         public string Remark        { get; set; } = "";
         public bool   IsUploading   { get; set; } = false;
         public string UploadError   { get; set; } = "";
+        public bool   IsSaving      { get; set; } = false;
+        public bool   FromProduct   { get; set; } = false; // true = loaded from product
     }
 
     private class OverallConclusionRow
@@ -1567,12 +1941,19 @@
 
     private class ProductDropdownDto
     {
-        public int    Id          { get; set; }
-        public string ProductCode { get; set; } = "";
-        public string ProductName { get; set; } = "";
-        public string Category    { get; set; } = "";
-        public string CustomerId  { get; set; } = "";
-        public string VendorId    { get; set; } = "";
+        public int     Id          { get; set; }
+        public string  ProductCode { get; set; } = "";
+        public string  ProductName { get; set; } = "";
+        public string  ItemNumber  { get; set; } = "";
+        public string  ProductType { get; set; } = "";
+        public string  Category    { get; set; } = "";
+        public double? SizeL       { get; set; }
+        public double? SizeW       { get; set; }
+        public double? SizeH       { get; set; }
+        public double? Weight      { get; set; }
+        public string  PhotoUrl    { get; set; } = "";
+        public string  CustomerId  { get; set; } = "";
+        public string  VendorId    { get; set; } = "";
     }
 
     private class InspectorDropdownDto
@@ -1588,6 +1969,18 @@
         public string Code   { get; set; } = "";
         public string Name   { get; set; } = "";
         public string Region { get; set; } = "";
+    }
+
+    private class PerformanceTestMasterDto
+    {
+        public int     Id           { get; set; }
+        public string  Category     { get; set; } = "";
+        public string  StandardCode { get; set; } = "";
+        public string  ProductType  { get; set; } = "";
+        public string  Market       { get; set; } = "";
+        public string  ProtocolName { get; set; } = "";
+        public string? Requirements { get; set; }
+        public int     SortOrder    { get; set; }
     }
 }
 
@@ -1631,7 +2024,9 @@
 
     /* Grids */
     .ni-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px 20px; }
+    .ni-grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px 20px; }
     .ni-grid-4 { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 14px; }
+    .ni-grid-6 { display: grid; grid-template-columns: repeat(6, 1fr); gap: 14px; }
 
     /* Field group */
     .field-group { display: flex; flex-direction: column; gap: 5px; }
@@ -1660,7 +2055,7 @@
     .btn-cancel:hover { background: #e0eaf7; }
 
     /* Radio / Toggle */
-    .radio-group { display: flex; gap: 14px; flex-wrap: wrap; padding: 6px 0; }
+    .radio-group { display: flex; flex-direction: column; gap: 10px; padding: 6px 0; }
     .radio-label { display: flex; align-items: center; gap: 7px; font-size: 13px; color: #4a6080; cursor: pointer; }
     .radio-label:hover { color: #1a2d5a; }
     .radio-label input[type="radio"] { accent-color: #1e90d6; width: 14px; height: 14px; cursor: pointer; }
@@ -1709,8 +2104,18 @@
     .table-input { width: 100%; background: transparent; border: none; border-bottom: 1px solid #e0e8f0; padding: 5px 4px; color: #1a2d5a; font-size: 13px; font-family: "DM Sans", sans-serif; outline: none; transition: border-color .15s; }
     .table-input::placeholder { color: #b0bdd4; }
     .table-input:focus { border-bottom-color: #1e90d6; }
+    .table-select { width: 100%; background: transparent; border: none; border-bottom: 1px solid #e0e8f0; padding: 5px 20px 5px 4px; color: #1a2d5a; font-size: 13px; font-family: "DM Sans", sans-serif; outline: none; cursor: pointer; transition: border-color .15s; appearance: none; -webkit-appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23b0bdd4' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 4px center; }
+    .table-select:focus { border-bottom-color: #1e90d6; }
+    .table-select:disabled { color: #b0bdd4; cursor: not-allowed; }
+    .table-select option { background: #fff; color: #1a2d5a; }
+    .table-textarea { width: 100%; background: transparent; border: none; border-bottom: 1px solid #e0e8f0; padding: 5px 4px; color: #1a2d5a; font-size: 12.5px; font-family: "DM Sans", sans-serif; outline: none; resize: vertical; min-height: 36px; transition: border-color .15s; line-height: 1.5; box-sizing: border-box; }
+    .table-textarea::placeholder { color: #b0bdd4; }
+    .table-textarea:focus { border-bottom-color: #1e90d6; }
     .add-row-btn { width: 100%; background: none; border: none; border-top: 1px solid #eef4fb; padding: 10px; color: #1e90d6; font-size: 12.5px; font-weight: 500; cursor: pointer; transition: color .15s, background .15s; }
     .add-row-btn:hover { background: #f0f7ff; }
+    .btn-ref-save { padding: 4px 12px; background: #1e90d6; color: #fff; border: none; border-radius: 6px; font-size: 11px; font-weight: 600; cursor: pointer; transition: background .15s; }
+    .btn-ref-save:hover:not(:disabled) { background: #1565c0; }
+    .btn-ref-save:disabled { opacity: .6; cursor: not-allowed; }
     .file-attach-btn { display: inline-flex; align-items: center; gap: 5px; padding: 5px 10px; background: #e6f1fb; border: 1px solid #b5d4f4; border-radius: 7px; color: #1e90d6; font-size: 12px; font-weight: 500; cursor: pointer; transition: all .15s; max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .file-attach-btn:hover { background: #cce4f8; }
     .file-link-btn { display:inline-flex; align-items:center; gap:5px; padding:4px 8px; background:#f0fdf4; border:1px solid #86efac; border-radius:7px; color:#16a34a; font-size:11.5px; font-weight:500; cursor:pointer; text-decoration:none; max-width:130px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
@@ -1720,7 +2125,7 @@
     .file-uploading { font-size:12px; color:#7a8fad; font-style:italic; padding:4px 8px; background:#f7fafd; border-radius:6px; }
 
     /* Product spec */
-    .compare-golden-row { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; background: #f7fafd; border-radius: 10px; border: 1px solid #dde4ef; }
+    .compare-golden-row { display: flex; align-items: center; gap: 16px; padding: 8px 0; margin: 12px 0; }
 
     /* Office use */
     .office-card { border-color: #fde68a; background: #fffdf0; }
@@ -1762,7 +2167,9 @@
 
     @@media (max-width: 768px) {
         .ni-grid-2 { grid-template-columns: 1fr; }
+        .ni-grid-3 { grid-template-columns: 1fr 1fr; }
         .ni-grid-4 { grid-template-columns: 1fr 1fr; }
+        .ni-grid-6 { grid-template-columns: 1fr 1fr 1fr; }
         .aql-defects-row { grid-template-columns: 1fr; }
         .gi-layout { grid-template-columns: 1fr; }
     }

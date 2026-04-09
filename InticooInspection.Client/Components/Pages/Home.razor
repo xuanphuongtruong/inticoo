@@ -1,11 +1,23 @@
 @page "/"
 @inject NavigationManager Navigation
+@inject AuthenticationStateProvider AuthStateProvider
 @using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.Authorization
 @attribute [Authorize]
 
 @code {
-    protected override void OnInitialized()
+    protected override async Task OnInitializedAsync()
     {
-        Navigation.NavigateTo("/dashboard", replace: true);
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+
+        if (user.IsInRole("Admin"))
+            Navigation.NavigateTo("/dashboard", replace: true);
+        else if (user.IsInRole("Inspector"))
+            Navigation.NavigateTo("/inspection-schedule", replace: true);
+        else if (user.IsInRole("Customer"))
+            Navigation.NavigateTo("/inspection-schedule", replace: true);
+        else
+            Navigation.NavigateTo("/dashboard", replace: true);
     }
 }

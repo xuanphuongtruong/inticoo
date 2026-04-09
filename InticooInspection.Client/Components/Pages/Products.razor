@@ -3,6 +3,8 @@
 @using System.Net.Http.Headers
 @inject HttpClient Http
 @inject IJSRuntime JS
+@using InticooInspection.Client.Services
+@inject WaitingService Waiting
 
 <PageTitle>Product Information - Inticoo</PageTitle>
 
@@ -54,30 +56,24 @@
         <div class="table-wrap">
             <table class="ptable">
                 <thead>
-                    <tr>
-                        <th class="th-no">No</th>
-                        <th class="th-y">Customer</th>
-                        <th class="th-y">Customer ID</th>
-                        <th class="th-y">Category</th>
-                        <th class="th-y">Product Type</th>
-                        <th class="th-y">Photo</th>
-                        <th class="th-y">Product Name</th>
-                        <th class="th-y">Code</th>
-                        <th class="th-y">Item Number</th>
-                        <th class="th-y">L (mm)</th>
-                        <th class="th-y">W (mm)</th>
-                        <th class="th-y">H (mm)</th>
-                        <th class="th-y">Weight (kg)</th>
-                        <th class="th-y">Vendor Name</th>
-                        <th class="th-y">Vendor ID</th>
-                        <th class="th-y">Remark</th>
-                        <th class="th-act">Action</th>
+                    <tr class="thead-group">
+                        <th class="th-no tc">No</th>
+                        <th>Product ID</th>
+                        <th>Vendor Name</th>
+                        <th>Vendor ID</th>
+                        <th>Category</th>
+                        <th>Product Name</th>
+                        <th>Product Code</th>
+                        <th>Establish Date</th>
+                        <th class="tc">Status</th>
+                        <th class="tc">Full Detail</th>
+                        <th class="tc">Action</th>
                     </tr>
                 </thead>
                 <tbody>
                     @if (!_filtered.Any())
                     {
-                        <tr><td colspan="17" class="td-empty">No products found.</td></tr>
+                        <tr><td colspan="11" class="td-empty">No products found.</td></tr>
                     }
                     else
                     {
@@ -85,37 +81,47 @@
                         {
                             var item = _filtered[i];
                             <tr class="@(i % 2 == 1 ? "tr-alt" : "")">
-                                <td class="tc">@(i + 1)</td>
-                                <td>@item.CustomerName</td>
-                                <td class="tc mono">@item.CustomerId</td>
-                                <td>@item.Category</td>
-                                <td>@item.ProductType</td>
-                                <td class="tc">
-                                    @if (!string.IsNullOrEmpty(item.PhotoUrl))
+                                <td class="tc muted">@(i + 1)</td>
+                                <td class="mono">@(string.IsNullOrEmpty(item.ProductCode) ? "—" : item.ProductCode)</td>
+                                <td>
+                                    @if (!string.IsNullOrEmpty(item.VendorName))
                                     {
-                                        var imgUrl = item.PhotoUrl.StartsWith("http") ? item.PhotoUrl : $"{Http.BaseAddress?.ToString().TrimEnd('/')}{item.PhotoUrl}";
-                                        <img src="@imgUrl" class="thumb"
-                                             @onclick="() => _lightbox = imgUrl" title="Preview" />
+                                        <div class="company-cell">
+                                            <div class="company-avatar">@GetInitials(item.VendorName)</div>
+                                            <span class="company-name">@item.VendorName</span>
+                                        </div>
                                     }
-                                    else { <span class="dash">—</span> }
+                                    else { <span class="muted">—</span> }
+                                </td>
+                                <td class="mono tc">@(string.IsNullOrEmpty(item.VendorId) ? "—" : item.VendorId)</td>
+                                <td>
+                                    @if (!string.IsNullOrEmpty(item.Category))
+                                    { <span class="cat-badge">@item.Category</span> }
+                                    else { <span class="muted">—</span> }
                                 </td>
                                 <td class="fw">@item.ProductName</td>
-                                <td class="mono">@item.ProductCode</td>
-                                <td class="mono">@item.ItemNumber</td>
-                                <td class="tc">@(item.SizeL.HasValue ? item.SizeL.Value.ToString("0.##") : "—")</td>
-                                <td class="tc">@(item.SizeW.HasValue ? item.SizeW.Value.ToString("0.##") : "—")</td>
-                                <td class="tc">@(item.SizeH.HasValue ? item.SizeH.Value.ToString("0.##") : "—")</td>
-                                <td class="tc">@(item.Weight.HasValue ? item.Weight.Value.ToString("0.###") : "—")</td>
-                                <td>@item.VendorName</td>
-                                <td class="mono tc">@item.VendorId</td>
-                                <td class="remark">@item.Remark</td>
+                                <td class="mono">@(string.IsNullOrEmpty(item.ProductCode) ? "—" : item.ProductCode)</td>
+                                <td class="tc muted">@(item.EstablishDate.HasValue ? item.EstablishDate.Value.ToString("dd MMM yyyy") : "—")</td>
                                 <td class="tc">
-                                    <button class="bico bedit" @onclick="() => OpenEdit(item)" title="Edit">
-                                        <svg width="13" height="13" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 2l4 4-10 10H4v-4L14 2z" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                                    <span class="status-badge @(item.IsActive ? "active" : "inactive")">
+                                        @(item.IsActive ? "Valid" : "Invalid")
+                                    </span>
+                                </td>
+                                <td class="tc">
+                                    <button class="action-btn view" @onclick="() => OpenDetail(item)">
+                                        <svg width="13" height="13" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 10s3.5-6 8-6 8 6 8 6-3.5 6-8 6-8-6-8-6Z"/><circle cx="10" cy="10" r="2.5"/></svg>
+                                        View
                                     </button>
-                                    <button class="bico bdel" @onclick="() => AskDelete(item)" title="Delete">
-                                        <svg width="13" height="13" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 6h14M8 6V4h4v2M5 6l1 11h8l1-11" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                                    </button>
+                                </td>
+                                <td class="tc">
+                                    <div class="action-btns">
+                                        <button class="bico bedit" @onclick="() => OpenEdit(item)" title="Edit">
+                                            <svg width="13" height="13" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 2l4 4-10 10H4v-4L14 2z" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                                        </button>
+                                        <button class="bico bdel" @onclick="() => AskDelete(item)" title="Delete">
+                                            <svg width="13" height="13" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 6h14M8 6V4h4v2M5 6l1 11h8l1-11" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                                        </button>
+                                    </div>
                                 </td>
                             </tr>
                         }
@@ -133,20 +139,40 @@
     <div class="modal-overlay" @onclick="CloseModal">
         <div class="modal-card" @onclick:stopPropagation="true">
             <div class="modal-header">
-                <h2>@(_isEdit ? "Edit Product" : "Add New Product")</h2>
+                <h2>@(_isEdit ? "Edit Product" : "New Product")</h2>
                 <button class="modal-close" @onclick="CloseModal">✕</button>
             </div>
 
             @if (!string.IsNullOrEmpty(_mErr))
-            {
-                <div class="error-alert">@_mErr</div>
-            }
+            { <div class="error-alert">@_mErr</div> }
 
-            <!-- Customer ID → Name auto-fill -->
-            <div class="form-section-title">Customer & Vendor</div>
+            <!-- Product ID + Status -->
             <div class="form-grid">
                 <div class="form-group">
-                    <label>Customer ID <span class="required">*</span></label>
+                    <label>Product ID</label>
+                    @if (_isEdit)
+                    {
+                        <input class="form-input" @bind="_f.ProductCode" />
+                    }
+                    else
+                    {
+                        <div class="form-input form-input-disabled" style="background:#e6f1fb;color:#1e90d6;font-weight:700;font-family:monospace;border-color:#b5d4f4;">@_f.ProductCode</div>
+                    }
+                </div>
+                <div class="form-group">
+                    <label>Status</label>
+                    <div class="btype-group" style="padding-top:8px;">
+                        <label class="btype-label @(_f.IsActive ? "btype-active" : "")" @onclick="() => _f.IsActive = true">Valid</label>
+                        <label class="btype-label @(!_f.IsActive ? "btype-active btype-invalid" : "")" @onclick="() => _f.IsActive = false">Invalid</label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Customer -->
+            <div class="form-section-title">Customer</div>
+            <div class="form-grid">
+                <div class="form-group">
+                    <label>Customer ID</label>
                     <select class="form-input" @bind="_f.CustomerId" @bind:after="OnCustChanged">
                         <option value="">— Select Customer —</option>
                         @foreach (var c in _custs)
@@ -157,6 +183,11 @@
                     <label>Customer Name</label>
                     <input class="form-input form-input-disabled" readonly value="@_f.CustomerName" />
                 </div>
+            </div>
+
+            <!-- Vendor -->
+            <div class="form-section-title">Vendor</div>
+            <div class="form-grid">
                 <div class="form-group">
                     <label>Vendor ID</label>
                     <select class="form-input" @bind="_f.VendorId" @bind:after="OnVendChanged">
@@ -170,32 +201,14 @@
                     <input class="form-input form-input-disabled" readonly value="@_f.VendorName" />
                 </div>
             </div>
-
             <div class="form-section-title">Product Details</div>
             <div class="form-grid">
                 <div class="form-group">
-                    <label>Category <span class="required">*</span></label>
+                    <label>Product Category <span class="required">*</span></label>
                     <select class="form-input" @bind="_f.Category">
                         <option value="">-- Select Category --</option>
                         @foreach (var c in _categories)
-                        {
-                            <option value="@c.Name">@c.Name</option>
-                        }
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label>Product Type</label>
-                    <select class="form-input" @bind="_f.ProductType">
-                        <option value="">-- Select Type --</option>
-                        <option>Electronics</option>
-                        <option>Furniture</option>
-                        <option>Clothing</option>
-                        <option>Footwear</option>
-                        <option>Toy</option>
-                        <option>Machinery</option>
-                        <option>Food &amp; Beverage</option>
-                        <option>Cosmetics</option>
-                        <option>Other</option>
+                        { <option value="@c.Name">@c.Name</option> }
                     </select>
                 </div>
                 <div class="form-group">
@@ -204,36 +217,25 @@
                 </div>
                 <div class="form-group">
                     <label>Product Code</label>
-                    @if (_isEdit)
-                    {
-                        <input class="form-input" @bind="_f.ProductCode" />
-                    }
-                    else
-                    {
-                        <div class="form-input form-input-disabled" style="background:#f0f4f8;color:#1e90d6;font-weight:600;font-family:monospace;">@_f.ProductCode</div>
-                    }
-                </div>
-                <div class="form-group">
-                    <label>Item Number</label>
                     <input class="form-input" @bind="_f.ItemNumber" placeholder="e.g. ITM-001" />
                 </div>
                 <div class="form-group full-width">
-                    <label>Size</label>
+                    <label>Product Size (MM)</label>
                     <div class="size-grid">
                         <div class="form-group">
-                            <label>L (MM)</label>
+                            <label>L</label>
                             <input class="form-input" @bind="_f.SizeL" type="number" min="0" placeholder="0" />
                         </div>
                         <div class="form-group">
-                            <label>W (MM)</label>
+                            <label>W</label>
                             <input class="form-input" @bind="_f.SizeW" type="number" min="0" placeholder="0" />
                         </div>
                         <div class="form-group">
-                            <label>H (MM)</label>
+                            <label>H</label>
                             <input class="form-input" @bind="_f.SizeH" type="number" min="0" placeholder="0" />
                         </div>
                         <div class="form-group">
-                            <label>Weight (KGS)</label>
+                            <label>Net Weight (KGS)</label>
                             <input class="form-input" @bind="_f.Weight" type="number" min="0" step="0.01" placeholder="0" />
                         </div>
                     </div>
@@ -244,6 +246,7 @@
                 </div>
             </div>
 
+            <!-- Reference -->
             <div class="form-section-title">Reference</div>
             <div class="ref-table">
                 <div class="ref-thead">
@@ -259,17 +262,11 @@
                         <input class="form-input ref-col-name ref-input" @bind="_refs[idx].Name" placeholder="Reference name..." />
                         <div class="ref-col-file">
                             @if (_refs[idx].Uploading)
-                            {
-                                <span class="ref-uploading">⏳ Uploading...</span>
-                            }
+                            { <span class="ref-uploading">⏳ Uploading...</span> }
                             else if (!string.IsNullOrEmpty(_refs[idx].FileUrl))
-                            {
-                                <a class="ref-fname" href="@_refs[idx].FileUrl" target="_blank" title="@_refs[idx].FileName">📎 @_refs[idx].FileName</a>
-                            }
+                            { <a class="ref-fname" href="@_refs[idx].FileUrl" target="_blank" title="@_refs[idx].FileName">📎 @_refs[idx].FileName</a> }
                             else if (!string.IsNullOrEmpty(_refs[idx].FileName))
-                            {
-                                <span class="ref-fname ref-err">❌ @_refs[idx].FileName</span>
-                            }
+                            { <span class="ref-fname ref-err">❌ @_refs[idx].FileName</span> }
                             <label class="btn-attach">
                                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg>
                                 @(_refs[idx].Uploading ? "..." : "Attach File")
@@ -283,6 +280,7 @@
                 </div>
             </div>
 
+            <!-- Product Photo -->
             <div class="form-section-title">Product Photo</div>
             <div class="photo-area-modal">
                 @if (!string.IsNullOrEmpty(_prevUrl))
@@ -301,20 +299,153 @@
                         }
                         else
                         {
-                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.4)" stroke-width="1.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                            <span class="upload-text">@(string.IsNullOrEmpty(_prevUrl) ? "Click to choose image" : "Click to change image")</span>
-                            <span class="upload-hint">JPG, PNG, WEBP · max 5 MB</span>
+                            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="rgba(30,144,214,0.5)" stroke-width="1.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                            <span class="upload-text">Click to upload photo</span>
+                            <span class="upload-hint">JPG / PNG / WEBP · max 5 MB</span>
                         }
-                        <InputFile OnChange="OnPhoto" accept="image/*" style="display:none" />
                     </div>
+                    <InputFile OnChange="OnPhoto" accept="image/*" style="display:none" />
                 </label>
             </div>
 
             <div class="modal-footer">
                 <button class="btn-cancel" @onclick="CloseModal">Cancel</button>
-                <button class="btn-submit" @onclick="Save" disabled="@_saving">
+                <button class="btn-save" @onclick="Save" disabled="@_saving">
                     @if (_saving) { <div class="spinner"></div> }
                     @(_isEdit ? "Update Product" : "Save Product")
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+<!-- ═══ DETAIL MODAL ═══ -->
+@if (_showDetail && _detailItem != null)
+{
+    var d = _detailItem;
+    <div class="modal-overlay" @onclick="() => _showDetail = false">
+        <div class="modal-card" @onclick:stopPropagation="true">
+            <div class="modal-header">
+                <div>
+                    <h2>@d.ProductName</h2>
+                    <p style="font-size:12px;color:rgba(255,255,255,.35);margin-top:2px;">@d.ProductCode</p>
+                </div>
+                <button class="modal-close" @onclick="() => _showDetail = false">✕</button>
+            </div>
+
+            <!-- ID + Status -->
+            <div class="form-grid" style="margin-bottom:8px;">
+                <div class="form-group">
+                    <label>Product ID</label>
+                    <div class="form-input form-input-disabled">@(string.IsNullOrEmpty(d.ProductCode) ? "—" : d.ProductCode)</div>
+                </div>
+                <div class="form-group">
+                    <label>Status</label>
+                    <div style="padding-top:10px;">
+                        <span class="status-badge @(d.IsActive ? "active" : "inactive")">
+                            @(d.IsActive ? "Valid" : "Invalid")
+                        </span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Vendor -->
+            <div class="form-section-title">Vendor</div>
+            <div class="form-grid">
+                <div class="form-group">
+                    <label>Vendor ID</label>
+                    <div class="form-input form-input-disabled">@(string.IsNullOrEmpty(d.VendorId) ? "—" : d.VendorId)</div>
+                </div>
+                <div class="form-group">
+                    <label>Vendor Name</label>
+                    <div class="form-input form-input-disabled">@(string.IsNullOrEmpty(d.VendorName) ? "—" : d.VendorName)</div>
+                </div>
+            </div>
+
+            <!-- Product Details -->
+            <div class="form-section-title">Product Details</div>
+            <div class="form-grid">
+                <div class="form-group">
+                    <label>Category</label>
+                    <div class="form-input form-input-disabled">@(string.IsNullOrEmpty(d.Category) ? "—" : d.Category)</div>
+                </div>
+                <div class="form-group">
+                    <label>Product Name</label>
+                    <div class="form-input form-input-disabled">@d.ProductName</div>
+                </div>
+                <div class="form-group">
+                    <label>Product Code</label>
+                    <div class="form-input form-input-disabled">@(string.IsNullOrEmpty(d.ItemNumber) ? "—" : d.ItemNumber)</div>
+                </div>
+                <div class="form-group">
+                    <label>Establish Date</label>
+                    <div class="form-input form-input-disabled">@(d.EstablishDate.HasValue ? d.EstablishDate.Value.ToString("dd MMM yyyy") : "—")</div>
+                </div>
+                <div class="form-group full-width">
+                    <label>Size (MM) &amp; Weight</label>
+                    <div class="size-grid">
+                        <div class="form-group">
+                            <label>L</label>
+                            <div class="form-input form-input-disabled">@(d.SizeL.HasValue ? d.SizeL.Value.ToString("0.##") : "—")</div>
+                        </div>
+                        <div class="form-group">
+                            <label>W</label>
+                            <div class="form-input form-input-disabled">@(d.SizeW.HasValue ? d.SizeW.Value.ToString("0.##") : "—")</div>
+                        </div>
+                        <div class="form-group">
+                            <label>H</label>
+                            <div class="form-input form-input-disabled">@(d.SizeH.HasValue ? d.SizeH.Value.ToString("0.##") : "—")</div>
+                        </div>
+                        <div class="form-group">
+                            <label>Weight (KGS)</label>
+                            <div class="form-input form-input-disabled">@(d.Weight.HasValue ? d.Weight.Value.ToString("0.###") : "—")</div>
+                        </div>
+                    </div>
+                </div>
+                @if (!string.IsNullOrEmpty(d.Remark))
+                {
+                    <div class="form-group full-width">
+                        <label>Remark</label>
+                        <div class="form-input form-input-disabled" style="min-height:50px;white-space:pre-wrap;">@d.Remark</div>
+                    </div>
+                }
+            </div>
+
+            @if (d.References.Any(r => !string.IsNullOrEmpty(r.Name)))
+            {
+                <div class="form-section-title">Reference</div>
+                <div class="ref-table">
+                    @foreach (var r in d.References.Where(r => !string.IsNullOrEmpty(r.Name)))
+                    {
+                        <div class="ref-row">
+                            <span class="ref-col-no ref-num">@r.SortOrder</span>
+                            <span class="ref-col-name" style="font-size:13px;color:#1a2d5a;">@r.Name</span>
+                            <div class="ref-col-file">
+                                @if (!string.IsNullOrEmpty(r.FileUrl))
+                                {
+                                    var fUrl = r.FileUrl.StartsWith("http") ? r.FileUrl : $"{Http.BaseAddress?.ToString().TrimEnd('/')}{r.FileUrl}";
+                                    <a class="ref-fname" href="@fUrl" target="_blank">📎 @r.FileName</a>
+                                }
+                            </div>
+                        </div>
+                    }
+                </div>
+            }
+
+            @if (!string.IsNullOrEmpty(d.PhotoUrl))
+            {
+                <div class="form-section-title">Product Photo</div>
+                var photoUrl = d.PhotoUrl.StartsWith("http") ? d.PhotoUrl : $"{Http.BaseAddress?.ToString().TrimEnd('/')}{d.PhotoUrl}";
+                <div style="text-align:center;padding:8px 0;">
+                    <img src="@photoUrl" style="max-width:100%;max-height:280px;border-radius:10px;border:1px solid #dde4ef;" />
+                </div>
+            }
+
+            <div class="modal-footer">
+                <button class="btn-cancel" @onclick="() => _showDetail = false">Close</button>
+                <button class="btn-save" @onclick="() => { _showDetail = false; OpenEdit(d); }">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                    Edit
                 </button>
             </div>
         </div>
@@ -379,6 +510,19 @@
         public decimal? Weight      { get; set; }
         public string  PhotoUrl     { get; set; } = "";
         public string  Remark       { get; set; } = "";
+        public bool    IsActive      { get; set; } = true;
+        public DateTime? EstablishDate { get; set; }
+        public DateTime CreatedAt   { get; set; }
+        public List<PRefDto> References { get; set; } = new();
+    }
+
+    class PRefDto
+    {
+        public int     Id        { get; set; }
+        public int     SortOrder { get; set; }
+        public string  Name      { get; set; } = "";
+        public string? FileUrl   { get; set; }
+        public string? FileName  { get; set; }
     }
 
     class CustItem
@@ -422,6 +566,8 @@
         public string ItemNumber   { get; set; } = "";
         public string PhotoUrl     { get; set; } = "";
         public string Remark       { get; set; } = "";
+        public bool   IsActive      { get; set; } = true;
+        public DateTime? EstablishDate { get; set; }
     }
 
     class RefRow
@@ -450,6 +596,14 @@
     bool   _showDel = false;
     PDto?  _delItem = null;
     IBrowserFile? _pendingFile = null;
+
+    // Detail view
+    bool  _showDetail = false;
+    PDto? _detailItem = null;
+    void OpenDetail(PDto item) { _detailItem = item; _showDetail = true; }
+
+    string GetInitials(string name)
+        => string.Concat((name ?? "").Split(" ").Take(2).Select(w => w.Length > 0 ? w[0].ToString().ToUpper() : ""));
 
     protected override async Task OnInitializedAsync()
         => await Task.WhenAll(Load(), LoadCusts(), LoadVends(), LoadCategories());
@@ -555,15 +709,43 @@
     {
         _f = new PForm
         {
-            CustomerId   = item.CustomerId,   CustomerName = item.CustomerName,
-            VendorId     = item.VendorId,     VendorName   = item.VendorName,
-            Category     = item.Category,     ProductType  = item.ProductType,
-            ProductName  = item.ProductName,  ProductCode  = item.ProductCode,
-            ProductColor = item.ProductColor, ProductSize  = item.ProductSize,
-            ItemNumber   = item.ItemNumber,
-            PhotoUrl     = item.PhotoUrl,     Remark       = item.Remark
+            CustomerId    = item.CustomerId,   CustomerName  = item.CustomerName,
+            VendorId      = item.VendorId,     VendorName    = item.VendorName,
+            Category      = item.Category,     ProductType   = item.ProductType,
+            ProductName   = item.ProductName,  ProductCode   = item.ProductCode,
+            ProductColor  = item.ProductColor, ProductSize   = item.ProductSize,
+            ItemNumber    = item.ItemNumber,
+            SizeL         = (decimal)(item.SizeL   ?? 0),
+            SizeW         = (decimal)(item.SizeW   ?? 0),
+            SizeH         = (decimal)(item.SizeH   ?? 0),
+            Weight        = (decimal)(item.Weight  ?? 0),
+            PhotoUrl      = item.PhotoUrl,     Remark        = item.Remark,
+            IsActive      = item.IsActive,
+            EstablishDate = item.EstablishDate
         };
-        _prevUrl = item.PhotoUrl; _pendingFile = null;
+        // Resolve full URL cho photo preview
+        if (!string.IsNullOrEmpty(item.PhotoUrl))
+        {
+            var baseUrl = Http.BaseAddress?.ToString().TrimEnd('/') ?? "";
+            _prevUrl = item.PhotoUrl.StartsWith("http") ? item.PhotoUrl : $"{baseUrl}{item.PhotoUrl}";
+        }
+        else
+        {
+            _prevUrl = "";
+        }
+        _pendingFile = null;
+        // Load references từ product
+        var baseUrlRef = Http.BaseAddress?.ToString().TrimEnd('/') ?? "";
+        _refs = item.References.Select(r => new RefRow
+        {
+            Name     = r.Name,
+            FileName = r.FileName ?? "",
+            FileUrl  = !string.IsNullOrEmpty(r.FileUrl)
+                       ? (r.FileUrl.StartsWith("http") ? r.FileUrl : $"{baseUrlRef}{r.FileUrl}")
+                       : ""
+        }).ToList();
+        // Luôn có ít nhất 5 rows
+        while (_refs.Count < 5) _refs.Add(new RefRow());
         _isEdit = true; _editId = item.Id; _mErr = "";
         _showModal = true;
     }
@@ -670,9 +852,9 @@
         if (string.IsNullOrWhiteSpace(_f.ProductName)) { _mErr = "Product Name is required."; return; }
 
         _saving = true;
+        Waiting.Show(_isEdit ? "Saving product..." : "Creating product...");
         try
         {
-            // Lọc references không rỗng
             var refs = _refs
                 .Where(r => !string.IsNullOrWhiteSpace(r.Name) || !string.IsNullOrWhiteSpace(r.FileUrl))
                 .Select((r, i) => new { SortOrder = i + 1, r.Name, r.FileName, FileUrl = r.FileUrl })
@@ -684,6 +866,8 @@
                 _f.ProductColor, _f.ProductSize,
                 _f.SizeL, _f.SizeW, _f.SizeH, _f.Weight,
                 PhotoUrl = _f.PhotoUrl, _f.Remark,
+                isActive      = _f.IsActive,
+                establishDate = _f.EstablishDate,
                 References = refs
             };
 
@@ -716,6 +900,8 @@
                             _f.ProductColor, _f.ProductSize,
                             _f.SizeL, _f.SizeW, _f.SizeH, _f.Weight,
                             PhotoUrl = _f.PhotoUrl, _f.Remark,
+                            isActive      = _f.IsActive,
+                            establishDate = _f.EstablishDate,
                             References = refs
                         };
                         await Http.PutAsJsonAsync($"api/products/{savedId}", updateBody);
@@ -734,7 +920,7 @@
             }
         }
         catch (Exception ex) { _mErr = ex.Message; }
-        finally { _saving = false; }
+        finally { _saving = false; Waiting.Hide(); }
     }
 
     void ClearError()    => _pageError = "";
@@ -747,6 +933,7 @@
     {
         if (_delItem == null) return;
         _saving = true;
+        Waiting.Show("Deleting product...");
         try
         {
             var resp = await Http.DeleteAsync($"api/products/{_delItem.Id}");
@@ -755,7 +942,7 @@
             else _pageError = "Delete failed.";
         }
         catch (Exception ex) { _pageError = ex.Message; }
-        finally { _saving = false; }
+        finally { _saving = false; Waiting.Hide(); }
     }
 }
 
@@ -789,7 +976,22 @@
 
     .table-wrap { overflow-x:auto; border-radius:10px; box-shadow:0 4px 20px rgba(0,0,0,.25); }
     .ptable { width:100%; border-collapse:collapse; background:#fff; font-size:12.5px; min-width:1000px; }
-    .ptable th { padding:7px 9px; border:1px solid #b8c4d8; text-align:center; font-weight:600; font-size:12px; color:#1a2d5a; white-space:nowrap; }
+    .ptable th { padding:7px 9px; border:1px solid #b8c4d8; text-align:center; font-weight:600; font-size:11px; color:#1a2d5a; white-space:nowrap; text-transform:uppercase; letter-spacing:.04em; background:#fff; }
+    .thead-group th { background:#fff; color:#1a2d5a !important; vertical-align:middle; }
+    .status-badge         { padding:3px 9px; border-radius:20px; font-size:11px; font-weight:600; white-space:nowrap; }
+    .status-badge.active  { background:#eaf3de; color:#3b6d11; border:1px solid #c0dd97; }
+    .status-badge.inactive{ background:#fef2f2; color:#dc2626; border:1px solid #fecaca; }
+    .btype-group { display:flex; gap:8px; flex-wrap:wrap; padding:4px 0; }
+    .btype-label { padding:5px 14px; border-radius:20px; font-size:12px; font-weight:600; cursor:pointer; border:1px solid #c9d8ee; background:#f0f4fb; color:#4a6080; transition:all .15s; user-select:none; }
+    .btype-label:hover { background:#e0eaf7; border-color:#1e90d6; color:#1e90d6; }
+    .btype-active { background:#1e90d6 !important; border-color:#1e90d6 !important; color:#fff !important; }
+    .btype-invalid.btype-active { background:#dc2626 !important; border-color:#dc2626 !important; }
+    .action-btn  { background:none; border:none; cursor:pointer; padding:5px 9px; border-radius:6px; font-size:13px; font-weight:500; transition:all .2s; color:#9baac8; display:flex; align-items:center; gap:4px; }
+    .action-btn.view:hover { background:#f0f4fb; color:#4a6080; }
+    .company-cell  { display:flex; align-items:center; gap:8px; }
+    .company-avatar{ width:30px; height:30px; border-radius:8px; background:#1e90d6; display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:700; flex-shrink:0; color:#fff; }
+    .company-name  { font-weight:600; font-size:13px; color:#1a2d5a; }
+    .cat-badge { padding:3px 9px; border-radius:20px; font-size:11px; font-weight:600; background:#e6f1fb; color:#1565c0; white-space:nowrap; border:1px solid #b5d4f4; }
     .th-y   { background:#fffde7; }
     .th-grp { background:#e3f2fd; }
     .th-no  { background:#f5f5f5; width:40px; }
@@ -840,6 +1042,9 @@
     .btn-submit { display: flex; align-items: center; gap: 8px; padding: 10px 24px; background: #1e90d6; border: none; border-radius: 9px; color: #fff; font-size: 14px; font-weight: 600; cursor: pointer; min-width: 150px; justify-content: center; transition: background .15s; }
     .btn-submit:hover:not(:disabled) { background: #1565c0; }
     .btn-submit:disabled { opacity: .65; cursor: not-allowed; }
+    .btn-save { display:flex; align-items:center; gap:8px; padding:10px 24px; background:#1e90d6; border:none; border-radius:9px; color:#fff; font-size:14px; font-weight:600; cursor:pointer; min-width:150px; justify-content:center; transition:background .15s; }
+    .btn-save:hover:not(:disabled) { background:#1565c0; }
+    .btn-save:disabled { opacity:.65; cursor:not-allowed; }
     .btn-delete { padding: 10px 22px; background: #fff1f1; border: 1px solid #fecaca; border-radius: 9px; color: #dc2626; font-size: 14px; font-weight: 600; cursor: pointer; }
     .btn-delete:hover { background: #fee2e2; }
     .confirm-card { text-align: center; max-width: 440px; }

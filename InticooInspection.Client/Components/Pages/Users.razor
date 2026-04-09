@@ -5,6 +5,8 @@
 @inject HttpClient Http
 @inject NavigationManager Navigation
 @inject Blazored.SessionStorage.ISessionStorageService SessionStorage
+@using InticooInspection.Client.Services
+@inject WaitingService Waiting
 
 <PageTitle>Inspector Profile - Inticoo</PageTitle>
 
@@ -97,7 +99,9 @@ else
                         <td class="tc">
                             @if (!string.IsNullOrEmpty(u.CvUrl))
                             {
-                                <a class="cv-link" href="@u.CvUrl" target="_blank">&#128196; CV</a>
+                                var fullCvUrl = u.CvUrl.StartsWith("http") ? u.CvUrl
+                                              : (Http.BaseAddress?.ToString().TrimEnd('/') + "/" + u.CvUrl.TrimStart('/'));
+                                <a class="cv-link" href="@fullCvUrl" target="_blank">&#128196; CV</a>
                             }
                             else { <span class="dim sm">—</span> }
                         </td>
@@ -129,7 +133,7 @@ else
     <div class="modal-overlay" @onclick="CloseModal">
         <div class="modal-card" @onclick:stopPropagation="true">
             <div class="modal-header">
-                <h2>@(_editId == null ? "New Account" : "Edit Account")</h2>
+                <h2>@(_editId == null ? "New Inspector" : "Edit Inspector")</h2>
                 <button class="modal-close" @onclick="CloseModal">&#x2715;</button>
             </div>
 
@@ -138,34 +142,7 @@ else
                 <div class="error-alert">@_formError</div>
             }
 
-            @* ── Section: Account ── *@
-            <div class="section-label">Account</div>
-            <div class="form-grid">
-                <div class="form-group">
-                    <label>Full Name</label>
-                    <input class="form-input" type="text" placeholder="Enter full name"
-                           @bind="_formFullName" @bind:event="oninput" />
-                </div>
-                <div class="form-group">
-                    <label>Username (Login) <span class="req">*</span></label>
-                    <input class="form-input" type="text" placeholder="Enter username"
-                           @bind="_formUsername" @bind:event="oninput" />
-                </div>
-                <div class="form-group">
-                    <label>Email</label>
-                    <input class="form-input" type="email" placeholder="Enter email"
-                           @bind="_formEmail" @bind:event="oninput" />
-                </div>
-                <div class="form-group">
-                    <label>@(_editId == null ? "Password *" : "New Password")<span class="label-hint"> @(_editId != null ? "(leave blank to keep)" : "")</span></label>
-                    <input class="form-input" type="password"
-                           placeholder="@(_editId == null ? "Enter password" : "Leave blank to keep current")"
-                           @bind="_formPassword" @bind:event="oninput" />
-                </div>
-            </div>
-
-            @* ── Section: Inspector Info ── *@
-            <div class="section-label">Inspector Info</div>
+            @* ── Inspector ID + Status ── *@
             <div class="form-grid">
                 <div class="form-group">
                     <label>Inspector ID</label>
@@ -175,46 +152,120 @@ else
                     }
                     else
                     {
-                        <input class="form-input" type="text" placeholder="e.g. IP10001"
-                               @bind="_formInspectorId" @bind:event="oninput" />
+                        <input class="form-input" type="text" @bind="_formInspectorId" @bind:event="oninput" />
                     }
                 </div>
                 <div class="form-group">
-                    <label>Category</label>
-                    <input class="form-input" type="text" placeholder="e.g. Mechanical"
-                           @bind="_formCategory" @bind:event="oninput" />
+                    <label>Status</label>
+                    <label class="check-label" style="margin-top:10px;">
+                        <input type="checkbox" @bind="_formIsActive" />
+                        <span>@(_formIsActive ? "Active" : "Inactive")</span>
+                    </label>
+                </div>
+            </div>
+
+            @* ── Section: Inspector Details ── *@
+            <div class="section-label">Inspector Details</div>
+            <div class="form-grid">
+                <div class="form-group">
+                    <label>Full Name <span class="req">*</span></label>
+                    <input class="form-input" type="text" placeholder="Enter full name"
+                           @bind="_formFullName" @bind:event="oninput" />
+                </div>
+                <div class="form-group">
+                    <label>Short Name</label>
+                    <input class="form-input" type="text" placeholder="Enter short name"
+                           @bind="_formShortName" @bind:event="oninput" />
+                </div>
+                <div class="form-group">
+                    <label>Date of Birth</label>
+                    <input class="form-input" type="date"
+                           value="@(_formDateOfBirth?.ToString("yyyy-MM-dd"))"
+                           @onchange="e => _formDateOfBirth = DateTime.TryParse(e.Value?.ToString(), out var d) ? d : null" />
+                </div>
+                <div class="form-group">
+                    <label>Gender</label>
+                    <div class="btype-group">
+                        @foreach (var g in new[] { "Male", "Female", "Other" })
+                        {
+                            var gv = g;
+                            <label class="btype-label @(_formGender == gv ? "btype-active" : "")"
+                                   @onclick="() => _formGender = gv">@gv</label>
+                        }
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Nationality</label>
+                    <input class="form-input" type="text" placeholder="e.g. Vietnamese"
+                           @bind="_formNationality" @bind:event="oninput" />
+                </div>
+                <div class="form-group">
+                    <label>Type of Identification</label>
+                    <div class="btype-group">
+                        @foreach (var t in new[] { "ID", "Passport" })
+                        {
+                            var tv = t;
+                            <label class="btype-label @(_formIdType == tv ? "btype-active" : "")"
+                                   @onclick="() => _formIdType = tv">@tv</label>
+                        }
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Number</label>
+                    <input class="form-input" type="text" placeholder="ID / Passport number"
+                           @bind="_formIdNumber" @bind:event="oninput" />
                 </div>
                 <div class="form-group">
                     <label>Mobile</label>
                     <input class="form-input" type="tel" placeholder="Enter mobile number"
                            @bind="_formMobile" @bind:event="oninput" />
                 </div>
+                <div class="form-group">
+                    <label>Category</label>
+                    <select class="form-input" @bind="_formCategory">
+                        <option value="">-- Select Category --</option>
+                        <option value="Mechanical">Mechanical</option>
+                        <option value="Electrical">Electrical</option>
+                        <option value="Chemical">Chemical</option>
+                        <option value="Textile">Textile</option>
+                        <option value="Furniture">Furniture</option>
+                        <option value="Electronics">Electronics</option>
+                        <option value="Packaging">Packaging</option>
+                        <option value="Food &amp; Beverage">Food &amp; Beverage</option>
+                        <option value="Other">Other</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Inspection Start Year</label>
+                    <input class="form-input" type="number" placeholder="e.g. 2015" min="1990" max="2099"
+                           value="@_formInspectionStartYear"
+                           @onchange="e => _formInspectionStartYear = int.TryParse(e.Value?.ToString(), out var y) ? y : null" />
+                </div>
+                <div class="form-group full-width">
+                    <label>Language</label>
+                    <div class="btype-group" style="flex-wrap:wrap;">
+                        @foreach (var lang in new[] { "English","Chinese","Vietnamese","Indonesian","Thai","Filipino","Malay","Hindi","Arabic","Bengali","Russian","Japanese","Korean" })
+                        {
+                            var lv = lang;
+                            <label class="btype-label @(_formLanguages.Contains(lv) ? "btype-active" : "")"
+                                   @onclick="() => ToggleLanguage(lv)">@lv</label>
+                        }
+                    </div>
+                </div>
             </div>
 
-            @* ── Section: Home Address ── *@
-            <div class="section-label">Home Address</div>
-            <div class="form-group">
-                <label>Address</label>
-                <input class="form-input" type="text" placeholder="Street address"
-                       @bind="_formAddress" @bind:event="oninput" />
-            </div>
+            @* ── Section: Inspector Address ── *@
+            <div class="section-label">Inspector Address</div>
             <div class="form-grid">
-                <div class="form-group">
-                    <label>Country</label>
-                    @if (_loadingCountries)
-                    {
-                        <div class="form-input" style="color:#9baac8;font-style:italic;">Loading...</div>
-                    }
-                    else
-                    {
-                        <select class="form-input" value="@_formCountry" @onchange="OnCountryChanged">
-                            <option value="">-- Select Country --</option>
-                            @foreach (var c in _countries)
-                            {
-                                <option value="@c.Name">@c.Name</option>
-                            }
-                        </select>
-                    }
+                <div class="form-group full-width">
+                    <label>Address 1</label>
+                    <input class="form-input" type="text" placeholder="Street address line 1"
+                           @bind="_formAddress1" @bind:event="oninput" />
+                </div>
+                <div class="form-group full-width">
+                    <label>Address 2</label>
+                    <input class="form-input" type="text" placeholder="Street address line 2 (optional)"
+                           @bind="_formAddress2" @bind:event="oninput" />
                 </div>
                 <div class="form-group">
                     <label>City</label>
@@ -233,10 +284,58 @@ else
                         </select>
                     }
                 </div>
+                <div class="form-group">
+                    <label>State / Province</label>
+                    <input class="form-input" type="text" placeholder="State or province"
+                           @bind="_formState" @bind:event="oninput" />
+                </div>
+                <div class="form-group">
+                    <label>Country</label>
+                    @if (_loadingCountries)
+                    {
+                        <div class="form-input" style="color:#9baac8;font-style:italic;">Loading...</div>
+                    }
+                    else
+                    {
+                        <select class="form-input" value="@_formCountry" @onchange="OnCountryChanged">
+                            <option value="">-- Select Country --</option>
+                            @foreach (var c in _countries)
+                            {
+                                <option value="@c.Name">@c.Name</option>
+                            }
+                        </select>
+                    }
+                </div>
+                <div class="form-group">
+                    <label>Postal / ZIP</label>
+                    <input class="form-input" type="text" placeholder="Postal code"
+                           @bind="_formPostalCode" @bind:event="oninput" />
+                </div>
             </div>
 
-            @* ── Section: Roles ── *@
-            <div class="section-label">Roles <span class="req">*</span></div>
+            @* ── Section: Login ── *@
+            <div class="section-label">Login</div>
+            <div class="form-grid">
+                <div class="form-group">
+                    <label>User Name <span class="req">*</span></label>
+                    <input class="form-input" type="text" placeholder="Enter username"
+                           @bind="_formUsername" @bind:event="oninput" />
+                </div>
+                <div class="form-group">
+                    <label>Email</label>
+                    <input class="form-input" type="email" placeholder="Enter email"
+                           @bind="_formEmail" @bind:event="oninput" />
+                </div>
+                <div class="form-group">
+                    <label>@(_editId == null ? "Password *" : "New Password")<span class="label-hint"> @(_editId != null ? "(leave blank to keep)" : "")</span></label>
+                    <input class="form-input" type="password"
+                           placeholder="@(_editId == null ? "Enter password" : "Leave blank to keep current")"
+                           @bind="_formPassword" @bind:event="oninput" />
+                </div>
+            </div>
+
+            @* ── Section: Role ── *@
+            <div class="section-label">Role <span class="req">*</span></div>
             <div class="form-group">
                 @if (_availableRoles.Count == 0)
                 {
@@ -248,9 +347,8 @@ else
                         @foreach (var role in _availableRoles)
                         {
                             var r = role;
-                            <label class="role-check @(_formRoles.Contains(r) ? "checked" : "")">
-                                <input type="checkbox" checked="@_formRoles.Contains(r)"
-                                       @onchange="() => ToggleRole(r)" />
+                            <label class="role-check @(_formRoles.Contains(r) ? "checked" : "")"
+                                   @onclick="() => SelectRole(r)" style="cursor:pointer;">
                                 <span class="role-badge role-@r.ToLower()">@r</span>
                             </label>
                         }
@@ -258,66 +356,91 @@ else
                 }
             </div>
 
-            @* ── Section: Personal Profile / CV ── *@
-            <div class="section-label">
-                Personal Profile (CV)
-                @if (_editId == null) { <span class="req">*</span> }
-                else { <span class="label-hint">(leave blank to keep existing)</span> }
-            </div>
-            <div class="form-group">
-                <div class="cv-upload-box @(_cvDragOver ? "drag-over" : "")"
-                     @ondragover:preventDefault="true"
-                     @ondragover="() => _cvDragOver = true"
-                     @ondragleave="() => _cvDragOver = false"
-                     @ondrop:preventDefault="true"
-                     @ondrop="OnCvDrop">
-
-                    @if (_cvFile != null)
+            @if (_formRoles.Contains("Customer"))
+            {
+                <div class="form-group">
+                    @if (_loadingCustomers)
                     {
-                        <div class="cv-selected">
-                            <span class="cv-file-icon">&#128196;</span>
-                            <div class="cv-file-info">
-                                <span class="cv-file-name">@_cvFile.Name</span>
-                                <span class="cv-file-size">@FormatFileSize(_cvFile.Size)</span>
-                            </div>
-                            <button class="cv-remove-btn" @onclick="RemoveCv" type="button">&#x2715;</button>
-                        </div>
-                    }
-                    else if (_editId != null && !string.IsNullOrEmpty(_existingCvUrl))
-                    {
-                        <div class="cv-existing">
-                            <span class="cv-file-icon">&#128196;</span>
-                            <div class="cv-file-info">
-                                <span class="cv-file-name">Current CV on file</span>
-                                <a class="cv-view-link" href="@_existingCvUrl" target="_blank">View &#8599;</a>
-                            </div>
-                            <label class="cv-replace-btn" for="cvFileInput">Replace</label>
-                        </div>
+                        <div class="form-input" style="color:#9baac8;font-style:italic;">Loading customers...</div>
                     }
                     else
                     {
-                        <div class="cv-placeholder">
-                            <span class="cv-upload-icon">&#8613;</span>
-                            <span class="cv-upload-text">Drag &amp; drop or <label class="cv-browse-link" for="cvFileInput">browse</label></span>
-                            <span class="cv-upload-hint">PDF, DOC, DOCX — max 10 MB</span>
-                        </div>
+                        <select class="form-input" @bind="_formCustomerId">
+                            <option value="">-- Select Customer --</option>
+                            @foreach (var c in _customers)
+                            {
+                                <option value="@c.CustomerId">@c.CustomerId — @c.CompanyName</option>
+                            }
+                        </select>
                     }
-
-                    <InputFile id="cvFileInput" OnChange="OnCvFileSelected" accept=".pdf,.doc,.docx"
-                               style="position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%;" />
                 </div>
-                @if (!string.IsNullOrEmpty(_cvError))
-                {
-                    <div class="cv-error">@_cvError</div>
-                }
+            }
+
+            @* ── Section: Profile Photo ── *@
+            <div class="section-label">
+                Profile Photo
+                @if (_editId == null) { <span class="req">*</span> }
+                else { <span class="label-hint">(leave blank to keep existing)</span> }
             </div>
 
-            <div class="form-group">
-                <label class="check-label">
-                    <input type="checkbox" @bind="_formIsActive" />
-                    <span>Active account</span>
-                </label>
-            </div>
+            @* ── Section: Personal Profile / CV ── *@
+            @if (!_formRoles.Contains("Customer"))
+            {
+                <div class="section-label">
+                    Personal Profile (CV)
+                    @if (_editId == null) { <span class="req">*</span> }
+                    else { <span class="label-hint">(leave blank to keep existing)</span> }
+                </div>
+                <div class="form-group">
+                    <div class="cv-upload-box @(_cvDragOver ? "drag-over" : "")"
+                         @ondragover:preventDefault="true"
+                         @ondragover="() => _cvDragOver = true"
+                         @ondragleave="() => _cvDragOver = false"
+                         @ondrop:preventDefault="true"
+                         @ondrop="OnCvDrop">
+
+                        @if (_cvFile != null)
+                        {
+                            <div class="cv-selected">
+                                <span class="cv-file-icon">&#128196;</span>
+                                <div class="cv-file-info">
+                                    <span class="cv-file-name">@_cvFile.Name</span>
+                                    <span class="cv-file-size">@FormatFileSize(_cvFile.Size)</span>
+                                </div>
+                                <button class="cv-remove-btn" @onclick="RemoveCv" type="button">&#x2715;</button>
+                            </div>
+                        }
+                        else if (_editId != null && !string.IsNullOrEmpty(_existingCvUrl))
+                        {
+                            var fullExistingUrl = _existingCvUrl.StartsWith("http") ? _existingCvUrl
+                                                : (Http.BaseAddress?.ToString().TrimEnd('/') + "/" + _existingCvUrl.TrimStart('/'));
+                            <div class="cv-existing">
+                                <span class="cv-file-icon">&#128196;</span>
+                                <div class="cv-file-info">
+                                    <span class="cv-file-name">Current CV on file</span>
+                                    <a class="cv-view-link" href="@fullExistingUrl" target="_blank">View &#8599;</a>
+                                </div>
+                                <label class="cv-replace-btn" for="cvFileInput">Replace</label>
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="cv-placeholder">
+                                <span class="cv-upload-icon">&#8613;</span>
+                                <span class="cv-upload-text">Drag &amp; drop or <label class="cv-browse-link" for="cvFileInput">browse</label></span>
+                                <span class="cv-upload-hint">PDF, DOC, DOCX — max 10 MB</span>
+                            </div>
+                        }
+
+                        <InputFile id="cvFileInput" OnChange="OnCvFileSelected" accept=".pdf,.doc,.docx"
+                                   style="position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%;" />
+                    </div>
+                    @if (!string.IsNullOrEmpty(_cvError))
+                    {
+                        <div class="cv-error">@_cvError</div>
+                    }
+                </div>
+            }
 
             <div class="modal-footer">
                 <button class="btn-cancel" @onclick="CloseModal">Cancel</button>
@@ -357,14 +480,23 @@ else
     // Modal state
     private bool    _showModal    = false;
     private string? _editId       = null;
-    private string  _formUsername = "", _formFullName = "", _formEmail = "", _formPassword = "";
+    private string  _formUsername = "", _formFullName = "", _formShortName = "", _formEmail = "", _formPassword = "";
     private string  _formInspectorId = "", _formCategory = "", _formMobile = "";
-    private string  _formAddress  = "", _formCity = "", _formCountry = "";
+    private DateTime? _formDateOfBirth = null;
+    private string  _formGender = "", _formNationality = "", _formIdType = "", _formIdNumber = "";
+    private int?    _formInspectionStartYear = null;
+    private List<string> _formLanguages = new();
+    private string  _formAddress  = "", _formAddress1 = "", _formAddress2 = "";
+    private string  _formCity = "", _formState = "", _formCountry = "", _formPostalCode = "";
+    private string  _formCustomerId = "";  // khi role = Customer
     // Country/City dropdowns
-    private List<CountryItem> _countries       = new();
-    private List<CityItem>    _cities           = new();
-    private bool              _loadingCountries = true;
-    private bool              _loadingCities    = false;
+    private List<CountryItem>    _countries        = new();
+    private List<CityItem>       _cities           = new();
+    private bool                 _loadingCountries = true;
+    private bool                 _loadingCities    = false;
+    // Customer dropdown
+    private List<CustomerDropdownItem> _customers      = new();
+    private bool                       _loadingCustomers = false;
 
     private bool    _formIsActive = true;
     private List<string> _formRoles      = new();
@@ -384,7 +516,7 @@ else
     protected override async Task OnInitializedAsync()
     {
         await SetAuthHeader();
-        await Task.WhenAll(LoadRoles(), LoadPage(1), LoadCountries());
+        await Task.WhenAll(LoadRoles(), LoadPage(1), LoadCountries(), LoadCustomers());
     }
 
     private async Task SetAuthHeader()
@@ -424,9 +556,14 @@ else
 
     private void ResetForm()
     {
-        _formUsername = ""; _formFullName = ""; _formEmail = ""; _formPassword = "";
+        _formUsername = ""; _formFullName = ""; _formShortName = ""; _formEmail = ""; _formPassword = "";
         _formInspectorId = ""; _formCategory = ""; _formMobile = "";
-        _formAddress = ""; _formCity = ""; _formCountry = "";
+        _formDateOfBirth = null; _formGender = ""; _formNationality = "";
+        _formIdType = ""; _formIdNumber = ""; _formInspectionStartYear = null;
+        _formLanguages = new();
+        _formAddress = ""; _formAddress1 = ""; _formAddress2 = "";
+        _formCity = ""; _formState = ""; _formCountry = ""; _formPostalCode = "";
+        _formCustomerId = "";
         _cities = new();
         _formIsActive = true; _formRoles = new(); _formError = "";
         _cvFile = null; _cvError = ""; _existingCvUrl = null;
@@ -452,35 +589,66 @@ else
 
     private async Task OpenEdit(UserDto u)
     {
-        _editId          = u.Id;
-        _formUsername    = u.Username;
-        _formFullName    = u.FullName    ?? "";
-        _formEmail       = u.Email       ?? "";
-        _formPassword    = "";
-        _formInspectorId = u.InspectorId ?? "";
-        _formCategory    = u.Category    ?? "";
-        _formMobile      = u.Mobile      ?? "";
-        _formAddress     = u.Address     ?? "";
-        _formCity        = "";
-        _formCountry     = u.Country     ?? "";
-        _formIsActive    = u.IsActive;
-        _formRoles       = u.Roles.ToList();
-        _formError       = "";
-        _cvFile          = null;
-        _cvError         = "";
-        _existingCvUrl   = u.CvUrl;
-        _showModal       = true;
-        // Load cities khi edit
+        _editId                  = u.Id;
+        _formUsername            = u.Username;
+        _formFullName            = u.FullName           ?? "";
+        _formShortName           = u.ShortName          ?? "";
+        _formEmail               = u.Email              ?? "";
+        _formPassword            = "";
+        _formInspectorId         = u.InspectorId        ?? "";
+        _formCategory            = u.Category           ?? "";
+        _formMobile              = u.Mobile             ?? "";
+        _formDateOfBirth         = u.DateOfBirth;
+        _formGender              = u.Gender             ?? "";
+        _formNationality         = u.Nationality        ?? "";
+        _formIdType              = u.IdType             ?? "";
+        _formIdNumber            = u.IdNumber           ?? "";
+        _formInspectionStartYear = u.InspectionStartYear;
+        _formLanguages           = string.IsNullOrEmpty(u.Language)
+                                   ? new() : u.Language.Split(',').Select(x => x.Trim()).ToList();
+        _formAddress             = u.Address            ?? "";
+        _formAddress1            = u.Address1           ?? "";
+        _formAddress2            = u.Address2           ?? "";
+        _formCity                = "";
+        _formState               = u.State              ?? "";
+        _formCountry             = u.Country            ?? "";
+        _formPostalCode          = u.PostalCode         ?? "";
+        _formCustomerId          = u.CustomerId         ?? "";
+        _formIsActive            = u.IsActive;
+        _formRoles               = u.Roles.ToList();
+        _formError               = "";
+        _cvFile                  = null;
+        _cvError                 = "";
+        _existingCvUrl           = u.CvUrl;
+        _showModal               = true;
         await LoadCitiesForCountry(u.Country ?? "", u.City ?? "");
-
     }
 
     private void CloseModal() => _showModal = false;
 
-    private void ToggleRole(string role)
+    // Single-select role (chỉ chọn 1 trong Admin/Inspector/Customer)
+    private void SelectRole(string role)
     {
-        if (_formRoles.Contains(role)) _formRoles.Remove(role);
-        else _formRoles.Add(role);
+        _formRoles = new List<string> { role };
+        if (role != "Customer") _formCustomerId = "";
+        StateHasChanged();
+    }
+
+    private void ToggleLanguage(string lang)
+    {
+        if (_formLanguages.Contains(lang)) _formLanguages.Remove(lang);
+        else _formLanguages.Add(lang);
+    }
+
+    private async Task LoadCustomers()
+    {
+        _loadingCustomers = true;
+        try
+        {
+            _customers = await Http.GetFromJsonAsync<List<CustomerDropdownItem>>("api/customers/dropdown") ?? new();
+        }
+        catch { _customers = new(); }
+        finally { _loadingCustomers = false; }
     }
 
     // ── CV ────────────────────────────────────────────────────────────────────
@@ -538,43 +706,85 @@ else
         _formError = ""; _cvError = "";
         if (string.IsNullOrWhiteSpace(_formUsername))                       { _formError = "Username is required."; return; }
         if (_editId == null && string.IsNullOrWhiteSpace(_formPassword))    { _formError = "Password is required."; return; }
-        if (_formRoles.Count == 0)                                          { _formError = "Please select at least one role."; return; }
-        if (_editId == null && _cvFile == null)                             { _cvError   = "CV / Resume is required when creating a new account."; return; }
+        if (_formRoles.Count == 0)                                          { _formError = "Please select a role."; return; }
+        if (_formRoles.Contains("Customer") && string.IsNullOrEmpty(_formCustomerId)) { _formError = "Please select a Customer to link this account."; return; }
+        if (_editId == null && _cvFile == null && !_formRoles.Contains("Customer"))    { _cvError   = "CV / Resume is required when creating a new account."; return; }
 
         _saving = true;
+        Waiting.Show(_editId == null ? "Creating user..." : "Saving user...");
         try
         {
             string? cvUrl = _existingCvUrl;
             if (_cvFile != null)
             {
+                Waiting.Show("Uploading CV...");
                 cvUrl = await UploadCvAsync();
-                if (cvUrl == null) { _saving = false; return; }
+                if (cvUrl == null) { _saving = false; Waiting.Hide(); return; }
+                Waiting.Show(_editId == null ? "Creating user..." : "Saving user...");
             }
 
             HttpResponseMessage response;
             if (_editId == null)
             {
                 var payload = new {
-                    username    = _formUsername,    password    = _formPassword,
-                    email       = _formEmail,       fullName    = _formFullName,
-                    isActive    = _formIsActive,    roles       = _formRoles,
-                    cvUrl       = cvUrl,
-                    inspectorId = _formInspectorId, category    = _formCategory,
-                    mobile      = _formMobile,      address     = _formAddress,
-                    city        = _formCity,        country     = _formCountry
+                    username            = _formUsername,
+                    password            = _formPassword,
+                    email               = _formEmail,
+                    fullName            = _formFullName,
+                    shortName           = _formShortName,
+                    dateOfBirth         = _formDateOfBirth,
+                    gender              = _formGender,
+                    nationality         = _formNationality,
+                    idType              = _formIdType,
+                    idNumber            = _formIdNumber,
+                    category            = _formCategory,
+                    inspectionStartYear = _formInspectionStartYear,
+                    language            = string.Join(",", _formLanguages),
+                    isActive            = _formIsActive,
+                    roles               = _formRoles,
+                    cvUrl               = cvUrl,
+                    inspectorId         = _formInspectorId,
+                    mobile              = _formMobile,
+                    address             = _formAddress,
+                    address1            = _formAddress1,
+                    address2            = _formAddress2,
+                    city                = _formCity,
+                    state               = _formState,
+                    country             = _formCountry,
+                    postalCode          = _formPostalCode,
+                    customerId          = _formCustomerId
                 };
                 response = await Http.PostAsJsonAsync("api/users", payload);
             }
             else
             {
                 var payload = new {
-                    username    = _formUsername,    newPassword = _formPassword,
-                    email       = _formEmail,       fullName    = _formFullName,
-                    isActive    = _formIsActive,    roles       = _formRoles,
-                    cvUrl       = cvUrl,
-                    inspectorId = _formInspectorId, category    = _formCategory,
-                    mobile      = _formMobile,      address     = _formAddress,
-                    city        = _formCity,        country     = _formCountry
+                    username            = _formUsername,
+                    newPassword         = _formPassword,
+                    email               = _formEmail,
+                    fullName            = _formFullName,
+                    shortName           = _formShortName,
+                    dateOfBirth         = _formDateOfBirth,
+                    gender              = _formGender,
+                    nationality         = _formNationality,
+                    idType              = _formIdType,
+                    idNumber            = _formIdNumber,
+                    category            = _formCategory,
+                    inspectionStartYear = _formInspectionStartYear,
+                    language            = string.Join(",", _formLanguages),
+                    isActive            = _formIsActive,
+                    roles               = _formRoles,
+                    cvUrl               = cvUrl,
+                    inspectorId         = _formInspectorId,
+                    mobile              = _formMobile,
+                    address             = _formAddress,
+                    address1            = _formAddress1,
+                    address2            = _formAddress2,
+                    city                = _formCity,
+                    state               = _formState,
+                    country             = _formCountry,
+                    postalCode          = _formPostalCode,
+                    customerId          = _formCustomerId
                 };
                 response = await Http.PutAsJsonAsync($"api/users/{_editId}", payload);
             }
@@ -587,7 +797,7 @@ else
             }
         }
         catch { _formError = "Connection error."; }
-        finally { _saving = false; }
+        finally { _saving = false; Waiting.Hide(); }
     }
 
     private async Task ToggleActive(UserDto user)
@@ -602,8 +812,10 @@ else
     {
         if (_deleteUser == null) return;
         _saving = true;
+        Waiting.Show("Deleting user...");
         var response = await Http.DeleteAsync($"api/users/{_deleteUser.Id}");
         _saving = false;
+        Waiting.Hide();
         if (response.IsSuccessStatusCode) { _deleteUser = null; await LoadPage(_page); }
     }
 
@@ -614,20 +826,39 @@ else
 
     private class UserDto
     {
-        public string  Id          { get; set; } = "";
-        public string  Username    { get; set; } = "";
-        public string? FullName    { get; set; }
-        public string? Email       { get; set; }
-        public bool    IsActive    { get; set; }
-        public List<string> Roles  { get; set; } = new();
-        public DateTime CreatedAt  { get; set; }
-        public string? CvUrl       { get; set; }
-        public string? InspectorId { get; set; }
-        public string? Category    { get; set; }
-        public string? Address     { get; set; }
-        public string? City        { get; set; }
-        public string? Country     { get; set; }
-        public string? Mobile      { get; set; }
+        public string   Id                  { get; set; } = "";
+        public string   Username            { get; set; } = "";
+        public string?  FullName            { get; set; }
+        public string?  ShortName           { get; set; }
+        public string?  Email               { get; set; }
+        public DateTime? DateOfBirth        { get; set; }
+        public string?  Gender              { get; set; }
+        public string?  Nationality         { get; set; }
+        public string?  IdType              { get; set; }
+        public string?  IdNumber            { get; set; }
+        public string?  Category            { get; set; }
+        public int?     InspectionStartYear { get; set; }
+        public string?  Language            { get; set; }
+        public bool     IsActive            { get; set; }
+        public List<string> Roles           { get; set; } = new();
+        public DateTime CreatedAt           { get; set; }
+        public string?  CvUrl               { get; set; }
+        public string?  InspectorId         { get; set; }
+        public string?  Address             { get; set; }
+        public string?  Address1            { get; set; }
+        public string?  Address2            { get; set; }
+        public string?  City                { get; set; }
+        public string?  State               { get; set; }
+        public string?  Country             { get; set; }
+        public string?  PostalCode          { get; set; }
+        public string?  Mobile              { get; set; }
+        public string?  CustomerId          { get; set; }
+    }
+
+    private class CustomerDropdownItem
+    {
+        public string CustomerId   { get; set; } = "";
+        public string CompanyName  { get; set; } = "";
     }
 
     private class UserPageResult { public int Total { get; set; } public List<UserDto> Items { get; set; } = new(); }
@@ -779,6 +1010,10 @@ else
     .form-section-title { font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:.08em; color:#1e90d6; margin:20px 0 12px; padding-bottom:7px; border-bottom:1.5px solid #c7e3f8; display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
     .form-grid  { display:grid; grid-template-columns:1fr 1fr; gap:16px 28px; }
     .form-group { margin-bottom:2px; }
+    .btype-group { display:flex; gap:8px; flex-wrap:wrap; padding:4px 0; }
+    .btype-label { padding:5px 14px; border-radius:20px; font-size:12px; font-weight:600; cursor:pointer; border:1px solid #c9d8ee; background:#f0f4fb; color:#4a6080; transition:all .15s; user-select:none; }
+    .btype-label:hover { background:#e0eaf7; border-color:#1e90d6; color:#1e90d6; }
+    .btype-active { background:#1e90d6 !important; border-color:#1e90d6 !important; color:#fff !important; }
     .form-group.full-width { grid-column:1 / -1; }
     .form-group label { display:block; font-size:11px; font-weight:600; color:#7a8fad; margin-bottom:6px; text-transform:uppercase; letter-spacing:.06em; }
     .label-hint { font-size:11px; font-weight:400; text-transform:none; color:#9baac8; letter-spacing:0; margin-left:4px; }
@@ -862,13 +1097,14 @@ else
 
     /* roles */
     .roles-picker { display:flex; gap:8px; flex-wrap:wrap; margin-top:4px; }
-    .role-check   { display:flex; align-items:center; gap:6px; cursor:pointer; padding:6px 12px; border-radius:8px; border:1.5px solid #c9d8ee; background:#f7fafd; transition:all .2s; }
-    .role-check input { display:none; }
-    .role-check.checked { border-color:#1e90d6; background:#e6f1fb; }
+    .role-check   { display:flex; align-items:center; gap:6px; cursor:pointer; padding:7px 16px; border-radius:8px; border:1.5px solid #c9d8ee; background:#f7fafd; transition:all .2s; user-select:none; }
+    .role-check:hover { border-color:#1e90d6; background:#eef6fd; }
+    .role-check.checked { border-color:#1e90d6; background:#e6f1fb; box-shadow:0 0 0 2px rgba(30,144,214,0.15); }
     .role-badge   { padding:3px 8px; border-radius:20px; font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:.04em; }
     .role-admin      { background:rgba(156,39,176,.12); color:#7b1fa2; }
     .role-user       { background:rgba(33,150,243,.12);  color:#1565c0; }
     .role-inspector  { background:rgba(255,152,0,.12);   color:#e65100; }
+    .role-customer   { background:rgba(16,163,127,.12);  color:#0d7a5f; }
 
     /* type & code badges */
     .code-badge         { font-family:monospace; font-size:12px; font-weight:600; background:#e6f1fb; color:#1565c0; padding:3px 8px; border-radius:6px; border:1px solid #b5d4f4; }

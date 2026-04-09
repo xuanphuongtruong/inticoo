@@ -134,8 +134,8 @@ else
                                 <td class="td-center">
                                     @{
                                         var (bgColor, label) = oc.Compliance switch {
-                                            "Pass" => ("#27ae60", "Pass"),
-                                            "Fail" => ("#e74c3c", "Fail"),
+                                            "Pass" => ("#27ae60", "Yes"),
+                                            "Fail" => ("#e74c3c", "No"),
                                             "N/A" => ("#888888", "N/A"),
                                             _      => ("", "")
                                         };
@@ -212,13 +212,19 @@ else
                     }
                 </div>
                 <div class="qc-photo3-row">
-                    @for (int i = 0; i < 3; i++)
+                    @for (int i = 0; i < _data.QuantityConformity.Photos.Count; i++)
                     {
                         var idx = i;
                         var isFirst = idx == 0;
-                        var hasPhoto = _data.QuantityConformity.Photos.Count > idx && !string.IsNullOrEmpty(_data.QuantityConformity.Photos[idx]);
+                        var hasPhoto = !string.IsNullOrEmpty(_data.QuantityConformity.Photos[idx]);
+                        var uKey = $"A:{idx}";
+                        var isUp = _uploadingKey == uKey;
                         <label class="qc-photo-box3 @(_qtyValidated && isFirst && !hasPhoto ? "photo-required" : "")">
-                            @if (hasPhoto)
+                            @if (isUp)
+                            {
+                                <div class="qc-photo-spinner"><div class="qc-spinner-ring"></div><span style="font-size:11px;color:#2D7DD2">Uploading…</span></div>
+                            }
+                            else if (hasPhoto)
                             {
                                 <img src="@GetImageUrl(_data.QuantityConformity.Photos[idx])" class="qc-photo-img"/>
                                 <button class="qc-photo-del" @onclick:stopPropagation="true"
@@ -228,10 +234,18 @@ else
                             {
                                 <span class="qc-photo-add">@(isFirst ? "📷 *" : "📷")</span>
                             }
-                            <InputFile OnChange="@(async e => await HandlePhoto(e, 'A', idx))"
+                            <InputFile OnChange="@(async e => { var url = await UploadPhotoWithSpinner(e, uKey); if(!string.IsNullOrEmpty(url)) SetPhotoInList(_data.QuantityConformity.Photos, idx, url); StateHasChanged(); })"
                                        accept="image/*" capture="environment" style="display:none"/>
                         </label>
                     }
+                    @{ var aNewIdx = _data.QuantityConformity.Photos.Count; var aNewKey = $"A:{aNewIdx}"; }
+                    <label class="qc-photo-box3" style="border:2px dashed #2D7DD2;background:#eef4ff;cursor:pointer;display:flex;align-items:center;justify-content:center">
+                        @if (_uploadingKey == aNewKey)
+                        { <div class="qc-photo-spinner"><div class="qc-spinner-ring"></div><span style="font-size:11px;color:#2D7DD2">Uploading…</span></div> }
+                        else { <span style="font-size:26px;color:#2D7DD2;font-weight:300;line-height:1">+</span> }
+                        <InputFile OnChange="@(async e => { _data.QuantityConformity.Photos.Add(string.Empty); var url = await UploadPhotoWithSpinner(e, aNewKey); if(!string.IsNullOrEmpty(url)) _data.QuantityConformity.Photos[aNewIdx] = url; StateHasChanged(); })"
+                                   accept="image/*" capture="environment" style="display:none"/>
+                    </label>
                 </div>
             </div>
         }
@@ -280,6 +294,27 @@ else
             {
                 <div class="qc-card">
                     <div class="qc-section-title">B-i. Carton Size@(cartonLabel)</div>
+
+                    @* ── Outer Packing spec (readonly từ DB) ── *@
+                    <div class="qc-outer-packing-block">
+                        <div class="qc-outer-packing-title">OUTER PACKING</div>
+                        <div class="qc-outer-packing-row">
+                            <div class="qc-outer-packing-item">
+                                <span class="qc-outer-packing-lbl">L (MM)</span>
+                                <div class="qc-outer-packing-val">@(_data.Packaging.OuterL > 0 ? _data.Packaging.OuterL.ToString() : "—")</div>
+                            </div>
+                            <div class="qc-outer-packing-item">
+                                <span class="qc-outer-packing-lbl">W (MM)</span>
+                                <div class="qc-outer-packing-val">@(_data.Packaging.OuterW > 0 ? _data.Packaging.OuterW.ToString() : "—")</div>
+                            </div>
+                            <div class="qc-outer-packing-item">
+                                <span class="qc-outer-packing-lbl">H (MM)</span>
+                                <div class="qc-outer-packing-val">@(_data.Packaging.OuterH > 0 ? _data.Packaging.OuterH.ToString() : "—")</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    @* ── Inspector nhập kích thước thực tế ── *@
                     <table class="qc-table">
                         <thead><tr><th>Carton No</th><th>L (mm)</th><th>W (mm)</th><th>H (mm)</th></tr></thead>
                         <tbody>
@@ -292,19 +327,28 @@ else
                         </tbody>
                     </table>
                     <div class="qc-photo3-row">
-                        @for (int i = 0; i < 3; i++)
+                        @for (int i = 0; i < cd.SizePhotos.Count; i++)
                         {
                             var idx = i; var cdRef = cd;
+                            var uKey = $"Bsize:{cartonIdx}:{idx}"; var isUp = _uploadingKey == uKey;
                             <label class="qc-photo-box3">
-                                @if (cdRef.SizePhotos.Count > idx && !string.IsNullOrEmpty(cdRef.SizePhotos[idx]))
-                                { <img src="@GetImageUrl(cdRef.SizePhotos[idx])" class="qc-photo-img"/> }
+                                @if (isUp) { <div class="qc-photo-spinner"><div class="qc-spinner-ring"></div><span style="font-size:11px;color:#2D7DD2">Uploading…</span></div> }
+                                else if (cdRef.SizePhotos.Count > idx && !string.IsNullOrEmpty(cdRef.SizePhotos[idx]))
+                                { <img src="@GetImageUrl(cdRef.SizePhotos[idx])" class="qc-photo-img"/>
+                                  <button class="qc-photo-del" @onclick:stopPropagation="true" @onclick="() => SetPhotoInList(cdRef.SizePhotos, idx, string.Empty)">✕</button> }
                                 else { <span class="qc-photo-add">📷</span> }
-                                <InputFile OnChange="@(async e => { var url = await UploadPhoto(e); if(!string.IsNullOrEmpty(url)) SetPhotoInList(cdRef.SizePhotos, idx, url); StateHasChanged(); })"
+                                <InputFile OnChange="@(async e => { var url = await UploadPhotoWithSpinner(e, uKey); if(!string.IsNullOrEmpty(url)) SetPhotoInList(cdRef.SizePhotos, idx, url); StateHasChanged(); })"
                                            accept="image/*" capture="environment" style="display:none"/>
                             </label>
                         }
+                        @{ var bsNI = cd.SizePhotos.Count; var bsNK = $"Bsize:{cartonIdx}:{bsNI}"; var bsCD = cd; }
+                        <label class="qc-photo-box3" style="border:2px dashed #2D7DD2;background:#eef4ff;cursor:pointer;display:flex;align-items:center;justify-content:center">
+                            @if (_uploadingKey == bsNK) { <div class="qc-photo-spinner"><div class="qc-spinner-ring"></div><span style="font-size:11px;color:#2D7DD2">Uploading…</span></div> }
+                            else { <span style="font-size:26px;color:#2D7DD2;font-weight:300;line-height:1">+</span> }
+                            <InputFile OnChange="@(async e => { bsCD.SizePhotos.Add(string.Empty); var url = await UploadPhotoWithSpinner(e, bsNK); if(!string.IsNullOrEmpty(url)) bsCD.SizePhotos[bsNI] = url; StateHasChanged(); })"
+                                       accept="image/*" capture="environment" style="display:none"/>
+                        </label>
                     </div>
-
                 </div>
             }
 
@@ -314,19 +358,28 @@ else
                 <div class="qc-card">
                     <div class="qc-section-title">B-ii. Shipping Mark / Labeling / Barcode@(cartonLabel)</div>
                     <div class="qc-photo3-row">
-                        @for (int i = 0; i < 3; i++)
+                        @for (int i = 0; i < cd.ShippingMarkPhotos.Count; i++)
                         {
                             var idx = i; var cdRef = cd;
+                            var uKey = $"Bsm:{cartonIdx}:{idx}"; var isUp = _uploadingKey == uKey;
                             <label class="qc-photo-box3 tall">
-                                @if (cdRef.ShippingMarkPhotos.Count > idx && !string.IsNullOrEmpty(cdRef.ShippingMarkPhotos[idx]))
-                                { <img src="@GetImageUrl(cdRef.ShippingMarkPhotos[idx])" class="qc-photo-img"/> }
+                                @if (isUp) { <div class="qc-photo-spinner"><div class="qc-spinner-ring"></div><span style="font-size:11px;color:#2D7DD2">Uploading…</span></div> }
+                                else if (cdRef.ShippingMarkPhotos.Count > idx && !string.IsNullOrEmpty(cdRef.ShippingMarkPhotos[idx]))
+                                { <img src="@GetImageUrl(cdRef.ShippingMarkPhotos[idx])" class="qc-photo-img"/>
+                                  <button class="qc-photo-del" @onclick:stopPropagation="true" @onclick="() => SetPhotoInList(cdRef.ShippingMarkPhotos, idx, string.Empty)">✕</button> }
                                 else { <span class="qc-photo-add">📷</span> }
-                                <InputFile OnChange="@(async e => { var url = await UploadPhoto(e); if(!string.IsNullOrEmpty(url)) SetPhotoInList(cdRef.ShippingMarkPhotos, idx, url); StateHasChanged(); })"
+                                <InputFile OnChange="@(async e => { var url = await UploadPhotoWithSpinner(e, uKey); if(!string.IsNullOrEmpty(url)) SetPhotoInList(cdRef.ShippingMarkPhotos, idx, url); StateHasChanged(); })"
                                            accept="image/*" capture="environment" style="display:none"/>
                             </label>
                         }
+                        @{ var bsmNI = cd.ShippingMarkPhotos.Count; var bsmNK = $"Bsm:{cartonIdx}:{bsmNI}"; var bsmCD = cd; }
+                        <label class="qc-photo-box3 tall" style="border:2px dashed #2D7DD2;background:#eef4ff;cursor:pointer;display:flex;align-items:center;justify-content:center">
+                            @if (_uploadingKey == bsmNK) { <div class="qc-photo-spinner"><div class="qc-spinner-ring"></div><span style="font-size:11px;color:#2D7DD2">Uploading…</span></div> }
+                            else { <span style="font-size:26px;color:#2D7DD2;font-weight:300;line-height:1">+</span> }
+                            <InputFile OnChange="@(async e => { bsmCD.ShippingMarkPhotos.Add(string.Empty); var url = await UploadPhotoWithSpinner(e, bsmNK); if(!string.IsNullOrEmpty(url)) bsmCD.ShippingMarkPhotos[bsmNI] = url; StateHasChanged(); })"
+                                       accept="image/*" capture="environment" style="display:none"/>
+                        </label>
                     </div>
-
                 </div>
             }
 
@@ -346,19 +399,28 @@ else
                         </div>
                     </div>
                     <div class="qc-photo3-row">
-                        @for (int i = 0; i < 3; i++)
+                        @for (int i = 0; i < cd.WeightPhotos.Count; i++)
                         {
                             var idx = i; var cdRef = cd;
+                            var uKey = $"Bwt:{cartonIdx}:{idx}"; var isUp = _uploadingKey == uKey;
                             <label class="qc-photo-box3">
-                                @if (cdRef.WeightPhotos.Count > idx && !string.IsNullOrEmpty(cdRef.WeightPhotos[idx]))
-                                { <img src="@GetImageUrl(cdRef.WeightPhotos[idx])" class="qc-photo-img"/> }
+                                @if (isUp) { <div class="qc-photo-spinner"><div class="qc-spinner-ring"></div><span style="font-size:11px;color:#2D7DD2">Uploading…</span></div> }
+                                else if (cdRef.WeightPhotos.Count > idx && !string.IsNullOrEmpty(cdRef.WeightPhotos[idx]))
+                                { <img src="@GetImageUrl(cdRef.WeightPhotos[idx])" class="qc-photo-img"/>
+                                  <button class="qc-photo-del" @onclick:stopPropagation="true" @onclick="() => SetPhotoInList(cdRef.WeightPhotos, idx, string.Empty)">✕</button> }
                                 else { <span class="qc-photo-add">📷</span> }
-                                <InputFile OnChange="@(async e => { var url = await UploadPhoto(e); if(!string.IsNullOrEmpty(url)) SetPhotoInList(cdRef.WeightPhotos, idx, url); StateHasChanged(); })"
+                                <InputFile OnChange="@(async e => { var url = await UploadPhotoWithSpinner(e, uKey); if(!string.IsNullOrEmpty(url)) SetPhotoInList(cdRef.WeightPhotos, idx, url); StateHasChanged(); })"
                                            accept="image/*" capture="environment" style="display:none"/>
                             </label>
                         }
+                        @{ var bwtNI = cd.WeightPhotos.Count; var bwtNK = $"Bwt:{cartonIdx}:{bwtNI}"; var bwtCD = cd; }
+                        <label class="qc-photo-box3" style="border:2px dashed #2D7DD2;background:#eef4ff;cursor:pointer;display:flex;align-items:center;justify-content:center">
+                            @if (_uploadingKey == bwtNK) { <div class="qc-photo-spinner"><div class="qc-spinner-ring"></div><span style="font-size:11px;color:#2D7DD2">Uploading…</span></div> }
+                            else { <span style="font-size:26px;color:#2D7DD2;font-weight:300;line-height:1">+</span> }
+                            <InputFile OnChange="@(async e => { bwtCD.WeightPhotos.Add(string.Empty); var url = await UploadPhotoWithSpinner(e, bwtNK); if(!string.IsNullOrEmpty(url)) bwtCD.WeightPhotos[bwtNI] = url; StateHasChanged(); })"
+                                       accept="image/*" capture="environment" style="display:none"/>
+                        </label>
                     </div>
-
                 </div>
             }
 
@@ -368,19 +430,28 @@ else
                 <div class="qc-card">
                     <div class="qc-section-title">B-iv. Packaging &amp; Labeling Specifications@(cartonLabel)</div>
                     <div class="qc-photo3-row">
-                        @for (int i = 0; i < 3; i++)
+                        @for (int i = 0; i < cd.PkgLabelPhotos.Count; i++)
                         {
                             var idx = i; var cdRef = cd;
+                            var uKey = $"Bpkg:{cartonIdx}:{idx}"; var isUp = _uploadingKey == uKey;
                             <label class="qc-photo-box3 tall">
-                                @if (cdRef.PkgLabelPhotos.Count > idx && !string.IsNullOrEmpty(cdRef.PkgLabelPhotos[idx]))
-                                { <img src="@GetImageUrl(cdRef.PkgLabelPhotos[idx])" class="qc-photo-img"/> }
+                                @if (isUp) { <div class="qc-photo-spinner"><div class="qc-spinner-ring"></div><span style="font-size:11px;color:#2D7DD2">Uploading…</span></div> }
+                                else if (cdRef.PkgLabelPhotos.Count > idx && !string.IsNullOrEmpty(cdRef.PkgLabelPhotos[idx]))
+                                { <img src="@GetImageUrl(cdRef.PkgLabelPhotos[idx])" class="qc-photo-img"/>
+                                  <button class="qc-photo-del" @onclick:stopPropagation="true" @onclick="() => SetPhotoInList(cdRef.PkgLabelPhotos, idx, string.Empty)">✕</button> }
                                 else { <span class="qc-photo-add">📷</span> }
-                                <InputFile OnChange="@(async e => { var url = await UploadPhoto(e); if(!string.IsNullOrEmpty(url)) SetPhotoInList(cdRef.PkgLabelPhotos, idx, url); StateHasChanged(); })"
+                                <InputFile OnChange="@(async e => { var url = await UploadPhotoWithSpinner(e, uKey); if(!string.IsNullOrEmpty(url)) SetPhotoInList(cdRef.PkgLabelPhotos, idx, url); StateHasChanged(); })"
                                            accept="image/*" capture="environment" style="display:none"/>
                             </label>
                         }
+                        @{ var bpkNI = cd.PkgLabelPhotos.Count; var bpkNK = $"Bpkg:{cartonIdx}:{bpkNI}"; var bpkCD = cd; }
+                        <label class="qc-photo-box3 tall" style="border:2px dashed #2D7DD2;background:#eef4ff;cursor:pointer;display:flex;align-items:center;justify-content:center">
+                            @if (_uploadingKey == bpkNK) { <div class="qc-photo-spinner"><div class="qc-spinner-ring"></div><span style="font-size:11px;color:#2D7DD2">Uploading…</span></div> }
+                            else { <span style="font-size:26px;color:#2D7DD2;font-weight:300;line-height:1">+</span> }
+                            <InputFile OnChange="@(async e => { bpkCD.PkgLabelPhotos.Add(string.Empty); var url = await UploadPhotoWithSpinner(e, bpkNK); if(!string.IsNullOrEmpty(url)) bpkCD.PkgLabelPhotos[bpkNI] = url; StateHasChanged(); })"
+                                       accept="image/*" capture="environment" style="display:none"/>
+                        </label>
                     </div>
-
                 </div>
             }
 
@@ -390,19 +461,28 @@ else
                 <div class="qc-card">
                     <div class="qc-section-title">B-v. Assembly Instruction Specifications@(cartonLabel)</div>
                     <div class="qc-photo3-row">
-                        @for (int i = 0; i < 3; i++)
+                        @for (int i = 0; i < cd.AssemblyPhotos.Count; i++)
                         {
                             var idx = i; var cdRef = cd;
+                            var uKey = $"Basm:{cartonIdx}:{idx}"; var isUp = _uploadingKey == uKey;
                             <label class="qc-photo-box3 tall">
-                                @if (cdRef.AssemblyPhotos.Count > idx && !string.IsNullOrEmpty(cdRef.AssemblyPhotos[idx]))
-                                { <img src="@GetImageUrl(cdRef.AssemblyPhotos[idx])" class="qc-photo-img"/> }
+                                @if (isUp) { <div class="qc-photo-spinner"><div class="qc-spinner-ring"></div><span style="font-size:11px;color:#2D7DD2">Uploading…</span></div> }
+                                else if (cdRef.AssemblyPhotos.Count > idx && !string.IsNullOrEmpty(cdRef.AssemblyPhotos[idx]))
+                                { <img src="@GetImageUrl(cdRef.AssemblyPhotos[idx])" class="qc-photo-img"/>
+                                  <button class="qc-photo-del" @onclick:stopPropagation="true" @onclick="() => SetPhotoInList(cdRef.AssemblyPhotos, idx, string.Empty)">✕</button> }
                                 else { <span class="qc-photo-add">📷</span> }
-                                <InputFile OnChange="@(async e => { var url = await UploadPhoto(e); if(!string.IsNullOrEmpty(url)) SetPhotoInList(cdRef.AssemblyPhotos, idx, url); StateHasChanged(); })"
+                                <InputFile OnChange="@(async e => { var url = await UploadPhotoWithSpinner(e, uKey); if(!string.IsNullOrEmpty(url)) SetPhotoInList(cdRef.AssemblyPhotos, idx, url); StateHasChanged(); })"
                                            accept="image/*" capture="environment" style="display:none"/>
                             </label>
                         }
+                        @{ var basmNI = cd.AssemblyPhotos.Count; var basmNK = $"Basm:{cartonIdx}:{basmNI}"; var basmCD = cd; }
+                        <label class="qc-photo-box3 tall" style="border:2px dashed #2D7DD2;background:#eef4ff;cursor:pointer;display:flex;align-items:center;justify-content:center">
+                            @if (_uploadingKey == basmNK) { <div class="qc-photo-spinner"><div class="qc-spinner-ring"></div><span style="font-size:11px;color:#2D7DD2">Uploading…</span></div> }
+                            else { <span style="font-size:26px;color:#2D7DD2;font-weight:300;line-height:1">+</span> }
+                            <InputFile OnChange="@(async e => { basmCD.AssemblyPhotos.Add(string.Empty); var url = await UploadPhotoWithSpinner(e, basmNK); if(!string.IsNullOrEmpty(url)) basmCD.AssemblyPhotos[basmNI] = url; StateHasChanged(); })"
+                                       accept="image/*" capture="environment" style="display:none"/>
+                        </label>
                     </div>
-
                 </div>
             }
 
@@ -412,19 +492,28 @@ else
                 <div class="qc-card">
                     <div class="qc-section-title">B-vi. Hardware Specifications@(cartonLabel)</div>
                     <div class="qc-photo3-row">
-                        @for (int i = 0; i < 3; i++)
+                        @for (int i = 0; i < cd.HardwarePhotos.Count; i++)
                         {
                             var idx = i; var cdRef = cd;
+                            var uKey = $"Bhw:{cartonIdx}:{idx}"; var isUp = _uploadingKey == uKey;
                             <label class="qc-photo-box3 tall">
-                                @if (cdRef.HardwarePhotos.Count > idx && !string.IsNullOrEmpty(cdRef.HardwarePhotos[idx]))
-                                { <img src="@GetImageUrl(cdRef.HardwarePhotos[idx])" class="qc-photo-img"/> }
+                                @if (isUp) { <div class="qc-photo-spinner"><div class="qc-spinner-ring"></div><span style="font-size:11px;color:#2D7DD2">Uploading…</span></div> }
+                                else if (cdRef.HardwarePhotos.Count > idx && !string.IsNullOrEmpty(cdRef.HardwarePhotos[idx]))
+                                { <img src="@GetImageUrl(cdRef.HardwarePhotos[idx])" class="qc-photo-img"/>
+                                  <button class="qc-photo-del" @onclick:stopPropagation="true" @onclick="() => SetPhotoInList(cdRef.HardwarePhotos, idx, string.Empty)">✕</button> }
                                 else { <span class="qc-photo-add">📷</span> }
-                                <InputFile OnChange="@(async e => { var url = await UploadPhoto(e); if(!string.IsNullOrEmpty(url)) SetPhotoInList(cdRef.HardwarePhotos, idx, url); StateHasChanged(); })"
+                                <InputFile OnChange="@(async e => { var url = await UploadPhotoWithSpinner(e, uKey); if(!string.IsNullOrEmpty(url)) SetPhotoInList(cdRef.HardwarePhotos, idx, url); StateHasChanged(); })"
                                            accept="image/*" capture="environment" style="display:none"/>
                             </label>
                         }
+                        @{ var bhwNI = cd.HardwarePhotos.Count; var bhwNK = $"Bhw:{cartonIdx}:{bhwNI}"; var bhwCD = cd; }
+                        <label class="qc-photo-box3 tall" style="border:2px dashed #2D7DD2;background:#eef4ff;cursor:pointer;display:flex;align-items:center;justify-content:center">
+                            @if (_uploadingKey == bhwNK) { <div class="qc-photo-spinner"><div class="qc-spinner-ring"></div><span style="font-size:11px;color:#2D7DD2">Uploading…</span></div> }
+                            else { <span style="font-size:26px;color:#2D7DD2;font-weight:300;line-height:1">+</span> }
+                            <InputFile OnChange="@(async e => { bhwCD.HardwarePhotos.Add(string.Empty); var url = await UploadPhotoWithSpinner(e, bhwNK); if(!string.IsNullOrEmpty(url)) bhwCD.HardwarePhotos[bhwNI] = url; StateHasChanged(); })"
+                                       accept="image/*" capture="environment" style="display:none"/>
+                        </label>
                     </div>
-
                 </div>
             }
         }
@@ -434,6 +523,30 @@ else
         {
             <div class="qc-card">
                 <div class="qc-section-title">C-i. Product Size</div>
+
+                @* ── Product Size spec (readonly từ DB) ── *@
+                @if (_inspection?.ProductSpec != null &&
+                     (_inspection.ProductSpec.SizeL > 0 || _inspection.ProductSpec.SizeW > 0 || _inspection.ProductSpec.SizeH > 0))
+                {
+                    <div class="qc-outer-packing-block">
+                        <div class="qc-outer-packing-title">I. PRODUCT SIZE</div>
+                        <div class="qc-outer-packing-row">
+                            <div class="qc-outer-packing-item">
+                                <span class="qc-outer-packing-lbl">L (MM)</span>
+                                <div class="qc-outer-packing-val">@(_inspection.ProductSpec.SizeL > 0 ? _inspection.ProductSpec.SizeL.ToString() : "—")</div>
+                            </div>
+                            <div class="qc-outer-packing-item">
+                                <span class="qc-outer-packing-lbl">W (MM)</span>
+                                <div class="qc-outer-packing-val">@(_inspection.ProductSpec.SizeW > 0 ? _inspection.ProductSpec.SizeW.ToString() : "—")</div>
+                            </div>
+                            <div class="qc-outer-packing-item">
+                                <span class="qc-outer-packing-lbl">H (MM)</span>
+                                <div class="qc-outer-packing-val">@(_inspection.ProductSpec.SizeH > 0 ? _inspection.ProductSpec.SizeH.ToString() : "—")</div>
+                            </div>
+                        </div>
+                    </div>
+                }
+
                 <!-- Nhập kích thước thực tế -->
                 <div class="qc-info-table" style="margin-bottom:12px">
                     <div class="qc-info-row qc-sub-row" style="flex-direction:column;align-items:flex-start;gap:6px">
@@ -475,26 +588,32 @@ else
                     }
                 </div>
                 <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px">
-                    @for (int i = 0; i < 4; i++)
+                    @for (int i = 0; i < _data.ProductSpec.SizePhotos.Count; i++)
                     {
                         var idx = i;
-                        var hasP = _data.ProductSpec.SizePhotos.Count > idx && !string.IsNullOrEmpty(_data.ProductSpec.SizePhotos[idx]);
+                        var hasP = !string.IsNullOrEmpty(_data.ProductSpec.SizePhotos[idx]);
                         var isRequired = _sizeValidated && !sizePhotoOk && idx < 2;
+                        var uKey = $"Csize:{idx}"; var isUp = _uploadingKey == uKey;
                         <label class="qc-photo-box @(isRequired ? "photo-required" : "")" style="aspect-ratio:4/3;min-height:100px">
-                            @if (hasP)
+                            @if (isUp) { <div class="qc-photo-spinner"><div class="qc-spinner-ring"></div><span style="font-size:11px;color:#2D7DD2">Uploading…</span></div> }
+                            else if (hasP)
                             {
                                 <img src="@GetImageUrl(_data.ProductSpec.SizePhotos[idx])" class="qc-photo-img"/>
                                 <button class="qc-photo-del" @onclick:stopPropagation="true"
                                         @onclick="() => SetPhotoInList(_data.ProductSpec.SizePhotos, idx, string.Empty)">✕</button>
                             }
-                            else
-                            {
-                                <span class="qc-photo-add">@(idx < 2 ? "📷 *" : "📷")</span>
-                            }
-                            <InputFile OnChange="@(async e => { var url = await UploadPhoto(e); if(!string.IsNullOrEmpty(url)) SetPhotoInList(_data.ProductSpec.SizePhotos, idx, url); StateHasChanged(); })"
+                            else { <span class="qc-photo-add">@(idx < 2 ? "📷 *" : "📷")</span> }
+                            <InputFile OnChange="@(async e => { var url = await UploadPhotoWithSpinner(e, uKey); if(!string.IsNullOrEmpty(url)) SetPhotoInList(_data.ProductSpec.SizePhotos, idx, url); StateHasChanged(); })"
                                        accept="image/*" capture="environment" style="display:none"/>
                         </label>
                     }
+                    @{ var csNI = _data.ProductSpec.SizePhotos.Count; var csNK = $"Csize:{csNI}"; }
+                    <label class="qc-photo-box" style="aspect-ratio:4/3;min-height:100px;border:2px dashed #2D7DD2;background:#eef4ff;cursor:pointer;display:flex;align-items:center;justify-content:center">
+                        @if (_uploadingKey == csNK) { <div class="qc-photo-spinner"><div class="qc-spinner-ring"></div><span style="font-size:11px;color:#2D7DD2">Uploading…</span></div> }
+                        else { <span style="font-size:26px;color:#2D7DD2;font-weight:300;line-height:1">+</span> }
+                        <InputFile OnChange="@(async e => { _data.ProductSpec.SizePhotos.Add(string.Empty); var url = await UploadPhotoWithSpinner(e, csNK); if(!string.IsNullOrEmpty(url)) _data.ProductSpec.SizePhotos[csNI] = url; StateHasChanged(); })"
+                                   accept="image/*" capture="environment" style="display:none"/>
+                    </label>
                 </div>
 
             </div>
@@ -503,7 +622,7 @@ else
         else if (_currentStepIdx == 5 + _cartonCount * B_STEPS_PER_CARTON)
         {
             <div class="qc-card">
-                <div class="qc-section-title">C-ii. Compare Golden Sample</div>
+                <div class="qc-section-title">C-ii. Golden Sample/Compare</div>
                 <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
                     <span style="font-size:12px;font-weight:600;color:#555">
                         Photos <span style="color:#e74c3c">*</span>
@@ -518,21 +637,29 @@ else
                     }
                 </div>
                 <div class="qc-photo3-row">
-                    @for (int i = 0; i < 3; i++)
+                    @for (int i = 0; i < _data.ProductSpec.GoldenPhotos.Count; i++)
                     {
                         var idx = i;
-                        var hasG = _data.ProductSpec.GoldenPhotos.Count > idx && !string.IsNullOrEmpty(_data.ProductSpec.GoldenPhotos[idx]);
+                        var hasG = !string.IsNullOrEmpty(_data.ProductSpec.GoldenPhotos[idx]);
                         var reqG = _goldenValidated && _data.ProductSpec.GoldenPhotos.Count(p=>!string.IsNullOrEmpty(p)) < 2 && idx < 2;
+                        var uKey = $"Gold:{idx}"; var isUp = _uploadingKey == uKey;
                         <label class="qc-photo-box3 tall @(reqG ? "photo-required" : "")">
-                            @if (hasG)
-                            {
-                                <img src="@GetImageUrl(_data.ProductSpec.GoldenPhotos[idx])" class="qc-photo-img"/>
-                            }
+                            @if (isUp) { <div class="qc-photo-spinner"><div class="qc-spinner-ring"></div><span style="font-size:11px;color:#2D7DD2">Uploading…</span></div> }
+                            else if (hasG)
+                            { <img src="@GetImageUrl(_data.ProductSpec.GoldenPhotos[idx])" class="qc-photo-img"/>
+                              <button class="qc-photo-del" @onclick:stopPropagation="true" @onclick="() => SetPhotoInList(_data.ProductSpec.GoldenPhotos, idx, string.Empty)">✕</button> }
                             else { <span class="qc-photo-add">@(idx < 2 ? "📷 *" : "📷")</span> }
-                            <InputFile OnChange="@(async e => await HandlePhoto(e, 'G', idx))"
+                            <InputFile OnChange="@(async e => { var url = await UploadPhotoWithSpinner(e, uKey); if(!string.IsNullOrEmpty(url)) SetPhotoInList(_data.ProductSpec.GoldenPhotos, idx, url); StateHasChanged(); })"
                                        accept="image/*" capture="environment" style="display:none"/>
                         </label>
                     }
+                    @{ var gNI = _data.ProductSpec.GoldenPhotos.Count; var gNK = $"Gold:{gNI}"; }
+                    <label class="qc-photo-box3 tall" style="border:2px dashed #2D7DD2;background:#eef4ff;cursor:pointer;display:flex;align-items:center;justify-content:center">
+                        @if (_uploadingKey == gNK) { <div class="qc-photo-spinner"><div class="qc-spinner-ring"></div><span style="font-size:11px;color:#2D7DD2">Uploading…</span></div> }
+                        else { <span style="font-size:26px;color:#2D7DD2;font-weight:300;line-height:1">+</span> }
+                        <InputFile OnChange="@(async e => { _data.ProductSpec.GoldenPhotos.Add(string.Empty); var url = await UploadPhotoWithSpinner(e, gNK); if(!string.IsNullOrEmpty(url)) _data.ProductSpec.GoldenPhotos[gNI] = url; StateHasChanged(); })"
+                                   accept="image/*" capture="environment" style="display:none"/>
+                    </label>
                 </div>
             </div>
         }
@@ -581,19 +708,29 @@ else
                     }
                 </div>
                 <div class="qc-photo3-row">
-                    @for (int i = 0; i < 3; i++)
+                    @for (int i = 0; i < _data.ProductSpec.SwatchPhotos.Count; i++)
                     {
                         var idx = i;
-                        var hasS = _data.ProductSpec.SwatchPhotos.Count > idx && !string.IsNullOrEmpty(_data.ProductSpec.SwatchPhotos[idx]);
+                        var hasS = !string.IsNullOrEmpty(_data.ProductSpec.SwatchPhotos[idx]);
                         var reqS = _swatchValidated && _data.ProductSpec.SwatchPhotos.Count(p=>!string.IsNullOrEmpty(p)) < 2 && idx < 2;
+                        var uKey = $"Swt:{idx}"; var isUp = _uploadingKey == uKey;
                         <label class="qc-photo-box3 @(reqS ? "photo-required" : "")">
-                            @if (hasS)
-                            { <img src="@GetImageUrl(_data.ProductSpec.SwatchPhotos[idx])" class="qc-photo-img"/> }
+                            @if (isUp) { <div class="qc-photo-spinner"><div class="qc-spinner-ring"></div><span style="font-size:11px;color:#2D7DD2">Uploading…</span></div> }
+                            else if (hasS)
+                            { <img src="@GetImageUrl(_data.ProductSpec.SwatchPhotos[idx])" class="qc-photo-img"/>
+                              <button class="qc-photo-del" @onclick:stopPropagation="true" @onclick="() => SetPhotoInList(_data.ProductSpec.SwatchPhotos, idx, string.Empty)">✕</button> }
                             else { <span class="qc-photo-add">@(idx < 2 ? "📷 *" : "📷")</span> }
-                            <InputFile OnChange="@(async e => await HandlePhoto(e, 'C', idx))"
+                            <InputFile OnChange="@(async e => { var url = await UploadPhotoWithSpinner(e, uKey); if(!string.IsNullOrEmpty(url)) SetPhotoInList(_data.ProductSpec.SwatchPhotos, idx, url); StateHasChanged(); })"
                                        accept="image/*" capture="environment" style="display:none"/>
                         </label>
                     }
+                    @{ var swNI = _data.ProductSpec.SwatchPhotos.Count; var swNK = $"Swt:{swNI}"; }
+                    <label class="qc-photo-box3" style="border:2px dashed #2D7DD2;background:#eef4ff;cursor:pointer;display:flex;align-items:center;justify-content:center">
+                        @if (_uploadingKey == swNK) { <div class="qc-photo-spinner"><div class="qc-spinner-ring"></div><span style="font-size:11px;color:#2D7DD2">Uploading…</span></div> }
+                        else { <span style="font-size:26px;color:#2D7DD2;font-weight:300;line-height:1">+</span> }
+                        <InputFile OnChange="@(async e => { _data.ProductSpec.SwatchPhotos.Add(string.Empty); var url = await UploadPhotoWithSpinner(e, swNK); if(!string.IsNullOrEmpty(url)) _data.ProductSpec.SwatchPhotos[swNI] = url; StateHasChanged(); })"
+                                   accept="image/*" capture="environment" style="display:none"/>
+                    </label>
                 </div>
             </div>
         }
@@ -650,23 +787,32 @@ else
                             }
                         </div>
                         <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px">
-                            @for (int i = 0; i < 4; i++)
+                            @for (int i = 0; i < pt.Photos.Count; i++)
                             {
                                 var idx = i; var ptRef = pt; var dIdxRef = dIdx;
-                                var hasP = ptRef.Photos.Count > idx && !string.IsNullOrEmpty(ptRef.Photos[idx]);
+                                var hasP = !string.IsNullOrEmpty(ptRef.Photos[idx]);
                                 var reqP = (dIdxRef < _perfValidated.Length && _perfValidated[dIdxRef]) && ptRef.Photos.Count(p=>!string.IsNullOrEmpty(p)) < 2 && idx < 2;
+                                var uKey = $"Perf:{dIdx}:{idx}"; var isUp = _uploadingKey == uKey;
                                 <label class="qc-photo-box @(reqP ? "photo-required" : "")" style="aspect-ratio:4/3;min-height:90px">
-                                    @if (hasP)
+                                    @if (isUp) { <div class="qc-photo-spinner"><div class="qc-spinner-ring"></div><span style="font-size:11px;color:#2D7DD2">Uploading…</span></div> }
+                                    else if (hasP)
                                     {
                                         <img src="@GetImageUrl(ptRef.Photos[idx])" class="qc-photo-img"/>
                                         <button class="qc-photo-del" @onclick:stopPropagation="true"
                                                 @onclick="() => SetPhotoInList(ptRef.Photos, idx, string.Empty)">✕</button>
                                     }
                                     else { <span class="qc-photo-add">@(idx < 2 ? "📷 *" : "📷")</span> }
-                                    <InputFile OnChange="@(async e => { var url = await UploadPhoto(e); if(!string.IsNullOrEmpty(url)) SetPhotoInList(ptRef.Photos, idx, url); StateHasChanged(); })"
+                                    <InputFile OnChange="@(async e => { var url = await UploadPhotoWithSpinner(e, uKey); if(!string.IsNullOrEmpty(url)) SetPhotoInList(ptRef.Photos, idx, url); StateHasChanged(); })"
                                                accept="image/*" capture="environment" style="display:none"/>
                                 </label>
                             }
+                            @{ var pNI = pt.Photos.Count; var pNK = $"Perf:{dIdx}:{pNI}"; var ptAdd = pt; }
+                            <label class="qc-photo-box" style="aspect-ratio:4/3;min-height:90px;border:2px dashed #2D7DD2;background:#eef4ff;cursor:pointer;display:flex;align-items:center;justify-content:center">
+                                @if (_uploadingKey == pNK) { <div class="qc-photo-spinner"><div class="qc-spinner-ring"></div><span style="font-size:11px;color:#2D7DD2">Uploading…</span></div> }
+                                else { <span style="font-size:26px;color:#2D7DD2;font-weight:300;line-height:1">+</span> }
+                                <InputFile OnChange="@(async e => { ptAdd.Photos.Add(string.Empty); var url = await UploadPhotoWithSpinner(e, pNK); if(!string.IsNullOrEmpty(url)) ptAdd.Photos[pNI] = url; StateHasChanged(); })"
+                                           accept="image/*" capture="environment" style="display:none"/>
+                            </label>
                         </div>
 
                     </div>
@@ -797,7 +943,10 @@ else
                                                   border-bottom:none;border-radius:8px 8px 0 0;
                                                   display:flex;align-items:center;justify-content:center;cursor:pointer;
                                                   overflow:hidden;position:relative;min-height:120px">
-                                        @if (hasPhoto)
+                                        @{ var defUKey = $"Def:{_data.Defects.IndexOf(dRef2)}:{pIdx}"; }
+                                        @if (_uploadingKey == defUKey)
+                                        { <div class="qc-photo-spinner"><div class="qc-spinner-ring"></div><span style="font-size:11px;color:#2D7DD2">Uploading…</span></div> }
+                                        else if (hasPhoto)
                                         {
                                             <img src="@GetImageUrl(dRef2.Photos[pIdx])" style="width:100%;height:100%;object-fit:cover"/>
                                             <button style="position:absolute;top:4px;right:4px;background:rgba(0,0,0,.55);color:#fff;
@@ -806,7 +955,7 @@ else
                                                     @onclick="() => { var dr2=dRef2; int pi2=pIdx; if(pi2<dr2.Photos.Count) dr2.Photos[pi2]=string.Empty; var i2=_data.Defects.IndexOf(dr2); if(i2>=0) _data.Defects[i2]=dr2; StateHasChanged(); }">✕</button>
                                         }
                                         else { <span style="font-size:28px;color:#c0cce0">📷</span> }
-                                        <InputFile OnChange="@(async e => await UploadDefectPhoto(e, dRef2, pIdx))"
+                                        <InputFile OnChange="@(async e => await UploadDefectPhotoWithSpinner(e, dRef2, pIdx))"
                                                    accept="image/*" capture="environment" style="display:none;position:absolute;inset:0"/>
                                     </label>
                                     <!-- Remark của ảnh này -->
@@ -848,7 +997,7 @@ else
         {
             <div class="qc-card">
                 <!-- Logo inticoo -->
-                <div class="qc-logo-row" style="margin-bottom:16px">
+                <!-- <div class="qc-logo-row" style="margin-bottom:16px">
                     <svg width="28" height="28" viewBox="0 0 32 32" fill="none">
                         <polygon points="16,2 28,9 28,23 16,30 4,23 4,9" fill="#2D7DD2" opacity="0.85"/>
                         <polygon points="16,6 25,11 25,21 16,26 7,21 7,11" fill="#1a5fa8"/>
@@ -856,7 +1005,7 @@ else
                         <rect x="10" y="13" width="12" height="6" rx="1" fill="white" opacity="0.6"/>
                     </svg>
                     <span class="qc-logo-text">inticoo</span>
-                </div>
+                </div> -->
 
                 <!-- Bảng Inspector Comments theo mẫu PDF -->
                 <table class="qc-table" style="margin-bottom:16px;border:1px solid #ddd">
@@ -901,7 +1050,7 @@ else
         {
             <div class="qc-card">
                 <!-- Logo -->
-                <div class="qc-logo-row" style="margin-bottom:14px">
+                <!-- <div class="qc-logo-row" style="margin-bottom:14px">
                     <svg width="28" height="28" viewBox="0 0 32 32" fill="none">
                         <polygon points="16,2 28,9 28,23 16,30 4,23 4,9" fill="#2D7DD2" opacity="0.85"/>
                         <polygon points="16,6 25,11 25,21 16,26 7,21 7,11" fill="#1a5fa8"/>
@@ -909,7 +1058,7 @@ else
                         <rect x="10" y="13" width="12" height="6" rx="1" fill="white" opacity="0.6"/>
                     </svg>
                     <span class="qc-logo-text">inticoo</span>
-                </div>
+                </div> -->
 
                 <!-- Compliance clause -->
                 <div style="margin-bottom:14px;padding:12px;background:#fffbf0;border-left:3px solid #e67e22;border-radius:0 8px 8px 0">
@@ -934,29 +1083,30 @@ else
                             </td>
                         </tr>
                         <tr>
-                            <td style="font-weight:700;color:#1a1a2e;padding:12px 8px;vertical-align:top">Confirmed by</td>
-                            <td style="padding:10px 8px">
+                            <td colspan="2" style="padding:10px 8px">
+                                <div style="font-weight:700;color:#1a1a2e;margin-bottom:10px">Confirmed by</div>
                                 @if (!string.IsNullOrEmpty(_data.SignatureUrl))
                                 {
-                                    <img src="@GetImageUrl(_data.SignatureUrl)" style="max-height:80px;object-fit:contain;display:block"/>
-                                    <button style="margin-top:6px;background:#fee;color:#e74c3c;border:none;border-radius:5px;padding:4px 10px;font-size:11px;cursor:pointer"
-                                            @onclick="() => _data.SignatureUrl = string.Empty">Clear Signature</button>
+                                    <img src="@GetImageUrl(_data.SignatureUrl)" style="max-height:120px;object-fit:contain;display:block;width:100%;border:1px dashed #b0c8f0;border-radius:8px;background:#f8faff"/>
+                                    <button style="margin-top:8px;background:#fee;color:#e74c3c;border:none;border-radius:5px;padding:6px 14px;font-size:12px;cursor:pointer"
+                                            @onclick="() => _data.SignatureUrl = string.Empty">↺ Ký lại</button>
                                 }
                                 else
                                 {
                                     @if (_sigValidated)
                                     {
-                                        <div style="color:#e74c3c;font-size:11px;font-weight:600;margin-bottom:4px">⚠ Signature is required</div>
+                                        <div style="color:#e74c3c;font-size:11px;font-weight:600;margin-bottom:6px">⚠ Signature is required</div>
                                     }
                                     <div style="color:#e74c3c;font-size:12px;font-weight:600;margin-bottom:8px">Add Signature</div>
-                                    <!-- Canvas ký tay -->
-                                    <canvas id="sig-canvas" width="300" height="120"
-                                            style="border:1px dashed #b0c8f0;border-radius:8px;background:#f8faff;touch-action:none;display:block;max-width:100%">
+                                    <!-- Canvas ký tay full width -->
+                                    <canvas id="sig-canvas"
+                                            style="border:1.5px dashed #b0c8f0;border-radius:10px;background:#f8faff;
+                                                   touch-action:none;display:block;width:100%;height:180px;">
                                     </canvas>
-                                    <div style="display:flex;gap:8px;margin-top:8px">
-                                        <button style="background:#2D7DD2;color:#fff;border:none;border-radius:7px;padding:7px 16px;font-size:12px;font-weight:600;cursor:pointer"
-                                                @onclick="SaveSignature">✔ Save</button>
-                                        <button style="background:#f0f3f8;color:#555;border:none;border-radius:7px;padding:7px 16px;font-size:12px;cursor:pointer"
+                                    <div style="display:flex;gap:8px;margin-top:10px">
+                                        <button style="flex:1;background:#2D7DD2;color:#fff;border:none;border-radius:8px;padding:10px 0;font-size:13px;font-weight:600;cursor:pointer"
+                                                @onclick="SaveSignature">✔ Save Signature</button>
+                                        <button style="background:#f0f3f8;color:#555;border:none;border-radius:8px;padding:10px 18px;font-size:13px;cursor:pointer"
                                                 @onclick="ClearCanvas">↺ Clear</button>
                                     </div>
                                 }
@@ -1015,6 +1165,8 @@ else
     bool _saving;
     bool _saveError;
     string _saveMsg = "";
+    // Key dạng "section:slot" để hiển thị spinner đúng ô đang upload
+    string _uploadingKey = "";
     InspectionDetailDto? _inspection;
     QcFormData _data = new();
     int _currentStepIdx = 0;
@@ -1045,7 +1197,19 @@ else
     {
         try
         {
-            // Init canvas mỗi khi Blazor render lại (đặc biệt khi step signature xuất hiện)
+            // Sync canvas width với CSS, fill nền trắng, sau đó init signature
+            await JS.InvokeVoidAsync("eval", @"
+                (function(){
+                    var c = document.getElementById('sig-canvas');
+                    if(c){
+                        c.width  = c.offsetWidth  || 400;
+                        c.height = c.offsetHeight || 180;
+                        var ctx = c.getContext('2d');
+                        ctx.fillStyle = '#ffffff';
+                        ctx.fillRect(0, 0, c.width, c.height);
+                    }
+                })();
+            ");
             await JS.InvokeVoidAsync("initSignatureCanvas", "sig-canvas");
         }
         catch { /* canvas chưa có trong DOM — bỏ qua */ }
@@ -1191,6 +1355,7 @@ else
         EnsurePhotoList(_data.Packaging.HardwarePhotos, 3);
         EnsurePhotoList(_data.ProductSpec.GoldenPhotos, 3);
         EnsurePhotoList(_data.ProductSpec.SwatchPhotos, 3);
+        EnsurePhotoList(_data.ProductSpec.SizePhotos, 4);
         EnsurePhotoList(_data.QuantityConformity.Photos, 3);
     }
 
@@ -1560,6 +1725,15 @@ else
     async Task<string> ReadFileAsDataUrl(InputFileChangeEventArgs e)
         => await UploadPhoto(e);
 
+    // Upload với spinner — key = "section:cartonIdx:slot" hoặc bất kỳ string unique
+    async Task<string> UploadPhotoWithSpinner(InputFileChangeEventArgs e, string key)
+    {
+        _uploadingKey = key;
+        StateHasChanged();
+        try   { return await UploadPhoto(e); }
+        finally { _uploadingKey = ""; StateHasChanged(); }
+    }
+
     class UploadResult
     {
         [JsonPropertyName("url")] public string Url { get; set; } = "";
@@ -1637,6 +1811,14 @@ else
         catch (Exception ex) { _saveMsg = $"Photo error: {ex.Message}"; _saveError = true; }
     }
 
+    async Task UploadDefectPhotoWithSpinner(InputFileChangeEventArgs e, QcDefect defect, int slotIdx)
+    {
+        var key = $"Def:{_data.Defects.IndexOf(defect)}:{slotIdx}";
+        _uploadingKey = key; StateHasChanged();
+        try { await UploadDefectPhoto(e, defect, slotIdx); }
+        finally { _uploadingKey = ""; StateHasChanged(); }
+    }
+
     static void SetPhotoInList(List<string> list, int slot, string url)
     {
         while (list.Count <= slot) list.Add(string.Empty);
@@ -1660,8 +1842,23 @@ else
 
     async Task SaveSignature()
     {
-        var dataUrl = await JS.InvokeAsync<string>("getSignatureDataUrl", "sig-canvas");
-        if (string.IsNullOrEmpty(dataUrl) || dataUrl == "data:,") return;
+        // Composite nền trắng lên canvas trước khi export → tránh nền đen trong PNG
+        var dataUrl = await JS.InvokeAsync<string>("eval", @"
+            (function(){
+                var c = document.getElementById('sig-canvas');
+                if(!c) return '';
+                // Tạo canvas tạm với nền trắng + vẽ chữ ký lên trên
+                var tmp = document.createElement('canvas');
+                tmp.width  = c.width;
+                tmp.height = c.height;
+                var ctx = tmp.getContext('2d');
+                ctx.fillStyle = '#ffffff';
+                ctx.fillRect(0, 0, tmp.width, tmp.height);
+                ctx.drawImage(c, 0, 0);
+                return tmp.toDataURL('image/png');
+            })()
+        ");
+        if (string.IsNullOrEmpty(dataUrl) || dataUrl == "data:," || dataUrl == "") return;
 
         try
         {
@@ -1677,17 +1874,15 @@ else
             if (resp.IsSuccessStatusCode)
             {
                 var result = await resp.Content.ReadFromJsonAsync<UploadResult>();
-                _data.SignatureUrl = result?.Url ?? dataUrl; // fallback về dataUrl nếu upload lỗi
+                _data.SignatureUrl = result?.Url ?? dataUrl;
             }
             else
             {
-                // Upload lỗi → vẫn lưu dataUrl tạm để không mất chữ ký
                 _data.SignatureUrl = dataUrl;
             }
         }
         catch
         {
-            // Fallback: lưu dataUrl nếu exception
             _data.SignatureUrl = dataUrl;
         }
         StateHasChanged();
@@ -1907,6 +2102,7 @@ else
         [JsonPropertyName("photo2Url")]           public string? Photo2Url                   { get; set; }
         [JsonPropertyName("overallConclusions")]  public List<OcDto>?    OverallConclusions  { get; set; }
         [JsonPropertyName("packaging")]           public PackagingDto?   Packaging           { get; set; }
+        [JsonPropertyName("productSpec")]         public ProductSpecDto? ProductSpec         { get; set; }
     }
 
     class PackagingDto
@@ -1926,6 +2122,14 @@ else
         [JsonPropertyName("outerWeight")]         public double? OuterWeight        { get; set; }
         [JsonPropertyName("assemblyInstruction")] public bool    AssemblyInstruction { get; set; }
         [JsonPropertyName("hardware")]            public bool    Hardware           { get; set; }
+    }
+
+    class ProductSpecDto
+    {
+        [JsonPropertyName("sizeL")]   public double? SizeL  { get; set; }
+        [JsonPropertyName("sizeW")]   public double? SizeW  { get; set; }
+        [JsonPropertyName("sizeH")]   public double? SizeH  { get; set; }
+        [JsonPropertyName("weight")]  public double? Weight { get; set; }
     }
 
     class OcDto
@@ -2474,6 +2678,40 @@ else
     .toast-ok  { background: #27ae60; color: #fff; }
     .toast-err { background: #e74c3c; color: #fff; }
     @@keyframes fadeIn { from { opacity: 0; transform: translateX(-50%) translateY(10px); } }
+
+    .qc-photo-spinner {
+        display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;
+        width:100%;height:100%;
+    }
+    .qc-spinner-ring {
+        width:28px;height:28px;border:3px solid #dce6f8;
+        border-top-color:#2D7DD2;border-radius:50%;
+        animation:qcSpin .8s linear infinite;
+    }
+    @@keyframes qcSpin { to { transform:rotate(360deg); } }
+
+    .qc-outer-packing-block {
+        background: #f8faff; border: 1px solid #dce6f8; border-radius: 10px;
+        padding: 12px 14px; margin-bottom: 14px;
+    }
+    .qc-outer-packing-title {
+        font-size: 11px; font-weight: 700; color: #2D7DD2; letter-spacing: .06em;
+        text-transform: uppercase; margin-bottom: 10px;
+    }
+    .qc-outer-packing-row {
+        display: flex; gap: 12px;
+    }
+    .qc-outer-packing-item {
+        flex: 1; display: flex; flex-direction: column; gap: 4px;
+    }
+    .qc-outer-packing-lbl {
+        font-size: 10px; font-weight: 700; color: #888; text-transform: uppercase; letter-spacing: .04em;
+    }
+    .qc-outer-packing-val {
+        font-size: 14px; font-weight: 600; color: #1a1a2e;
+        background: #fff; border: 1px solid #dce6f8; border-radius: 8px;
+        padding: 8px 12px;
+    }
 
     .qc-error { display: flex; flex-direction: column; align-items: center; padding: 60px 20px; gap: 14px; color: #888; }
     .qc-error button { background: #2D7DD2; color: #fff; border: none;

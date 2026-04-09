@@ -31,8 +31,10 @@ namespace InticooInspection.API.Controllers
                     u.UserName!.Contains(search) ||
                     u.Email!.Contains(search) ||
                     u.FullName.Contains(search) ||
-                    (u.InspectorId != null && u.InspectorId.Contains(search)) ||
-                    (u.Mobile      != null && u.Mobile.Contains(search)));
+                    (u.InspectorId  != null && u.InspectorId.Contains(search))  ||
+                    (u.Mobile       != null && u.Mobile.Contains(search))        ||
+                    (u.Nationality  != null && u.Nationality.Contains(search))   ||
+                    (u.Country      != null && u.Country.Contains(search)));
 
             var total = await query.CountAsync();
             var users = await query
@@ -45,23 +47,7 @@ namespace InticooInspection.API.Controllers
             foreach (var u in users)
             {
                 var roles = await _userManager.GetRolesAsync(u);
-                items.Add(new
-                {
-                    id          = u.Id,
-                    username    = u.UserName,
-                    email       = u.Email,
-                    fullName    = u.FullName,
-                    isActive    = u.IsActive,
-                    roles       = roles,
-                    createdAt   = u.CreatedAt,
-                    cvUrl       = u.CvUrl,
-                    inspectorId = u.InspectorId,
-                    category    = u.Category,
-                    address     = u.Address,
-                    city        = u.City,
-                    country     = u.Country,
-                    mobile      = u.Mobile
-                });
+                items.Add(MapToDto(u, roles));
             }
 
             return Ok(new { total, page, pageSize, items });
@@ -74,23 +60,7 @@ namespace InticooInspection.API.Controllers
             var user = await _userManager.FindByIdAsync(id);
             if (user == null) return NotFound();
             var roles = await _userManager.GetRolesAsync(user);
-            return Ok(new
-            {
-                id          = user.Id,
-                username    = user.UserName,
-                email       = user.Email,
-                fullName    = user.FullName,
-                isActive    = user.IsActive,
-                roles       = roles,
-                createdAt   = user.CreatedAt,
-                cvUrl       = user.CvUrl,
-                inspectorId = user.InspectorId,
-                category    = user.Category,
-                address     = user.Address,
-                city        = user.City,
-                country     = user.Country,
-                mobile      = user.Mobile
-            });
+            return Ok(MapToDto(user, roles));
         }
 
         // POST api/users
@@ -105,20 +75,33 @@ namespace InticooInspection.API.Controllers
 
             var user = new AppUser
             {
-                UserName       = request.Username,
-                Email          = request.Email,
-                FullName       = request.FullName,
-                IsActive       = request.IsActive,
-                CvUrl          = request.CvUrl,
-                InspectorId    = request.InspectorId,
-                Category       = request.Category,
-                Address        = request.Address,
-                City           = request.City,
-                Country        = request.Country,
-                Mobile         = request.Mobile,
-                CreatedAt      = DateTime.UtcNow,
-                EmailConfirmed = true,
-                LockoutEnabled = true
+                UserName            = request.Username,
+                Email               = request.Email,
+                FullName            = request.FullName,
+                ShortName           = request.ShortName,
+                DateOfBirth         = request.DateOfBirth,
+                Gender              = request.Gender,
+                Nationality         = request.Nationality,
+                IdType              = request.IdType,
+                IdNumber            = request.IdNumber,
+                Category            = request.Category,
+                InspectionStartYear = request.InspectionStartYear,
+                Language            = request.Language,
+                IsActive            = request.IsActive,
+                CvUrl               = request.CvUrl,
+                InspectorId         = request.InspectorId,
+                Address             = request.Address,
+                Address1            = request.Address1,
+                Address2            = request.Address2,
+                City                = request.City,
+                State               = request.State,
+                Country             = request.Country,
+                PostalCode          = request.PostalCode,
+                Mobile              = request.Mobile,
+                CustomerId          = request.CustomerId,
+                CreatedAt           = DateTime.UtcNow,
+                EmailConfirmed      = true,
+                LockoutEnabled      = true
             };
 
             var result = await _userManager.CreateAsync(user, request.Password);
@@ -144,17 +127,30 @@ namespace InticooInspection.API.Controllers
             if (existing != null && existing.Id != id)
                 return BadRequest(new { success = false, message = "Username already exists." });
 
-            user.UserName = request.Username;
-            user.Email    = request.Email;
-            user.FullName = request.FullName;
-            user.IsActive = request.IsActive;
-            if (request.CvUrl     != null) user.CvUrl     = request.CvUrl;
-            user.InspectorId = request.InspectorId;
-            user.Category    = request.Category;
-            user.Address     = request.Address;
-            user.City        = request.City;
-            user.Country     = request.Country;
-            user.Mobile      = request.Mobile;
+            user.UserName            = request.Username;
+            user.Email               = request.Email;
+            user.FullName            = request.FullName;
+            user.ShortName           = request.ShortName;
+            user.DateOfBirth         = request.DateOfBirth;
+            user.Gender              = request.Gender;
+            user.Nationality         = request.Nationality;
+            user.IdType              = request.IdType;
+            user.IdNumber            = request.IdNumber;
+            user.Category            = request.Category;
+            user.InspectionStartYear = request.InspectionStartYear;
+            user.Language            = request.Language;
+            user.IsActive            = request.IsActive;
+            if (request.CvUrl != null) user.CvUrl = request.CvUrl;
+            user.InspectorId  = request.InspectorId;
+            user.Address      = request.Address;
+            user.Address1     = request.Address1;
+            user.Address2     = request.Address2;
+            user.City         = request.City;
+            user.State        = request.State;
+            user.Country      = request.Country;
+            user.PostalCode   = request.PostalCode;
+            user.Mobile       = request.Mobile;
+            user.CustomerId   = request.CustomerId;
 
             var result = await _userManager.UpdateAsync(user);
             if (!result.Succeeded)
@@ -203,7 +199,7 @@ namespace InticooInspection.API.Controllers
             return Ok(new { success = true });
         }
 
-        // GET api/users/nextid — sinh InspectorId tự tăng IP10001, IP10002...
+        // GET api/users/nextid
         [HttpGet("nextid")]
         public async Task<IActionResult> GetNextId()
         {
@@ -222,7 +218,7 @@ namespace InticooInspection.API.Controllers
             return Ok(new { inspectorId = $"IP{max + 1}" });
         }
 
-        // GET api/users/dropdown — tất cả user active dùng cho dropdown Inspector
+        // GET api/users/dropdown
         [HttpGet("dropdown")]
         public async Task<IActionResult> GetDropdown()
         {
@@ -241,39 +237,97 @@ namespace InticooInspection.API.Controllers
             var roles = await _roleManager.Roles.Select(r => r.Name!).ToListAsync();
             return Ok(roles);
         }
+
+        // ── Helper ───────────────────────────────────────────────────────────
+        private static object MapToDto(AppUser u, IList<string> roles) => new
+        {
+            id                  = u.Id,
+            username            = u.UserName,
+            email               = u.Email,
+            fullName            = u.FullName,
+            shortName           = u.ShortName,
+            dateOfBirth         = u.DateOfBirth,
+            gender              = u.Gender,
+            nationality         = u.Nationality,
+            idType              = u.IdType,
+            idNumber            = u.IdNumber,
+            category            = u.Category,
+            inspectionStartYear = u.InspectionStartYear,
+            language            = u.Language,
+            isActive            = u.IsActive,
+            roles               = roles,
+            createdAt           = u.CreatedAt,
+            cvUrl               = u.CvUrl,
+            inspectorId         = u.InspectorId,
+            address             = u.Address,
+            address1            = u.Address1,
+            address2            = u.Address2,
+            city                = u.City,
+            state               = u.State,
+            country             = u.Country,
+            postalCode          = u.PostalCode,
+            mobile              = u.Mobile,
+            customerId          = u.CustomerId
+        };
     }
 
     public class CreateUserRequest
     {
-        public string  Username    { get; set; } = "";
-        public string  Password    { get; set; } = "";
-        public string  Email       { get; set; } = "";
-        public string  FullName    { get; set; } = "";
-        public bool    IsActive    { get; set; } = true;
-        public List<string> Roles  { get; set; } = new();
-        public string? CvUrl       { get; set; }
-        public string? InspectorId { get; set; }
-        public string? Category    { get; set; }
-        public string? Address     { get; set; }
-        public string? City        { get; set; }
-        public string? Country     { get; set; }
-        public string? Mobile      { get; set; }
+        public string   Username            { get; set; } = "";
+        public string   Password            { get; set; } = "";
+        public string   Email               { get; set; } = "";
+        public string   FullName            { get; set; } = "";
+        public string?  ShortName           { get; set; }
+        public DateTime? DateOfBirth        { get; set; }
+        public string?  Gender              { get; set; }
+        public string?  Nationality         { get; set; }
+        public string?  IdType              { get; set; }
+        public string?  IdNumber            { get; set; }
+        public string?  Category            { get; set; }
+        public int?     InspectionStartYear { get; set; }
+        public string?  Language            { get; set; }
+        public bool     IsActive            { get; set; } = true;
+        public List<string> Roles           { get; set; } = new();
+        public string?  CvUrl               { get; set; }
+        public string?  InspectorId         { get; set; }
+        public string?  Address             { get; set; }
+        public string?  Address1            { get; set; }
+        public string?  Address2            { get; set; }
+        public string?  City                { get; set; }
+        public string?  State               { get; set; }
+        public string?  Country             { get; set; }
+        public string?  PostalCode          { get; set; }
+        public string?  Mobile              { get; set; }
+        public string?  CustomerId          { get; set; }
     }
 
     public class UpdateUserRequest
     {
-        public string  Username    { get; set; } = "";
-        public string  Email       { get; set; } = "";
-        public string  FullName    { get; set; } = "";
-        public bool    IsActive    { get; set; } = true;
-        public string? NewPassword { get; set; }
-        public List<string> Roles  { get; set; } = new();
-        public string? CvUrl       { get; set; }
-        public string? InspectorId { get; set; }
-        public string? Category    { get; set; }
-        public string? Address     { get; set; }
-        public string? City        { get; set; }
-        public string? Country     { get; set; }
-        public string? Mobile      { get; set; }
+        public string   Username            { get; set; } = "";
+        public string   Email               { get; set; } = "";
+        public string   FullName            { get; set; } = "";
+        public string?  ShortName           { get; set; }
+        public DateTime? DateOfBirth        { get; set; }
+        public string?  Gender              { get; set; }
+        public string?  Nationality         { get; set; }
+        public string?  IdType              { get; set; }
+        public string?  IdNumber            { get; set; }
+        public string?  Category            { get; set; }
+        public int?     InspectionStartYear { get; set; }
+        public string?  Language            { get; set; }
+        public bool     IsActive            { get; set; } = true;
+        public string?  NewPassword         { get; set; }
+        public List<string> Roles           { get; set; } = new();
+        public string?  CvUrl               { get; set; }
+        public string?  InspectorId         { get; set; }
+        public string?  Address             { get; set; }
+        public string?  Address1            { get; set; }
+        public string?  Address2            { get; set; }
+        public string?  City                { get; set; }
+        public string?  State               { get; set; }
+        public string?  Country             { get; set; }
+        public string?  PostalCode          { get; set; }
+        public string?  Mobile              { get; set; }
+        public string?  CustomerId          { get; set; }
     }
 }

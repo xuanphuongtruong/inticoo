@@ -3,6 +3,8 @@
 @using System.Net.Http.Json
 @inject HttpClient Http
 @inject NavigationManager Navigation
+@using InticooInspection.Client.Services
+@inject WaitingService Waiting
 
 <PageTitle>Inspection Detail - Inticoo</PageTitle>
 
@@ -145,13 +147,17 @@ else
 
     private async Task UpdateStatus(string status)
     {
+        Waiting.Show("Updating status...");
         await Http.PutAsJsonAsync($"api/inspections/{Id}/status", new { status });
+        Waiting.Hide();
         await Load();
     }
 
     private async Task UpdateStep(int stepId, string status)
     {
+        Waiting.Show("Updating step...");
         await Http.PutAsJsonAsync($"api/inspections/{Id}/steps/{stepId}", new { status, note = "" });
+        Waiting.Hide();
         await Load();
     }
 

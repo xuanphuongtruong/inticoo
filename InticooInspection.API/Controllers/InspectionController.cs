@@ -49,6 +49,7 @@ namespace InticooInspection.API.Controllers
                         i.ProductName,
                         i.InspectorId,
                         i.InspectorName,
+                        i.PoNumber,
                     })
                     .ToListAsync();
 
@@ -101,12 +102,37 @@ namespace InticooInspection.API.Controllers
                     if (u.InspectorId != null && !inspectorByCode.ContainsKey(u.InspectorId))
                         inspectorByCode[u.InspectorId] = u.FullName ?? "";
 
-                // Vendor lookup — load tất cả vendors
+                // Vendor lookup — load tất cả vendors (bao gồm contact info)
                 var allVendors = await _db.Vendors
-                    .Select(v => new { v.Code, v.CompanyAddress, v.Country })
+                    .Select(v => new {
+                        v.Code, v.Name, v.CompanyAddress, v.Country,
+                        v.Address1, v.Address2,
+                        v.Phone,
+                        v.ContactName, v.ContactTitle, v.ContactPhone, v.ContactEmail
+                    })
                     .ToListAsync();
-                var vendorAddressDict = allVendors.ToDictionary(v => v.Code, v => v.CompanyAddress ?? "");
-                var vendorCountryDict = allVendors.ToDictionary(v => v.Code, v => v.Country ?? "");
+
+                // Index by Code (primary) and by Name (fallback)
+                var vendorByCode = allVendors.GroupBy(v => v.Code).ToDictionary(g => g.Key, g => g.First());
+                var vendorByName = allVendors.GroupBy(v => v.Name).ToDictionary(g => g.Key, g => g.First());
+
+                // Helper: look up vendor by VendorId (may be Code or Name)
+                object? LookupVendor(string? vid)
+                {
+                    if (string.IsNullOrEmpty(vid)) return null;
+                    if (vendorByCode.TryGetValue(vid, out var byCode)) return byCode;
+                    if (vendorByName.TryGetValue(vid, out var byName)) return byName;
+                    return null;
+                }
+
+                var vendorAddressDict     = allVendors.ToDictionary(v => v.Code,
+                    v => !string.IsNullOrEmpty(v.Address1) ? v.Address1 : v.CompanyAddress ?? "");
+                var vendorCountryDict     = allVendors.ToDictionary(v => v.Code, v => v.Country ?? "");
+                var vendorContactNameDict = allVendors.ToDictionary(v => v.Code, v => v.ContactName ?? "");
+                var vendorContactTitleDict= allVendors.ToDictionary(v => v.Code, v => v.ContactTitle ?? "");
+                var vendorContactPhoneDict= allVendors.ToDictionary(v => v.Code, v => v.ContactPhone ?? "");
+                var vendorContactOfficeDict= allVendors.ToDictionary(v => v.Code, v => v.Phone ?? "");
+                var vendorContactEmailDict= allVendors.ToDictionary(v => v.Code, v => v.ContactEmail ?? "");
 
                 // Product type lookup — load tất cả products
                 var allProducts = await _db.Products
@@ -139,8 +165,21 @@ namespace InticooInspection.API.Controllers
                 {
                     var iid = i.InspectorId ?? "";
                     var inspName = inspectorByCode.TryGetValue(iid, out var n) ? n : i.InspectorName ?? "";
-                    vendorAddressDict.TryGetValue(i.VendorId ?? "", out var vAddr);
-                    vendorCountryDict.TryGetValue(i.VendorId ?? "", out var vCountry);
+
+                    // Vendor lookup: try by Code first, then by VendorName stored in inspection
+                    var vid = i.VendorId ?? "";
+                    var vByCode = vendorByCode.TryGetValue(vid, out var vbc) ? vbc : null;
+                    var vByName = vByCode == null && vendorByName.TryGetValue(i.VendorName ?? "", out var vbn) ? vbn : null;
+                    var v = vByCode ?? vByName;
+
+                    var vAddr    = v != null ? (!string.IsNullOrEmpty(v.Address1) ? v.Address1 : v.CompanyAddress ?? "") : "";
+                    var vCountry = v?.Country  ?? "";
+                    var vcName   = v?.ContactName  ?? "";
+                    var vcTitle  = v?.ContactTitle  ?? "";
+                    var vcPhone  = v?.ContactPhone  ?? "";
+                    var vcOffice = v?.Phone         ?? "";
+                    var vcEmail  = v?.ContactEmail  ?? "";
+
                     productTypeDict.TryGetValue(i.ProductName ?? "", out var ptype);
 
                     return (object)new
@@ -156,13 +195,19 @@ namespace InticooInspection.API.Controllers
                         customerId = i.CustomerId,
                         vendorName = i.VendorName,
                         vendorId = i.VendorId,
-                        vendorAddress = vAddr ?? "",
-                        vendorCountry = vCountry ?? "",
+                        vendorAddress = vAddr,
+                        vendorCountry = vCountry,
+                        vendorContactName     = vcName,
+                        vendorContactPosition = vcTitle,
+                        vendorContactMobile   = vcPhone,
+                        vendorContactOffice   = vcOffice,
+                        vendorContactEmail    = vcEmail,
                         productCategory = i.ProductCategory,
                         productType = ptype ?? "",
                         inspectionType = MapInspType(i.InspectionTypeVal),
                         inspectorId = iid,
-                        inspectorName = inspName
+                        inspectorName = inspName,
+                        poNumber = i.PoNumber ?? ""
                     };
                 }).ToList();
 
@@ -211,6 +256,29 @@ namespace InticooInspection.API.Controllers
                     .Where(u => u.InspectorId == inspection.InspectorId)
                     .Select(u => u.Country)
                     .FirstOrDefaultAsync() ?? "";
+            }
+
+            // Lookup Vendor — địa chỉ và thông tin liên hệ (Vendor.cs: ContactName, ContactTitle, ContactPhone, ContactEmail)
+            string vendorAddress = "", vendorCountry = "";
+            string contactName = "", contactTitle = "", contactPhone = "", contactOffice = "", contactEmail = "";
+            if (!string.IsNullOrEmpty(inspection.VendorId) || !string.IsNullOrEmpty(inspection.VendorName))
+            {
+                var vendor = await _db.Vendors
+                    .AsNoTracking()
+                    .Where(v => v.Code == inspection.VendorId || v.Name == inspection.VendorName)
+                    .FirstOrDefaultAsync();
+                if (vendor != null)
+                {
+                    vendorAddress = !string.IsNullOrEmpty(vendor.Address1)
+                                    ? vendor.Address1
+                                    : vendor.CompanyAddress ?? "";
+                    vendorCountry = vendor.Country        ?? "";
+                    contactName   = vendor.ContactName    ?? "";
+                    contactTitle  = vendor.ContactTitle   ?? "";
+                    contactPhone  = vendor.ContactPhone   ?? "";
+                    contactOffice = vendor.Phone          ?? "";
+                    contactEmail  = vendor.ContactEmail   ?? "";
+                }
             }
 
             // MapStatus: nhất quán với GetAll (0=New,1=OnGoing,2=Completed,3=Pending,4=Cancel)
@@ -286,6 +354,13 @@ namespace InticooInspection.API.Controllers
                 customerId = inspection.CustomerId,
                 vendorName = inspection.VendorName,
                 vendorId = inspection.VendorId,
+                vendorAddress = vendorAddress,
+                vendorCountry = vendorCountry,
+                contactName   = contactName,
+                contactTitle  = contactTitle,
+                contactPhone  = contactPhone,
+                contactOffice = contactOffice,
+                contactEmail  = contactEmail,
                 inspectionLocation = !string.IsNullOrEmpty(inspectorCountry)
                     ? inspectorCountry
                     : inspection.InspectionLocation,
@@ -338,6 +413,10 @@ namespace InticooInspection.API.Controllers
                     shippingMark = MapShipping(inspection.Packaging.ShippingMark),
                     hasBarcode = inspection.Packaging.HasBarcode,
                     innerPackingQty = inspection.Packaging.InnerPackingQty,
+                    innerL = inspection.Packaging.InnerSizeL,
+                    innerW = inspection.Packaging.InnerSizeW,
+                    innerH = inspection.Packaging.InnerSizeH,
+                    innerWeight = inspection.Packaging.InnerWeight,
                     innerPackingRemark = inspection.Packaging.InnerPackingRemark,
                     outerL = inspection.Packaging.OuterSizeL,
                     outerW = inspection.Packaging.OuterSizeW,
@@ -541,6 +620,10 @@ namespace InticooInspection.API.Controllers
                     ShippingMark = ParseShipping(request.Packaging.ShippingMark),
                     HasBarcode = request.Packaging.HasBarcode,
                     InnerPackingQty = request.Packaging.InnerPackingQty,
+                    InnerSizeL = request.Packaging.InnerL,
+                    InnerSizeW = request.Packaging.InnerW,
+                    InnerSizeH = request.Packaging.InnerH,
+                    InnerWeight = request.Packaging.InnerWeight,
                     InnerPackingRemark = request.Packaging.InnerPackingRemark,
                     OuterSizeL = request.Packaging.OuterL,
                     OuterSizeW = request.Packaging.OuterW,
@@ -875,6 +958,10 @@ namespace InticooInspection.API.Controllers
                     inspection.Packaging.ShippingMark = ParseShipping(request.Packaging.ShippingMark);
                     inspection.Packaging.HasBarcode = request.Packaging.HasBarcode;
                     inspection.Packaging.InnerPackingQty = request.Packaging.InnerPackingQty;
+                    inspection.Packaging.InnerSizeL = request.Packaging.InnerL;
+                    inspection.Packaging.InnerSizeW = request.Packaging.InnerW;
+                    inspection.Packaging.InnerSizeH = request.Packaging.InnerH;
+                    inspection.Packaging.InnerWeight = request.Packaging.InnerWeight;
                     inspection.Packaging.InnerPackingRemark = request.Packaging.InnerPackingRemark;
                     inspection.Packaging.OuterSizeL = request.Packaging.OuterL;
                     inspection.Packaging.OuterSizeW = request.Packaging.OuterW;
@@ -1054,6 +1141,7 @@ namespace InticooInspection.API.Controllers
         public string?   ItemNumber         { get; set; }
         public string?   InspectionType     { get; set; }
         public string    ProductName        { get; set; } = "";
+        public string?   ProductType        { get; set; }
         public string?   ProductCategory    { get; set; }
         public int       TotalShipmentQty   { get; set; }
         public int       TotalCartonBoxes   { get; set; }
@@ -1100,6 +1188,10 @@ namespace InticooInspection.API.Controllers
         public string? ShippingMark        { get; set; }
         public bool    HasBarcode          { get; set; }
         public int     InnerPackingQty     { get; set; }
+        public double  InnerL              { get; set; }
+        public double  InnerW              { get; set; }
+        public double  InnerH              { get; set; }
+        public double  InnerWeight         { get; set; }
         public string? InnerPackingRemark  { get; set; }
         public double  OuterL              { get; set; }
         public double  OuterW              { get; set; }

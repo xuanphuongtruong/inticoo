@@ -332,18 +332,24 @@ namespace InticooInspection.API.Controllers
             ShortName      = v.ShortName,
             Type           = (int)v.Type,
             Status         = (int)v.Status,
+            Category       = v.Category,
             TaxCode        = v.TaxCode,
             BusinessRegNo  = v.BusinessRegNo,
+            Phone          = v.Phone,
             Website        = v.Website,
             Notes          = v.Notes,
+            Address1       = v.Address1,
+            Address2       = v.Address2,
+            City           = v.City,
+            State          = v.State,
+            Country        = v.Country,
+            PostalCode     = v.PostalCode,
             ContactName    = v.ContactName,
             ContactTitle   = v.ContactTitle,
             ContactPhone   = v.ContactPhone,
             ContactEmail   = v.ContactEmail,
             CompanyAddress = v.CompanyAddress,
             BillingAddress = v.BillingAddress,
-            City           = v.City,
-            Country        = v.Country,
             AttachmentPath = v.AttachmentPath,
             AttachmentName = v.AttachmentName,
             CreatedAt      = v.CreatedAt,
@@ -365,18 +371,24 @@ namespace InticooInspection.API.Controllers
             v.ShortName      = r.ShortName;
             v.Type           = (VendorType)r.Type;
             v.Status         = (VendorStatus)r.Status;
+            v.Category       = r.Category;
             v.TaxCode        = r.TaxCode;
             v.BusinessRegNo  = r.BusinessRegNo;
+            v.Phone          = r.Phone;
             v.Website        = r.Website;
             v.Notes          = r.Notes;
+            v.Address1       = r.Address1;
+            v.Address2       = r.Address2;
+            v.City           = r.City;
+            v.State          = r.State;
+            v.Country        = r.Country;
+            v.PostalCode     = r.PostalCode;
             v.ContactName    = r.ContactName;
             v.ContactTitle   = r.ContactTitle;
             v.ContactPhone   = r.ContactPhone;
             v.ContactEmail   = r.ContactEmail;
             v.CompanyAddress = r.CompanyAddress;
             v.BillingAddress = r.BillingAddress;
-            v.City           = r.City;
-            v.Country        = r.Country;
             return v;
         }
     }
@@ -392,18 +404,25 @@ namespace InticooInspection.API.Controllers
         public string? ShortName      { get; set; }
         public int     Type           { get; set; } = 0;
         public int     Status         { get; set; } = 0;
+        public string? Category       { get; set; }
         public string? TaxCode        { get; set; }
         public string? BusinessRegNo  { get; set; }
+        public string? Phone          { get; set; }
         public string? Website        { get; set; }
         public string? Notes          { get; set; }
+        public string? Address1       { get; set; }
+        public string? Address2       { get; set; }
+        public string? City           { get; set; }
+        public string? State          { get; set; }
+        public string? Country        { get; set; }
+        public string? PostalCode     { get; set; }
         public string? ContactName    { get; set; }
         public string? ContactTitle   { get; set; }
         public string? ContactPhone   { get; set; }
         public string? ContactEmail   { get; set; }
+        // Legacy
         public string? CompanyAddress { get; set; }
         public string? BillingAddress { get; set; }
-        public string? City           { get; set; }
-        public string? Country        { get; set; }
     }
 
     public class AttachmentDto
@@ -424,18 +443,24 @@ namespace InticooInspection.API.Controllers
         public string?          ShortName      { get; set; }
         public int              Type           { get; set; }
         public int              Status         { get; set; }
+        public string?          Category       { get; set; }
         public string?          TaxCode        { get; set; }
         public string?          BusinessRegNo  { get; set; }
+        public string?          Phone          { get; set; }
         public string?          Website        { get; set; }
         public string?          Notes          { get; set; }
+        public string?          Address1       { get; set; }
+        public string?          Address2       { get; set; }
+        public string?          City           { get; set; }
+        public string?          State          { get; set; }
+        public string?          Country        { get; set; }
+        public string?          PostalCode     { get; set; }
         public string?          ContactName    { get; set; }
         public string?          ContactTitle   { get; set; }
         public string?          ContactPhone   { get; set; }
         public string?          ContactEmail   { get; set; }
         public string?          CompanyAddress { get; set; }
         public string?          BillingAddress { get; set; }
-        public string?          City           { get; set; }
-        public string?          Country        { get; set; }
         public string?          AttachmentPath { get; set; }
         public string?          AttachmentName { get; set; }
         public DateTime         CreatedAt      { get; set; }

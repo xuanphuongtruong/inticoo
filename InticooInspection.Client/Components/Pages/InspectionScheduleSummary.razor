@@ -2,8 +2,12 @@
 @using System.Globalization
 @using System.Net.Http.Json
 @using System.Text.Json
+@using System.Net.Http.Headers
+@using Microsoft.AspNetCore.Components.Authorization
 @inject HttpClient Http
 @inject NavigationManager Navigation
+@inject AuthenticationStateProvider AuthStateProvider
+@inject Blazored.SessionStorage.ISessionStorageService SessionStorage
 
 <div class="iss-page">
 
@@ -27,6 +31,14 @@
                 Back
             </button>
 
+            @if (_detailLoading)
+            {
+                <div style="display:flex;align-items:center;justify-content:center;padding:32px;gap:12px;color:#888;font-size:14px;">
+                    <div class="iss-spinner"></div>
+                    <span>Loading details…</span>
+                </div>
+            }
+
             <div class="iss-detail-card">
                 <div class="iss-detail-badge @GetStatusClass(_selectedJob.Status)">@_selectedJob.Status</div>
 
@@ -37,9 +49,69 @@
                     <div class="iss-field"><span class="iss-fl">Product Type</span><span class="iss-fv">@(_selectedJob.ProductType ?? "—")</span></div>
                     <div class="iss-field"><span class="iss-fl">Inspection Type</span><span class="iss-fv">@_selectedJob.InspectionType</span></div>
                     <div class="iss-field"><span class="iss-fl">Vendor Name</span><span class="iss-fv">@_selectedJob.VendorName</span></div>
-                    <div class="iss-field"><span class="iss-fl">Vendor Address</span><span class="iss-fv">@(_selectedJob.VendorAddress ?? "—")</span></div>
+                    <div class="iss-field"><span class="iss-fl">Vendor Address</span><span class="iss-fv">@(string.IsNullOrEmpty(_selectedJob.VendorAddress) ? "—" : _selectedJob.VendorAddress)</span></div>
+                    @if (!string.IsNullOrEmpty(_selectedJob.VendorCountry))
+                    {
+                        <div class="iss-field"><span class="iss-fl">Country</span><span class="iss-fv">@_selectedJob.VendorCountry</span></div>
+                    }
                 </div>
 
+                @* Vendor Information *@
+                @{
+                    bool hasVendorInfo = !string.IsNullOrEmpty(_selectedJob.VendorContactName)
+                                     || !string.IsNullOrEmpty(_selectedJob.VendorContactPosition)
+                                     || !string.IsNullOrEmpty(_selectedJob.VendorContactMobile)
+                                     || !string.IsNullOrEmpty(_selectedJob.VendorContactOffice)
+                                     || !string.IsNullOrEmpty(_selectedJob.VendorContactEmail);
+                }
+                @if (hasVendorInfo)
+                {
+                    <div class="iss-vendor-section">
+                        <div class="iss-vendor-title">Vendor Information</div>
+                        @if (!string.IsNullOrEmpty(_selectedJob.VendorContactName))
+                        {
+                            <div class="iss-vi-row">
+                                <span class="iss-vi-dot">•</span>
+                                <span class="iss-vi-label">Name</span>
+                                <span class="iss-vi-val">@_selectedJob.VendorContactName</span>
+                            </div>
+                        }
+                        @if (!string.IsNullOrEmpty(_selectedJob.VendorContactPosition))
+                        {
+                            <div class="iss-vi-row">
+                                <span class="iss-vi-dot">•</span>
+                                <span class="iss-vi-label">Position</span>
+                                <span class="iss-vi-val">@_selectedJob.VendorContactPosition</span>
+                            </div>
+                        }
+                        @if (!string.IsNullOrEmpty(_selectedJob.VendorContactMobile))
+                        {
+                            <div class="iss-vi-row">
+                                <span class="iss-vi-dot">•</span>
+                                <span class="iss-vi-label">Mobile</span>
+                                <span class="iss-vi-val">@_selectedJob.VendorContactMobile</span>
+                            </div>
+                        }
+                        @if (!string.IsNullOrEmpty(_selectedJob.VendorContactOffice))
+                        {
+                            <div class="iss-vi-row">
+                                <span class="iss-vi-dot">•</span>
+                                <span class="iss-vi-label">Office</span>
+                                <span class="iss-vi-val">@_selectedJob.VendorContactOffice</span>
+                            </div>
+                        }
+                        @if (!string.IsNullOrEmpty(_selectedJob.VendorContactEmail))
+                        {
+                            <div class="iss-vi-row">
+                                <span class="iss-vi-dot">•</span>
+                                <span class="iss-vi-label">Email</span>
+                                <span class="iss-vi-val">@_selectedJob.VendorContactEmail</span>
+                            </div>
+                        }
+                    </div>
+                }
+
+                @* Inspector Information *@
                 @if (!string.IsNullOrEmpty(_selectedJob.InspectorName))
                 {
                     <div class="iss-vendor-section">
@@ -48,6 +120,50 @@
                             <span class="iss-vi-dot">•</span>
                             <span class="iss-vi-label">Name</span>
                             <span class="iss-vi-val">@_selectedJob.InspectorName</span>
+                        </div>
+                    </div>
+                }
+
+                @* Reference List *@
+                @if (_selectedJobRefs.Count > 0)
+                {
+                    <div class="iss-vendor-section">
+                        <div class="iss-vendor-title">Product References</div>
+                        <div class="iss-ref-table">
+                            <div class="iss-ref-header">
+                                <span class="iss-ref-no">No</span>
+                                <span class="iss-ref-name">Reference</span>
+                                <span class="iss-ref-file">File</span>
+                            </div>
+                            @foreach (var ref_ in _selectedJobRefs)
+                            {
+                                <div class="iss-ref-row">
+                                    <span class="iss-ref-no">@ref_.No</span>
+                                    <span class="iss-ref-name">@ref_.ReferenceName</span>
+                                    <span class="iss-ref-file">
+                                        @if (!string.IsNullOrEmpty(ref_.FileUrl))
+                                        {
+                                            <a href="@ref_.FileUrl" target="_blank" class="iss-ref-view-btn" title="View">
+                                                <svg width="13" height="13" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2">
+                                                    <path d="M1 10s3.5-7 9-7 9 7 9 7-3.5 7-9 7-9-7-9-7z"/><circle cx="10" cy="10" r="3"/>
+                                                </svg>
+                                                View
+                                            </a>
+                                            <a href="@ref_.FileUrl" download="@ref_.FileName" class="iss-ref-dl-btn" title="Download">
+                                                <svg width="13" height="13" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2">
+                                                    <path d="M10 3v10M6 9l4 4 4-4" stroke-linecap="round" stroke-linejoin="round"/>
+                                                    <path d="M3 17h14" stroke-linecap="round"/>
+                                                </svg>
+                                                Download
+                                            </a>
+                                        }
+                                        else
+                                        {
+                                            <span style="color:#bbb;font-size:12px;">No file</span>
+                                        }
+                                    </span>
+                                </div>
+                            }
                         </div>
                     </div>
                 }
@@ -220,9 +336,9 @@
                             <div class="iss-comp-field">
                                 <span class="iss-comp-label">
                                     <svg width="11" height="11" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 4h12v12H4z"/><circle cx="10" cy="10" r="3"/></svg>
-                                    Product Type
+                                    PO Number
                                 </span>
-                                <span class="iss-comp-val">@(job.ProductType ?? "—")</span>
+                                <span class="iss-comp-val">@(job.PoNumber ?? "—")</span>
                             </div>
                         </div>
 
@@ -259,7 +375,7 @@
                 <div class="iss-card-grid">
                     @foreach (var job in filtered)
                     {
-                        <div class="iss-job-card" @onclick="() => OpenJobDetail(job)">
+                        <div class="iss-job-card" @onclick="async () => await OpenJobDetail(job)">
                             <div class="iss-jc-top">
                                 <span class="iss-job-no">@(job.JobNumber ?? $"#{job.Id}")</span>
                                 <span class="iss-it-badge it-@job.InspectionType.ToLower()">@job.InspectionType</span>
@@ -270,7 +386,21 @@
                                 <div class="iss-jf"><span class="iss-jl">Product Type</span><span class="iss-jv">@(job.ProductType ?? "—")</span></div>
                                 <div class="iss-jf"><span class="iss-jl">Inspection Type</span><span class="iss-jv">@job.InspectionType</span></div>
                                 <div class="iss-jf"><span class="iss-jl">Vendor Name</span><span class="iss-jv">@job.VendorName</span></div>
-                                <div class="iss-jf"><span class="iss-jl">Vendor Address</span><span class="iss-jv">@(job.VendorAddress ?? "—")</span></div>
+                                <div class="iss-jf"><span class="iss-jl">Vendor Address</span><span class="iss-jv">@(string.IsNullOrEmpty(job.VendorAddress) ? "—" : job.VendorAddress)</span></div>
+                                @if (!string.IsNullOrEmpty(job.VendorContactName) || !string.IsNullOrEmpty(job.VendorContactMobile))
+                                {
+                                    <div class="iss-jf iss-jf-section"><span class="iss-jl iss-jl-section">Vendor Information</span></div>
+                                    @if (!string.IsNullOrEmpty(job.VendorContactName))
+                                    { <div class="iss-jf iss-jf-sub"><span class="iss-jl">• Name</span><span class="iss-jv">@job.VendorContactName</span></div> }
+                                    @if (!string.IsNullOrEmpty(job.VendorContactPosition))
+                                    { <div class="iss-jf iss-jf-sub"><span class="iss-jl">• Position</span><span class="iss-jv">@job.VendorContactPosition</span></div> }
+                                    @if (!string.IsNullOrEmpty(job.VendorContactMobile))
+                                    { <div class="iss-jf iss-jf-sub"><span class="iss-jl">• Mobile</span><span class="iss-jv">@job.VendorContactMobile</span></div> }
+                                    @if (!string.IsNullOrEmpty(job.VendorContactOffice))
+                                    { <div class="iss-jf iss-jf-sub"><span class="iss-jl">• Office</span><span class="iss-jv">@job.VendorContactOffice</span></div> }
+                                    @if (!string.IsNullOrEmpty(job.VendorContactEmail))
+                                    { <div class="iss-jf iss-jf-sub"><span class="iss-jl">• Email</span><span class="iss-jv">@job.VendorContactEmail</span></div> }
+                                }
                             </div>
                             <div class="iss-jc-foot">
                                 <span class="iss-st-pill @GetStatusClass(job.Status)">@job.Status</span>
@@ -296,14 +426,28 @@
                         </div>
                         @foreach (var job in grp)
                         {
-                            <div class="iss-list-item" @onclick="() => OpenJobDetail(job)">
+                            <div class="iss-list-item" @onclick="async () => await OpenJobDetail(job)">
                                 <div class="iss-li-body">
                                     <div class="iss-li-row"><span class="iss-ll">Date</span><span class="iss-lv">@job.InspectionDate.ToString("d MMM yyyy")</span></div>
                                     <div class="iss-li-row"><span class="iss-ll">Category</span><span class="iss-lv">@(job.ProductCategory ?? "—")</span></div>
                                     <div class="iss-li-row"><span class="iss-ll">Product Type</span><span class="iss-lv">@(job.ProductType ?? "—")</span></div>
                                     <div class="iss-li-row"><span class="iss-ll">Inspection Type</span><span class="iss-lv">@job.InspectionType</span></div>
                                     <div class="iss-li-row"><span class="iss-ll">Vendor Name</span><span class="iss-lv">@job.VendorName</span></div>
-                                    <div class="iss-li-row"><span class="iss-ll">Vendor Address</span><span class="iss-lv">@(job.VendorAddress ?? "—")</span></div>
+                                    <div class="iss-li-row"><span class="iss-ll">Vendor Address</span><span class="iss-lv">@(string.IsNullOrEmpty(job.VendorAddress) ? "—" : job.VendorAddress)</span></div>
+                                    @if (!string.IsNullOrEmpty(job.VendorContactName) || !string.IsNullOrEmpty(job.VendorContactMobile))
+                                    {
+                                        <div class="iss-li-row"><span class="iss-ll iss-jl-section">Vendor Information</span></div>
+                                        @if (!string.IsNullOrEmpty(job.VendorContactName))
+                                        { <div class="iss-li-row iss-li-sub"><span class="iss-ll">• Name</span><span class="iss-lv">@job.VendorContactName</span></div> }
+                                        @if (!string.IsNullOrEmpty(job.VendorContactPosition))
+                                        { <div class="iss-li-row iss-li-sub"><span class="iss-ll">• Position</span><span class="iss-lv">@job.VendorContactPosition</span></div> }
+                                        @if (!string.IsNullOrEmpty(job.VendorContactMobile))
+                                        { <div class="iss-li-row iss-li-sub"><span class="iss-ll">• Mobile</span><span class="iss-lv">@job.VendorContactMobile</span></div> }
+                                        @if (!string.IsNullOrEmpty(job.VendorContactOffice))
+                                        { <div class="iss-li-row iss-li-sub"><span class="iss-ll">• Office</span><span class="iss-lv">@job.VendorContactOffice</span></div> }
+                                        @if (!string.IsNullOrEmpty(job.VendorContactEmail))
+                                        { <div class="iss-li-row iss-li-sub"><span class="iss-ll">• Email</span><span class="iss-lv">@job.VendorContactEmail</span></div> }
+                                    }
                                 </div>
                                 <svg class="iss-chevron" width="16" height="16" viewBox="0 0 20 20"
                                      fill="none" stroke="#ccc" stroke-width="2" stroke-linecap="round">
@@ -335,7 +479,7 @@
                                     <div class="iss-cal-date">@d1.ToString("d MMM yyyy")</div>
                                     @foreach (var j in j1)
                                     {
-                                        <div class="iss-cal-job" @onclick="() => OpenJobDetail(j)">
+                                        <div class="iss-cal-job" @onclick="async () => await OpenJobDetail(j)">
                                             <span class="iss-it-badge it-@j.InspectionType.ToLower()">@j.InspectionType</span>
                                             <div class="iss-cj-cat">@(j.ProductCategory ?? "—")</div>
                                             <div class="iss-cj-vendor">@j.VendorName</div>
@@ -348,7 +492,7 @@
                                         <div class="iss-cal-date">@d2.Value.ToString("d MMM yyyy")</div>
                                         @foreach (var j in j2)
                                         {
-                                            <div class="iss-cal-job" @onclick="() => OpenJobDetail(j)">
+                                            <div class="iss-cal-job" @onclick="async () => await OpenJobDetail(j)">
                                                 <span class="iss-it-badge it-@j.InspectionType.ToLower()">@j.InspectionType</span>
                                                 <div class="iss-cj-cat">@(j.ProductCategory ?? "—")</div>
                                                 <div class="iss-cj-vendor">@j.VendorName</div>
@@ -378,7 +522,7 @@
                             {
                                 @foreach (var j in dj)
                                 {
-                                    <div class="iss-cal-row" @onclick="() => OpenJobDetail(j)">
+                                    <div class="iss-cal-row" @onclick="async () => await OpenJobDetail(j)">
                                         <span class="iss-it-badge it-@j.InspectionType.ToLower()">@j.InspectionType</span>
                                         <span class="iss-cal-info">@(j.ProductCategory ?? "—") · @j.VendorName</span>
                                         <svg width="14" height="14" viewBox="0 0 20 20" fill="none"
@@ -414,6 +558,14 @@
     private List<JobItem>    _allJobs      = new();
     private List<MonthStat>  _monthSummary = new();
 
+    // Role-based filter
+    private string _filterInspectorId = "";
+    private string _filterCustomerId  = "";
+
+    // Job detail state
+    private bool               _detailLoading = false;
+    private List<JobReference> _selectedJobRefs = new();
+
     // ────────────────────────────────────────────
     //  VIEW MODELS
     // ────────────────────────────────────────────
@@ -423,18 +575,36 @@
         public string?  JobNumber       { get; set; }
         public string   Title           { get; set; } = "";
         public string   CustomerName    { get; set; } = "";
+        public string?  CustomerId      { get; set; }
         public string?  ProductCategory { get; set; }
         public string?  ProductType     { get; set; }
         public string   InspectionType  { get; set; } = "DPI";
         public string   VendorName      { get; set; } = "";
         public string?  VendorAddress   { get; set; }
+        public string?  VendorCountry   { get; set; }
+        // Vendor Information (contact)
+        public string?  VendorContactName     { get; set; }
+        public string?  VendorContactPosition { get; set; }
+        public string?  VendorContactMobile   { get; set; }
+        public string?  VendorContactOffice   { get; set; }
+        public string?  VendorContactEmail    { get; set; }
+        public string?  PoNumber         { get; set; }
         public string?  InspectorName   { get; set; }
+        public string?  InspectorId     { get; set; }
         public string   Status          { get; set; } = "New";
         public DateTime InspectionDate  { get; set; }
         public DateTime CreatedAt       { get; set; }
         public DateTime? CompletedAt    { get; set; }
         public string?   OverallResult  { get; set; }
         public string?   ReportUrl      { get; set; }
+    }
+
+    public class JobReference
+    {
+        public int     No            { get; set; }
+        public string  ReferenceName { get; set; } = "";
+        public string? FileName      { get; set; }
+        public string? FileUrl       { get; set; }
     }
 
     public record MonthStat(string ShortName, int Count);
@@ -507,7 +677,77 @@
     // ────────────────────────────────────────────
     protected override async Task OnInitializedAsync()
     {
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        var user      = authState.User;
+
+        if (user.IsInRole("Inspector") || user.IsInRole("Customer"))
+        {
+            var username = user.Identity?.Name
+                        ?? user.FindFirst("name")?.Value
+                        ?? user.FindFirst(System.Security.Claims.ClaimTypes.Name)?.Value
+                        ?? "";
+
+            Console.WriteLine($"[Schedule] Role filter — username={username}, isInspector={user.IsInRole("Inspector")}, isCustomer={user.IsInRole("Customer")}");
+
+            if (!string.IsNullOrEmpty(username))
+            {
+                try
+                {
+                    var token = await SessionStorage.GetItemAsync<string>("auth_token");
+                    if (!string.IsNullOrEmpty(token))
+                        Http.DefaultRequestHeaders.Authorization =
+                            new AuthenticationHeaderValue("Bearer", token);
+
+                    var opts = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+                    var json = await Http.GetStringAsync(
+                        $"api/users?search={Uri.EscapeDataString(username)}&pageSize=5");
+
+                    Console.WriteLine($"[Schedule] api/users response: {json}");
+
+                    var result = JsonSerializer.Deserialize<UserPageResult>(json, opts);
+                    var me = result?.Items?.FirstOrDefault(u =>
+                        string.Equals(u.Username, username, StringComparison.OrdinalIgnoreCase));
+
+                    Console.WriteLine($"[Schedule] me={me?.Username}, InspectorId={me?.InspectorId}, CustomerId={me?.CustomerId}");
+
+                    if (me != null)
+                    {
+                        if (user.IsInRole("Inspector"))
+                            _filterInspectorId = me.InspectorId ?? "";
+                        else if (user.IsInRole("Customer"))
+                            _filterCustomerId = me.CustomerId ?? "";
+                    }
+
+                    Console.WriteLine($"[Schedule] _filterInspectorId={_filterInspectorId}, _filterCustomerId={_filterCustomerId}");
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"[InspectionSchedule] Error resolving user filter: {ex.Message}");
+                }
+            }
+        }
+        // Admin: không filter, load hết
+
         await LoadAllJobs();
+
+        // Fallback: nếu backend không filter được, filter client-side theo customerId/inspectorId
+        if (!string.IsNullOrEmpty(_filterCustomerId))
+        {
+            _allJobs = _allJobs.Where(j =>
+                !string.IsNullOrEmpty(j.CustomerId) &&
+                j.CustomerId.Equals(_filterCustomerId, StringComparison.OrdinalIgnoreCase)
+            ).ToList();
+            Console.WriteLine($"[Schedule] After client filter by customerId={_filterCustomerId}: {_allJobs.Count} jobs");
+        }
+        else if (!string.IsNullOrEmpty(_filterInspectorId))
+        {
+            _allJobs = _allJobs.Where(j =>
+                !string.IsNullOrEmpty(j.InspectorId) &&
+                j.InspectorId.Equals(_filterInspectorId, StringComparison.OrdinalIgnoreCase)
+            ).ToList();
+            Console.WriteLine($"[Schedule] After client filter by inspectorId={_filterInspectorId}: {_allJobs.Count} jobs");
+        }
+
         BuildMonthSummary();
         _loading = false;
     }
@@ -516,21 +756,26 @@
     {
         try
         {
-            // Load tất cả job (không filter status ở đây — filter ở client)
+            // Build filter suffix theo role
+            var filterSuffix = "";
+            if (!string.IsNullOrEmpty(_filterInspectorId))
+                filterSuffix = $"&inspectorId={Uri.EscapeDataString(_filterInspectorId)}";
+            else if (!string.IsNullOrEmpty(_filterCustomerId))
+                filterSuffix = $"&customerId={Uri.EscapeDataString(_filterCustomerId)}";
+
+            var opts = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+
             var r1 = await Http.GetFromJsonAsync<ApiPageResponse>(
-                "api/inspections?page=1&pageSize=200",
-                new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                $"api/inspections?page=1&pageSize=200{filterSuffix}", opts);
 
             if (r1?.Items == null) return;
             _allJobs = r1.Items.Select(MapToJobItem).ToList();
 
-            // Load các trang tiếp theo nếu có
             int totalPages = (int)Math.Ceiling((double)r1.Total / 200);
             for (int p = 2; p <= totalPages; p++)
             {
                 var rp = await Http.GetFromJsonAsync<ApiPageResponse>(
-                    $"api/inspections?page={p}&pageSize=200",
-                    new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                    $"api/inspections?page={p}&pageSize=200{filterSuffix}", opts);
                 if (rp?.Items != null)
                     _allJobs.AddRange(rp.Items.Select(MapToJobItem));
             }
@@ -547,19 +792,26 @@
         JobNumber       = i.JobNumber ?? i.Title,
         Title           = i.Title      ?? "",
         CustomerName    = i.CustomerName ?? "",
+        CustomerId      = i.CustomerId,
         ProductCategory = string.IsNullOrEmpty(i.ProductCategory) ? null : i.ProductCategory,
         ProductType     = string.IsNullOrEmpty(i.ProductType)     ? null : i.ProductType,
         InspectionType  = i.InspectionType ?? "DPI",
         VendorName      = i.VendorName  ?? "",
         VendorAddress   = string.IsNullOrEmpty(i.VendorAddress)   ? null : i.VendorAddress,
+        VendorContactName     = i.VendorContactName,
+        VendorContactPosition = i.VendorContactPosition,
+        VendorContactMobile   = i.VendorContactMobile,
+        VendorContactOffice   = i.VendorContactOffice,
+        VendorContactEmail    = i.VendorContactEmail,
         InspectorName   = i.InspectorName,
+        InspectorId     = i.InspectorId,
         Status          = i.Status      ?? "New",
-        // Nếu API không có InspectionDate → DateTime.MinValue → bị loại khỏi mọi filter
         InspectionDate  = i.InspectionDate ?? DateTime.MinValue,
         CreatedAt       = i.CreatedAt,
         CompletedAt     = i.CompletedAt,
         OverallResult   = null,
         ReportUrl       = null,
+        PoNumber        = i.PoNumber,
     };
 
     private void BuildMonthSummary()
@@ -583,11 +835,77 @@
     // ────────────────────────────────────────────
     private void SetTimeFilter(string f) { _timeFilter = f; _view = View.Summary; }
 
-    private void OpenJobDetail(JobItem job)
+    private async Task OpenJobDetail(JobItem job)
     {
-        _selectedJob    = job;
-        _prevTimeFilter = _timeFilter;
-        _view           = View.JobDetail;
+        _selectedJob     = job;
+        _prevTimeFilter  = _timeFilter;
+        _selectedJobRefs = new();
+        _view            = View.JobDetail;
+        _detailLoading   = true;
+        StateHasChanged();
+
+        try
+        {
+            var token = await SessionStorage.GetItemAsync<string>("auth_token");
+            if (!string.IsNullOrEmpty(token))
+                Http.DefaultRequestHeaders.Authorization =
+                    new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+
+            var opts = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+            var json = await Http.GetStringAsync($"api/inspections/{job.Id}");
+            using var doc = JsonDocument.Parse(json);
+            var root = doc.RootElement;
+
+            // Vendor Address & Country
+            if (root.TryGetProperty("vendorAddress", out var va) && va.ValueKind != JsonValueKind.Null)
+                _selectedJob.VendorAddress = va.GetString();
+            if (root.TryGetProperty("vendorCountry", out var vc) && vc.ValueKind != JsonValueKind.Null)
+                _selectedJob.VendorCountry = vc.GetString();
+
+            // Vendor Information (contact)
+            // Thử lấy từ vendor object hoặc flat fields
+            if (root.TryGetProperty("contactName",     out var cn) && cn.ValueKind != JsonValueKind.Null)
+                _selectedJob.VendorContactName     = cn.GetString();
+            if (root.TryGetProperty("contactTitle",    out var ct) && ct.ValueKind != JsonValueKind.Null)
+                _selectedJob.VendorContactPosition = ct.GetString();
+            if (root.TryGetProperty("contactPhone",    out var cp) && cp.ValueKind != JsonValueKind.Null)
+                _selectedJob.VendorContactMobile   = cp.GetString();
+            if (root.TryGetProperty("contactOffice",   out var co) && co.ValueKind != JsonValueKind.Null)
+                _selectedJob.VendorContactOffice   = co.GetString();
+            if (root.TryGetProperty("contactEmail",    out var ce) && ce.ValueKind != JsonValueKind.Null)
+                _selectedJob.VendorContactEmail    = ce.GetString();
+
+            // References
+            if (root.TryGetProperty("references", out var refs) &&
+                refs.ValueKind == JsonValueKind.Array)
+            {
+                int no = 1;
+                foreach (var r in refs.EnumerateArray())
+                {
+                    var rawUrl  = r.TryGetProperty("fileUrl",       out var fu) ? fu.GetString() ?? "" : "";
+                    var baseUrl = Http.BaseAddress?.ToString().TrimEnd('/') ?? "";
+                    var fullUrl = (!string.IsNullOrEmpty(rawUrl) && !rawUrl.StartsWith("http"))
+                                  ? $"{baseUrl}{(rawUrl.StartsWith('/') ? rawUrl : "/" + rawUrl)}"
+                                  : rawUrl;
+                    _selectedJobRefs.Add(new JobReference
+                    {
+                        No            = no++,
+                        ReferenceName = r.TryGetProperty("referenceName", out var rn) ? rn.GetString() ?? "" : "",
+                        FileName      = r.TryGetProperty("fileName",      out var fn) ? fn.GetString() : null,
+                        FileUrl       = string.IsNullOrEmpty(fullUrl) ? null : fullUrl,
+                    });
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[InspectionSchedule] Detail load error: {ex.Message}");
+        }
+        finally
+        {
+            _detailLoading = false;
+            StateHasChanged();
+        }
     }
 
     private void GoBack() { _view = View.Summary; _timeFilter = _prevTimeFilter; }
@@ -624,6 +942,18 @@
         public List<ApiItem>? Items    { get; set; }
     }
 
+    private class UserPageResult
+    {
+        public int Total { get; set; }
+        public List<CurrentUserDto> Items { get; set; } = new();
+    }
+    private class CurrentUserDto
+    {
+        public string  Username    { get; set; } = "";
+        public string? InspectorId { get; set; }
+        public string? CustomerId  { get; set; }
+    }
+
     private class ApiItem
     {
         public int       Id              { get; set; }
@@ -631,12 +961,21 @@
         public string?   Status          { get; set; }
         public string?   JobNumber       { get; set; }
         public string?   CustomerName    { get; set; }
+        public string?   CustomerId      { get; set; }
         public string?   VendorName      { get; set; }
+        public string?   VendorId        { get; set; }
         public string?   VendorAddress   { get; set; }
+        public string?   VendorContactName     { get; set; }
+        public string?   VendorContactPosition { get; set; }
+        public string?   VendorContactMobile   { get; set; }
+        public string?   VendorContactOffice   { get; set; }
+        public string?   VendorContactEmail    { get; set; }
         public string?   ProductCategory { get; set; }
         public string?   ProductType     { get; set; }
         public string?   InspectionType  { get; set; }
         public string?   InspectorName   { get; set; }
+        public string?   InspectorId     { get; set; }
+        public string?   PoNumber        { get; set; }
         public DateTime? InspectionDate  { get; set; }
         public DateTime  CreatedAt       { get; set; }
         public DateTime? CompletedAt     { get; set; }
@@ -651,6 +990,20 @@
         min-height: 100vh;
         padding-bottom: 48px;
     }
+
+    /* ══════════ REFERENCE TABLE ══════════ */
+    .iss-ref-table { margin-top: 8px; border: 1px solid #e4eaf4; border-radius: 10px; overflow: hidden; background: #fff; }
+    .iss-ref-header { display: flex; align-items: center; background: #f5f8fc; padding: 8px 12px; border-bottom: 1px solid #e4eaf4; font-size: 11px; font-weight: 700; color: #7a8fad; text-transform: uppercase; letter-spacing: .05em; }
+    .iss-ref-row { display: flex; align-items: center; padding: 10px 12px; border-bottom: 1px solid #f0f3f8; font-size: 13px; }
+    .iss-ref-row:last-child { border-bottom: none; }
+    .iss-ref-row:hover { background: #f7fafd; }
+    .iss-ref-no   { width: 36px; flex-shrink: 0; color: #b0bdd4; font-size: 12px; text-align: center; }
+    .iss-ref-name { flex: 1; color: #1a2d5a; font-weight: 500; padding-right: 12px; }
+    .iss-ref-file { display: flex; gap: 6px; flex-shrink: 0; }
+    .iss-ref-view-btn { display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; border-radius: 6px; background: #e6f1fb; color: #1e90d6; border: 1px solid #b5d4f4; font-size: 12px; font-weight: 500; text-decoration: none; transition: background .15s; }
+    .iss-ref-view-btn:hover { background: #cce4f8; }
+    .iss-ref-dl-btn { display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; border-radius: 6px; background: #eaf3de; color: #3b6d11; border: 1px solid #c0dd97; font-size: 12px; font-weight: 500; text-decoration: none; transition: background .15s; }
+    .iss-ref-dl-btn:hover { background: #d4ebb8; }
 
     /* ══════════ LOADING ══════════ */
     .iss-loading {
@@ -856,6 +1209,10 @@
     .iss-jc-body { flex: 1; }
     .iss-jf { display: flex; gap: 6px; margin-bottom: 5px; align-items: baseline; }
     .iss-jl { font-size: 11px; color: #2D7DD2; font-weight: 600; min-width: 100px; flex-shrink: 0; }
+    .iss-jf-section { margin-top:6px; padding-top:6px; border-top:1px dashed #e0e8f5; }
+    .iss-jl-section  { color:#555; font-weight:700; font-size:11px; }
+    .iss-jf-sub .iss-jl { color:#888; font-weight:500; padding-left:4px; }
+    .iss-li-sub .iss-ll { color:#888; font-weight:500; padding-left:4px; }
     .iss-jv { font-size: 12px; color: #333; word-break: break-word; }
 
     .iss-jc-foot {

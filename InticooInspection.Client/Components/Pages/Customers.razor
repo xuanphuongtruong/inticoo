@@ -6,6 +6,8 @@
 @inject HttpClient Http
 @inject Blazored.SessionStorage.ISessionStorageService SessionStorage
 @inject Microsoft.AspNetCore.Components.Authorization.AuthenticationStateProvider AuthStateProvider
+@using InticooInspection.Client.Services
+@inject WaitingService Waiting
 
 <PageTitle>Customers - Inticoo</PageTitle>
 
@@ -51,25 +53,24 @@ else
         <table class="ptable">
             <thead>
                 <tr class="thead-group">
-                    <th rowspan="2" class="tc">No</th>
+                    <th rowspan="2" class="tc th-no">No</th>
                     <th rowspan="2">Customer Name</th>
                     <th rowspan="2" class="tc">Customer ID</th>
                     <th rowspan="2">Category</th>
                     <th colspan="3" class="th-grp">Customer Address</th>
-                    <th colspan="5" class="th-grp">Customer Information</th>
+                    <th colspan="3" class="th-grp">Contact Information</th>
                     <th rowspan="2" class="tc">Files</th>
                     <th rowspan="2" class="tc">Status</th>
-                    <th rowspan="2" class="tc">Actions</th>
+                    <th rowspan="2" class="tc">Full Detail</th>
+                    <th rowspan="2" class="tc">Action</th>
                 </tr>
                 <tr class="thead-sub">
-                    <th>Address</th>
                     <th>City</th>
-                    <th class="th-y">Country</th>
-                    <th>Name</th>
+                    <th>States / Province</th>
+                    <th>Country</th>
+                    <th>Contact Name</th>
                     <th>Position</th>
                     <th>Mobile</th>
-                    <th>Office</th>
-                    <th>Email</th>
                 </tr>
             </thead>
             <tbody>
@@ -83,19 +84,29 @@ else
                         <td>
                             <div class="company-cell">
                                 <div class="company-avatar">@GetInitials(item.CompanyName)</div>
-                                <div class="company-name">@item.CompanyName</div>
+                                <div>
+                                    <div class="company-name">@item.CompanyName</div>
+                                    @if (!string.IsNullOrEmpty(item.ShortName))
+                                    {
+                                        <div style="font-size:11px;color:#9baac8;">@item.ShortName</div>
+                                    }
+                                </div>
                             </div>
                         </td>
                         <td class="td-center mono">@(string.IsNullOrEmpty(item.CustomerId) ? "-" : item.CustomerId)</td>
-                        <td class="muted">@(string.IsNullOrEmpty(item.Category) ? "-" : item.Category)</td>
-                        <td class="muted">@(string.IsNullOrEmpty(item.Address) ? "-" : item.Address)</td>
-                        <td class="muted">@(string.IsNullOrEmpty(item.City) ? "-" : item.City)</td>
+                        <td class="muted">
+                            @if (!string.IsNullOrEmpty(item.Category))
+                            {
+                                <span class="cat-badge">@item.Category</span>
+                            }
+                            else { <span class="muted">-</span> }
+                        </td>
+                        <td class="muted">@(string.IsNullOrEmpty(item.City)    ? "-" : item.City)</td>
+                        <td class="muted">@(string.IsNullOrEmpty(item.State)   ? "-" : item.State)</td>
                         <td class="muted">@(string.IsNullOrEmpty(item.Country) ? "-" : item.Country)</td>
                         <td class="muted">@(string.IsNullOrEmpty(item.ContactPerson) ? "-" : item.ContactPerson)</td>
-                        <td class="muted">@(string.IsNullOrEmpty(item.Position) ? "-" : item.Position)</td>
-                        <td class="mono">@(string.IsNullOrEmpty(item.Phone) ? "-" : item.Phone)</td>
-                        <td class="mono">@(string.IsNullOrEmpty(item.OfficePhone) ? "-" : item.OfficePhone)</td>
-                        <td class="muted">@(string.IsNullOrEmpty(item.Email) ? "-" : item.Email)</td>
+                        <td class="muted">@(string.IsNullOrEmpty(item.Position)      ? "-" : item.Position)</td>
+                        <td class="mono">@(string.IsNullOrEmpty(item.Mobile)         ? "-" : item.Mobile)</td>
                         <td class="tc">
                             @if (item.FileCount > 0)
                             {
@@ -104,10 +115,7 @@ else
                                     @item.FileCount
                                 </button>
                             }
-                            else
-                            {
-                                <span class="muted">—</span>
-                            }
+                            else { <span class="muted">—</span> }
                         </td>
                         <td class="tc">
                             <span class="status-badge @(item.IsActive ? "active" : "inactive")">
@@ -115,8 +123,14 @@ else
                             </span>
                         </td>
                         <td class="tc">
+                            <button class="action-btn view" @onclick="() => OpenDetail(item)" title="View Detail">
+                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                                View
+                            </button>
+                        </td>
+                        <td class="tc">
                             <AuthorizeView Roles="Admin">
-                                <div class="tc">
+                                <div class="action-btns">
                                     <button class="bico bedit" @onclick="() => OpenEdit(item)" title="Edit">
                                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                                         Edit
@@ -159,57 +173,105 @@ else
                 <div class="error-alert">@_formError</div>
             }
 
-            <!-- Section: Basic Info -->
-            <div class="form-section-title">Basic Information</div>
-            <div class="form-grid">
-                @if (_editId != null)
-                {
+            @if (_editId != null)
+            {
+                <div class="form-grid" style="margin-bottom:8px;">
                     <div class="form-group">
                         <label>Customer ID</label>
                         <input class="form-input form-input-disabled" type="text" value="@_formCustomerId" disabled />
                     </div>
-                }
-                <div class="form-group @(_editId != null ? "" : "full-width")">
-                    <label>Company Name <span class="required">*</span></label>
+                    <div class="form-group">
+                        <label>Status</label>
+                        <label class="check-label" style="margin-top:10px;">
+                            <input type="checkbox" @bind="_formIsActive" />
+                            <span>@(_formIsActive ? "Active" : "Inactive")</span>
+                        </label>
+                    </div>
+                </div>
+            }
+
+            <!-- Section: Customer Profile -->
+            <div class="form-section-title">Customer Profile</div>
+            <div class="form-grid">
+                <div class="form-group">
+                    <label>Customer Name <span class="required">*</span></label>
                     <input class="form-input" type="text" placeholder="Enter company name"
                            @bind="_formCompanyName" @bind:event="oninput" />
                 </div>
                 <div class="form-group">
-                    <label>Category</label>
-                    <input class="form-input" type="text" placeholder="e.g. Retailer, Manufacturer"
-                           @bind="_formCategory" @bind:event="oninput" />
+                    <label>Short Name</label>
+                    <input class="form-input" type="text" placeholder="Enter short name"
+                           @bind="_formShortName" @bind:event="oninput" />
+                </div>
+                <div class="form-group full-width">
+                    <label>Business Type</label>
+                    <div class="btype-group">
+                        @foreach (var bt in new[] { "Importer", "Wholesalers", "Retailers", "Trading Company", "Other" })
+                        {
+                            var btVal = bt;
+                            <label class="btype-label @(_formBusinessType == btVal ? "btype-active" : "")"
+                                   @onclick="() => _formBusinessType = btVal">
+                                @btVal
+                            </label>
+                        }
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Product Category</label>
+                    <select class="form-input" @bind="_formCategory">
+                        <option value="">-- Select Category --</option>
+                        <option>Furniture</option>
+                        <option>Outdoor Furniture</option>
+                        <option>Indoor Furniture</option>
+                        <option>Office Furniture</option>
+                        <option>Bedroom Furniture</option>
+                        <option>Lighting</option>
+                        <option>Home Decor</option>
+                        <option>Electronics</option>
+                        <option>Toys &amp; Games</option>
+                        <option>Clothing &amp; Apparel</option>
+                        <option>Footwear</option>
+                        <option>Bags &amp; Luggage</option>
+                        <option>Kitchenware</option>
+                        <option>Sportswear</option>
+                        <option>Hardware &amp; Tools</option>
+                        <option>Other</option>
+                    </select>
                 </div>
                 <div class="form-group">
                     <label>Tax Code</label>
                     <input class="form-input" type="text" placeholder="Enter tax code"
                            @bind="_formTaxCode" @bind:event="oninput" />
                 </div>
+                <div class="form-group">
+                    <label>Business Ref. No</label>
+                    <input class="form-input" type="text" placeholder="Enter business reference number"
+                           @bind="_formBusinessRefNo" @bind:event="oninput" />
+                </div>
+                <div class="form-group">
+                    <label>Phone</label>
+                    <input class="form-input" type="text" placeholder="Enter phone number"
+                           @bind="_formPhone" @bind:event="oninput" />
+                </div>
+                <div class="form-group">
+                    <label>Website</label>
+                    <input class="form-input" type="text" placeholder="https://..."
+                           @bind="_formWebsite" @bind:event="oninput" />
+                </div>
             </div>
 
-            <!-- Section: Address -->
+            <!-- Section: Customer Address -->
             <div class="form-section-title">Customer Address</div>
             <div class="form-grid">
                 <div class="form-group full-width">
-                    <label>Address</label>
-                    <input class="form-input" type="text" placeholder="Enter street address"
-                           @bind="_formAddress" @bind:event="oninput" />
+                    <label>Address 1</label>
+                    <input class="form-input" type="text" placeholder="Street address line 1"
+                           @bind="_formAddress1" @bind:event="oninput" />
                 </div>
-                <div class="form-group">
-                    <label>Country</label>
-                    @if (_loadingCountries)
-                    {
-                        <div class="form-input" style="color:#9baac8;font-style:italic;">Loading...</div>
-                    }
-                    else
-                    {
-                        <select class="form-input" value="@_formCountry" @onchange="OnCountryChanged">
-                            <option value="">-- Select Country --</option>
-                            @foreach (var c in _countries)
-                            {
-                                <option value="@c.Name">@c.Name</option>
-                            }
-                        </select>
-                    }
+                <div class="form-group full-width">
+                    <label>Address 2</label>
+                    <input class="form-input" type="text" placeholder="Street address line 2 (optional)"
+                           @bind="_formAddress2" @bind:event="oninput" />
                 </div>
                 <div class="form-group">
                     <label>City</label>
@@ -228,10 +290,37 @@ else
                         </select>
                     }
                 </div>
+                <div class="form-group">
+                    <label>State / Province</label>
+                    <input class="form-input" type="text" placeholder="Enter state or province"
+                           @bind="_formState" @bind:event="oninput" />
+                </div>
+                <div class="form-group">
+                    <label>Country</label>
+                    @if (_loadingCountries)
+                    {
+                        <div class="form-input" style="color:#9baac8;font-style:italic;">Loading...</div>
+                    }
+                    else
+                    {
+                        <select class="form-input" value="@_formCountry" @onchange="OnCountryChanged">
+                            <option value="">-- Select Country --</option>
+                            @foreach (var co in _countries)
+                            {
+                                <option value="@co.Name">@co.Name</option>
+                            }
+                        </select>
+                    }
+                </div>
+                <div class="form-group">
+                    <label>Postal / ZIP</label>
+                    <input class="form-input" type="text" placeholder="Enter postal code"
+                           @bind="_formPostalCode" @bind:event="oninput" />
+                </div>
             </div>
 
-            <!-- Section: Contact -->
-            <div class="form-section-title">Customer Information</div>
+            <!-- Section: Contact Information -->
+            <div class="form-section-title">Contact Information</div>
             <div class="form-grid">
                 <div class="form-group">
                     <label>Contact Name</label>
@@ -239,47 +328,44 @@ else
                            @bind="_formContactPerson" @bind:event="oninput" />
                 </div>
                 <div class="form-group">
-                    <label>Position</label>
-                    <input class="form-input" type="text" placeholder="Enter position/title"
+                    <label>Title / Position</label>
+                    <input class="form-input" type="text" placeholder="Enter title or position"
                            @bind="_formPosition" @bind:event="oninput" />
                 </div>
                 <div class="form-group">
                     <label>Mobile</label>
                     <input class="form-input" type="text" placeholder="Enter mobile number"
-                           @bind="_formPhone" @bind:event="oninput" />
+                           @bind="_formMobile" @bind:event="oninput" />
                 </div>
                 <div class="form-group">
-                    <label>Office Phone</label>
-                    <input class="form-input" type="text" placeholder="Enter office phone"
-                           @bind="_formOfficePhone" @bind:event="oninput" />
-                </div>
-                <div class="form-group full-width">
                     <label>Email</label>
-                    <input class="form-input" type="email" placeholder="Enter email"
+                    <input class="form-input" type="email" placeholder="Enter email address"
                            @bind="_formEmail" @bind:event="oninput" />
                 </div>
+            </div>
+
+            <!-- Section: Remark -->
+            <div class="form-section-title">Remark</div>
+            <div class="form-grid">
                 <div class="form-group full-width">
-                    <label>Notes</label>
-                    <textarea class="form-input form-textarea" placeholder="Enter notes..."
+                    <textarea class="form-input form-textarea" placeholder="Enter remarks..."
                               @bind="_formNotes" @bind:event="oninput"></textarea>
                 </div>
             </div>
 
-            <!-- Section: Attachments -->
-            <div class="form-section-title">Attachments</div>
+            <!-- Section: Reference (Attachments) -->
+            <div class="form-section-title">Reference</div>
             <div class="upload-zone" @ondragover:preventDefault @ondrop:preventDefault @ondrop="HandleDrop">
                 <InputFile id="fileInput" OnChange="HandleFileSelected" multiple accept=".pdf,.png,.jpg,.jpeg,.gif,.webp" style="display:none" />
                 <label for="fileInput" class="upload-label">
                     <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.25)" stroke-width="1.5">
                         <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                        <polyline points="17 8 12 3 7 8"/>
-                        <line x1="12" y1="3" x2="12" y2="15"/>
+                        <polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
                     </svg>
-                    <span class="upload-text">Click to upload or drag & drop</span>
-                    <span class="upload-hint">PDF, PNG, JPG, GIF, WEBP — multiple files allowed</span>
+                    <span>Click or drag files here</span>
+                    <span class="upload-hint">PDF, PNG, JPG, WEBP · Max 20 MB each</span>
                 </label>
             </div>
-
             @if (_selectedFiles.Count > 0)
             {
                 <div class="file-list">
@@ -287,16 +373,7 @@ else
                     {
                         var file = f;
                         <div class="file-item">
-                            <div class="file-icon @(file.Name.EndsWith(".pdf", StringComparison.OrdinalIgnoreCase) ? "pdf" : "img")">
-                                @if (file.Name.EndsWith(".pdf", StringComparison.OrdinalIgnoreCase))
-                                {
-                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="13" x2="15" y2="13"/></svg>
-                                }
-                                else
-                                {
-                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
-                                }
-                            </div>
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
                             <div class="file-info">
                                 <span class="file-name">@file.Name</span>
                                 <span class="file-size">@FormatSize(file.Size)</span>
@@ -306,41 +383,33 @@ else
                     }
                 </div>
             }
-
             @if (_existingFiles.Count > 0)
             {
-                <div class="file-list existing-files">
-                    <div class="existing-label">Uploaded files</div>
-                    @foreach (var ef in _existingFiles)
+                <div class="file-list">
+                    @foreach (var eFile in _existingFiles)
                     {
-                        var eFile = ef;
+                        var ef = eFile;
                         <div class="file-item">
-                            <div class="file-icon @(eFile.FileName.EndsWith(".pdf", StringComparison.OrdinalIgnoreCase) ? "pdf" : "img")">
-                                @if (eFile.FileName.EndsWith(".pdf", StringComparison.OrdinalIgnoreCase))
-                                {
-                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="13" x2="15" y2="13"/></svg>
-                                }
-                                else
-                                {
-                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
-                                }
-                            </div>
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
                             <div class="file-info">
-                                <a class="file-name file-link" href="@eFile.Url" target="_blank">@eFile.FileName</a>
-                                <span class="file-size">@FormatSize(eFile.FileSize)</span>
+                                <a class="file-name file-link" href="@ef.Url" target="_blank">@ef.FileName</a>
+                                <span class="file-size">@FormatSize(ef.FileSize)</span>
                             </div>
-                            <button class="file-remove" @onclick="() => RemoveExistingFile(eFile)" title="Remove">&#x2715;</button>
+                            <button class="file-remove" @onclick="() => RemoveExistingFile(ef)" title="Remove">&#x2715;</button>
                         </div>
                     }
                 </div>
             }
 
-            <div class="form-group" style="margin-top:16px;">
-                <label class="check-label">
-                    <input type="checkbox" @bind="_formIsActive" />
-                    <span>Active</span>
-                </label>
-            </div>
+            @if (_editId == null)
+            {
+                <div class="form-group" style="margin-top:16px;">
+                    <label class="check-label">
+                        <input type="checkbox" @bind="_formIsActive" />
+                        <span>Active</span>
+                    </label>
+                </div>
+            }
 
             <div class="modal-footer">
                 <button class="btn-cancel" @onclick="CloseModal">Cancel</button>
@@ -348,6 +417,174 @@ else
                     @if (_saving) { <span class="spinner"></span> }
                     else { <span>@(_editId == null ? "Create Customer" : "Save Changes")</span> }
                 </button>
+            </div>
+        </div>
+    </div>
+}
+
+<!-- Modal View Detail (readonly) -->
+@if (_showDetail && _detailItem != null)
+{
+    var d = _detailItem;
+    <div class="modal-overlay" @onclick="() => _showDetail = false">
+        <div class="modal-card modal-wide" @onclick:stopPropagation="true">
+            <div class="modal-header">
+                <div>
+                    <h2>@d.CompanyName</h2>
+                    <p style="font-size:12px;color:rgba(255,255,255,.4);margin-top:3px;">@d.CustomerId</p>
+                </div>
+                <button class="modal-close" @onclick="() => _showDetail = false">&#x2715;</button>
+            </div>
+
+            <!-- ID + Status -->
+            <div class="form-grid" style="margin-bottom:8px;">
+                <div class="form-group">
+                    <label>Customer ID</label>
+                    <div class="form-input form-input-disabled">@(string.IsNullOrEmpty(d.CustomerId) ? "—" : d.CustomerId)</div>
+                </div>
+                <div class="form-group">
+                    <label>Status</label>
+                    <div style="padding-top:10px;">
+                        <span class="status-badge @(d.IsActive ? "active" : "inactive")">
+                            @(d.IsActive ? "Active" : "Inactive")
+                        </span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Customer Profile -->
+            <div class="form-section-title">Customer Profile</div>
+            <div class="form-grid">
+                <div class="form-group">
+                    <label>Customer Name</label>
+                    <div class="form-input form-input-disabled">@(string.IsNullOrEmpty(d.CompanyName) ? "—" : d.CompanyName)</div>
+                </div>
+                <div class="form-group">
+                    <label>Short Name</label>
+                    <div class="form-input form-input-disabled">@(string.IsNullOrEmpty(d.ShortName) ? "—" : d.ShortName)</div>
+                </div>
+                <div class="form-group full-width">
+                    <label>Business Type</label>
+                    <div class="btype-group">
+                        @foreach (var bt in new[] { "Importer", "Wholesalers", "Retailers", "Trading Company", "Other" })
+                        {
+                            <label class="btype-label @(d.BusinessType == bt ? "btype-active" : "")" style="cursor:default;">@bt</label>
+                        }
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Product Category</label>
+                    <div class="form-input form-input-disabled">@(string.IsNullOrEmpty(d.Category) ? "—" : d.Category)</div>
+                </div>
+                <div class="form-group">
+                    <label>Tax Code</label>
+                    <div class="form-input form-input-disabled">@(string.IsNullOrEmpty(d.TaxCode) ? "—" : d.TaxCode)</div>
+                </div>
+                <div class="form-group">
+                    <label>Business Ref. No</label>
+                    <div class="form-input form-input-disabled">@(string.IsNullOrEmpty(d.BusinessRefNo) ? "—" : d.BusinessRefNo)</div>
+                </div>
+                <div class="form-group">
+                    <label>Phone</label>
+                    <div class="form-input form-input-disabled">@(string.IsNullOrEmpty(d.Phone) ? "—" : d.Phone)</div>
+                </div>
+                <div class="form-group">
+                    <label>Website</label>
+                    @if (!string.IsNullOrEmpty(d.Website))
+                    {
+                        <a class="form-input form-input-disabled" href="@d.Website" target="_blank"
+                           style="display:block;color:#1e90d6;text-decoration:none;">@d.Website</a>
+                    }
+                    else
+                    {
+                        <div class="form-input form-input-disabled">—</div>
+                    }
+                </div>
+            </div>
+
+            <!-- Customer Address -->
+            <div class="form-section-title">Customer Address</div>
+            <div class="form-grid">
+                <div class="form-group full-width">
+                    <label>Address 1</label>
+                    <div class="form-input form-input-disabled">@(string.IsNullOrEmpty(d.Address1) ? "—" : d.Address1)</div>
+                </div>
+                <div class="form-group full-width">
+                    <label>Address 2</label>
+                    <div class="form-input form-input-disabled">@(string.IsNullOrEmpty(d.Address2) ? "—" : d.Address2)</div>
+                </div>
+                <div class="form-group">
+                    <label>City</label>
+                    <div class="form-input form-input-disabled">@(string.IsNullOrEmpty(d.City) ? "—" : d.City)</div>
+                </div>
+                <div class="form-group">
+                    <label>State / Province</label>
+                    <div class="form-input form-input-disabled">@(string.IsNullOrEmpty(d.State) ? "—" : d.State)</div>
+                </div>
+                <div class="form-group">
+                    <label>Country</label>
+                    <div class="form-input form-input-disabled">@(string.IsNullOrEmpty(d.Country) ? "—" : d.Country)</div>
+                </div>
+                <div class="form-group">
+                    <label>Postal / ZIP</label>
+                    <div class="form-input form-input-disabled">@(string.IsNullOrEmpty(d.PostalCode) ? "—" : d.PostalCode)</div>
+                </div>
+            </div>
+
+            <!-- Contact Information -->
+            <div class="form-section-title">Contact Information</div>
+            <div class="form-grid">
+                <div class="form-group">
+                    <label>Contact Name</label>
+                    <div class="form-input form-input-disabled">@(string.IsNullOrEmpty(d.ContactPerson) ? "—" : d.ContactPerson)</div>
+                </div>
+                <div class="form-group">
+                    <label>Title / Position</label>
+                    <div class="form-input form-input-disabled">@(string.IsNullOrEmpty(d.Position) ? "—" : d.Position)</div>
+                </div>
+                <div class="form-group">
+                    <label>Mobile</label>
+                    <div class="form-input form-input-disabled">@(string.IsNullOrEmpty(d.Mobile) ? "—" : d.Mobile)</div>
+                </div>
+                <div class="form-group">
+                    <label>Email</label>
+                    @if (!string.IsNullOrEmpty(d.Email))
+                    {
+                        <a class="form-input form-input-disabled" href="mailto:@d.Email"
+                           style="display:block;color:#1e90d6;text-decoration:none;">@d.Email</a>
+                    }
+                    else
+                    {
+                        <div class="form-input form-input-disabled">—</div>
+                    }
+                </div>
+            </div>
+
+            <!-- Remark -->
+            @if (!string.IsNullOrEmpty(d.Notes))
+            {
+                <div class="form-section-title">Remark</div>
+                <div class="form-input form-input-disabled" style="min-height:60px;white-space:pre-wrap;">@d.Notes</div>
+            }
+
+            <!-- Reference files -->
+            @if (d.FileCount > 0)
+            {
+                <div class="form-section-title">Reference (@d.FileCount file(s))</div>
+                <button class="btn-view-files" @onclick="async () => { _showDetail = false; await OpenFilesPopup(d); }">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                    View @d.FileCount attached file(s)
+                </button>
+            }
+
+            <div class="modal-footer">
+                <button class="btn-cancel" @onclick="() => _showDetail = false">Close</button>
+                <AuthorizeView Roles="Admin">
+                    <button class="btn-submit" @onclick="async () => { _showDetail = false; await OpenEdit(d); }">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                        Edit
+                    </button>
+                </AuthorizeView>
             </div>
         </div>
     </div>
@@ -442,32 +679,43 @@ else
 
     private bool _showModal = false;
     private int? _editId = null;
-    private string _formCustomerId = "", _formCompanyName = "", _formCategory = "";
-    private string _formContactPerson = "", _formPosition = "", _formPhone = "", _formOfficePhone = "";
-    private string _formEmail = "", _formAddress = "", _formCity = "", _formCountry = "";
+
+    // Form fields
+    private string _formCustomerId = "", _formCompanyName = "", _formShortName = "";
+    private string _formBusinessType = "", _formCategory = "", _formTaxCode = "";
+    private string _formBusinessRefNo = "", _formPhone = "", _formWebsite = "";
+    private string _formAddress1 = "", _formAddress2 = "", _formCity = "", _formState = "";
+    private string _formCountry = "", _formPostalCode = "";
+    private string _formContactPerson = "", _formPosition = "", _formMobile = "";
+    private string _formEmail = "", _formOfficePhone = "", _formNotes = "";
+    private bool   _formIsActive = true;
+    private string _formError = "";
+    private bool   _saving = false;
+
     // Country/City dropdowns
     private List<CountryItem> _countries       = new();
-    private List<CityItem>    _cities           = new();
+    private List<CityItem>    _cities          = new();
     private bool              _loadingCountries = true;
     private bool              _loadingCities    = false;
 
-    private string _formTaxCode = "", _formNotes = "";
-    private bool _formIsActive = true;
-    private string _formError = "";
-    private bool _saving = false;
-
     // File upload
-    private List<IBrowserFile> _selectedFiles = new();
-    private List<CustomerFileDto> _existingFiles = new();
-    private List<int> _filesToDelete = new();
+    private List<IBrowserFile>   _selectedFiles  = new();
+    private List<CustomerFileDto> _existingFiles  = new();
+    private List<int>            _filesToDelete  = new();
 
     // Files popup
-    private bool _showFilesPopup = false;
-    private bool _filesPopupLoading = false;
+    private bool   _showFilesPopup        = false;
+    private bool   _filesPopupLoading     = false;
     private string _filesPopupCustomerName = "";
     private List<CustomerFileDto> _filesPopupList = new();
 
     private CustomerDto? _deleteItem = null;
+
+    // Detail view
+    private bool        _showDetail     = false;
+    private CustomerDto? _detailItem    = null;
+
+    private void OpenDetail(CustomerDto c) { _detailItem = c; _showDetail = true; }
 
     private async Task OpenFilesPopup(CustomerDto c)
     {
@@ -523,10 +771,14 @@ else
 
     private void OpenCreate()
     {
-        _editId = null; _formCustomerId = ""; _formCompanyName = ""; _formCategory = "";
-        _formContactPerson = ""; _formPosition = ""; _formPhone = ""; _formOfficePhone = "";
-        _formEmail = ""; _formAddress = ""; _formCity = ""; _formCountry = "";
-        _formTaxCode = ""; _formNotes = "";
+        _editId = null;
+        _formCustomerId = ""; _formCompanyName = ""; _formShortName = "";
+        _formBusinessType = ""; _formCategory = ""; _formTaxCode = ""; _formBusinessRefNo = "";
+        _formPhone = ""; _formWebsite = "";
+        _formAddress1 = ""; _formAddress2 = ""; _formCity = ""; _formState = "";
+        _formCountry = ""; _formPostalCode = "";
+        _formContactPerson = ""; _formPosition = ""; _formMobile = "";
+        _formEmail = ""; _formOfficePhone = ""; _formNotes = "";
         _formIsActive = true; _formError = "";
         _selectedFiles = new(); _existingFiles = new(); _filesToDelete = new();
         _showModal = true;
@@ -534,27 +786,39 @@ else
 
     private async Task OpenEdit(CustomerDto c)
     {
-        _editId = c.Id; _formCustomerId = c.CustomerId; _formCompanyName = c.CompanyName;
-        _formCategory = c.Category ?? ""; _formContactPerson = c.ContactPerson ?? "";
-        _formPosition = c.Position ?? ""; _formPhone = c.Phone ?? ""; _formOfficePhone = c.OfficePhone ?? "";
-        _formEmail = c.Email ?? ""; _formAddress = c.Address ?? "";
-        _formCity = ""; _formCountry = c.Country ?? "";
-        _formTaxCode = c.TaxCode ?? ""; _formNotes = c.Notes ?? ""; _formIsActive = c.IsActive;
+        _editId = c.Id;
+        _formCustomerId    = c.CustomerId;
+        _formCompanyName   = c.CompanyName;
+        _formShortName     = c.ShortName     ?? "";
+        _formBusinessType  = c.BusinessType  ?? "";
+        _formCategory      = c.Category      ?? "";
+        _formTaxCode       = c.TaxCode       ?? "";
+        _formBusinessRefNo = c.BusinessRefNo ?? "";
+        _formPhone         = c.Phone         ?? "";
+        _formWebsite       = c.Website       ?? "";
+        _formAddress1      = c.Address1      ?? "";
+        _formAddress2      = c.Address2      ?? "";
+        _formCity          = "";
+        _formState         = c.State         ?? "";
+        _formCountry       = c.Country       ?? "";
+        _formPostalCode    = c.PostalCode    ?? "";
+        _formContactPerson = c.ContactPerson ?? "";
+        _formPosition      = c.Position      ?? "";
+        _formMobile        = c.Mobile        ?? "";
+        _formEmail         = c.Email         ?? "";
+        _formOfficePhone   = c.OfficePhone   ?? "";
+        _formNotes         = c.Notes         ?? "";
+        _formIsActive      = c.IsActive;
         _formError = "";
         _selectedFiles = new(); _filesToDelete = new();
-
-        // Load existing files
         try
         {
             var files = await Http.GetFromJsonAsync<List<CustomerFileDto>>($"api/customers/{c.Id}/files");
             _existingFiles = files ?? new();
         }
         catch { _existingFiles = new(); }
-
         _showModal = true;
-        // Load cities cho country khi edit
         await LoadCitiesForCountry(c.Country ?? "", c.City ?? "");
-
     }
 
     private void CloseModal() => _showModal = false;
@@ -593,22 +857,31 @@ else
         if (string.IsNullOrWhiteSpace(_formCompanyName)) { _formError = "Company name is required."; return; }
 
         _saving = true;
+        Waiting.Show(_editId == null ? "Creating customer..." : "Saving customer...");
         try
         {
             var payload = new
             {
                 customerId    = _formCustomerId,
                 companyName   = _formCompanyName,
+                shortName     = _formShortName,
+                businessType  = _formBusinessType,
                 category      = _formCategory,
+                taxCode       = _formTaxCode,
+                businessRefNo = _formBusinessRefNo,
+                phone         = _formPhone,
+                website       = _formWebsite,
+                address1      = _formAddress1,
+                address2      = _formAddress2,
+                city          = _formCity,
+                state         = _formState,
+                country       = _formCountry,
+                postalCode    = _formPostalCode,
                 contactPerson = _formContactPerson,
                 position      = _formPosition,
-                phone         = _formPhone,
-                officePhone   = _formOfficePhone,
+                mobile        = _formMobile,
                 email         = _formEmail,
-                address       = _formAddress,
-                city          = _formCity,
-                country       = _formCountry,
-                taxCode       = _formTaxCode,
+                officePhone   = _formOfficePhone,
                 notes         = _formNotes,
                 isActive      = _formIsActive
             };
@@ -660,7 +933,7 @@ else
             await LoadPage(_page);
         }
         catch { _formError = "Connection error."; }
-        finally { _saving = false; }
+        finally { _saving = false; Waiting.Hide(); }
     }
 
     private void ConfirmDelete(CustomerDto c) => _deleteItem = c;
@@ -669,8 +942,10 @@ else
     {
         if (_deleteItem == null) return;
         _saving = true;
+        Waiting.Show("Deleting customer...");
         var response = await Http.DeleteAsync($"api/customers/{_deleteItem.Id}");
         _saving = false;
+        Waiting.Hide();
         if (response.IsSuccessStatusCode) { _deleteItem = null; await LoadPage(_page); }
     }
 
@@ -686,20 +961,28 @@ else
         public int     Id            { get; set; }
         public string  CustomerId    { get; set; } = "";
         public string  CompanyName   { get; set; } = "";
+        public string? ShortName     { get; set; }
+        public string? BusinessType  { get; set; }
         public string? Category      { get; set; }
+        public string? TaxCode       { get; set; }
+        public string? BusinessRefNo { get; set; }
+        public string? Phone         { get; set; }
+        public string? Website       { get; set; }
+        public string? Address1      { get; set; }
+        public string? Address2      { get; set; }
+        public string? City          { get; set; }
+        public string? State         { get; set; }
+        public string? Country       { get; set; }
+        public string? PostalCode    { get; set; }
         public string? ContactPerson { get; set; }
         public string? Position      { get; set; }
-        public string? Phone         { get; set; }
-        public string? OfficePhone   { get; set; }
+        public string? Mobile        { get; set; }
         public string? Email         { get; set; }
-        public string? Address       { get; set; }
-        public string? City          { get; set; }
-        public string? Country       { get; set; }
-        public string? TaxCode       { get; set; }
+        public string? OfficePhone   { get; set; }
         public string? Notes         { get; set; }
         public bool    IsActive      { get; set; }
         public int     FileCount     { get; set; }
-        public DateTime CreatedAt    { get; set; }
+        public DateTime CreatedAt   { get; set; }
     }
 
     private class CustomerFileDto
@@ -986,6 +1269,14 @@ else
     .view-btn:hover { background:#cce4f8; }
     .download-btn { background:#eaf3de; color:#3b6d11; border:1px solid #c0dd97; }
     .download-btn:hover { background:#d4ebb8; }
+
+    /* business type pills */
+    .btype-group { display:flex; gap:8px; flex-wrap:wrap; padding:4px 0; }
+    .btype-label { padding:5px 14px; border-radius:20px; font-size:12px; font-weight:600; cursor:pointer; border:1px solid #c9d8ee; background:#f0f4fb; color:#4a6080; transition:all .15s; user-select:none; }
+    .btype-label:hover { background:#e0eaf7; border-color:#1e90d6; color:#1e90d6; }
+    .btype-active { background:#1e90d6 !important; border-color:#1e90d6 !important; color:#fff !important; }
+    .btn-view-files { display:inline-flex; align-items:center; gap:7px; padding:9px 18px; background:#e6f1fb; border:1px solid #b5d4f4; border-radius:9px; color:#1e90d6; font-size:13px; font-weight:600; cursor:pointer; transition:background .15s; margin-top:4px; }
+    .btn-view-files:hover { background:#cce4f8; }
 
     /* vendor/user cell */
     .vendor-cell   { display:flex; align-items:center; gap:10px; }

@@ -37,6 +37,7 @@ namespace InticooInspection.API.Controllers
                 query = query.Where(p =>
                     p.ProductName.Contains(search) ||
                     (p.ProductCode  != null && p.ProductCode.Contains(search))  ||
+                    (p.ItemNumber   != null && p.ItemNumber.Contains(search))   ||
                     (p.Customer     != null && p.Customer.CompanyName.Contains(search)) ||
                     (p.Vendor       != null && p.Vendor.Name.Contains(search)));
 
@@ -68,6 +69,9 @@ namespace InticooInspection.API.Controllers
                     Weight       = p.Weight,
                     PhotoUrl     = p.PhotoUrl     ?? "",
                     Remark       = p.Remark       ?? "",
+                    IsActive      = p.IsActive,
+                    EstablishDate = p.EstablishDate,
+                    CreatedAt    = p.CreatedAt,
                     References   = p.References.OrderBy(r => r.SortOrder).Select(r => new ProductReferenceDto
                     {
                         Id        = r.Id,
@@ -117,9 +121,16 @@ namespace InticooInspection.API.Controllers
                 .Select(p => new
                 {
                     id          = p.Id,
-                    productCode = p.ProductCode ?? "",
+                    productCode = p.ProductCode  ?? "",
                     productName = p.ProductName,
-                    category    = p.Category ?? "",
+                    itemNumber  = p.ItemNumber   ?? "",
+                    productType = p.ProductType  ?? "",
+                    category    = p.Category     ?? "",
+                    sizeL       = p.SizeL,
+                    sizeW       = p.SizeW,
+                    sizeH       = p.SizeH,
+                    weight      = p.Weight,
+                    photoUrl    = p.PhotoUrl     ?? "",
                     customerId  = p.Customer != null ? p.Customer.CustomerId : "",
                     vendorId    = p.Vendor   != null ? p.Vendor.Code         : ""
                 })
@@ -158,6 +169,9 @@ namespace InticooInspection.API.Controllers
                 Weight       = p.Weight,
                 PhotoUrl     = p.PhotoUrl     ?? "",
                 Remark       = p.Remark       ?? "",
+                IsActive      = p.IsActive,
+                EstablishDate = p.EstablishDate,
+                CreatedAt    = p.CreatedAt,
                 References   = p.References.OrderBy(r => r.SortOrder).Select(r => new ProductReferenceDto
                 {
                     Id        = r.Id,
@@ -184,22 +198,24 @@ namespace InticooInspection.API.Controllers
 
             var product = new Product
             {
-                CustomerId   = customer?.Id,
-                VendorId     = vendor?.Id,
-                Category     = req.Category,
-                ProductType  = req.ProductType,
-                ProductName  = req.ProductName,
-                ProductCode  = req.ProductCode,
-                ItemNumber   = req.ItemNumber,
-                ProductColor = req.ProductColor,
-                ProductSize  = req.ProductSize,
-                SizeL        = req.SizeL,
-                SizeW        = req.SizeW,
-                SizeH        = req.SizeH,
-                Weight       = req.Weight,
-                PhotoUrl     = req.PhotoUrl,
-                Remark       = req.Remark,
-                CreatedAt    = DateTime.UtcNow
+                CustomerId    = customer?.Id,
+                VendorId      = vendor?.Id,
+                Category      = req.Category,
+                ProductType   = req.ProductType,
+                ProductName   = req.ProductName,
+                ProductCode   = req.ProductCode,
+                ItemNumber    = req.ItemNumber,
+                ProductColor  = req.ProductColor,
+                ProductSize   = req.ProductSize,
+                SizeL         = req.SizeL,
+                SizeW         = req.SizeW,
+                SizeH         = req.SizeH,
+                Weight        = req.Weight,
+                PhotoUrl      = req.PhotoUrl,
+                Remark        = req.Remark,
+                IsActive      = req.IsActive,
+                EstablishDate = req.EstablishDate,
+                CreatedAt     = DateTime.UtcNow
             };
 
             _db.Products.Add(product);
@@ -240,20 +256,22 @@ namespace InticooInspection.API.Controllers
             var vendor = await _db.Vendors
                 .FirstOrDefaultAsync(v => v.Code == req.VendorId);
 
-            product.CustomerId   = customer?.Id;
-            product.VendorId     = vendor?.Id;
-            product.Category     = req.Category;
-            product.ProductType  = req.ProductType;
-            product.ProductName  = req.ProductName;
-            product.ProductCode  = req.ProductCode;
-            product.ItemNumber   = req.ItemNumber;
-            product.ProductColor = req.ProductColor;
-            product.ProductSize  = req.ProductSize;
-            product.SizeL        = req.SizeL;
-            product.SizeW        = req.SizeW;
-            product.SizeH        = req.SizeH;
-            product.Weight       = req.Weight;
-            product.Remark       = req.Remark;
+            product.CustomerId    = customer?.Id;
+            product.VendorId      = vendor?.Id;
+            product.Category      = req.Category;
+            product.ProductType   = req.ProductType;
+            product.ProductName   = req.ProductName;
+            product.ProductCode   = req.ProductCode;
+            product.ItemNumber    = req.ItemNumber;
+            product.ProductColor  = req.ProductColor;
+            product.ProductSize   = req.ProductSize;
+            product.SizeL         = req.SizeL;
+            product.SizeW         = req.SizeW;
+            product.SizeH         = req.SizeH;
+            product.Weight        = req.Weight;
+            product.Remark        = req.Remark;
+            product.IsActive      = req.IsActive;
+            product.EstablishDate = req.EstablishDate;
 
             // Only update photo if a new one was uploaded
             if (!string.IsNullOrWhiteSpace(req.PhotoUrl))
@@ -435,26 +453,31 @@ namespace InticooInspection.API.Controllers
         public decimal? Weight      { get; set; }
         public string  PhotoUrl     { get; set; } = "";
         public string  Remark       { get; set; } = "";
+        public bool    IsActive      { get; set; } = true;
+        public DateTime? EstablishDate { get; set; }
+        public DateTime CreatedAt    { get; set; }
         public List<ProductReferenceDto> References { get; set; } = new();
     }
 
     public class ProductRequest
     {
-        public string   CustomerId   { get; set; } = "";
-        public string   VendorId     { get; set; } = "";
-        public string?  Category     { get; set; }
-        public string?  ProductType  { get; set; }
-        public string   ProductName  { get; set; } = "";
-        public string?  ProductCode  { get; set; }
-        public string?  ItemNumber   { get; set; }
-        public string?  ProductColor { get; set; }
-        public string?  ProductSize  { get; set; }
-        public decimal? SizeL        { get; set; }
-        public decimal? SizeW        { get; set; }
-        public decimal? SizeH        { get; set; }
-        public decimal? Weight       { get; set; }
-        public string?  PhotoUrl     { get; set; }
-        public string?  Remark       { get; set; }
+        public string   CustomerId    { get; set; } = "";
+        public string   VendorId      { get; set; } = "";
+        public string?  Category      { get; set; }
+        public string?  ProductType   { get; set; }
+        public string   ProductName   { get; set; } = "";
+        public string?  ProductCode   { get; set; }
+        public string?  ItemNumber    { get; set; }
+        public string?  ProductColor  { get; set; }
+        public string?  ProductSize   { get; set; }
+        public decimal? SizeL         { get; set; }
+        public decimal? SizeW         { get; set; }
+        public decimal? SizeH         { get; set; }
+        public decimal? Weight        { get; set; }
+        public string?  PhotoUrl      { get; set; }
+        public string?  Remark        { get; set; }
+        public bool     IsActive      { get; set; } = true;
+        public DateTime? EstablishDate { get; set; }
         public List<ProductReferenceRequest> References { get; set; } = new();
     }
 

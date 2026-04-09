@@ -2,18 +2,18 @@ namespace InticooInspection.Domain.Entities
 {
     public enum VendorType
     {
-        Material,       // Nguyen vat lieu
-        Accessory,      // Phu kien
-        Service,        // Dich vu
-        Logistics,      // Van chuyen
-        Manufacturing   // Gia cong
+        Material,
+        Accessory,
+        Service,
+        Logistics,
+        Manufacturing
     }
 
     public enum VendorStatus
     {
-        Active,     // Dang hop tac
-        Inactive,   // Ngung
-        Suspended   // Tam khoa
+        Active,
+        Inactive,
+        Suspended
     }
 
     public class Vendor
@@ -24,38 +24,47 @@ namespace InticooInspection.Domain.Entities
         public string?      ShortName      { get; set; }
         public VendorType   Type           { get; set; } = VendorType.Material;
         public VendorStatus Status         { get; set; } = VendorStatus.Active;
+
+        // ── Vendor Profile ────────────────────────────────────────────
+        public string?      Category       { get; set; }             // PRODUCT CATEGORY
         public string?      TaxCode        { get; set; }
         public string?      BusinessRegNo  { get; set; }
+        public string?      Phone          { get; set; }             // PHONE (company main phone)
         public string?      Website        { get; set; }
         public string?      Notes          { get; set; }
+
+        // ── Vendor Address ────────────────────────────────────────────
+        public string?      Address1       { get; set; }             // ADDRESS 1
+        public string?      Address2       { get; set; }             // ADDRESS 2
+        public string?      City           { get; set; }
+        public string?      State          { get; set; }             // STATE / PROVINCE
+        public string?      Country        { get; set; }
+        public string?      PostalCode     { get; set; }             // POSTAL / ZIP
+
+        // ── Contact Information ───────────────────────────────────────
         public string?      ContactName    { get; set; }
         public string?      ContactTitle   { get; set; }
-        public string?      ContactPhone   { get; set; }
+        public string?      ContactPhone   { get; set; }             // MOBILE
         public string?      ContactEmail   { get; set; }
+
+        // ── Legacy fields (kept for backward compatibility) ───────────
         public string?      CompanyAddress { get; set; }
         public string?      BillingAddress { get; set; }
-        public string?      City           { get; set; }
-        public string?      Country        { get; set; }
-        // Legacy single-attachment fields (kept for backward compatibility)
         public string?      AttachmentPath { get; set; }
         public string?      AttachmentName { get; set; }
+
         public DateTime     CreatedAt      { get; set; } = DateTime.UtcNow;
 
-        // Navigation: multiple attachments
         public ICollection<VendorAttachment> Attachments { get; set; } = new List<VendorAttachment>();
     }
 
-    /// <summary>One file attached to a Vendor.</summary>
     public class VendorAttachment
     {
         public int      Id           { get; set; }
         public int      VendorId     { get; set; }
         public Vendor   Vendor       { get; set; } = null!;
-        /// <summary>Stored file name on disk (guid-based).</summary>
         public string   StoredName   { get; set; } = "";
-        /// <summary>Original file name shown to user.</summary>
         public string   OriginalName { get; set; } = "";
-        /// <summary>MIME type / content type.</summary>
         public string   ContentType  { get; set; } = "";
         public long     FileSize     { get; set; }
         public DateTime UploadedAt   { get; set; } = DateTime.UtcNow;

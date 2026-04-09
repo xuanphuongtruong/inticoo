@@ -21,6 +21,11 @@ namespace InticooInspection.Domain.Entities
 
         public string?  PhotoUrl     { get; set; }
         public string?  Remark       { get; set; }
+
+        // ── New fields ───────────────────────────────────────────────
+        public bool     IsActive      { get; set; } = true;   // STATUS: Valid / Invalid
+        public DateTime? EstablishDate { get; set; }           // ESTABLISH DATE
+
         public DateTime CreatedAt    { get; set; } = DateTime.UtcNow;
 
         // Navigation
