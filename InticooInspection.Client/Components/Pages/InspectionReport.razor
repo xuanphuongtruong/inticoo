@@ -1297,7 +1297,7 @@ else if (_data != null)
     .rpt-page .rpt-photo-cell img,
     .rpt-page .rpt-photo-cell .rpt-photo {
         width: 100% !important;
-        height: 300px !important;
+        height: 220px !important;
         object-fit: cover !important;
         object-position: center !important;
         display: block !important;
@@ -1308,7 +1308,7 @@ else if (_data != null)
     .rpt-page .rpt-overview-photo-cell img,
     .rpt-page .rpt-overview-photo-cell .rpt-overview-img {
         width: 100% !important;
-        height: 300px !important;
+        height: 220px !important;
         object-fit: cover !important;
         object-position: center !important;
         display: block !important;
@@ -1545,7 +1545,7 @@ else if (_data != null)
         border-radius: 6px;
         overflow: hidden;
         background: #fafbfc;
-        height: 300px;
+        height: 220px;
         display: block;
         width: 100%;
     }
@@ -1559,7 +1559,7 @@ else if (_data != null)
     /* Ảnh trong 2-col grid */
     .rpt-photo {
         width: 100%;
-        height: 300px;
+        height: 220px;
         object-fit: cover;
         object-position: center;
         display: block;
@@ -1580,14 +1580,14 @@ else if (_data != null)
     }
     .rpt-overview-img {
         width: 100%;
-        height: 300px;
+        height: 220px;
         object-fit: cover;
         object-position: center;
         display: block;
         vertical-align: top;
     }
     .rpt-photo-empty-lg {
-        height: 300px;
+        height: 220px;
         display: flex; align-items: center; justify-content: center;
         font-size: 13px; color: #bbb;
         background: #fafbfc;
@@ -1665,7 +1665,7 @@ else if (_data != null)
     }
     .rpt-qty-photo-cell {
         border: 1px solid #b8c8de;
-        height: 300px;
+        height: 220px;
         display: flex;
         align-items: center;
         justify-content: center;
@@ -1675,7 +1675,7 @@ else if (_data != null)
     }
     .rpt-qty-photo-img {
         width: 100%;
-        height: 300px;
+        height: 220px;
         object-fit: cover;
         display: block;
         vertical-align: top;
@@ -1957,9 +1957,26 @@ else if (_data != null)
        PRINT STYLES
     ══════════════════════════════════════════ */
     @@media print {
-        /* Ẩn header/footer mặc định của browser (URL, ngày giờ, tên trang) */
-        @@page { margin: 12mm 10mm; size: A4 portrait; }
-        body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        /* ══════════════════════════════════════════
+           Xóa hoàn toàn header/footer mặc định của browser
+           (URL trang, ngày giờ, tên tab — vùng tô đỏ trong ảnh chụp)
+           Kỹ thuật: đặt margin = 0 trên @@page khiến browser không
+           còn vùng trống để in running header/footer.
+        ══════════════════════════════════════════ */
+        @@page {
+            size: A4 portrait;
+            margin: 0;
+        }
+
+        html {
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+        }
+        body {
+            margin: 0 !important;
+            padding: 0 !important;
+        }
+
         .no-print { display: none !important; }
 
         /* Ẩn MainLayout navbar và tất cả UI elements ngoài report */
@@ -1968,20 +1985,20 @@ else if (_data != null)
         .top-menu, .side-menu, .menu-bar,
         [class*="nav"], [class*="header"]:not(.rpt-cover-header):not(.rpt-section-header) { display: none !important; }
 
-        .rpt-page { background: white; padding: 0; }
+        .rpt-page { background: white !important; padding: 0 !important; }
         .rpt-paper {
-            max-width: 100%; margin: 0;
+            max-width: 100%;
+            margin: 0;
             counter-reset: page-counter;
         }
 
-        /* Mỗi section là 1 trang riêng — không bị cắt đôi */
+        /* Mỗi section là 1 trang — padding thay cho margin của @@page */
         .rpt-section {
-            border-radius: 0;
-            box-shadow: none;
-            margin-bottom: 0;
-            padding: 16px 20px;
+            border-radius: 0 !important;
+            box-shadow: none !important;
+            margin-bottom: 0 !important;
+            padding: 12mm 10mm !important;
             counter-increment: page-counter;
-            /* Giữ nguyên trong 1 trang, không bị cắt */
             break-inside: avoid;
             page-break-inside: avoid;
         }
@@ -1996,6 +2013,35 @@ else if (_data != null)
         table { break-inside: avoid; page-break-inside: avoid; }
         tr    { break-inside: avoid; page-break-inside: avoid; }
 
+        /* ── Ảnh: giảm kích thước khi in/save PDF ── */
+        /* Overview photo (1 ảnh full width, trang cover) */
+        .rpt-overview-photo-cell,
+        .rpt-page .rpt-overview-photo-cell .rpt-overview-img,
+        .rpt-overview-img {
+            height: 180px !important;
+        }
+
+        /* 2-column photo grid */
+        .rpt-photo-cell,
+        .rpt-page .rpt-photo-cell img,
+        .rpt-page .rpt-photo-cell .rpt-photo {
+            height: 160px !important;
+        }
+
+        /* Qty photo grid (Section A) */
+        .rpt-qty-photo-cell,
+        .rpt-qty-photo-img {
+            height: 160px !important;
+        }
+
+        /* Defect photos (Section F) */
+        .rpt-defect-photo-wrap { min-height: 140px !important; }
+        .rpt-defect-photo      { height: 140px !important; min-height: 140px !important; }
+        .rpt-defect-no-photo   { min-height: 140px !important; }
+
+        /* Generic .rpt-photo */
+        .rpt-photo { height: 160px !important; max-width: 100%; object-fit: cover; }
+
         /* Ngăn các block ảnh, grid bị cắt */
         .rpt-overview-photo-wrap,
         .rpt-overview-photo-cell,
@@ -2007,9 +2053,6 @@ else if (_data != null)
         .rpt-defect-item,
         .rpt-sig-row,
         .rpt-aql-grid    { break-inside: avoid; page-break-inside: avoid; }
-
-        /* Ảnh giữ kích thước vừa trang A4 */
-        .rpt-photo       { height: 150px; max-width: 100%; object-fit: cover; }
 
         /* AQL 3 cột */
         .rpt-aql-grid    { grid-template-columns: 1fr 1fr 1fr; }
