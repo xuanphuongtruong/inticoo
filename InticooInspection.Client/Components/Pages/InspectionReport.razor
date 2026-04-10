@@ -59,7 +59,7 @@ else if (_data != null)
                     @if (!string.IsNullOrEmpty(_data.Photo1Url))
                     {
                         <div class="rpt-overview-photo-cell">
-                            <img src="@NormalizeUrl(_data.Photo1Url)" class="rpt-overview-img" alt="Product Photo"/>
+                            <img src="@NormalizeUrl(_data.Photo1Url)" class="rpt-overview-img" alt="Product Photo" loading="eager"/>
                             <div class="rpt-photo-label">Product Photo</div>
                         </div>
                     }
@@ -177,7 +177,7 @@ else if (_data != null)
                 <!-- Footer -->
                 <div class="rpt-footer">
                     <div class="rpt-footer-inner">
-                        <span class="rpt-footer-text">www.inticoo.com — The results presented herein reflect our findings at the time and place of inspection. This report does not release the seller or manufacturer from their contractual obligations, nor does it prejudice the buyer's right to seek compensation for any apparent or latent defects not identified during our random inspection or arising thereafter. This document does not constitute evidence of shipment. Final approval from the client is required prior to the release of the goods.</span>
+                        <span class="rpt-footer-text">www.inticoo.com<br/>The results presented herein reflect our findings at the time and place of inspection. This report does not release the seller or manufacturer from their contractual obligations, nor does it prejudice the buyer's right to seek compensation for any apparent or latent defects not identified during our random inspection or arising thereafter. This document does not constitute evidence of shipment. Final approval from the client is required prior to the release of the goods.</span>
                         <span class="rpt-footer-page">@(1) / @TotalPages</span>
                     </div>
                 </div>
@@ -244,7 +244,7 @@ else if (_data != null)
                         <div class="rpt-qty-photo-cell">
                             @if (!string.IsNullOrEmpty(slot))
                             {
-                                <img src="@NormalizeUrl(slot)" class="rpt-qty-photo-img" alt="Quantity photo"/>
+                                <img src="@NormalizeUrl(slot)" class="rpt-qty-photo-img" alt="Quantity photo" loading="eager"/>
                             }
                         </div>
                     }
@@ -252,7 +252,7 @@ else if (_data != null)
 
                 <div class="rpt-footer">
                     <div class="rpt-footer-inner">
-                        <span class="rpt-footer-text">www.inticoo.com — The results presented herein reflect our findings at the time and place of inspection. This report does not release the seller or manufacturer from their contractual obligations, nor does it prejudice the buyer's right to seek compensation for any apparent or latent defects not identified during our random inspection or arising thereafter. This document does not constitute evidence of shipment. Final approval from the client is required prior to the release of the goods.</span>
+                        <span class="rpt-footer-text">www.inticoo.com<br/>The results presented herein reflect our findings at the time and place of inspection. This report does not release the seller or manufacturer from their contractual obligations, nor does it prejudice the buyer's right to seek compensation for any apparent or latent defects not identified during our random inspection or arising thereafter. This document does not constitute evidence of shipment. Final approval from the client is required prior to the release of the goods.</span>
                         <span class="rpt-footer-page">@(2) / @TotalPages</span>
                     </div>
                 </div>
@@ -332,7 +332,7 @@ else if (_data != null)
                         {
                             <div class="rpt-photo-cell">
                                 @if (!string.IsNullOrEmpty(_u))
-                                { <img src="@NormalizeUrl(_u)" class="rpt-photo" alt="Carton size"/> }
+                                { <img src="@NormalizeUrl(_u)" class="rpt-photo" alt="Carton size" loading="eager"/> }
                             </div>
                         }
                     </div>
@@ -346,7 +346,7 @@ else if (_data != null)
 
                     <div class="rpt-footer">
                         <div class="rpt-footer-inner">
-                            <span class="rpt-footer-text">www.inticoo.com — The results presented herein reflect our findings at the time and place of inspection. This report does not release the seller or manufacturer from their contractual obligations, nor does it prejudice the buyer's right to seek compensation for any apparent or latent defects not identified during our random inspection or arising thereafter. This document does not constitute evidence of shipment. Final approval from the client is required prior to the release of the goods.</span>
+                            <span class="rpt-footer-text">www.inticoo.com<br/>The results presented herein reflect our findings at the time and place of inspection. This report does not release the seller or manufacturer from their contractual obligations, nor does it prejudice the buyer's right to seek compensation for any apparent or latent defects not identified during our random inspection or arising thereafter. This document does not constitute evidence of shipment. Final approval from the client is required prior to the release of the goods.</span>
                             <span class="rpt-footer-page">@(3 + cIdx * 4) / @TotalPages</span>
                         </div>
                     </div>
@@ -369,7 +369,7 @@ else if (_data != null)
                         {
                             <div class="rpt-photo-cell">
                                 @if (!string.IsNullOrEmpty(_u))
-                                { <img src="@NormalizeUrl(_u)" class="rpt-photo" alt="Shipping mark"/> }
+                                { <img src="@NormalizeUrl(_u)" class="rpt-photo" alt="Shipping mark" loading="eager"/> }
                             </div>
                         }
                     </div>
@@ -398,7 +398,7 @@ else if (_data != null)
                         {
                             <div class="rpt-photo-cell">
                                 @if (!string.IsNullOrEmpty(_u))
-                                { <img src="@NormalizeUrl(_u)" class="rpt-photo" alt="Carton weight"/> }
+                                { <img src="@NormalizeUrl(_u)" class="rpt-photo" alt="Carton weight" loading="eager"/> }
                             </div>
                         }
                     </div>
@@ -412,7 +412,7 @@ else if (_data != null)
 
                     <div class="rpt-footer">
                         <div class="rpt-footer-inner">
-                            <span class="rpt-footer-text">www.inticoo.com — The results presented herein reflect our findings at the time and place of inspection. This report does not release the seller or manufacturer from their contractual obligations, nor does it prejudice the buyer's right to seek compensation for any apparent or latent defects not identified during our random inspection or arising thereafter. This document does not constitute evidence of shipment. Final approval from the client is required prior to the release of the goods.</span>
+                            <span class="rpt-footer-text">www.inticoo.com<br/>The results presented herein reflect our findings at the time and place of inspection. This report does not release the seller or manufacturer from their contractual obligations, nor does it prejudice the buyer's right to seek compensation for any apparent or latent defects not identified during our random inspection or arising thereafter. This document does not constitute evidence of shipment. Final approval from the client is required prior to the release of the goods.</span>
                             <span class="rpt-footer-page">@(3 + cIdx * 4 + 1) / @TotalPages</span>
                         </div>
                     </div>
@@ -435,7 +435,7 @@ else if (_data != null)
                         {
                             <div class="rpt-photo-cell">
                                 @if (!string.IsNullOrEmpty(_u))
-                                { <img src="@NormalizeUrl(_u)" class="rpt-photo" alt="Pkg label"/> }
+                                { <img src="@NormalizeUrl(_u)" class="rpt-photo" alt="Pkg label" loading="eager"/> }
                             </div>
                         }
                     </div>
@@ -460,7 +460,7 @@ else if (_data != null)
                         {
                             <div class="rpt-photo-cell">
                                 @if (!string.IsNullOrEmpty(_u))
-                                { <img src="@NormalizeUrl(_u)" class="rpt-photo" alt="Assembly"/> }
+                                { <img src="@NormalizeUrl(_u)" class="rpt-photo" alt="Assembly" loading="eager"/> }
                             </div>
                         }
                     </div>
@@ -473,7 +473,7 @@ else if (_data != null)
                     }
                     <div class="rpt-footer">
                         <div class="rpt-footer-inner">
-                            <span class="rpt-footer-text">www.inticoo.com — The results presented herein reflect our findings at the time and place of inspection. This report does not release the seller or manufacturer from their contractual obligations, nor does it prejudice the buyer's right to seek compensation for any apparent or latent defects not identified during our random inspection or arising thereafter. This document does not constitute evidence of shipment. Final approval from the client is required prior to the release of the goods.</span>
+                            <span class="rpt-footer-text">www.inticoo.com<br/>The results presented herein reflect our findings at the time and place of inspection. This report does not release the seller or manufacturer from their contractual obligations, nor does it prejudice the buyer's right to seek compensation for any apparent or latent defects not identified during our random inspection or arising thereafter. This document does not constitute evidence of shipment. Final approval from the client is required prior to the release of the goods.</span>
                             <span class="rpt-footer-page">@(3 + cIdx * 4 + 2) / @TotalPages</span>
                         </div>
                     </div>
@@ -495,7 +495,7 @@ else if (_data != null)
                         {
                             <div class="rpt-photo-cell">
                                 @if (!string.IsNullOrEmpty(_u))
-                                { <img src="@NormalizeUrl(_u)" class="rpt-photo" alt="Hardware"/> }
+                                { <img src="@NormalizeUrl(_u)" class="rpt-photo" alt="Hardware" loading="eager"/> }
                             </div>
                         }
                     </div>
@@ -508,23 +508,21 @@ else if (_data != null)
                     }
                     <div class="rpt-footer">
                         <div class="rpt-footer-inner">
-                            <span class="rpt-footer-text">www.inticoo.com — The results presented herein reflect our findings at the time and place of inspection. This report does not release the seller or manufacturer from their contractual obligations, nor does it prejudice the buyer's right to seek compensation for any apparent or latent defects not identified during our random inspection or arising thereafter. This document does not constitute evidence of shipment. Final approval from the client is required prior to the release of the goods.</span>
+                            <span class="rpt-footer-text">www.inticoo.com<br/>The results presented herein reflect our findings at the time and place of inspection. This report does not release the seller or manufacturer from their contractual obligations, nor does it prejudice the buyer's right to seek compensation for any apparent or latent defects not identified during our random inspection or arising thereafter. This document does not constitute evidence of shipment. Final approval from the client is required prior to the release of the goods.</span>
                             <span class="rpt-footer-page">@(3 + cIdx * 4 + 3) / @TotalPages</span>
                         </div>
                     </div>
                 </div>
             }
 
-            <!-- ══ SECTION C: Product Specification Compliance ══ -->
+            <!-- ══ SECTION C (1/2): Product Specification Compliance — Size + Golden ══ -->
             <div class="rpt-section page-break-after">
-                <div class="rpt-section-title rpt-section-title-lg">C. Product Specification Compliance</div>
+                <div class="rpt-section-title rpt-section-title-lg">C. Product Specification Compliance (1/2)</div>
 
                 @if (_data.ProductSpec != null || _qcData?.ProductSpec != null)
                 {
                     <!-- i. Product Size -->
-                    <div class="rpt-sub-title">i. Product Size
-
-                    </div>
+                    <div class="rpt-sub-title">i. Product Size</div>
                     @if (_data.ProductSpec != null)
                     {
                         <table class="rpt-spec-table">
@@ -553,68 +551,23 @@ else if (_data != null)
                                 var url = row.GetProperty("photoUrl").GetString();
                                 if (!string.IsNullOrEmpty(url))
                                 {
-                                    <div class="rpt-photo-cell"><img src="@NormalizeUrl(url)" class="rpt-photo" alt="Product size photo"/></div>
+                                    <div class="rpt-photo-cell"><img src="@NormalizeUrl(url)" class="rpt-photo" alt="Product size photo" loading="eager"/></div>
                                 }
                             }
                         </div>
                     }
 
                     <!-- ii. Compare Golden Sample -->
-                    <div class="rpt-sub-title">ii. Compare Golden Sample
-
+                    <div class="rpt-sub-title">ii. Compare Golden Sample</div>
+                    <div class="rpt-photo-grid-2">
+                        @foreach (var _gu in (_qcData?.ProductSpec?.GoldenPhotos?.Where(p => !string.IsNullOrWhiteSpace(p)).ToList() ?? new List<string>()).Cast<string?>().Concat(Enumerable.Repeat<string?>(null, Math.Max(0, 4 - (_qcData?.ProductSpec?.GoldenPhotos?.Count(p => !string.IsNullOrWhiteSpace(p)) ?? 0)))).Take(4))
+                        {
+                            <div class="rpt-photo-cell">
+                                @if (!string.IsNullOrEmpty(_gu))
+                                { <img src="@NormalizeUrl(_gu)" class="rpt-photo" alt="Golden sample photo" loading="eager"/> }
+                            </div>
+                        }
                     </div>
-                    @if (_qcData?.ProductSpec?.GoldenPhotos?.Any() == true)
-                    {
-                        <div class="rpt-photo-grid-2">
-                            @foreach (var url in _qcData.ProductSpec.GoldenPhotos)
-                            {
-                                <div class="rpt-photo-cell"><img src="@NormalizeUrl(url)" class="rpt-photo" alt="Golden sample photo"/></div>
-                            }
-                        </div>
-                    }
-
-                    <!-- iii. Colour Swatch Comparison -->
-                    <div class="rpt-sub-title">iii. Colour Swatch Comparison</div>
-                    @if (_qcData?.ProductSpec?.ColourSwatches?.Any() == true)
-                    {
-                        <table class="rpt-swatch-table">
-                            <thead>
-                                <tr>
-                                    <th style="width:10%">No</th>
-                                    <th style="width:55%">Material</th>
-                                    <th style="width:35%">Result</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @foreach (var sw in _qcData.ProductSpec.ColourSwatches)
-                                {
-                                    <tr>
-                                        <td>@sw.No</td>
-                                        <td>@(sw.Material ?? "—")</td>
-                                        <td>
-                                            @if (!string.IsNullOrEmpty(sw.Result))
-                                            {
-                                                <span class="rpt-compliance-badge comp-@sw.Result.ToLower()">@sw.Result</span>
-                                            }
-                                            else
-                                            {
-                                                <span style="color:#bbb">Passed / Failed / NA</span>
-                                            }
-                                        </td>
-                                    </tr>
-                                }
-                            </tbody>
-                        </table>
-                    }
-                    @if (_qcData?.ProductSpec?.SwatchPhotos?.Any() == true)
-                    {
-                        <div class="rpt-photo-grid-2">
-                            @foreach (var url in _qcData.ProductSpec.SwatchPhotos)
-                            {
-                                <div class="rpt-photo-cell"><img src="@NormalizeUrl(url)" class="rpt-photo" alt="Swatch photo"/></div>
-                            }
-                        </div>
-                    }
                 }
                 else
                 {
@@ -623,8 +576,63 @@ else if (_data != null)
 
                 <div class="rpt-footer">
                     <div class="rpt-footer-inner">
-                        <span class="rpt-footer-text">www.inticoo.com — The results presented herein reflect our findings at the time and place of inspection. This report does not release the seller or manufacturer from their contractual obligations, nor does it prejudice the buyer's right to seek compensation for any apparent or latent defects not identified during our random inspection or arising thereafter. This document does not constitute evidence of shipment. Final approval from the client is required prior to the release of the goods.</span>
+                        <span class="rpt-footer-text">www.inticoo.com<br/>The results presented herein reflect our findings at the time and place of inspection. This report does not release the seller or manufacturer from their contractual obligations, nor does it prejudice the buyer's right to seek compensation for any apparent or latent defects not identified during our random inspection or arising thereafter. This document does not constitute evidence of shipment. Final approval from the client is required prior to the release of the goods.</span>
                         <span class="rpt-footer-page">@(2 + CartonPageCount + 1) / @TotalPages</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ══ SECTION C (2/2): Product Specification Compliance — Colour Swatch ══ -->
+            <div class="rpt-section page-break-after">
+                <div class="rpt-section-title rpt-section-title-lg">C. Product Specification Compliance (2/2)</div>
+
+                <!-- iii. Colour Swatch Comparison -->
+                <div class="rpt-sub-title">iii. Colour Swatch Comparison</div>
+                @if (_qcData?.ProductSpec?.ColourSwatches?.Any() == true)
+                {
+                    <table class="rpt-swatch-table">
+                        <thead>
+                            <tr>
+                                <th style="width:10%">No</th>
+                                <th style="width:55%">Material</th>
+                                <th style="width:35%">Result</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var sw in _qcData.ProductSpec.ColourSwatches)
+                            {
+                                <tr>
+                                    <td>@sw.No</td>
+                                    <td>@(sw.Material ?? "—")</td>
+                                    <td>
+                                        @if (!string.IsNullOrEmpty(sw.Result))
+                                        {
+                                            <span class="rpt-compliance-badge comp-@sw.Result.ToLower()">@sw.Result</span>
+                                        }
+                                        else
+                                        {
+                                            <span style="color:#bbb">Passed / Failed / NA</span>
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                }
+                <div class="rpt-photo-grid-2">
+                    @foreach (var _sw in (_qcData?.ProductSpec?.SwatchPhotos?.Where(p => !string.IsNullOrWhiteSpace(p)).ToList() ?? new List<string>()).Cast<string?>().Concat(Enumerable.Repeat<string?>(null, Math.Max(0, 4 - (_qcData?.ProductSpec?.SwatchPhotos?.Count(p => !string.IsNullOrWhiteSpace(p)) ?? 0)))).Take(4))
+                    {
+                        <div class="rpt-photo-cell">
+                            @if (!string.IsNullOrEmpty(_sw))
+                            { <img src="@NormalizeUrl(_sw)" class="rpt-photo" alt="Swatch photo" loading="eager"/> }
+                        </div>
+                    }
+                </div>
+
+                <div class="rpt-footer">
+                    <div class="rpt-footer-inner">
+                        <span class="rpt-footer-text">www.inticoo.com<br/>The results presented herein reflect our findings at the time and place of inspection. This report does not release the seller or manufacturer from their contractual obligations, nor does it prejudice the buyer's right to seek compensation for any apparent or latent defects not identified during our random inspection or arising thereafter. This document does not constitute evidence of shipment. Final approval from the client is required prior to the release of the goods.</span>
+                        <span class="rpt-footer-page">@(2 + CartonPageCount + 2) / @TotalPages</span>
                     </div>
                 </div>
             </div>
@@ -677,20 +685,21 @@ else if (_data != null)
                                 }
                             </tbody>
                         </table>
-                        @if (dPhotos.Any())
-                        {
-                            <div class="rpt-photo-grid-2">
-                                @foreach (var url in dPhotos)
-                                {
-                                    <div class="rpt-photo-cell">
-                                        <img src="@NormalizeUrl(url)" class="rpt-photo" alt="Performance test photo"/>
-                                    </div>
-                                }
-                            </div>
+                        @{
+                            var _dSlots = dPhotos.Cast<string?>().Concat(Enumerable.Repeat<string?>(null, Math.Max(0, 4 - dPhotos.Count))).Take(4).ToList();
                         }
+                        <div class="rpt-photo-grid-2">
+                            @foreach (var _du in _dSlots)
+                            {
+                                <div class="rpt-photo-cell">
+                                    @if (!string.IsNullOrEmpty(_du))
+                                    { <img src="@NormalizeUrl(_du)" class="rpt-photo" alt="Performance test photo" loading="eager"/> }
+                                </div>
+                            }
+                        </div>
                         <div class="rpt-footer">
                             <div class="rpt-footer-inner">
-                                <span class="rpt-footer-text">www.inticoo.com — The results presented herein reflect our findings at the time and place of inspection. This report does not release the seller or manufacturer from their contractual obligations, nor does it prejudice the buyer's right to seek compensation for any apparent or latent defects not identified during our random inspection or arising thereafter. This document does not constitute evidence of shipment. Final approval from the client is required prior to the release of the goods.</span>
+                                <span class="rpt-footer-text">www.inticoo.com<br/>The results presented herein reflect our findings at the time and place of inspection. This report does not release the seller or manufacturer from their contractual obligations, nor does it prejudice the buyer's right to seek compensation for any apparent or latent defects not identified during our random inspection or arising thereafter. This document does not constitute evidence of shipment. Final approval from the client is required prior to the release of the goods.</span>
                                 <span class="rpt-footer-page">@(2 + CartonPageCount + 2 + dIdx) / @TotalPages</span>
                             </div>
                         </div>
@@ -715,7 +724,7 @@ else if (_data != null)
                         </table>
                         <div class="rpt-footer">
                             <div class="rpt-footer-inner">
-                                <span class="rpt-footer-text">www.inticoo.com — The results presented herein reflect our findings at the time and place of inspection. This report does not release the seller or manufacturer from their contractual obligations, nor does it prejudice the buyer's right to seek compensation for any apparent or latent defects not identified during our random inspection or arising thereafter. This document does not constitute evidence of shipment. Final approval from the client is required prior to the release of the goods.</span>
+                                <span class="rpt-footer-text">www.inticoo.com<br/>The results presented herein reflect our findings at the time and place of inspection. This report does not release the seller or manufacturer from their contractual obligations, nor does it prejudice the buyer's right to seek compensation for any apparent or latent defects not identified during our random inspection or arising thereafter. This document does not constitute evidence of shipment. Final approval from the client is required prior to the release of the goods.</span>
                                 <span class="rpt-footer-page">@(2 + CartonPageCount + 2 + dIdx) / @TotalPages</span>
                             </div>
                         </div>
@@ -729,7 +738,7 @@ else if (_data != null)
                     <div class="rpt-no-data">No performance testing data recorded.</div>
                     <div class="rpt-footer">
                         <div class="rpt-footer-inner">
-                            <span class="rpt-footer-text">www.inticoo.com — The results presented herein reflect our findings at the time and place of inspection. This report does not release the seller or manufacturer from their contractual obligations, nor does it prejudice the buyer's right to seek compensation for any apparent or latent defects not identified during our random inspection or arising thereafter. This document does not constitute evidence of shipment. Final approval from the client is required prior to the release of the goods.</span>
+                            <span class="rpt-footer-text">www.inticoo.com<br/>The results presented herein reflect our findings at the time and place of inspection. This report does not release the seller or manufacturer from their contractual obligations, nor does it prejudice the buyer's right to seek compensation for any apparent or latent defects not identified during our random inspection or arising thereafter. This document does not constitute evidence of shipment. Final approval from the client is required prior to the release of the goods.</span>
                             <span class="rpt-footer-page">@(2 + CartonPageCount + 2) / @TotalPages</span>
                         </div>
                     </div>
@@ -815,27 +824,55 @@ else if (_data != null)
                     <div class="rpt-no-data">No AQL data recorded.</div>
                 }
 
+                <!-- Critical defects gộp vào cuối trang E -->
+                @{
+                    var _critDefects = _qcData?.Defects?.Where(d => d.Type == "Critical").ToList() ?? new();
+                    var _critItems = _critDefects.SelectMany(def => {
+                        var urls = (def.Photos?.Where(p => !string.IsNullOrWhiteSpace(p)).ToList())
+                                   ?? (def.PhotoUrl != null ? new List<string> { def.PhotoUrl } : new List<string>());
+                        return urls.Select((url, i) => new { Url = url, Remark = def.Remarks?.ElementAtOrDefault(i) ?? def.Remark ?? "" });
+                    }).ToList();
+                    int _critMin = Math.Max(4, _critItems.Count % 2 == 0 ? _critItems.Count : _critItems.Count + 1);
+                    var _critSlots = _critItems.Select(p => (string?)p.Url)
+                        .Concat(Enumerable.Repeat<string?>(null, _critMin - _critItems.Count))
+                        .Zip(_critItems.Select(p => p.Remark).Concat(Enumerable.Repeat("", _critMin - _critItems.Count)),
+                             (url, remark) => (Url: url, Remark: remark)).ToList();
+                }
+                <div class="rpt-section-title rpt-section-title-lg" style="margin-top:20px;">F. Details of Defect Found</div>
+                <div class="rpt-defect-type-title defect-critical">Critical</div>
+                <div class="rpt-photo-grid-2">
+                    @foreach (var slot in _critSlots)
+                    {
+                        <div class="rpt-defect-cell">
+                            <div class="rpt-defect-photo-wrap">
+                                @if (!string.IsNullOrEmpty(slot.Url))
+                                { <img src="@NormalizeUrl(slot.Url)" class="rpt-defect-photo" alt="Critical defect photo" loading="eager"/> }
+                                else
+                                { <div class="rpt-defect-no-photo">No Photo</div> }
+                            </div>
+                            <div class="rpt-defect-remark">Remark: @(string.IsNullOrEmpty(slot.Remark) ? "—" : slot.Remark)</div>
+                        </div>
+                    }
+                </div>
+
                 <div class="rpt-footer">
                     <div class="rpt-footer-inner">
-                        <span class="rpt-footer-text">www.inticoo.com — The results presented herein reflect our findings at the time and place of inspection. This report does not release the seller or manufacturer from their contractual obligations, nor does it prejudice the buyer's right to seek compensation for any apparent or latent defects not identified during our random inspection or arising thereafter. This document does not constitute evidence of shipment. Final approval from the client is required prior to the release of the goods.</span>
+                        <span class="rpt-footer-text">www.inticoo.com<br/>The results presented herein reflect our findings at the time and place of inspection. This report does not release the seller or manufacturer from their contractual obligations, nor does it prejudice the buyer's right to seek compensation for any apparent or latent defects not identified during our random inspection or arising thereafter. This document does not constitute evidence of shipment. Final approval from the client is required prior to the release of the goods.</span>
                         <span class="rpt-footer-page">@(2 + CartonPageCount + PerfPageCount + 2) / @TotalPages</span>
                     </div>
                 </div>
             </div>
 
-            <!-- ══ SECTION F: Details of Defect Found ══ -->
+            <!-- ══ SECTION F: Major + Minor Defects ══ -->
             <div class="rpt-section page-break-after">
-                <div class="rpt-section-title rpt-section-title-lg">F. Details of Defect Found</div>
+                <div class="rpt-section-title rpt-section-title-lg">F. Details of Defect Found (cont.)</div>
 
-                @foreach (var defType in new[] { "Critical", "Major", "Minor" })
+                @foreach (var defType in new[] { "Major", "Minor" })
                 {
                     var typeDefects = _qcData?.Defects?.Where(d => d.Type == defType).ToList() ?? new();
-
-                    // Flatten: mỗi ảnh trong Photos[] là 1 ô riêng, kèm remark tương ứng
                     var photoItems = typeDefects
                         .SelectMany(def =>
                         {
-                            // Ưu tiên Photos[], fallback về PhotoUrl nếu có
                             var urls = (def.Photos?.Where(p => !string.IsNullOrWhiteSpace(p)).ToList())
                                        ?? (def.PhotoUrl != null ? new List<string> { def.PhotoUrl } : new List<string>());
                             return urls.Select((url, i) => new {
@@ -845,8 +882,7 @@ else if (_data != null)
                         })
                         .ToList();
 
-                    // Pad đủ số chẵn (lưới 2 cột), tối thiểu 2 ô
-                    int minSlots = Math.Max(2, photoItems.Count % 2 == 0 ? photoItems.Count : photoItems.Count + 1);
+                    int minSlots = Math.Max(4, photoItems.Count % 2 == 0 ? photoItems.Count : photoItems.Count + 1);
                     var slots = photoItems
                         .Select(p => (string?)p.Url)
                         .Concat(Enumerable.Repeat<string?>(null, minSlots - photoItems.Count))
@@ -864,13 +900,9 @@ else if (_data != null)
                             <div class="rpt-defect-cell">
                                 <div class="rpt-defect-photo-wrap">
                                     @if (!string.IsNullOrEmpty(slot.Url))
-                                    {
-                                        <img src="@NormalizeUrl(slot.Url)" class="rpt-defect-photo" alt="@defType defect photo"/>
-                                    }
+                                    { <img src="@NormalizeUrl(slot.Url)" class="rpt-defect-photo" alt="@defType defect photo" loading="eager"/> }
                                     else
-                                    {
-                                        <div class="rpt-defect-no-photo">No Photo</div>
-                                    }
+                                    { <div class="rpt-defect-no-photo">No Photo</div> }
                                 </div>
                                 <div class="rpt-defect-remark">Remark: @(string.IsNullOrEmpty(slot.Remark) ? "—" : slot.Remark)</div>
                             </div>
@@ -880,14 +912,14 @@ else if (_data != null)
 
                 <div class="rpt-footer">
                     <div class="rpt-footer-inner">
-                        <span class="rpt-footer-text">www.inticoo.com — The results presented herein reflect our findings at the time and place of inspection. This report does not release the seller or manufacturer from their contractual obligations, nor does it prejudice the buyer's right to seek compensation for any apparent or latent defects not identified during our random inspection or arising thereafter. This document does not constitute evidence of shipment. Final approval from the client is required prior to the release of the goods.</span>
+                        <span class="rpt-footer-text">www.inticoo.com<br/>The results presented herein reflect our findings at the time and place of inspection. This report does not release the seller or manufacturer from their contractual obligations, nor does it prejudice the buyer's right to seek compensation for any apparent or latent defects not identified during our random inspection or arising thereafter. This document does not constitute evidence of shipment. Final approval from the client is required prior to the release of the goods.</span>
                         <span class="rpt-footer-page">@(2 + CartonPageCount + PerfPageCount + 3) / @TotalPages</span>
                     </div>
                 </div>
             </div>
 
             <!-- ══ FINAL PAGE: Conclusion & Signature ══ -->
-            <div class="rpt-section">
+            <div class="rpt-section rpt-section-final">
                 <div class="rpt-logo-wrap" style="margin-bottom:28px;">
                     <img src="/logo.png" class="rpt-logo-img" alt="inticoo logo"/>
                 </div>
@@ -936,7 +968,7 @@ else if (_data != null)
                             <td class="rpt-sign-val rpt-sign-cell">
                                 @if (!string.IsNullOrEmpty(_data.SignatureUrl))
                                 {
-                                    <img src="@NormalizeUrl(_data.SignatureUrl)" class="rpt-signature" alt="Signature"/>
+                                    <img src="@NormalizeUrl(_data.SignatureUrl)" class="rpt-signature" alt="Signature" loading="eager"/>
                                 }
                             </td>
                         </tr>
@@ -951,7 +983,7 @@ else if (_data != null)
 
                 <div class="rpt-footer">
                     <div class="rpt-footer-inner">
-                        <span class="rpt-footer-text">www.inticoo.com — The results presented herein reflect our findings at the time and place of inspection. This report does not release the seller or manufacturer from their contractual obligations, nor does it prejudice the buyer's right to seek compensation for any apparent or latent defects not identified during our random inspection or arising thereafter. This document does not constitute evidence of shipment. Final approval from the client is required prior to the release of the goods.</span>
+                        <span class="rpt-footer-text">www.inticoo.com<br/>The results presented herein reflect our findings at the time and place of inspection. This report does not release the seller or manufacturer from their contractual obligations, nor does it prejudice the buyer's right to seek compensation for any apparent or latent defects not identified during our random inspection or arising thereafter. This document does not constitute evidence of shipment. Final approval from the client is required prior to the release of the goods.</span>
                         <span class="rpt-footer-page">@(2 + CartonPageCount + PerfPageCount + 4) / @TotalPages</span>
                     </div>
                 </div>
@@ -1040,7 +1072,7 @@ else if (_data != null)
 
     private async Task PrintReport()
     {
-        await JS.InvokeVoidAsync("printReportOnly");
+        await JS.InvokeVoidAsync("waitImagesAndPrint", "rpt-root");
     }
 
     private static string GetFinalBadgeClass(string? result) => result?.ToUpper() switch
@@ -1051,13 +1083,13 @@ else if (_data != null)
     };
 
     // ── Computed page count properties ──
-    // Layout: 1(Cover) + 1(A) + cartonCount×4(B: i, ii+iii, iv+v, vi) + 1(C) + perfCount(D) + 3(E,F,Final)
+    // Layout: 1(Cover) + 1(A) + cartonCount×4(B) + 2(C1+C2) + perfCount(D) + 3(E,F,Final)
     int CartonPageCount => (_qcData?.Packaging?.CartonDataList?.Count > 0
         ? _qcData.Packaging.CartonDataList.Count : 1) * 4;
     int PerfPageCount   => _qcData?.PerformanceTests?.Count > 0
         ? _qcData.PerformanceTests.Count
         : (_data?.PerformanceTests?.Count > 0 ? _data.PerformanceTests.Count : 1);
-    int TotalPages => 2 + CartonPageCount + 1 + PerfPageCount + 3;
+    int TotalPages => 2 + CartonPageCount + 2 + PerfPageCount + 3;
 
     // ─── DTOs mirroring API shape ───
 
@@ -1306,8 +1338,8 @@ else if (_data != null)
     .rpt-page .rpt-photo-cell img,
     .rpt-page .rpt-photo-cell .rpt-photo {
         width: 100% !important;
-        height: 220px !important;
-        object-fit: cover !important;
+        height: 330px !important;
+        object-fit: contain !important;
         object-position: center !important;
         display: block !important;
         vertical-align: top !important;
@@ -1317,8 +1349,8 @@ else if (_data != null)
     .rpt-page .rpt-overview-photo-cell img,
     .rpt-page .rpt-overview-photo-cell .rpt-overview-img {
         width: 100% !important;
-        height: 220px !important;
-        object-fit: cover !important;
+        height: 330px !important;
+        object-fit: contain !important;
         object-position: center !important;
         display: block !important;
         vertical-align: top !important;
@@ -1392,9 +1424,11 @@ else if (_data != null)
     .rpt-section {
         background: white;
         border-radius: 10px;
-        padding: 28px 32px 24px;
+        padding: 28px 32px 80px;
         margin-bottom: 20px;
         box-shadow: 0 2px 12px rgba(0,0,0,.07);
+        position: relative;
+        min-height: 400px;
     }
 
     /* ══════════════════════════════════════════
@@ -1554,22 +1588,22 @@ else if (_data != null)
         border-radius: 6px;
         overflow: hidden;
         background: #fafbfc;
-        height: 220px;
+        height: 330px;
         display: block;
         width: 100%;
     }
     .rpt-photo-cell img.rpt-photo {
         width: 100%;
         height: 100% !important;
-        object-fit: cover;
+        object-fit: contain;
         display: block;
     }
 
     /* Ảnh trong 2-col grid */
     .rpt-photo {
         width: 100%;
-        height: 220px;
-        object-fit: cover;
+        height: 330px;
+        object-fit: contain;
         object-position: center;
         display: block;
         vertical-align: top;
@@ -1589,14 +1623,14 @@ else if (_data != null)
     }
     .rpt-overview-img {
         width: 100%;
-        height: 220px;
-        object-fit: cover;
+        height: 330px;
+        object-fit: contain;
         object-position: center;
         display: block;
         vertical-align: top;
     }
     .rpt-photo-empty-lg {
-        height: 220px;
+        height: 330px;
         display: flex; align-items: center; justify-content: center;
         font-size: 13px; color: #bbb;
         background: #fafbfc;
@@ -1674,7 +1708,7 @@ else if (_data != null)
     }
     .rpt-qty-photo-cell {
         border: 1px solid #b8c8de;
-        height: 220px;
+        height: 330px;
         display: flex;
         align-items: center;
         justify-content: center;
@@ -1684,8 +1718,8 @@ else if (_data != null)
     }
     .rpt-qty-photo-img {
         width: 100%;
-        height: 220px;
-        object-fit: cover;
+        height: 330px;
+        object-fit: contain;
         display: block;
         vertical-align: top;
     }
@@ -1816,7 +1850,7 @@ else if (_data != null)
     .rpt-defect-photo {
         width: 100%;
         height: 100%;
-        object-fit: cover;
+        object-fit: contain;
         display: block;
         vertical-align: top;
         min-height: 200px;
@@ -1902,13 +1936,17 @@ else if (_data != null)
        FOOTER
     ══════════════════════════════════════════ */
     .rpt-footer {
-        margin-top: 24px;
-        padding-top: 8px;
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        padding: 8px 32px 10px;
         border-top: 1px solid #f0f0f0;
+        background: white;
     }
     .rpt-footer-inner {
         display: flex;
-        align-items: flex-start;
+        align-items: flex-end;
         justify-content: space-between;
         gap: 12px;
     }
@@ -1966,29 +2004,23 @@ else if (_data != null)
        PRINT STYLES
     ══════════════════════════════════════════ */
     @@media print {
-        /* ══════════════════════════════════════════
-           Xóa hoàn toàn header/footer mặc định của browser
-           (URL trang, ngày giờ, tên tab — vùng tô đỏ trong ảnh chụp)
-           Kỹ thuật: đặt margin = 0 trên @@page khiến browser không
-           còn vùng trống để in running header/footer.
-        ══════════════════════════════════════════ */
         @@page {
             size: A4 portrait;
             margin: 0;
         }
 
-        html {
+        html, body {
             -webkit-print-color-adjust: exact;
             print-color-adjust: exact;
-        }
-        body {
             margin: 0 !important;
             padding: 0 !important;
         }
 
         .no-print { display: none !important; }
 
-        /* Ẩn MainLayout navbar và tất cả UI elements ngoài report */
+        /* Xóa background xanh khi in — tránh trang trắng bị xanh */
+        .rpt-page { background: white !important; padding-bottom: 0 !important; }
+
         nav, header, .navbar, .sidebar,
         .top-bar, .main-nav, .nav-bar, .app-nav,
         .top-menu, .side-menu, .menu-bar,
@@ -2001,57 +2033,70 @@ else if (_data != null)
             counter-reset: page-counter;
         }
 
-        /* Mỗi section là 1 trang — padding thay cho margin của @@page */
+        /*
+         * Mỗi .rpt-section = 1 trang A4 (297mm x 210mm).
+         * height cố định thay min-height — tránh tràn sang trang kế.
+         * padding-bottom: 16mm nhường chỗ cho footer absolute.
+         */
         .rpt-section {
             border-radius: 0 !important;
             box-shadow: none !important;
-            margin-bottom: 0 !important;
-            padding: 12mm 10mm !important;
+            margin: 0 !important;
+            width: 210mm !important;
+            height: 297mm !important;
+            min-height: unset !important;
+            padding: 10mm 12mm 16mm !important;
+            overflow: hidden !important;
             counter-increment: page-counter;
-            break-inside: avoid;
-            page-break-inside: avoid;
+            position: relative !important;
+            box-sizing: border-box !important;
         }
 
-        /* Section có page-break-after thì xuống trang mới sau đó */
         .page-break-after {
             break-after: page;
             page-break-after: always;
         }
 
-        /* Ngăn bảng bị cắt giữa 2 trang */
+        /* Trang cuối: không cố định height, không break-after — tránh trang trắng thừa */
+        .rpt-section-final {
+            height: auto !important;
+            min-height: unset !important;
+            overflow: visible !important;
+            break-after: avoid !important;
+            page-break-after: avoid !important;
+        }
+
         table { break-inside: avoid; page-break-inside: avoid; }
         tr    { break-inside: avoid; page-break-inside: avoid; }
 
-        /* ── Ảnh: giảm kích thước khi in/save PDF ── */
-        /* Overview photo (1 ảnh full width, trang cover) */
+        /* Overview photo */
         .rpt-overview-photo-cell,
         .rpt-page .rpt-overview-photo-cell .rpt-overview-img,
         .rpt-overview-img {
-            height: 180px !important;
+            height: 120px !important;
         }
 
         /* 2-column photo grid */
         .rpt-photo-cell,
         .rpt-page .rpt-photo-cell img,
         .rpt-page .rpt-photo-cell .rpt-photo {
-            height: 160px !important;
+            height: 220px !important;
         }
 
         /* Qty photo grid (Section A) */
         .rpt-qty-photo-cell,
         .rpt-qty-photo-img {
-            height: 160px !important;
+            height: 220px !important;
         }
 
         /* Defect photos (Section F) */
-        .rpt-defect-photo-wrap { min-height: 140px !important; }
-        .rpt-defect-photo      { height: 140px !important; min-height: 140px !important; }
-        .rpt-defect-no-photo   { min-height: 140px !important; }
+        .rpt-defect-photo-wrap { height: 220px !important; min-height: unset !important; }
+        .rpt-defect-photo      { height: 220px !important; min-height: unset !important; }
+        .rpt-defect-no-photo   { height: 220px !important; min-height: unset !important; }
 
         /* Generic .rpt-photo */
-        .rpt-photo { height: 160px !important; max-width: 100%; object-fit: cover; }
+        .rpt-photo { height: 220px !important; max-width: 100%; object-fit: contain; }
 
-        /* Ngăn các block ảnh, grid bị cắt */
         .rpt-overview-photo-wrap,
         .rpt-overview-photo-cell,
         .rpt-qty-photo-grid,
@@ -2063,10 +2108,18 @@ else if (_data != null)
         .rpt-sig-row,
         .rpt-aql-grid    { break-inside: avoid; page-break-inside: avoid; }
 
-        /* AQL 3 cột */
         .rpt-aql-grid    { grid-template-columns: 1fr 1fr 1fr; }
 
-        /* Page number */
+        /* Footer cố định đáy trang */
+        .rpt-footer {
+            position: absolute !important;
+            bottom: 0 !important;
+            left: 0 !important;
+            right: 0 !important;
+            padding: 4px 12mm 6px !important;
+            background: white !important;
+        }
+
         .rpt-footer-page { display: none; }
         .rpt-footer-inner::after {
             content: counter(page-counter);
@@ -2080,7 +2133,6 @@ else if (_data != null)
             border-left: 1px solid #e0e0e0;
         }
     }
-
     @@media (max-width: 640px) {
         .rpt-section { padding: 18px 16px; }
         .rpt-aql-grid { grid-template-columns: 1fr; }
@@ -2089,4 +2141,78 @@ else if (_data != null)
     }
 </style>
 
-<script src="/js/print-report.js"></script>
+<script>
+    /**
+     * waitImagesAndPrint(rootId)
+     * ─────────────────────────
+     * 1. Tìm tất cả <img> bên trong rootId
+     * 2. Với mỗi ảnh chưa load xong → gán src lại (kích hoạt re-fetch nếu cần)
+     *    và chờ sự kiện load / error
+     * 3. Sau khi TẤT CẢ ảnh đã resolve → gọi window.print()
+     *
+     * Tại sao cần gán lại src?
+     *   Blazor render ảnh bằng <img src="…"> thông thường, nhưng khi section bị
+     *   overflow:hidden (trong print CSS height=297mm) trình duyệt đôi khi bỏ
+     *   qua việc decode ảnh ngoài viewport.  Gán src lại ép browser load lại.
+     */
+    window.waitImagesAndPrint = function (rootId) {
+        return new Promise(function (resolve) {
+            var root = rootId ? document.getElementById(rootId) : document;
+            var imgs = Array.from((root || document).querySelectorAll('img'));
+
+            if (imgs.length === 0) {
+                window.print();
+                resolve();
+                return;
+            }
+
+            var pending = 0;
+
+            function done() {
+                pending--;
+                if (pending <= 0) {
+                    // Thêm delay nhỏ để browser kịp paint
+                    setTimeout(function () {
+                        window.print();
+                        resolve();
+                    }, 300);
+                }
+            }
+
+            imgs.forEach(function (img) {
+                // Bỏ qua ảnh không có src
+                if (!img.src && !img.getAttribute('src')) return;
+
+                if (img.complete && img.naturalWidth > 0) {
+                    // Đã load xong — không cần chờ
+                    return;
+                }
+
+                pending++;
+
+                // Nếu ảnh đang bị lỗi hoặc chưa load, refresh src để ép tải lại
+                var originalSrc = img.src;
+                img.addEventListener('load',  done, { once: true });
+                img.addEventListener('error', done, { once: true });
+
+                // Ép re-fetch bằng cách gán lại src (thêm cache-bust nếu cần)
+                if (!img.complete || img.naturalWidth === 0) {
+                    img.src = '';
+                    img.src = originalSrc;
+                }
+            });
+
+            if (pending <= 0) {
+                setTimeout(function () {
+                    window.print();
+                    resolve();
+                }, 300);
+            }
+        });
+    };
+
+    // Giữ lại hàm cũ để không break nếu còn nơi nào gọi trực tiếp
+    window.printReportOnly = function () {
+        return window.waitImagesAndPrint('rpt-root');
+    };
+</script>
