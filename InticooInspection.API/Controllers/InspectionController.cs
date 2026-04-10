@@ -4,6 +4,8 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.Net;
+using System.Net.Mail;
 
 namespace InticooInspection.API.Controllers
 {
@@ -14,11 +16,13 @@ namespace InticooInspection.API.Controllers
     {
         private readonly AppDbContext _db;
         private readonly UserManager<AppUser> _userManager;
+        private readonly IConfiguration _config;
 
-        public InspectionController(AppDbContext db, UserManager<AppUser> userManager)
+        public InspectionController(AppDbContext db, UserManager<AppUser> userManager, IConfiguration config)
         {
             _db = db;
             _userManager = userManager;
+            _config = config;
         }
 
         // GET api/inspections
@@ -295,17 +299,17 @@ namespace InticooInspection.API.Controllers
             static string MapDefectAql(DefectAqlLevel? v) => v switch
             {
                 DefectAqlLevel.AQL_0_065 => "0.065",
-                DefectAqlLevel.AQL_0_1 => "0.10",
-                DefectAqlLevel.AQL_0_15 => "0.15",
-                DefectAqlLevel.AQL_0_25 => "0.25",
-                DefectAqlLevel.AQL_0_4 => "0.40",
-                DefectAqlLevel.AQL_0_65 => "0.65",
-                DefectAqlLevel.AQL_1_0 => "1.0",
-                DefectAqlLevel.AQL_1_5 => "1.5",
-                DefectAqlLevel.AQL_2_5 => "2.5",
-                DefectAqlLevel.AQL_4_0 => "4.0",
-                DefectAqlLevel.AQL_6_5 => "6.5",
-                _ => "0"
+                DefectAqlLevel.AQL_0_1   => "0.1",
+                DefectAqlLevel.AQL_0_15  => "0.15",
+                DefectAqlLevel.AQL_0_25  => "0.25",
+                DefectAqlLevel.AQL_0_4   => "0.40",
+                DefectAqlLevel.AQL_0_65  => "0.65",
+                DefectAqlLevel.AQL_1_0   => "1.0",
+                DefectAqlLevel.AQL_1_5   => "1.5",
+                DefectAqlLevel.AQL_2_5   => "2.5",
+                DefectAqlLevel.AQL_4_0   => "4.0",
+                DefectAqlLevel.AQL_6_5   => "6.5",
+                _                        => "Not Allowed"
             };
             static string MapAqlLevel(AqlInspectionLevel v) => v switch
             {
@@ -373,6 +377,7 @@ namespace InticooInspection.API.Controllers
                 productCategory = inspection.ProductCategory,
                 totalShipmentQty = inspection.TotalShipmentQty,
                 totalCartonBoxes = inspection.TotalCartonBoxes,
+                generalRemark    = inspection.GeneralRemark,
                 inspectorId = inspection.InspectorId,
                 inspectorName = inspection.InspectorName,
                 createdAt = inspection.CreatedAt,
@@ -588,6 +593,7 @@ namespace InticooInspection.API.Controllers
                 ProductCategory = request.ProductCategory,
                 TotalShipmentQty = request.TotalShipmentQty,
                 TotalCartonBoxes = request.TotalCartonBoxes,
+                GeneralRemark    = request.GeneralRemark,
                 InspectorId = request.InspectorId,
                 InspectorName = request.InspectorName,
                 JobNumber = jobNumber,
@@ -924,6 +930,7 @@ namespace InticooInspection.API.Controllers
                 inspection.ProductCategory = request.ProductCategory;
                 inspection.TotalShipmentQty = request.TotalShipmentQty;
                 inspection.TotalCartonBoxes = request.TotalCartonBoxes;
+                inspection.GeneralRemark    = request.GeneralRemark;
                 inspection.InspectorId = request.InspectorId;
                 inspection.InspectorName = request.InspectorName;
                 inspection.Photo1Url = request.Photo1Url;
@@ -1113,6 +1120,25 @@ namespace InticooInspection.API.Controllers
                 }
 
                 await _db.SaveChangesAsync();
+
+                // ════════════════════════════════════════════════════════
+                // 4. Gửi email thông báo cho Customer (nếu có email)
+                // ════════════════════════════════════════════════════════
+                _ = Task.Run(async () =>
+                {
+                    try
+                    {
+                        if (!string.IsNullOrEmpty(inspection.CustomerId))
+                        {
+                            var customer = await _db.Customers
+                                .FirstOrDefaultAsync(c => c.CustomerId == inspection.CustomerId);
+                            if (customer != null && !string.IsNullOrEmpty(customer.Email))
+                                await SendCompletionEmailAsync(inspection, customer.Email);
+                        }
+                    }
+                    catch { /* Email failure không ảnh hưởng response */ }
+                });
+
                 return Ok(new { success = true, id = inspection.Id });
             }
             catch (Exception ex)
@@ -1124,6 +1150,72 @@ namespace InticooInspection.API.Controllers
                     stack = ex.StackTrace
                 });
             }
+        }
+
+        // ════════════════════════════════════════════════════════
+        // Helper: Gửi email hoàn thành inspection cho Customer
+        // ════════════════════════════════════════════════════════
+        private async Task SendCompletionEmailAsync(Inspection inspection, string toEmail)
+        {
+            var smtp    = _config["Email:SmtpHost"]     ?? "smtp.gmail.com";
+            var port    = int.Parse(_config["Email:SmtpPort"] ?? "587");
+            var user    = _config["Email:Username"]     ?? "";
+            var pass    = _config["Email:Password"]     ?? "";
+            var from    = _config["Email:FromAddress"]  ?? user;
+            var fromName= _config["Email:FromName"]     ?? "Inticoo Global Services";
+            var baseUrl = _config["Email:ReportBaseUrl"]?? "https://app.inticoo.com";
+
+            var completedDate = (inspection.CompletedAt ?? DateTime.UtcNow).ToString("d MMMM yyyy");
+            var inspType      = inspection.InspectionType.ToString() switch
+            {
+                "DPI" => "During-Production Inspection",
+                "PPT" => "Pre-Production Inspection",
+                "PST" => "Pre-Shipment Inspection (Final Inspection)",
+                _     => inspection.InspectionType.ToString()
+            };
+            var result        = inspection.FinalResult ?? "N/A";
+            var reportLink    = $"{baseUrl}/inspection-report/{inspection.Id}";
+
+            var subject = $"Inspection Report Completed - {inspection.JobNumber}";
+            var body    = $@"Dear Sir/Madam,
+
+This is a notification that the inspection report has been completed on {completedDate}.
+
+Please find the inspection details below:
+- Job No: {inspection.JobNumber ?? "—"}
+- Category: {inspection.ProductCategory ?? "—"}
+- Product Name: {inspection.ProductName ?? "—"}
+- Item Number: {inspection.ItemNumber ?? "—"}
+- Inspection Type: {inspType}
+- Vendor Name: {inspection.VendorName ?? "—"}
+- Vendor ID: {inspection.VendorId ?? "—"}
+- Result: {result}
+
+Here is the link to download the inspection report: {reportLink}
+
+Should you have any questions or require further clarification, please feel free to contact us.
+
+Best regards,
+Inticoo Global Services
+www.Inticoo.com";
+
+            using var client = new SmtpClient(smtp, port)
+            {
+                Credentials = new NetworkCredential(user, pass),
+                EnableSsl   = true,
+                DeliveryMethod = SmtpDeliveryMethod.Network
+            };
+
+            var msg = new MailMessage
+            {
+                From       = new MailAddress(from, fromName),
+                Subject    = subject,
+                Body       = body,
+                IsBodyHtml = false
+            };
+            msg.To.Add(toEmail);
+
+            await client.SendMailAsync(msg);
         }
     }
 
@@ -1145,6 +1237,7 @@ namespace InticooInspection.API.Controllers
         public string?   ProductCategory    { get; set; }
         public int       TotalShipmentQty   { get; set; }
         public int       TotalCartonBoxes   { get; set; }
+        public string?   GeneralRemark      { get; set; }
         public string?   InspectorId        { get; set; }
         public string?   InspectorName      { get; set; }
 

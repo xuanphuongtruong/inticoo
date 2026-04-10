@@ -117,6 +117,13 @@ else if (_data != null)
                             <td class="rpt-info-label">Total Carton Boxes</td>
                             <td class="rpt-info-val">@(_data.TotalCartonBoxes > 0 ? _data.TotalCartonBoxes.ToString() : "—")</td>
                         </tr>
+                        @if (!string.IsNullOrWhiteSpace(_data.GeneralRemark))
+                        {
+                        <tr>
+                            <td class="rpt-info-label" style="color:#e53935;font-weight:700;text-align:center;">Remark</td>
+                            <td class="rpt-info-val" colspan="3" style="color:#e53935;font-weight:500;">@_data.GeneralRemark</td>
+                        </tr>
+                        }
                     </tbody>
                 </table>
 
@@ -1116,6 +1123,7 @@ else if (_data != null)
         public string?   ProductCategory     { get; set; }
         public int       TotalShipmentQty    { get; set; }
         public int       TotalCartonBoxes    { get; set; }
+        public string?   GeneralRemark       { get; set; }
         public string?   InspectorName       { get; set; }
         public string?   InspectorId         { get; set; }
         public string?   Photo1Url           { get; set; }

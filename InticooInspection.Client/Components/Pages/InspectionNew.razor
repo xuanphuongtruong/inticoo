@@ -224,6 +224,13 @@
                     <input type="number" @bind="Model.TotalCartonBoxes" placeholder="0" />
                 </div>
                 </div>
+                <!-- Remark row spanning full width -->
+                <div class="field-group" style="margin-top:4px;">
+                    <label>Remark</label>
+                    <textarea @bind="Model.GeneralRemark" placeholder="Enter remark (e.g. Combine SKU number xxx, xxx &amp; xxxx)" rows="2"
+                              style="width:100%;resize:vertical;border:1px solid #d0daea;border-radius:8px;padding:9px 12px;font-size:13px;font-family:inherit;color:#1a2d5a;outline:none;transition:border-color .15s;box-sizing:border-box;"
+                              onfocus="this.style.borderColor='#1e90d6'" onblur="this.style.borderColor='#d0daea'"></textarea>
+                </div>
                 </div><!-- gi-fields-col -->
             </div><!-- gi-layout -->
         </div>
@@ -1719,6 +1726,7 @@
                 productCategory    = Model.ProductCategory,
                 totalShipmentQty   = Model.TotalShipmentQty,
                 totalCartonBoxes   = Model.TotalCartonBoxes,
+                generalRemark      = Model.GeneralRemark,
                 inspectorId        = OfficeUse.InspectorId,
                 inspectorName      = OfficeUse.InspectorName,
                 photo1Url          = Photo1ServerUrl,   // lưu server URL, không lưu data URL base64
@@ -1855,6 +1863,7 @@
         public int    TotalShipmentQty   { get; set; }
         public string ProductCategory    { get; set; } = "";
         public int    TotalCartonBoxes   { get; set; }
+        public string? GeneralRemark     { get; set; }
     }
 
     private class PackagingModel

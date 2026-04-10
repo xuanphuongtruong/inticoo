@@ -108,6 +108,13 @@ else
                     <div class="qc-info-row"><span class="qc-info-lbl">Product Name</span><span class="qc-info-val">@(_inspection.ProductName ?? "—")</span></div>
                     <div class="qc-info-row"><span class="qc-info-lbl">Total Shipment Qty</span><span class="qc-info-val">@_inspection.TotalShipmentQty</span></div>
                     <div class="qc-info-row"><span class="qc-info-lbl">Total Carton Boxes</span><span class="qc-info-val">@_inspection.TotalCartonBoxes</span></div>
+                    @if (!string.IsNullOrWhiteSpace(_inspection.GeneralRemark))
+                    {
+                        <div class="qc-info-row" style="border:1.5px solid #e53935;border-radius:8px;padding:8px 12px;margin-top:4px;background:#fff5f5;">
+                            <span class="qc-info-lbl" style="color:#e53935;font-weight:700;">Remark</span>
+                            <span class="qc-info-val" style="color:#e53935;font-weight:500;">@_inspection.GeneralRemark</span>
+                        </div>
+                    }
                 </div>
             </div>
         }
@@ -870,6 +877,9 @@ else
                                     <option value="0.065">0.065</option>
                                     <option value="0.1">0.1</option>
                                     <option value="0.15">0.15</option>
+                                    <option value="0.25">0.25</option>
+                                    <option value="0.40">0.40</option>
+                                    <option value="0.65">0.65</option>
                                     <option value="1.0">1.0</option>
                                     <option value="1.5">1.5</option>
                                     <option value="2.5">2.5</option>
@@ -1302,9 +1312,9 @@ else
 
         _data.Aql.Quantity        = _inspection.AqlQuantity > 0 ? _inspection.AqlQuantity : _inspection.TotalShipmentQty;
         _data.Aql.InspectionLevel = _inspection.AqlLevel ?? "II";
-        _data.Aql.CriticalAql     = _inspection.AqlCritical ?? "Not Allowed";
-        _data.Aql.MajorAql        = _inspection.AqlMajor ?? "2.5";
-        _data.Aql.MinorAql        = _inspection.AqlMinor ?? "4.0";
+        _data.Aql.CriticalAql     = NormalizeAql(_inspection.AqlCritical);
+        _data.Aql.MajorAql        = NormalizeAql(_inspection.AqlMajor) is "Not Allowed" ? "2.5" : NormalizeAql(_inspection.AqlMajor);
+        _data.Aql.MinorAql        = NormalizeAql(_inspection.AqlMinor) is "Not Allowed" ? "4.0" : NormalizeAql(_inspection.AqlMinor);
         RecalcAql();
 
         if (_inspection.PerformanceTests?.Any() == true)
@@ -1591,6 +1601,16 @@ else
     void GoBack()     => Navigation.NavigateTo("/inspection-schedule");
 
     // ── AQL calculation ──
+    // Normalize AQL value từ API về đúng format của dropdown
+    string NormalizeAql(string? val) => val switch
+    {
+        null or "" or "0" or "Not Allowed" => "Not Allowed",
+        "0.10"  => "0.1",
+        "0.40"  => "0.40",
+        "0.65"  => "0.65",
+        _ => val
+    };
+
     void RecalcAql()
     {
         int qty = _data.Aql.Quantity;
@@ -1621,70 +1641,181 @@ else
 
     string GetAqlCodeLetter(int qty, string level)
     {
+        // ISO 2859-1 Sample Size Code Letters
+        // Lot Size ranges: 2-8, 9-15, 16-25, 26-50, 51-90, 91-150, 151-280, 281-500,
+        //                  501-1200, 1201-3200, 3201-10000, 10001-35000, 35001-150000, 150001-500000, 500001+
         if (level == "I")
         {
-            if (qty <= 8) return "A";
-            if (qty <= 25) return "B";
-            if (qty <= 90) return "C";
-            if (qty <= 280) return "D";
-            if (qty <= 500) return "E";
-            if (qty <= 1200) return "F";
-            if (qty <= 3200) return "G";
-            if (qty <= 10000) return "H";
-            if (qty <= 35000) return "J";
-            return "K";
-        }
-        if (level == "II")
-        {
-            if (qty <= 8) return "B";
-            if (qty <= 25) return "C";
-            if (qty <= 90) return "D";
-            if (qty <= 280) return "E";
-            if (qty <= 500) return "F";
+            if (qty <=    8) return "A";
+            if (qty <=   15) return "A";
+            if (qty <=   25) return "B";
+            if (qty <=   50) return "C";
+            if (qty <=   90) return "C";
+            if (qty <=  150) return "D";
+            if (qty <=  280) return "E";
+            if (qty <=  500) return "F";
             if (qty <= 1200) return "G";
             if (qty <= 3200) return "H";
             if (qty <= 10000) return "J";
             if (qty <= 35000) return "K";
-            return "L";
+            if (qty <= 150000) return "L";
+            if (qty <= 500000) return "M";
+            return "N";
         }
-        // Level III
-        if (qty <= 8) return "C";
-        if (qty <= 25) return "D";
-        if (qty <= 90) return "E";
-        if (qty <= 280) return "F";
-        if (qty <= 500) return "G";
-        if (qty <= 1200) return "H";
-        if (qty <= 3200) return "J";
-        if (qty <= 10000) return "K";
-        return "L";
+        if (level == "III")
+        {
+            if (qty <=    8) return "B";
+            if (qty <=   15) return "C";
+            if (qty <=   25) return "D";
+            if (qty <=   50) return "E";
+            if (qty <=   90) return "F";
+            if (qty <=  150) return "G";
+            if (qty <=  280) return "H";
+            if (qty <=  500) return "J";
+            if (qty <= 1200) return "K";
+            if (qty <= 3200) return "L";
+            if (qty <= 10000) return "M";
+            if (qty <= 35000) return "N";
+            if (qty <= 150000) return "P";
+            if (qty <= 500000) return "Q";
+            return "R";
+        }
+        if (level == "S1")
+        {
+            if (qty <=   150) return "A";
+            if (qty <=  1200) return "B";
+            if (qty <= 10000) return "C";
+            if (qty <= 150000) return "D";
+            return "D";
+        }
+        if (level == "S2")
+        {
+            if (qty <=    90) return "A";
+            if (qty <=   280) return "B";
+            if (qty <=   500) return "B";
+            if (qty <=  1200) return "C";
+            if (qty <= 10000) return "C";
+            if (qty <= 35000) return "D";
+            if (qty <= 150000) return "E";
+            return "E";
+        }
+        if (level == "S3")
+        {
+            if (qty <=    15) return "A";
+            if (qty <=   150) return "B";
+            if (qty <=  1200) return "C";
+            if (qty <= 10000) return "D";
+            if (qty <= 35000) return "E";
+            if (qty <= 150000) return "F";
+            if (qty <= 500000) return "G";
+            return "H";
+        }
+        if (level == "S4")
+        {
+            if (qty <=     8) return "A";
+            if (qty <=    25) return "B";
+            if (qty <=    90) return "B";
+            if (qty <=   150) return "C";
+            if (qty <=   280) return "C";
+            if (qty <=  1200) return "D";
+            if (qty <=  3200) return "E";
+            if (qty <= 10000) return "F";
+            if (qty <= 35000) return "G";
+            if (qty <= 150000) return "H";
+            if (qty <= 500000) return "J";
+            return "K";
+        }
+        // Level II (default) — ISO 2859-1 Table 1
+        if (qty <=    8) return "A";
+        if (qty <=   15) return "B";
+        if (qty <=   25) return "C";
+        if (qty <=   50) return "D";
+        if (qty <=   90) return "E";
+        if (qty <=  150) return "F";
+        if (qty <=  280) return "G";
+        if (qty <=  500) return "H";
+        if (qty <= 1200) return "J";
+        if (qty <= 3200) return "K";
+        if (qty <= 10000) return "L";
+        if (qty <= 35000) return "M";
+        if (qty <= 150000) return "N";
+        if (qty <= 500000) return "P";
+        return "Q";
     }
 
     int GetSampleSize(string code) => code switch
     {
         "A" => 2, "B" => 3, "C" => 5, "D" => 8, "E" => 13, "F" => 20,
-        "G" => 32, "H" => 50, "J" => 80, "K" => 125, "L" => 200, _ => 0
+        "G" => 32, "H" => 50, "J" => 80, "K" => 125, "L" => 200,
+        "M" => 315, "N" => 500, "P" => 800, "Q" => 1250, "R" => 2000,
+        _ => 0
     };
 
     (int Accept, int Reject) GetAcceptReject(string code, string aql)
     {
-        if (aql == "Not Allowed") return (0, 1);
+        if (aql == "Not Allowed" || aql == "0") return (0, 1);
+
+        // ISO 2859-1 Table B-1 — Single sampling plans for normal inspection
+        // Format: (Accept, Reject)
+        // Arrow rules: use next plan when arrow applies (already resolved below)
         return (aql, code) switch
         {
-            ("1.0", "D") => (0, 1), ("1.0", "E") => (0, 1), ("1.0", "F") => (1, 2),
-            ("1.0", "G") => (1, 2), ("1.0", "H") => (2, 3), ("1.0", "J") => (3, 4),
-            ("1.0", "K") => (5, 6), ("1.0", "L") => (7, 8),
-            ("1.5", "C") => (0, 1), ("1.5", "D") => (0, 1), ("1.5", "E") => (1, 2),
-            ("1.5", "F") => (1, 2), ("1.5", "G") => (2, 3), ("1.5", "H") => (3, 4),
-            ("1.5", "J") => (5, 6), ("1.5", "K") => (7, 8),
+            // 0.065
+            ("0.065", "L") => (0, 1), ("0.065", "M") => (1, 2), ("0.065", "N") => (1, 2),
+            ("0.065", "P") => (2, 3), ("0.065", "Q") => (3, 4), ("0.065", "R") => (5, 6),
+
+            // 0.1
+            ("0.1", "K") => (0, 1), ("0.1", "L") => (0, 1), ("0.1", "M") => (1, 2),
+            ("0.1", "N") => (2, 3), ("0.1", "P") => (3, 4), ("0.1", "Q") => (5, 6),
+
+            // 0.15
+            ("0.15", "J") => (0, 1), ("0.15", "K") => (0, 1), ("0.15", "L") => (1, 2),
+            ("0.15", "M") => (1, 2), ("0.15", "N") => (2, 3), ("0.15", "P") => (3, 4),
+            ("0.15", "Q") => (5, 6),
+
+            // 0.25
+            ("0.25", "H") => (0, 1), ("0.25", "J") => (0, 1), ("0.25", "K") => (1, 2),
+            ("0.25", "L") => (2, 3), ("0.25", "M") => (3, 4), ("0.25", "N") => (5, 6),
+            ("0.25", "P") => (7, 8), ("0.25", "Q") => (10, 11),
+
+            // 0.40
+            ("0.40", "G") => (0, 1), ("0.40", "H") => (0, 1), ("0.40", "J") => (1, 2),
+            ("0.40", "K") => (2, 3), ("0.40", "L") => (3, 4), ("0.40", "M") => (5, 6),
+            ("0.40", "N") => (7, 8), ("0.40", "P") => (10, 11),
+
+            // 0.65
+            ("0.65", "F") => (0, 1), ("0.65", "G") => (1, 2), ("0.65", "H") => (1, 2),
+            ("0.65", "J") => (2, 3), ("0.65", "K") => (3, 4), ("0.65", "L") => (5, 6),
+            ("0.65", "M") => (7, 8), ("0.65", "N") => (10, 11),
+
+            // 1.0
+            ("1.0", "E") => (0, 1), ("1.0", "F") => (0, 1), ("1.0", "G") => (1, 2),
+            ("1.0", "H") => (2, 3), ("1.0", "J") => (3, 4), ("1.0", "K") => (5, 6),
+            ("1.0", "L") => (7, 8), ("1.0", "M") => (10, 11), ("1.0", "N") => (14, 15),
+
+            // 1.5
+            ("1.5", "D") => (0, 1), ("1.5", "E") => (0, 1), ("1.5", "F") => (1, 2),
+            ("1.5", "G") => (2, 3), ("1.5", "H") => (3, 4), ("1.5", "J") => (5, 6),
+            ("1.5", "K") => (7, 8), ("1.5", "L") => (10, 11), ("1.5", "M") => (14, 15),
+            ("1.5", "N") => (21, 22),
+
+            // 2.5
             ("2.5", "C") => (0, 1), ("2.5", "D") => (0, 1), ("2.5", "E") => (1, 2),
             ("2.5", "F") => (2, 3), ("2.5", "G") => (3, 4), ("2.5", "H") => (5, 6),
-            ("2.5", "J") => (7, 8), ("2.5", "K") => (10, 11),
-            ("4.0", "C") => (0, 1), ("4.0", "D") => (1, 2), ("4.0", "E") => (2, 3),
-            ("4.0", "F") => (3, 4), ("4.0", "G") => (5, 6), ("4.0", "H") => (7, 8),
-            ("4.0", "J") => (10, 11), ("4.0", "K") => (14, 15),
+            ("2.5", "J") => (7, 8), ("2.5", "K") => (10, 11), ("2.5", "L") => (14, 15),
+            ("2.5", "M") => (21, 22),
+
+            // 4.0
+            ("4.0", "B") => (0, 1), ("4.0", "C") => (0, 1), ("4.0", "D") => (1, 2),
+            ("4.0", "E") => (2, 3), ("4.0", "F") => (3, 4), ("4.0", "G") => (5, 6),
+            ("4.0", "H") => (7, 8), ("4.0", "J") => (10, 11), ("4.0", "K") => (14, 15),
+            ("4.0", "L") => (21, 22),
+
+            // 6.5
             ("6.5", "B") => (0, 1), ("6.5", "C") => (1, 2), ("6.5", "D") => (2, 3),
             ("6.5", "E") => (3, 4), ("6.5", "F") => (5, 6), ("6.5", "G") => (7, 8),
-            ("6.5", "H") => (10, 11), ("6.5", "J") => (14, 15),
+            ("6.5", "H") => (10, 11), ("6.5", "J") => (14, 15), ("6.5", "K") => (21, 22),
+
             _ => (0, 1)
         };
     }
@@ -1922,9 +2053,21 @@ else
             var resp = await Http.PutAsJsonAsync($"api/inspections/{InspectionId}/qc-result", payload);
             if (resp.IsSuccessStatusCode)
             {
-                _saveMsg = "Saved successfully!";
+                // Parse response để lấy trạng thái email
+                var json = await resp.Content.ReadAsStringAsync();
+                var result = System.Text.Json.JsonSerializer.Deserialize<SaveQcResponse>(json,
+                    new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+
+                if (result?.EmailSent == true)
+                    _saveMsg = $"✅ Saved! Notification email sent to {result.EmailTo}";
+                else if (!string.IsNullOrEmpty(result?.EmailError))
+                    _saveMsg = $"✅ Saved! (Email not sent: {result.EmailError})";
+                else
+                    _saveMsg = "✅ Saved successfully!";
+
                 _saveError = false;
-                await Task.Delay(1500);
+                StateHasChanged();
+                await Task.Delay(3000);
                 Navigation.NavigateTo("/inspection-schedule");
             }
             else
@@ -2088,6 +2231,7 @@ else
         [JsonPropertyName("itemNumber")]       public string? ItemNumber       { get; set; }
         [JsonPropertyName("totalShipmentQty")] public int    TotalShipmentQty { get; set; }
         [JsonPropertyName("totalCartonBoxes")] public int    TotalCartonBoxes { get; set; }
+        [JsonPropertyName("generalRemark")]    public string? GeneralRemark    { get; set; }
         [JsonPropertyName("inspectorName")]    public string  InspectorName    { get; set; } = "";
         [JsonPropertyName("inspectorId")]      public string? InspectorId      { get; set; }
         [JsonPropertyName("inspectionLocation")] public string? InspectionLocation { get; set; }
@@ -2318,6 +2462,15 @@ else
         public string       Type    { get; set; } = "";
         public List<string> Photos  { get; set; } = new() { "", "" }; // bắt đầu 2 slot
         public List<string> Remarks { get; set; } = new() { "", "" }; // remark per ảnh
+    }
+
+    class SaveQcResponse
+    {
+        public bool   Success    { get; set; }
+        public int    Id         { get; set; }
+        public bool   EmailSent  { get; set; }
+        public string EmailTo    { get; set; } = "";
+        public string EmailError { get; set; } = "";
     }
 }
 

@@ -51,6 +51,7 @@ namespace InticooInspection.Domain.Entities
         public int     TotalShipmentQty   { get; set; }
         public string? ProductCategory    { get; set; }
         public int     TotalCartonBoxes   { get; set; }
+        public string? GeneralRemark      { get; set; }  // Remark for General Information section
 
         // Photos (lưu path hoặc URL)
         public string? Photo1Url { get; set; }

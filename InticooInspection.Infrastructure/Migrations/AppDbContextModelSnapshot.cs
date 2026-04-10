@@ -422,6 +422,9 @@ namespace InticooInspection.Infrastructure.Migrations
                     b.Property<string>("FinalResult")
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<string>("GeneralRemark")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<DateTime>("InspectionDate")
                         .HasColumnType("datetime2");
 
