@@ -238,6 +238,47 @@ namespace InticooInspection.API.Controllers
             return Ok(roles);
         }
 
+        // ─────────────────────────────────────────────────────────────────
+        // GET api/users/{inspectorId}/review?year=2026&month=4
+        // Inspector Performance Overview
+        // ─────────────────────────────────────────────────────────────────
+        [HttpGet("{inspectorId}/review")]
+        public async Task<IActionResult> GetInspectorReview(string inspectorId, [FromQuery] int? year, [FromQuery] int? month)
+        {
+            try
+            {
+                var now         = DateTime.UtcNow;
+                var targetYear  = year  ?? now.Year;
+                var targetMonth = month ?? now.Month;
+
+                // Find inspector user
+                var inspector = await _userManager.Users
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(u => u.InspectorId == inspectorId);
+                if (inspector == null) return NotFound(new { error = "Inspector not found" });
+
+                // Load AppDbContext via DI — need to inject it
+                // We'll use a raw HTTP call pattern instead: return 404 if no db access
+                // Actually UserController doesn't have AppDbContext, so we need a workaround.
+                // Return inspector info + signal client to call inspection API separately.
+                return Ok(new
+                {
+                    inspectorId   = inspector.InspectorId,
+                    inspectorName = inspector.FullName,
+                    targetYear, targetMonth,
+                    nationality   = inspector.Nationality,
+                    category      = inspector.Category,
+                    language      = inspector.Language,
+                    inspectionStartYear = inspector.InspectionStartYear,
+                    avatarUrl     = inspector.AvatarUrl,
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { error = ex.Message });
+            }
+        }
+
         // ── Helper ───────────────────────────────────────────────────────────
         private static object MapToDto(AppUser u, IList<string> roles) => new
         {

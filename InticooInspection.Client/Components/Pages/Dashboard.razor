@@ -1,908 +1,668 @@
 @page "/dashboard"
-@using Microsoft.AspNetCore.Authorization
-@attribute [Authorize(Roles = "Admin,Inspector,Customer")]
-@inject IConfiguration Configuration
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Admin")]
+@using System.Net.Http.Json
+@using System.Text.Json.Serialization
+@inject HttpClient Http
+@inject NavigationManager Navigation
 
-<PageTitle>Dashboard — Inticoo Inspection</PageTitle>
-<span id="blazor-api-base" data-url="@(Configuration["ApiBaseUrl"])" style="display:none"></span>
+<PageTitle>Dashboard - Inticoo</PageTitle>
 
-<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap" rel="stylesheet"/>
-
-<!-- ══ PAGE CONTENT ══ -->
-<div class="db-wrap">
-
-    <!-- ── API Config Banner ── -->
-    <div class="cfg-banner" id="cfg-banner" style="display:none">
-        <div style="font-size:18px">⚙️</div>
-        <div style="flex:1;min-width:140px">
-            <div style="font-weight:700;color:var(--db-amber);margin-bottom:3px">Connect API Server</div>
-            <div style="font-size:12px;color:var(--db-muted)">Enter Base URL — e.g. <code style="color:var(--db-text)">http://localhost:5000</code></div>
-        </div>
-        <input type="text" id="api-input" placeholder="https://your-api.inticoo.com" />
-        <button class="cfg-btn" onclick="dbSaveUrl()">Connect →</button>
+@if (_loading)
+{
+    <div class="db-loading">
+        <div class="db-spinner"></div>
+        <span>Loading dashboard...</span>
     </div>
+}
+else if (_error != null)
+{
+    <div class="db-error">⚠ @_error</div>
+}
+else if (_data != null)
+{
+    <div class="db-page">
 
-    <!-- ── Page Header ── -->
-    <div class="db-ph">
-        <div class="db-ph-left">
-            <h1>Overview</h1>
-            <p>
-                <span class="db-ldot-live"></span>Live data from API ·
-                <span id="last-upd">Not connected</span>
-                <button class="db-ref-btn" title="Refresh" onclick="dbLoadAll()" id="ref-btn">
-                    <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                        <path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
-                    </svg>
-                </button>
-            </p>
-        </div>
-    </div>
-
-    <!-- ══════════════════════════════════════════
-         ROW 1 — KPI CARDS (6 cards: 3+3)
-    ══════════════════════════════════════════ -->
-    <div class="db-kgrid">
-        <!-- Card 1: Total Inspections -->
-        <div class="db-kcard c1">
-            <div class="db-ktop">
-                <div class="db-kico i1">
-                    <svg width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                        <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/>
-                    </svg>
-                </div>
-                <span class="db-kdelta up" id="d1">—</span>
-            </div>
-            <div class="db-kval" id="k1">—</div>
-            <div class="db-klbl">Total Inspections</div>
-        </div>
-
-        <!-- Card 2: Pending -->
-        <div class="db-kcard c2">
-            <div class="db-ktop">
-                <div class="db-kico i2">
-                    <svg width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                        <circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>
-                    </svg>
-                </div>
-                <span class="db-kdelta" id="d2">—</span>
-            </div>
-            <div class="db-kval" id="k2">—</div>
-            <div class="db-klbl">Pending</div>
-        </div>
-
-        <!-- Card 3: Customers -->
-        <div class="db-kcard c3">
-            <div class="db-ktop">
-                <div class="db-kico i3">
-                    <svg width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                        <path d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0"/>
-                    </svg>
-                </div>
-                <span class="db-kdelta up" id="d3">—</span>
-            </div>
-            <div class="db-kval" id="k3">—</div>
-            <div class="db-klbl">Customers</div>
-        </div>
-
-        <!-- Card 4: Vendors -->
-        <div class="db-kcard c4">
-            <div class="db-ktop">
-                <div class="db-kico i4">
-                    <svg width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                        <path d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0H5m14 0h2M5 21H3M9 7h1m-1 4h1m4-4h1m-1 4h1"/>
-                    </svg>
-                </div>
-                <span class="db-kdelta up" id="d4">—</span>
-            </div>
-            <div class="db-kval" id="k4">—</div>
-            <div class="db-klbl">Vendors</div>
-        </div>
-
-        <!-- Card 5: Products -->
-        <div class="db-kcard c5">
-            <div class="db-ktop">
-                <div class="db-kico i5">
-                    <svg width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                        <path d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10"/>
-                    </svg>
-                </div>
-                <span class="db-kdelta up" id="d5">—</span>
-            </div>
-            <div class="db-kval" id="k5">—</div>
-            <div class="db-klbl">Products</div>
-        </div>
-
-        <!-- Card 6: Inspectors -->
-        <div class="db-kcard c6">
-            <div class="db-ktop">
-                <div class="db-kico i6">
-                    <svg width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                        <path d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
-                    </svg>
-                </div>
-                <span class="db-kdelta up" id="d6">—</span>
-            </div>
-            <div class="db-kval" id="k6">—</div>
-            <div class="db-klbl">Inspectors</div>
-        </div>
-    </div>
-
-    <!-- ══════════════════════════════════════════
-         ROW 2 — Inspections by Month + Status Donut
-    ══════════════════════════════════════════ -->
-    <div class="db-g31">
-
-        <!-- Inspections by Month -->
-        <div class="db-panel" style="animation-delay:.2s">
-            <div class="db-ph2">
-                <div>
-                    <div class="db-ptitle">Inspections by Month</div>
-                    <div class="db-psub">Last 12 months</div>
-                </div>
-                <div style="display:flex;gap:12px;align-items:center">
-                    <span class="db-legend-item"><span class="db-legend-dot" style="background:var(--db-accent)"></span>Completed</span>
-                    <span class="db-legend-item"><span class="db-legend-dot" style="background:var(--db-blue)"></span>Created</span>
-                </div>
-            </div>
-            <div class="db-pbody">
-                <div class="db-bchart" id="bar-chart-month">
-                    <div class="db-sk" style="height:100%;width:100%;border-radius:4px"></div>
-                </div>
-                <div class="db-bar-lbls" id="bar-lbls-month"></div>
-            </div>
-            <div class="db-mstats" id="mstats-month">
-                <div class="db-ms">
-                    <div class="db-msv" id="ms-completed" style="color:var(--db-accent)">—</div>
-                    <div class="db-msl">Completed</div>
-                </div>
-                <div class="db-ms">
-                    <div class="db-msv" id="ms-thismonth">—</div>
-                    <div class="db-msl">This month</div>
-                </div>
-                <div class="db-ms">
-                    <div class="db-msv" id="ms-pending" style="color:var(--db-amber)">—</div>
-                    <div class="db-msl">Pending</div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Status Donut -->
-        <div class="db-panel" style="animation-delay:.24s">
-            <div class="db-ph2">
-                <div>
-                    <div class="db-ptitle">Status</div>
-                    <div class="db-psub">Current distribution</div>
-                </div>
-            </div>
-            <div class="db-pbody">
-                <div class="db-dwrap" id="donut-wrap">
-                    <div class="db-sk" style="width:90px;height:90px;border-radius:50%;flex-shrink:0"></div>
-                    <div style="flex:1;display:flex;flex-direction:column;gap:8px">
-                        <div class="db-sk" style="height:12px"></div>
-                        <div class="db-sk" style="height:12px"></div>
-                        <div class="db-sk" style="height:12px"></div>
-                        <div class="db-sk" style="height:12px"></div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- ══════════════════════════════════════════
-         ROW 3 — Inspections by Year
-    ══════════════════════════════════════════ -->
-    <div class="db-panel db-panel-full" style="animation-delay:.26s;margin-bottom:18px">
-        <div class="db-ph2">
+        <!-- ── Header ── -->
+        <div class="db-header">
             <div>
-                <div class="db-ptitle">Inspections by Year</div>
-                <div class="db-psub">Annual overview</div>
-            </div>
-            <div style="display:flex;gap:12px;align-items:center">
-                <span class="db-legend-item"><span class="db-legend-dot" style="background:var(--db-accent)"></span>Completed</span>
-                <span class="db-legend-item"><span class="db-legend-dot" style="background:var(--db-blue)"></span>Created</span>
-            </div>
-        </div>
-        <div class="db-pbody">
-            <div class="db-bchart" id="bar-chart-year" style="height:100px">
-                <div class="db-sk" style="height:100%;width:100%;border-radius:4px"></div>
-            </div>
-            <div class="db-bar-lbls" id="bar-lbls-year"></div>
-        </div>
-    </div>
-
-    <!-- ══════════════════════════════════════════
-         ROW 4 — Inspection Types (Month + Year side by side)
-    ══════════════════════════════════════════ -->
-    <div class="db-g2" style="margin-bottom:18px">
-
-        <!-- Inspection Types by Month -->
-        <div class="db-panel" style="animation-delay:.28s">
-            <div class="db-ph2">
-                <div>
-                    <div class="db-ptitle">Inspection Types by Month</div>
-                    <div class="db-psub">PPT · DPI · PST</div>
-                </div>
-            </div>
-            <div class="db-pbody" id="tbreak-month">
-                <div class="db-sk" style="height:130px;width:100%;border-radius:8px"></div>
-            </div>
-            <div class="db-mstats">
-                <div class="db-ms">
-                    <div class="db-msv" id="ms-ppt" style="color:var(--db-blue)">—</div>
-                    <div class="db-msl">Pre-Production</div>
-                </div>
-                <div class="db-ms">
-                    <div class="db-msv" id="ms-dpi" style="color:var(--db-accent)">—</div>
-                    <div class="db-msl">During Prod.</div>
-                </div>
-                <div class="db-ms">
-                    <div class="db-msv" id="ms-pst" style="color:var(--db-amber)">—</div>
-                    <div class="db-msl">Pre-Shipment</div>
+                <h1 class="db-title">Overview</h1>
+                <div class="db-subtitle">
+                    <span class="db-live-dot"></span>
+                    Live data from API
+                    <span class="db-update-time">· Update @_data.UpdatedAt.ToLocalTime().ToString("hh:mmtt")</span>
+                    <button class="db-refresh-btn" @onclick="LoadData" title="Refresh">
+                        <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                            <path d="M4 4a8 8 0 0 1 12 0M16 16a8 8 0 0 1-12 0M4 4v4h4M16 16v-4h-4"/>
+                        </svg>
+                    </button>
                 </div>
             </div>
         </div>
 
-        <!-- Inspection Types by Year -->
-        <div class="db-panel" style="animation-delay:.30s">
-            <div class="db-ph2">
-                <div>
-                    <div class="db-ptitle">Inspection Types by Year</div>
-                    <div class="db-psub">PPT · DPI · PST</div>
+        <!-- ── Summary Cards ── -->
+        <div class="db-cards-grid">
+            <div class="db-card" style="--accent:#3b82f6;">
+                <div class="db-card-icon" style="background:#eff6ff;">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="1.8">
+                        <path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/>
+                        <rect x="9" y="3" width="6" height="4" rx="1"/>
+                        <path d="M9 12l2 2 4-4" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
                 </div>
+                <div class="db-card-badge" style="background:#dbeafe;color:#1d4ed8;">@_data.TotalInspections jobs</div>
+                <div class="db-card-value">@_data.TotalInspections</div>
+                <div class="db-card-label">Total Inspections</div>
             </div>
-            <div class="db-pbody" id="tbreak-year">
-                <div class="db-sk" style="height:130px;width:100%;border-radius:8px"></div>
+
+            <div class="db-card" style="--accent:#f59e0b;">
+                <div class="db-card-icon" style="background:#fffbeb;">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="1.8">
+                        <circle cx="12" cy="12" r="10"/>
+                        <path d="M12 6v6l4 2" stroke-linecap="round"/>
+                    </svg>
+                </div>
+                <div class="db-card-badge" style="background:#fef3c7;color:#b45309;">@_data.PendingInspections active</div>
+                <div class="db-card-value">@_data.PendingInspections</div>
+                <div class="db-card-label">Pending</div>
             </div>
-            <div class="db-mstats">
-                <div class="db-ms">
-                    <div class="db-msv" id="ms-vendors" style="color:var(--db-blue)">—</div>
-                    <div class="db-msl">Vendors active</div>
+
+            <div class="db-card" style="--accent:#8b5cf6;">
+                <div class="db-card-icon" style="background:#f5f3ff;">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#8b5cf6" stroke-width="1.8">
+                        <circle cx="8" cy="7" r="4"/><path d="M2 21c0-4.418 2.686-8 6-8"/>
+                        <circle cx="17" cy="7" r="3"/><path d="M14 21c0-3.314 1.343-6 3-6s3 2.686 3 6"/>
+                    </svg>
                 </div>
-                <div class="db-ms">
-                    <div class="db-msv" id="ms-users" style="color:var(--db-accent)">—</div>
-                    <div class="db-msl">System Users</div>
+                <div class="db-card-badge" style="background:#ede9fe;color:#6d28d9;">—</div>
+                <div class="db-card-value">@_data.CustomerCount</div>
+                <div class="db-card-label">Customers</div>
+            </div>
+
+            <div class="db-card" style="--accent:#ef4444;">
+                <div class="db-card-icon" style="background:#fef2f2;">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="1.8">
+                        <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+                        <polyline points="9 22 9 12 15 12 15 22"/>
+                    </svg>
                 </div>
+                <div class="db-card-badge" style="background:#fee2e2;color:#b91c1c;">—</div>
+                <div class="db-card-value">@_data.VendorCount</div>
+                <div class="db-card-label">Vendors</div>
+            </div>
+
+            <div class="db-card" style="--accent:#10b981;">
+                <div class="db-card-icon" style="background:#ecfdf5;">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="1.8">
+                        <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+                    </svg>
+                </div>
+                <div class="db-card-badge" style="background:#d1fae5;color:#065f46;">—</div>
+                <div class="db-card-value">@_data.ProductCount</div>
+                <div class="db-card-label">Products</div>
+            </div>
+
+            <div class="db-card" style="--accent:#06b6d4;">
+                <div class="db-card-icon" style="background:#ecfeff;">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#06b6d4" stroke-width="1.8">
+                        <circle cx="12" cy="8" r="4"/>
+                        <path d="M4 20c0-4 3.582-7 8-7s8 3 8 7"/>
+                        <path d="M16 11l2 2 3-3" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                </div>
+                <div class="db-card-badge" style="background:#cffafe;color:#0e7490;">—</div>
+                <div class="db-card-value">@_data.InspectorCount</div>
+                <div class="db-card-label">Inspectors</div>
             </div>
         </div>
-    </div>
 
-    <!-- ══════════════════════════════════════════
-         ROW 5 — Recent Inspections + Right column
-    ══════════════════════════════════════════ -->
-    <div class="db-g2">
-
-        <!-- Recent Inspections Table -->
-        <div class="db-panel" style="animation-delay:.32s">
-            <div class="db-ftabs" id="ftabs">
-                <button class="db-ftab on" data-f="all">All</button>
-                <button class="db-ftab" data-f="completed">Completed</button>
-                <button class="db-ftab" data-f="pending">Pending</button>
-                <button class="db-ftab" data-f="cancelled">Cancelled</button>
-            </div>
-            <div class="db-ph2" style="padding-top:10px">
-                <div>
-                    <div class="db-ptitle">Recent Inspections</div>
-                    <div class="db-psub" id="tbl-sub">—</div>
+        <!-- ── Inspections by Month ── -->
+        <div class="db-section-title">Inspections by Month</div>
+        <div class="db-row">
+            <div class="db-chart-card" style="flex:2;">
+                <div class="db-mini-stats">
+                    <div class="db-mini-stat">
+                        <span class="db-mini-val" style="color:#3b82f6;">@_data.MonthCompleted</span>
+                        <span class="db-mini-lbl">Completed</span>
+                    </div>
+                    <div class="db-mini-divider"></div>
+                    <div class="db-mini-stat">
+                        <span class="db-mini-val" style="color:#f59e0b;">@_data.MonthPending</span>
+                        <span class="db-mini-lbl">Pending</span>
+                    </div>
                 </div>
-                <a class="db-pact" href="/inspections">View all →</a>
-            </div>
-            <div class="db-twrap">
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Job #</th>
-                            <th>Customer / Category</th>
-                            <th>Inspector Name</th>
-                            <th>Status / Date</th>
-                        </tr>
-                    </thead>
-                    <tbody id="tbody">
-                        <tr>
-                            <td colspan="4">
-                                <div class="db-errmsg">
-                                    <div class="db-ei">⚙️</div>
-                                    Configure API URL to view data
+                <!-- Bar chart by month -->
+                <div class="db-barchart">
+                    @{var maxVal = _data.ByMonth.Max(m => m.Completed + m.Pending);}
+                    @{var months = new[]{"JAN","FEB","MAR","APR","MAY","JUN","JUL","AUG","SEP","OCT","NOV","DEC"};}
+                    @foreach (var m in _data.ByMonth)
+                    {
+                        var total2 = m.Completed + m.Pending;
+                        var heightPct = maxVal > 0 ? (double)total2 / maxVal * 100 : 0;
+                        var compPct   = total2 > 0 ? (double)m.Completed / total2 * 100 : 0;
+                        <div class="db-bar-col">
+                            @if (total2 > 0)
+                            {
+                                <div class="db-bar-num">@total2</div>
+                                <div class="db-bar-wrap" style="height:@((int)heightPct)%">
+                                    <div class="db-bar-seg pending" style="height:@((int)(100-compPct))%;"></div>
+                                    <div class="db-bar-seg completed" style="height:@((int)compPct)%;"></div>
                                 </div>
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
+                            }
+                            else
+                            {
+                                <div class="db-bar-num" style="opacity:0">0</div>
+                                <div class="db-bar-wrap" style="height:4px;background:#e5e7eb;border-radius:2px;"></div>
+                            }
+                            <div class="db-bar-label">@months[m.Month - 1]</div>
+                        </div>
+                    }
+                </div>
+                <div class="db-legend">
+                    <span class="db-leg-item"><span class="db-leg-dot" style="background:#3b82f6;"></span>Completed</span>
+                    <span class="db-leg-item"><span class="db-leg-dot" style="background:#f59e0b;"></span>Pending</span>
+                </div>
+            </div>
+
+            <!-- Pie chart: Completed vs Pending -->
+            <div class="db-chart-card" style="flex:1;min-width:200px;">
+                <div class="db-pie-wrap">
+                    @{
+                        var tot = _data.TotalInspections;
+                        var compPct2 = tot > 0 ? (double)_data.CompletedInspections / tot * 100 : 0;
+                        var pendPct2 = 100 - compPct2;
+                        var compAngle = compPct2 / 100 * 360;
+                    }
+                    <svg viewBox="0 0 100 100" class="db-pie-svg">
+                        <circle cx="50" cy="50" r="40" fill="none" stroke="#e5e7eb" stroke-width="20"/>
+                        @if (compPct2 > 0 && compPct2 < 100)
+                        {
+                            var dashArr = compPct2 / 100 * 251.2;
+                            <circle cx="50" cy="50" r="40" fill="none" stroke="#3b82f6" stroke-width="20"
+                                    stroke-dasharray="@dashArr.ToString("F1") 251.2"
+                                    stroke-dashoffset="62.8" transform="rotate(-90 50 50)"/>
+                            <circle cx="50" cy="50" r="40" fill="none" stroke="#f59e0b" stroke-width="20"
+                                    stroke-dasharray="@(251.2 - dashArr) 251.2"
+                                    stroke-dashoffset="@(62.8 - dashArr)" transform="rotate(-90 50 50)"/>
+                        }
+                        else if (compPct2 >= 100)
+                        {
+                            <circle cx="50" cy="50" r="40" fill="none" stroke="#3b82f6" stroke-width="20"/>
+                        }
+                        else
+                        {
+                            <circle cx="50" cy="50" r="40" fill="none" stroke="#f59e0b" stroke-width="20"/>
+                        }
+                    </svg>
+                    <div class="db-pie-labels">
+                        <div class="db-pie-label" style="color:#f59e0b;">
+                            <strong>Pending</strong><br/>@pendPct2.ToString("F0")%
+                        </div>
+                        <div class="db-pie-label" style="color:#3b82f6;">
+                            <strong>Completed</strong><br/>@compPct2.ToString("F0")%
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
 
-        <!-- Right column: Quick Actions + Top Customers + Top Inspectors -->
-        <div style="display:flex;flex-direction:column;gap:18px">
-
-            <!-- Quick Actions -->
-            <div class="db-panel" style="animation-delay:.36s">
-                <div class="db-ph2">
-                    <div class="db-ptitle">Quick Actions</div>
-                </div>
-                <div class="db-pbody">
-                    <div class="db-qgrid">
-                        <a class="db-qbtn" href="/inspections/new">
-                            <div class="db-qico" style="background:rgba(0,212,170,.1)">📋</div>
-                            <div><div class="db-qlbl">New Inspection</div><div class="db-qdesc">New job</div></div>
-                        </a>
-                        <a class="db-qbtn" href="/customers">
-                            <div class="db-qico" style="background:rgba(59,130,246,.1)">🏢</div>
-                            <div><div class="db-qlbl">Add Customer</div><div class="db-qdesc">Register client</div></div>
-                        </a>
-                        <a class="db-qbtn" href="/products">
-                            <div class="db-qico" style="background:rgba(245,158,11,.1)">📦</div>
-                            <div><div class="db-qlbl">Add Product</div><div class="db-qdesc">New SKU</div></div>
-                        </a>
-                        <a class="db-qbtn" href="#">
-                            <div class="db-qico" style="background:rgba(239,68,68,.1)">📊</div>
-                            <div><div class="db-qlbl">Export Report</div><div class="db-qdesc">PDF / Excel</div></div>
-                        </a>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Top Customers -->
-            <div class="db-panel" style="animation-delay:.38s">
-                <div class="db-ph2">
-                    <div>
-                        <div class="db-ptitle">Top Customers</div>
-                        <div class="db-psub">Most Inspection</div>
-                    </div>
-                    <a class="db-pact" href="/customers">All →</a>
-                </div>
-                <div class="db-pbody">
-                    <div class="db-ilist" id="clist">
-                        <div class="db-sk" style="height:130px;width:100%;border-radius:8px"></div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Top Inspectors -->
-            <div class="db-panel" style="animation-delay:.40s">
-                <div class="db-ph2">
-                    <div>
-                        <div class="db-ptitle">Top Inspectors</div>
-                        <div class="db-psub">Most Jobs</div>
-                    </div>
-                    <a class="db-pact" href="/users">All →</a>
-                </div>
-                <div class="db-pbody">
-                    <div class="db-ilist" id="ilist">
-                        <div class="db-sk" style="height:130px;width:100%;border-radius:8px"></div>
-                    </div>
-                </div>
-            </div>
-
+        <!-- ── Inspection Types by Month ── -->
+        <div class="db-section-title">Inspection Types by Month
+            <span class="db-section-sub">PPT &nbsp;·&nbsp; DPI &nbsp;·&nbsp; PST</span>
         </div>
+        <div class="db-row">
+            <div class="db-chart-card" style="flex:2;">
+                <div class="db-mini-stats">
+                    <div class="db-mini-stat">
+                        <span class="db-mini-val" style="color:#3b82f6;">@_data.MonthPpt</span>
+                        <span class="db-mini-lbl">Pre-Production</span>
+                    </div>
+                    <div class="db-mini-divider"></div>
+                    <div class="db-mini-stat">
+                        <span class="db-mini-val" style="color:#f59e0b;">@_data.MonthDpi</span>
+                        <span class="db-mini-lbl">During Production</span>
+                    </div>
+                    <div class="db-mini-divider"></div>
+                    <div class="db-mini-stat">
+                        <span class="db-mini-val" style="color:#10b981;">@_data.MonthPst</span>
+                        <span class="db-mini-lbl">Pre-Shipment</span>
+                    </div>
+                </div>
+                <!-- Type bar chart by month -->
+                <div class="db-barchart">
+                    @{var maxType = _data.TypeByMonth.Max(m => m.Ppt + m.Dpi + m.Pst);}
+                    @foreach (var m in _data.TypeByMonth)
+                    {
+                        var total3 = m.Ppt + m.Dpi + m.Pst;
+                        var hp = maxType > 0 ? (double)total3 / maxType * 100 : 0;
+                        <div class="db-bar-col">
+                            @if (total3 > 0)
+                            {
+                                <div class="db-bar-num">@total3</div>
+                                <div class="db-bar-wrap" style="height:@((int)hp)%">
+                                    @if (m.Pst > 0) { <div class="db-bar-seg" style="height:@((int)((double)m.Pst/total3*100))%;background:#10b981;"></div> }
+                                    @if (m.Dpi > 0) { <div class="db-bar-seg" style="height:@((int)((double)m.Dpi/total3*100))%;background:#f59e0b;"></div> }
+                                    @if (m.Ppt > 0) { <div class="db-bar-seg" style="height:@((int)((double)m.Ppt/total3*100))%;background:#3b82f6;"></div> }
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="db-bar-num" style="opacity:0">0</div>
+                                <div class="db-bar-wrap" style="height:4px;background:#e5e7eb;border-radius:2px;"></div>
+                            }
+                            <div class="db-bar-label">@months[m.Month - 1]</div>
+                        </div>
+                    }
+                </div>
+                <div class="db-legend">
+                    <span class="db-leg-item"><span class="db-leg-dot" style="background:#3b82f6;"></span>PPT</span>
+                    <span class="db-leg-item"><span class="db-leg-dot" style="background:#f59e0b;"></span>DPI</span>
+                    <span class="db-leg-item"><span class="db-leg-dot" style="background:#10b981;"></span>PST</span>
+                </div>
+            </div>
+
+            <!-- Pie: Type distribution (full year) -->
+            <div class="db-chart-card" style="flex:1;min-width:200px;">
+                <div class="db-pie-wrap">
+                    @{
+                        var totType = _data.YearPpt + _data.YearDpi + _data.YearPst;
+                        var pptPct  = totType > 0 ? (double)_data.YearPpt / totType * 100 : 0;
+                        var dpiPct  = totType > 0 ? (double)_data.YearDpi / totType * 100 : 0;
+                        var pstPct  = totType > 0 ? (double)_data.YearPst / totType * 100 : 0;
+                        var pptDash = pptPct / 100 * 251.2;
+                        var dpiDash = dpiPct / 100 * 251.2;
+                        var pstDash = pstPct / 100 * 251.2;
+                    }
+                    <svg viewBox="0 0 100 100" class="db-pie-svg">
+                        <circle cx="50" cy="50" r="40" fill="none" stroke="#e5e7eb" stroke-width="20"/>
+                        @if (totType > 0)
+                        {
+                            <circle cx="50" cy="50" r="40" fill="none" stroke="#3b82f6" stroke-width="20"
+                                    stroke-dasharray="@pptDash.ToString("F1") 251.2"
+                                    stroke-dashoffset="62.8" transform="rotate(-90 50 50)"/>
+                            <circle cx="50" cy="50" r="40" fill="none" stroke="#f59e0b" stroke-width="20"
+                                    stroke-dasharray="@dpiDash.ToString("F1") 251.2"
+                                    stroke-dashoffset="@((62.8 - pptDash).ToString("F1"))" transform="rotate(-90 50 50)"/>
+                            <circle cx="50" cy="50" r="40" fill="none" stroke="#10b981" stroke-width="20"
+                                    stroke-dasharray="@pstDash.ToString("F1") 251.2"
+                                    stroke-dashoffset="@((62.8 - pptDash - dpiDash).ToString("F1"))" transform="rotate(-90 50 50)"/>
+                        }
+                    </svg>
+                    <div class="db-pie-labels" style="flex-direction:column;gap:6px;text-align:left;">
+                        <div style="color:#3b82f6;font-size:13px;font-weight:600;">PPT @pptPct.ToString("F0")%</div>
+                        <div style="color:#f59e0b;font-size:13px;font-weight:600;">DPI @dpiPct.ToString("F0")%</div>
+                        <div style="color:#10b981;font-size:13px;font-weight:600;">PST @pstPct.ToString("F0")%</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ── Bottom Row: Recent + Top Lists + Quick Actions ── -->
+        <div class="db-row" style="align-items:flex-start;gap:20px;">
+
+            <!-- Recent Inspections -->
+            <!-- <div class="db-table-card" style="flex:3;">
+                <div class="db-table-header">
+                    <span class="db-table-title">Recent Inspections</span>
+                    <div class="db-tab-group">
+                        @foreach (var tab in new[]{"All","Completed","Pending","Cancelled"})
+                        {
+                            <button class="db-tab @(_activeTab == tab ? "active" : "")"
+                                    @onclick="() => _activeTab = tab">@tab</button>
+                        }
+                    </div>
+                    <span class="db-table-count">@FilteredInspections.Count()/@(_data.RecentInspections.Count) records</span>
+                </div>
+                <div class="db-table-wrap">
+                    <table class="db-table">
+                        <thead>
+                            <tr>
+                                <th>JOB#</th>
+                                <th>CUSTOMERS / CATEGORY</th>
+                                <th>INSPECTOR NAME</th>
+                                <th>STATUS / DATE</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var r in FilteredInspections)
+                            {
+                                <tr @onclick="() => GoToReport(r.JobNumber)" style="cursor:pointer;">
+                                    <td>
+                                        <span class="db-type-badge @r.InspType.ToLower()">@r.InspType</span>
+                                        <div class="db-job-num">@(r.JobNumber ?? "—")</div>
+                                    </td>
+                                    <td>
+                                        <div class="db-cust-name">@(r.CustomerName ?? "—")</div>
+                                        <div class="db-cust-cat">@(r.ProductCategory ?? "—")</div>
+                                    </td>
+                                    <td>
+                                        <div class="db-inspector">@(r.InspectorName ?? "—")</div>
+                                    </td>
+                                    <td>
+                                        <span class="db-status-badge @r.Status.ToLower()">@r.Status</span>
+                                        <div class="db-date">@r.Date.ToString("d MMM yyyy")</div>
+                                    </td>
+                                </tr>
+                            }
+                            @if (!FilteredInspections.Any())
+                            {
+                                <tr><td colspan="4" style="text-align:center;padding:24px;color:#9ca3af;">No records</td></tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div> -->
+
+            <!-- Right column: Top Lists + Quick Actions -->
+            <div style="flex:1;min-width:240px;display:flex;flex-direction:column;gap:16px;">
+
+                <!-- Quick Actions -->
+                <div class="db-action-card">
+                    <div class="db-action-title">Quick Actions</div>
+                    <NavLink href="/inspections/new" class="db-action-btn primary">
+                        <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 4v12M4 10h12" stroke-linecap="round"/></svg>
+                        New Inspection
+                    </NavLink>
+                    <NavLink href="/customers" class="db-action-btn">
+                        <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="8" cy="7" r="3"/><path d="M2 17c0-3.314 2.686-6 6-6s6 2.686 6 6"/></svg>
+                        New Customer
+                    </NavLink>
+                    <NavLink href="/suppliers" class="db-action-btn">
+                        <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 9l7-6 7 6v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z"/></svg>
+                        Register New Vendor
+                    </NavLink>
+                    <NavLink href="/users" class="db-action-btn">
+                        <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="10" cy="7" r="3.5"/><path d="M3 18c0-3.866 3.134-7 7-7s7 3.134 7 7"/></svg>
+                        Register New Inspector
+                    </NavLink>
+                </div>
+
+                <!-- Top Customers -->
+                <div class="db-rank-card">
+                    <div class="db-rank-header">
+                        <span class="db-rank-title">Top Customers</span>
+                        <span class="db-rank-sub">Most Inspection</span>
+                    </div>
+                    @{ int ci = 1; }
+                    @foreach (var c in _data.TopCustomers)
+                    {
+                        <div class="db-rank-row">
+                            <span class="db-rank-num">@ci</span>
+                            <div class="db-rank-info">
+                                <div class="db-rank-name">@c.CustomerName</div>
+                                <div class="db-rank-id">@c.CustomerId</div>
+                            </div>
+                            <span class="db-rank-count">@c.Count</span>
+                        </div>
+                        ci++;
+                    }
+                    @if (!_data.TopCustomers.Any())
+                    {
+                        <div style="text-align:center;padding:12px;color:#9ca3af;font-size:13px;">No data</div>
+                    }
+                </div>
+
+                <!-- Top Inspectors -->
+                <div class="db-rank-card">
+                    <div class="db-rank-header">
+                        <span class="db-rank-title">Top Inspectors</span>
+                        <span class="db-rank-sub">Most Jobs</span>
+                    </div>
+                    @{ int ii = 1; }
+                    @foreach (var insp in _data.TopInspectors)
+                    {
+                        <div class="db-rank-row">
+                            <span class="db-rank-num">@ii</span>
+                            <div class="db-rank-info">
+                                <div class="db-rank-name">@insp.InspectorName</div>
+                                <div class="db-rank-id">@insp.InspectorId</div>
+                            </div>
+                            <span class="db-rank-count">@insp.Count</span>
+                        </div>
+                        ii++;
+                    }
+                    @if (!_data.TopInspectors.Any())
+                    {
+                        <div style="text-align:center;padding:12px;color:#9ca3af;font-size:13px;">No data</div>
+                    }
+                </div>
+
+            </div>
+        </div>
+
     </div>
+}
 
-</div>
+@code {
+    private DashboardDto? _data;
+    private bool _loading = true;
+    private string? _error;
+    private string _activeTab = "All";
 
-@* ══════════════════════════════════════════════════════════════════════
-   CSS  — prefix "db-" to avoid collisions with MainLayout
-══════════════════════════════════════════════════════════════════════ *@
+    protected override async Task OnInitializedAsync() => await LoadData();
+
+    void GoToReport(string? jobNumber)
+    {
+        if (!string.IsNullOrEmpty(jobNumber))
+            Navigation.NavigateTo("/inspection-report/" + jobNumber);
+    }
+
+    async Task LoadData()
+    {
+        _loading = true;
+        _error   = null;
+        try
+        {
+            _data = await Http.GetFromJsonAsync<DashboardDto>("api/inspections/dashboard",
+                new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+        }
+        catch (Exception ex) { _error = ex.Message; }
+        _loading = false;
+    }
+
+    IEnumerable<RecentInspectionDto> FilteredInspections => _activeTab switch
+    {
+        "Completed" => _data!.RecentInspections.Where(r => r.Status == "Completed"),
+        "Pending"   => _data!.RecentInspections.Where(r => r.Status == "Pending"),
+        "Cancelled" => _data!.RecentInspections.Where(r => r.Status == "Cancelled"),
+        _           => _data!.RecentInspections
+    };
+
+    // ── DTOs ──────────────────────────────────────────────────────────────────
+    class DashboardDto
+    {
+        public DateTime UpdatedAt           { get; set; }
+        public int  TotalInspections        { get; set; }
+        public int  PendingInspections      { get; set; }
+        public int  CompletedInspections    { get; set; }
+        public int  CustomerCount           { get; set; }
+        public int  VendorCount             { get; set; }
+        public int  ProductCount            { get; set; }
+        public int  InspectorCount          { get; set; }
+        public int  MonthCompleted          { get; set; }
+        public int  MonthPending            { get; set; }
+        public int  MonthPpt                { get; set; }
+        public int  MonthDpi                { get; set; }
+        public int  MonthPst                { get; set; }
+        public int  YearPpt                 { get; set; }
+        public int  YearDpi                 { get; set; }
+        public int  YearPst                 { get; set; }
+        public List<MonthStatDto>       ByMonth          { get; set; } = new();
+        public List<TypeMonthDto>       TypeByMonth      { get; set; } = new();
+        public List<RecentInspectionDto> RecentInspections { get; set; } = new();
+        public List<TopCustomerDto>     TopCustomers     { get; set; } = new();
+        public List<TopInspectorDto>    TopInspectors    { get; set; } = new();
+    }
+
+    class MonthStatDto
+    {
+        public int Month     { get; set; }
+        public int Completed { get; set; }
+        public int Pending   { get; set; }
+    }
+
+    class TypeMonthDto
+    {
+        public int Month { get; set; }
+        public int Ppt   { get; set; }
+        public int Dpi   { get; set; }
+        public int Pst   { get; set; }
+    }
+
+    class RecentInspectionDto
+    {
+        public string? JobNumber       { get; set; }
+        public string? CustomerName    { get; set; }
+        public string? CustomerId      { get; set; }
+        public string? ProductCategory { get; set; }
+        public string? InspectorName   { get; set; }
+        public string? InspectorId     { get; set; }
+        public string  Status          { get; set; } = "";
+        public string  InspType        { get; set; } = "";
+        public string? FinalResult     { get; set; }
+        public DateTime Date           { get; set; }
+    }
+
+    class TopCustomerDto
+    {
+        public string? CustomerId    { get; set; }
+        public string? CustomerName  { get; set; }
+        public int     Count         { get; set; }
+    }
+
+    class TopInspectorDto
+    {
+        public string? InspectorId   { get; set; }
+        public string? InspectorName { get; set; }
+        public int     Count         { get; set; }
+    }
+}
+
 <style>
-    :root {
-        --db-card:    #ffffff;
-        --db-border:  #e2e8f0;
-        --db-surface: #f8fafc;
-        --db-accent:  #00a884;
-        --db-blue:    #2563eb;
-        --db-amber:   #d97706;
-        --db-red:     #dc2626;
-        --db-purple:  #7c3aed;
-        --db-text:    #0f172a;
-        --db-muted:   #64748b;
-        --db-r:       12px;
-    }
+    /* ── Page ── */
+    .db-page { max-width: 1400px; margin: 0 auto; font-family: "DM Sans", sans-serif; color: #1a2d5a; }
+    .db-loading { display:flex; align-items:center; gap:12px; padding:60px; justify-content:center; color:#ffffff; }
+    .db-spinner { width:24px;height:24px;border:3px solid rgba(255,255,255,0.3);border-top-color:#ffffff;border-radius:50%;animation:spin .7s linear infinite; }
+    .db-error { background:#fff5f5;border:1px solid #fecaca;border-radius:12px;padding:16px 20px;color:#dc2626;margin:20px 0; }
+    @@keyframes spin { to { transform:rotate(360deg); } }
 
-    /* ── WRAP ── */
-    .db-wrap {
-        font-family: 'DM Sans', sans-serif;
-        color: var(--db-text);
-        padding: 24px;
-        background: #f1f5f9;
-        border-radius: 8px;
-        min-height: 100vh;
-    }
+    /* ── Header ── */
+    .db-header { display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:24px; }
+    .db-title  { font-size:28px; font-weight:800; color:#ffffff; margin:0 0 4px; letter-spacing:-.02em; }
+    .db-subtitle { display:flex; align-items:center; gap:6px; font-size:13px; color:rgba(255,255,255,0.75); }
+    .db-live-dot { width:8px;height:8px;border-radius:50%;background:#22c55e;animation:pulse 2s infinite; }
+    @@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+    .db-update-time { color:rgba(255,255,255,0.55); }
+    .db-refresh-btn { background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.3);border-radius:6px;padding:3px 6px;cursor:pointer;color:#ffffff;transition:all .15s; }
+    .db-refresh-btn:hover { background:rgba(255,255,255,0.25);border-color:rgba(255,255,255,0.5); }
 
-    /* ── CONFIG BANNER ── */
-    .cfg-banner {
-        background: rgba(245,158,11,.07);
-        border: 1px solid rgba(245,158,11,.2);
-        border-radius: 10px;
-        padding: 14px 18px;
-        margin-bottom: 20px;
-        display: flex;
-        align-items: center;
-        gap: 14px;
-        flex-wrap: wrap;
-    }
-    .cfg-banner input {
-        background: var(--db-surface);
-        border: 1px solid var(--db-border);
-        border-radius: 7px;
-        padding: 7px 12px;
-        font-size: 13px;
-        color: var(--db-text);
-        font-family: inherit;
-        width: 280px;
-        outline: none;
-        flex: 1;
-        min-width: 180px;
-    }
-    .cfg-banner input:focus { border-color: var(--db-accent); }
-    .cfg-btn {
-        background: var(--db-accent);
-        color: #fff;
-        font-size: 12px;
-        font-weight: 700;
-        border: none;
-        border-radius: 7px;
-        padding: 8px 16px;
-        cursor: pointer;
-        font-family: inherit;
-        white-space: nowrap;
-    }
-    .cfg-btn:hover { opacity: .85; }
+    /* ── Summary Cards ── */
+    .db-cards-grid { display:grid; grid-template-columns:repeat(6,1fr); gap:14px; margin-bottom:28px; }
+    .db-card { background:#fff; border-radius:14px; padding:18px; border:1px solid #e5e7eb; position:relative; overflow:hidden; transition:box-shadow .2s,transform .2s; }
+    .db-card::before { content:''; position:absolute; top:0;left:0;right:0;height:3px; background:var(--accent); }
+    .db-card:hover { box-shadow:0 8px 24px rgba(0,0,0,0.08); transform:translateY(-2px); }
+    .db-card-icon { width:44px;height:44px;border-radius:10px;display:flex;align-items:center;justify-content:center;margin-bottom:10px; }
+    .db-card-badge { position:absolute;top:14px;right:14px;font-size:10px;font-weight:600;padding:2px 8px;border-radius:20px; }
+    .db-card-value { font-size:28px;font-weight:800;color:#1a2d5a;line-height:1;margin-bottom:4px; }
+    .db-card-label { font-size:12.5px;color:#6b7280;font-weight:500; }
 
-    /* ── PAGE HEADER ── */
-    .db-ph {
-        margin-bottom: 22px;
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-    }
-    .db-ph h1 {
-        font-family: 'Syne', sans-serif;
-        font-weight: 800;
-        font-size: 26px;
-        color: var(--db-text);
-        margin: 0;
-    }
-    .db-ph p {
-        font-size: 13px;
-        color: var(--db-muted);
-        margin-top: 4px;
-        display: flex;
-        align-items: center;
-        gap: 6px;
-    }
-    .db-ref-btn {
-        background: none;
-        border: none;
-        cursor: pointer;
-        color: var(--db-muted);
-        padding: 2px 4px;
-        border-radius: 4px;
-        transition: color .15s;
-        display: inline-flex;
-    }
-    .db-ref-btn:hover { color: var(--db-accent); }
+    /* ── Section ── */
+    .db-section-title { font-size:16px;font-weight:700;color:#ffffff;margin:8px 0 14px;display:flex;align-items:center;gap:10px; }
+    .db-section-sub { font-size:12px;font-weight:500;color:rgba(255,255,255,0.6);letter-spacing:.05em; }
 
-    /* ── KPI GRID — 6 cards ── */
-    .db-kgrid {
-        display: grid;
-        grid-template-columns: repeat(6, 1fr);
-        gap: 14px;
-        margin-bottom: 20px;
-    }
-    .db-kcard {
-        background: var(--db-card);
-        border: 1px solid var(--db-border);
-        border-radius: var(--db-r);
-        padding: 18px;
-        position: relative;
-        overflow: hidden;
-        transition: transform .2s, box-shadow .2s;
-        animation: dbUp .5s ease both;
-    }
-    .db-kcard:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 8px 32px rgba(0,0,0,.08);
-    }
-    .db-kcard::after {
-        content: '';
-        position: absolute;
-        top: 0; left: 0; right: 0;
-        height: 3px;
-    }
-    .db-kcard.c1::after { background: linear-gradient(90deg, var(--db-accent), #00d4aa); }
-    .db-kcard.c2::after { background: linear-gradient(90deg, var(--db-amber), #f97316); }
-    .db-kcard.c3::after { background: linear-gradient(90deg, var(--db-blue), #6366f1); }
-    .db-kcard.c4::after { background: linear-gradient(90deg, var(--db-red), #ec4899); }
-    .db-kcard.c5::after { background: linear-gradient(90deg, var(--db-purple), #a78bfa); }
-    .db-kcard.c6::after { background: linear-gradient(90deg, #0891b2, #06b6d4); }
-    .db-kcard:nth-child(1){animation-delay:.04s}
-    .db-kcard:nth-child(2){animation-delay:.08s}
-    .db-kcard:nth-child(3){animation-delay:.12s}
-    .db-kcard:nth-child(4){animation-delay:.16s}
-    .db-kcard:nth-child(5){animation-delay:.20s}
-    .db-kcard:nth-child(6){animation-delay:.24s}
-    .db-ktop {
-        display: flex;
-        align-items: flex-start;
-        justify-content: space-between;
-        margin-bottom: 12px;
-    }
-    .db-kico {
-        width: 40px; height: 40px;
-        border-radius: 10px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-    }
-    .db-kico.i1 { background: rgba(0,168,132,.12);  color: var(--db-accent); }
-    .db-kico.i2 { background: rgba(217,119,6,.12);   color: var(--db-amber); }
-    .db-kico.i3 { background: rgba(37,99,235,.12);   color: var(--db-blue); }
-    .db-kico.i4 { background: rgba(220,38,38,.12);   color: var(--db-red); }
-    .db-kico.i5 { background: rgba(124,58,237,.12);  color: var(--db-purple); }
-    .db-kico.i6 { background: rgba(8,145,178,.12);   color: #0891b2; }
-    .db-kdelta {
-        font-size: 10px;
-        font-weight: 700;
-        padding: 2px 7px;
-        border-radius: 999px;
-    }
-    .db-kdelta.up   { background: rgba(0,168,132,.1); color: var(--db-accent); }
-    .db-kdelta.down { background: rgba(220,38,38,.1); color: var(--db-red); }
-    .db-kval {
-        font-family: 'Syne', sans-serif;
-        font-size: 28px;
-        font-weight: 800;
-        line-height: 1;
-        min-height: 28px;
-    }
-    .db-klbl {
-        font-size: 12px;
-        color: var(--db-muted);
-        margin-top: 5px;
-    }
+    /* ── Row layout ── */
+    .db-row { display:flex; gap:16px; margin-bottom:24px; }
 
-    /* ── GRID LAYOUTS ── */
-    .db-g2  { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-bottom: 18px; }
-    .db-g31 { display: grid; grid-template-columns: 2fr 1fr; gap: 18px; margin-bottom: 18px; }
-    .db-panel-full { width: 100%; }
+    /* ── Chart cards ── */
+    .db-chart-card { background:#fff;border-radius:14px;border:1px solid #e5e7eb;padding:20px; }
+    .db-mini-stats { display:flex;align-items:center;gap:0;margin-bottom:20px;padding-bottom:16px;border-bottom:1px solid #f3f4f6; }
+    .db-mini-stat { flex:1;text-align:center; }
+    .db-mini-val { display:block;font-size:26px;font-weight:800;line-height:1; }
+    .db-mini-lbl { font-size:11.5px;color:#6b7280;margin-top:2px;display:block; }
+    .db-mini-divider { width:1px;height:40px;background:#e5e7eb;flex-shrink:0; }
 
-    /* ── PANEL ── */
-    .db-panel {
-        background: var(--db-card);
-        border: 1px solid var(--db-border);
-        border-radius: var(--db-r);
-        animation: dbUp .55s ease both;
-    }
-    .db-ph2 {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        padding: 16px 18px 12px;
-        border-bottom: 1px solid var(--db-border);
-    }
-    .db-ptitle {
-        font-family: 'Syne', sans-serif;
-        font-weight: 700;
-        font-size: 14px;
-    }
-    .db-psub {
-        font-size: 11px;
-        color: var(--db-muted);
-        margin-top: 2px;
-    }
-    .db-pact {
-        font-size: 12px;
-        color: var(--db-accent);
-        font-weight: 600;
-        cursor: pointer;
-        border: none;
-        background: none;
-        transition: opacity .2s;
-        font-family: inherit;
-        text-decoration: none;
-    }
-    .db-pact:hover { opacity: .7; }
-    .db-pbody { padding: 18px; }
+    /* ── Bar chart ── */
+    .db-barchart { display:flex;align-items:flex-end;gap:6px;height:120px;margin-bottom:12px; }
+    .db-bar-col { display:flex;flex-direction:column;align-items:center;flex:1;height:100%; }
+    .db-bar-num { font-size:10px;color:#6b7280;margin-bottom:3px;font-weight:600; }
+    .db-bar-wrap { width:100%;max-width:28px;display:flex;flex-direction:column;border-radius:4px;overflow:hidden;min-height:4px; }
+    .db-bar-seg { width:100%; }
+    .db-bar-seg.completed { background:#3b82f6; }
+    .db-bar-seg.pending   { background:#fbbf24; }
+    .db-bar-label { font-size:9px;color:#9ca3af;margin-top:5px;font-weight:600;letter-spacing:.04em; }
 
-    /* ── SKELETON ── */
-    .db-sk {
-        background: linear-gradient(90deg, var(--db-border) 25%, var(--db-surface) 50%, var(--db-border) 75%);
-        background-size: 200% 100%;
-        animation: dbShimmer 1.5s infinite;
-        border-radius: 6px;
-    }
-    @@keyframes dbShimmer { from{background-position:200% 0} to{background-position:-200% 0} }
+    /* ── Legend ── */
+    .db-legend { display:flex;gap:16px;justify-content:center; }
+    .db-leg-item { display:flex;align-items:center;gap:5px;font-size:12px;color:#6b7280; }
+    .db-leg-dot { width:10px;height:10px;border-radius:3px;flex-shrink:0; }
 
-    /* ── LEGEND ── */
-    .db-legend-item {
-        display: flex;
-        align-items: center;
-        gap: 4px;
-        font-size: 10px;
-        color: var(--db-muted);
-    }
-    .db-legend-dot {
-        width: 8px; height: 3px;
-        border-radius: 2px;
-        display: inline-block;
-    }
+    /* ── Pie chart ── */
+    .db-pie-wrap { display:flex;flex-direction:column;align-items:center;gap:16px; }
+    .db-pie-svg { width:130px;height:130px; }
+    .db-pie-labels { display:flex;gap:20px;flex-wrap:wrap;justify-content:center; }
+    .db-pie-label { text-align:center;font-size:13px; }
 
-    /* ── BAR CHART ── */
-    .db-bchart {
-        display: flex;
-        align-items: flex-end;
-        gap: 5px;
-        height: 120px;
-    }
-    .db-bar-lbls {
-        display: flex;
-        justify-content: space-between;
-        margin-top: 6px;
-    }
-    .bcol {
-        flex: 1;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-    }
-    .bwrap {
-        flex: 1;
-        width: 100%;
-        display: flex;
-        align-items: flex-end;
-        gap: 2px;
-    }
-    .bar {
-        flex: 1;
-        border-radius: 3px 3px 0 0;
-        transition: height 1s cubic-bezier(.4,0,.2,1);
-        cursor: pointer;
-        min-height: 2px;
-        position: relative;
-    }
-    .bar:hover::after {
-        content: attr(data-v);
-        position: absolute;
-        top: -22px; left: 50%;
-        transform: translateX(-50%);
-        background: var(--db-text);
-        color: #fff;
-        font-size: 9px;
-        padding: 2px 6px;
-        border-radius: 3px;
-        white-space: nowrap;
-        z-index: 10;
-    }
-    .bar-lbl {
-        font-size: 9px;
-        color: var(--db-muted);
-        margin-top: 4px;
-        text-align: center;
-        flex: 1;
-    }
+    /* ── Table card ── */
+    .db-table-card { background:#fff;border-radius:14px;border:1px solid #e5e7eb;overflow:hidden; }
+    .db-table-header { display:flex;align-items:center;gap:12px;padding:16px 20px;border-bottom:1px solid #f3f4f6;flex-wrap:wrap; }
+    .db-table-title { font-size:15px;font-weight:700;color:#1a2d5a;flex-shrink:0; }
+    .db-table-count { font-size:12px;color:#9ca3af;margin-left:auto; }
+    .db-tab-group { display:flex;gap:4px; }
+    .db-tab { background:none;border:1px solid transparent;border-radius:20px;padding:4px 12px;font-size:12px;font-weight:500;color:#6b7280;cursor:pointer;transition:all .15s;font-family:inherit; }
+    .db-tab.active { background:#eff6ff;border-color:#bfdbfe;color:#1d4ed8; }
+    .db-tab:hover:not(.active) { background:#f9fafb; }
+    .db-table-wrap { overflow-x:auto; }
+    .db-table { width:100%;border-collapse:collapse;font-size:13.5px; }
+    .db-table thead th { padding:10px 16px;text-align:left;font-size:11px;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:.06em;border-bottom:1px solid #f3f4f6;background:#fafafa; }
+    .db-table tbody tr { border-bottom:1px solid #f9fafb;transition:background .15s; }
+    .db-table tbody tr:last-child { border-bottom:none; }
+    .db-table tbody tr:hover { background:#f8faff; }
+    .db-table td { padding:12px 16px;vertical-align:middle; }
 
-    /* ── DONUT ── */
-    .db-dwrap { display: flex; align-items: center; gap: 16px; }
-    .dleg { flex: 1; }
-    .li { display: flex; align-items: center; gap: 8px; margin-bottom: 9px; }
-    .ldot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
-    .lname { font-size: 11.5px; color: var(--db-muted); }
-    .lval { font-size: 13px; font-weight: 600; }
-    .lpct { font-size: 11px; color: var(--db-muted); margin-left: auto; }
+    .db-type-badge { display:inline-block;font-size:9px;font-weight:700;padding:2px 6px;border-radius:4px;text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px; }
+    .db-type-badge.ppt { background:#dbeafe;color:#1d4ed8; }
+    .db-type-badge.dpi { background:#fef3c7;color:#b45309; }
+    .db-type-badge.pst { background:#d1fae5;color:#065f46; }
+    .db-job-num { font-size:13px;font-weight:600;color:#1a2d5a; }
+    .db-cust-name { font-weight:600;color:#1a2d5a; }
+    .db-cust-cat  { font-size:11.5px;color:#9ca3af;margin-top:2px; }
+    .db-inspector { color:#374151;font-weight:500; }
+    .db-date { font-size:11.5px;color:#9ca3af;margin-top:2px; }
 
-    /* ── TYPE BREAKDOWN BARS ── */
-    .tbar-row { margin-bottom: 14px; }
-    .tbar-row:last-child { margin-bottom: 0; }
-    .tbar-top {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 5px;
-    }
-    .tbar-lbl { font-size: 12.5px; font-weight: 500; }
-    .tbar-cnt { font-size: 12px; font-weight: 700; }
-    .tbar-bg {
-        height: 6px;
-        background: var(--db-border);
-        border-radius: 999px;
-        overflow: hidden;
-    }
-    .tbar-fill {
-        height: 100%;
-        border-radius: 999px;
-        transition: width 1.2s ease;
-    }
-    .tbar-pct { font-size: 10px; color: var(--db-muted); margin-top: 4px; }
+    .db-status-badge { display:inline-block;font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px;text-transform:capitalize; }
+    .db-status-badge.completed { background:#d1fae5;color:#065f46; }
+    .db-status-badge.pending   { background:#fef3c7;color:#92400e; }
+    .db-status-badge.inprogress,.db-status-badge.in_progress { background:#dbeafe;color:#1e40af; }
+    .db-status-badge.cancelled { background:#fee2e2;color:#991b1b; }
 
-    /* ── TABLE ── */
-    .db-twrap { overflow-x: auto; }
-    .db-twrap table { width: 100%; border-collapse: collapse; }
-    .db-twrap thead th {
-        text-align: left;
-        font-size: 10px;
-        font-weight: 700;
-        text-transform: uppercase;
-        letter-spacing: .8px;
-        color: var(--db-muted);
-        padding: 0 14px 10px;
-        white-space: nowrap;
-    }
-    .db-twrap tbody tr {
-        border-top: 1px solid var(--db-border);
-        transition: background .12s;
-    }
-    .db-twrap tbody tr:hover { background: rgba(0,0,0,.02); }
-    .db-twrap tbody td { padding: 11px 14px; font-size: 13px; }
-    .tmain { font-weight: 600; color: var(--db-text); }
-    .tsub { font-size: 11px; color: var(--db-muted); margin-top: 2px; }
+    /* ── Quick Actions ── */
+    .db-action-card { background:#fff;border-radius:14px;border:1px solid #e5e7eb;padding:16px; }
+    .db-action-title { font-size:14px;font-weight:700;color:#1a2d5a;margin-bottom:12px; }
+    .db-action-btn { display:flex;align-items:center;gap:8px;padding:10px 12px;border-radius:9px;font-size:13px;font-weight:500;color:#374151;text-decoration:none;margin-bottom:8px;border:1px solid #e5e7eb;transition:all .15s;background:#fafafa; }
+    .db-action-btn:last-child { margin-bottom:0; }
+    .db-action-btn:hover { background:#eff6ff;border-color:#bfdbfe;color:#1d4ed8; }
+    .db-action-btn.primary { background:#3b82f6;color:#fff;border-color:#3b82f6; }
+    .db-action-btn.primary:hover { background:#2563eb;border-color:#2563eb; }
+    .db-action-btn svg { flex-shrink:0;opacity:.7; }
+    .db-action-btn.primary svg { opacity:1; }
 
-    /* ── BADGE ── */
-    .badge {
-        display: inline-flex;
-        align-items: center;
-        gap: 4px;
-        font-size: 10px;
-        font-weight: 700;
-        padding: 3px 8px;
-        border-radius: 999px;
-        text-transform: uppercase;
-        letter-spacing: .3px;
-    }
-    .badge::before {
-        content: '';
-        width: 5px; height: 5px;
-        border-radius: 50%;
-        flex-shrink: 0;
-    }
-    .b-completed { background:rgba(0,168,132,.1);  color:var(--db-accent); }
-    .b-completed::before { background: var(--db-accent); }
-    .b-ongoing   { background:rgba(37,99,235,.1);   color:var(--db-blue); }
-    .b-ongoing::before   { background: var(--db-blue); }
-    .b-pending, .b-new { background:rgba(217,119,6,.1); color:var(--db-amber); }
-    .b-pending::before, .b-new::before { background: var(--db-amber); }
-    .b-cancelled, .b-cancel { background:rgba(220,38,38,.1); color:var(--db-red); }
-    .b-cancelled::before, .b-cancel::before { background: var(--db-red); }
+    /* ── Rank cards ── */
+    .db-rank-card { background:#fff;border-radius:14px;border:1px solid #e5e7eb;padding:16px; }
+    .db-rank-header { display:flex;align-items:center;justify-content:space-between;margin-bottom:12px; }
+    .db-rank-title { font-size:14px;font-weight:700;color:#1a2d5a; }
+    .db-rank-sub { font-size:11px;color:#9ca3af; }
+    .db-rank-row { display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid #f9fafb; }
+    .db-rank-row:last-child { border-bottom:none; }
+    .db-rank-num { width:20px;height:20px;border-radius:50%;background:#f3f4f6;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#6b7280;flex-shrink:0; }
+    .db-rank-info { flex:1;min-width:0; }
+    .db-rank-name { font-size:13px;font-weight:600;color:#1a2d5a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis; }
+    .db-rank-id { font-size:11px;color:#9ca3af; }
+    .db-rank-count { font-size:15px;font-weight:700;color:#3b82f6;flex-shrink:0; }
 
-    /* ── FILTER TABS ── */
-    .db-ftabs {
-        display: flex;
-        gap: 3px;
-        padding: 14px 16px 0;
-        flex-wrap: wrap;
+    /* ── Responsive ── */
+    @@media (max-width:1200px) { .db-cards-grid { grid-template-columns:repeat(3,1fr); } }
+    @@media (max-width:900px)  {
+        .db-cards-grid { grid-template-columns:repeat(2,1fr); }
+        .db-row { flex-direction:column; }
     }
-    .db-ftab {
-        font-size: 11px;
-        font-weight: 600;
-        padding: 5px 12px;
-        border-radius: 6px;
-        cursor: pointer;
-        background: none;
-        border: none;
-        color: var(--db-muted);
-        transition: all .15s;
-        font-family: inherit;
-    }
-    .db-ftab.on  { background: rgba(0,168,132,.1); color: var(--db-accent); }
-    .db-ftab:hover:not(.on) { color: var(--db-text); }
-
-    /* ── MINI STATS STRIP ── */
-    .db-mstats { display: flex; border-top: 1px solid var(--db-border); }
-    .db-ms {
-        flex: 1;
-        padding: 12px 16px;
-        border-right: 1px solid var(--db-border);
-    }
-    .db-ms:last-child { border-right: none; }
-    .db-msv {
-        font-family: 'Syne', sans-serif;
-        font-size: 18px;
-        font-weight: 800;
-    }
-    .db-msl { font-size: 10px; color: var(--db-muted); margin-top: 2px; }
-
-    /* ── RANKED LIST (Customers & Inspectors) ── */
-    .db-ilist { display: flex; flex-direction: column; gap: 10px; }
-    .irow { display: flex; align-items: center; gap: 10px; }
-    .irank {
-        width: 18px;
-        font-size: 11px;
-        font-weight: 700;
-        color: var(--db-muted);
-        text-align: center;
-        flex-shrink: 0;
-    }
-    .iav {
-        width: 32px; height: 32px;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 11px;
-        font-weight: 700;
-        color: #fff;
-        flex-shrink: 0;
-    }
-    .iname  { font-size: 12.5px; font-weight: 600; color: var(--db-text); }
-    .iid    { font-size: 10px; color: var(--db-muted); }
-    .ibg    { height: 4px; background: var(--db-border); border-radius: 999px; overflow: hidden; width: 60px; }
-    .ifill  { height: 100%; border-radius: 999px; }
-    .inum   { font-size: 13px; font-weight: 700; min-width: 24px; text-align: right; color: var(--db-text); }
-
-    /* ── QUICK ACTIONS ── */
-    .db-qgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-    .db-qbtn {
-        background: var(--db-surface);
-        border: 1px solid var(--db-border);
-        border-radius: 9px;
-        padding: 12px;
-        cursor: pointer;
-        transition: all .15s;
-        display: flex;
-        align-items: center;
-        gap: 9px;
-        text-decoration: none;
-        color: inherit;
-    }
-    .db-qbtn:hover { border-color: var(--db-accent); background: rgba(0,168,132,.03); }
-    .db-qico {
-        width: 32px; height: 32px;
-        border-radius: 7px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 15px;
-        flex-shrink: 0;
-    }
-    .db-qlbl  { font-size: 12px; font-weight: 600; }
-    .db-qdesc { font-size: 10px; color: var(--db-muted); margin-top: 1px; }
-
-    /* ── MISC ── */
-    .db-ldot-live {
-        display: inline-block;
-        width: 7px; height: 7px;
-        border-radius: 50%;
-        background: var(--db-accent);
-        animation: dbPulse 1.8s ease infinite;
-    }
-    .db-errmsg { text-align: center; padding: 28px; color: var(--db-muted); font-size: 13px; }
-    .db-ei { font-size: 26px; margin-bottom: 8px; }
-
-    /* ── ANIMATIONS ── */
-    @@keyframes dbUp {
-        from { opacity: 0; transform: translateY(14px); }
-        to   { opacity: 1; transform: translateY(0); }
-    }
-    @@keyframes dbPulse { 0%,100%{opacity:1} 50%{opacity:.3} }
-
-    /* ── RESPONSIVE ── */
-    @@media (max-width: 1400px) {
-        .db-kgrid { grid-template-columns: repeat(3, 1fr); }
-    }
-    @@media (max-width: 1100px) {
-        .db-g31  { grid-template-columns: 1fr; }
-        .db-g2   { grid-template-columns: 1fr; }
-    }
-    @@media (max-width: 768px) {
-        .db-kgrid  { grid-template-columns: repeat(2, 1fr); }
-        .db-qgrid  { grid-template-columns: repeat(4, 1fr); }
-        .db-wrap   { padding: 14px; }
-    }
-    @@media (max-width: 480px) {
-        .db-kgrid { grid-template-columns: 1fr 1fr; }
-        .db-qgrid { grid-template-columns: 1fr 1fr; }
-    }
+    @@media (max-width:600px)  { .db-cards-grid { grid-template-columns:1fr 1fr; } }
 </style>
-
-@* ══════════════════════════════════════════════════════════════════════
-   JAVASCRIPT
-══════════════════════════════════════════════════════════════════════ *@
-<script src="/js/dashboard.js"></script>
-<script>
-// ── Filter tabs ──────────────────────────────────────────────────────
-document.getElementById('ftabs')?.addEventListener('click', function (e) {
-    const btn = e.target.closest('.db-ftab');
-    if (!btn) return;
-    this.querySelectorAll('.db-ftab').forEach(b => b.classList.remove('on'));
-    btn.classList.add('on');
-    const filter = btn.dataset.f;
-    // dashboard.js exposes dbFilterTable(filter)
-    if (typeof dbFilterTable === 'function') dbFilterTable(filter);
-});
-</script>

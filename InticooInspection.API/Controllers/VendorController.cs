@@ -391,6 +391,132 @@ namespace InticooInspection.API.Controllers
             v.BillingAddress = r.BillingAddress;
             return v;
         }
+
+        // ─────────────────────────────────────────────────────────────────
+        // GET api/vendors/{vendorCode}/review?year=2026&month=4
+        // Performance Overview for a vendor
+        // ─────────────────────────────────────────────────────────────────
+        [HttpGet("{vendorCode}/review")]
+        [AllowAnonymous]
+        public async Task<IActionResult> GetVendorReview(string vendorCode, [FromQuery] int? year, [FromQuery] int? month)
+        {
+            try
+            {
+                var now          = DateTime.UtcNow;
+                var targetYear   = year  ?? now.Year;
+                var targetMonth  = month ?? now.Month;
+
+                // Find vendor
+                var vendor = await _db.Vendors
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(v => v.Code == vendorCode);
+                if (vendor == null) return NotFound(new { error = "Vendor not found" });
+
+                // Load all inspections for this vendor
+                var allInsp = await _db.Inspections
+                    .AsNoTracking()
+                    .Where(i => i.VendorId == vendorCode || i.VendorName == vendor.Name)
+                    .Select(i => new {
+                        i.Id, i.InspectionDate, i.InspectionType,
+                        i.FinalResult, i.QcResultJson, i.Status
+                    })
+                    .ToListAsync();
+
+                // ── This Month stats ──
+                var monthInsp = allInsp
+                    .Where(i => i.InspectionDate.Year == targetYear && i.InspectionDate.Month == targetMonth)
+                    .ToList();
+
+                var monthTotal   = monthInsp.Count;
+                var monthPassed  = monthInsp.Count(i => i.FinalResult == "PASSED");
+                var monthFailed  = monthInsp.Count(i => i.FinalResult == "FAILED");
+                var passRate     = monthTotal > 0 ? Math.Round((double)monthPassed / monthTotal * 100, 1) : 0;
+                var failRate     = monthTotal > 0 ? Math.Round((double)monthFailed / monthTotal * 100, 1) : 0;
+
+                // ── Defects this month — parse QcResultJson ──
+                int mCritical = 0, mMajor = 0, mMinor = 0;
+                foreach (var i in monthInsp.Where(i => !string.IsNullOrEmpty(i.QcResultJson)))
+                {
+                    try
+                    {
+                        var doc = System.Text.Json.JsonDocument.Parse(i.QcResultJson!);
+                        if (doc.RootElement.TryGetProperty("aql", out var aql))
+                        {
+                            if (aql.TryGetProperty("criticalFound", out var cf)) mCritical += cf.GetInt32();
+                            if (aql.TryGetProperty("majorFound",    out var mf)) mMajor    += mf.GetInt32();
+                            if (aql.TryGetProperty("minorFound",    out var nf)) mMinor    += nf.GetInt32();
+                        }
+                    }
+                    catch { }
+                }
+                var defTotal = mCritical + mMajor + mMinor;
+
+                // ── Monthly bar chart (this year) ──
+                var yearInsp = allInsp.Where(i => i.InspectionDate.Year == targetYear).ToList();
+                var monthlyData = Enumerable.Range(1, 12).Select(m => new
+                {
+                    month = m,
+                    ppt   = yearInsp.Count(i => i.InspectionDate.Month == m && i.InspectionType == InspectionType.PPT),
+                    dpi   = yearInsp.Count(i => i.InspectionDate.Month == m && i.InspectionType == InspectionType.DPI),
+                    pst   = yearInsp.Count(i => i.InspectionDate.Month == m && i.InspectionType == InspectionType.PST),
+                }).ToList();
+
+                // ── Yearly horizontal bar ──
+                var yearPpt = yearInsp.Count(i => i.InspectionType == InspectionType.PPT);
+                var yearDpi = yearInsp.Count(i => i.InspectionType == InspectionType.DPI);
+                var yearPst = yearInsp.Count(i => i.InspectionType == InspectionType.PST);
+
+                // ── Year defects ──
+                int yCritical = 0, yMajor = 0, yMinor = 0;
+                foreach (var i in yearInsp.Where(i => !string.IsNullOrEmpty(i.QcResultJson)))
+                {
+                    try
+                    {
+                        var doc = System.Text.Json.JsonDocument.Parse(i.QcResultJson!);
+                        if (doc.RootElement.TryGetProperty("aql", out var aql))
+                        {
+                            if (aql.TryGetProperty("criticalFound", out var cf)) yCritical += cf.GetInt32();
+                            if (aql.TryGetProperty("majorFound",    out var mf)) yMajor    += mf.GetInt32();
+                            if (aql.TryGetProperty("minorFound",    out var nf)) yMinor    += nf.GetInt32();
+                        }
+                    }
+                    catch { }
+                }
+                var yDefTotal = yCritical + yMajor + yMinor;
+
+                // ── Year pass/fail ──
+                var yearTotal  = yearInsp.Count;
+                var yearPassed = yearInsp.Count(i => i.FinalResult == "PASSED");
+                var yearFailed = yearInsp.Count(i => i.FinalResult == "FAILED");
+                var yearPassRate = yearTotal > 0 ? Math.Round((double)yearPassed / yearTotal * 100, 1) : 0;
+                var yearFailRate = yearTotal > 0 ? Math.Round((double)yearFailed / yearTotal * 100, 1) : 0;
+
+                return Ok(new
+                {
+                    vendorName = vendor.Name,
+                    vendorId   = vendor.Code,
+                    targetYear, targetMonth,
+
+                    // Month
+                    monthTotal, monthPassed, monthFailed,
+                    passRate, failRate,
+                    monthCritical = mCritical, monthMajor = mMajor, monthMinor = mMinor, defTotal,
+
+                    // Year
+                    yearTotal, yearPassed, yearFailed,
+                    yearPassRate, yearFailRate,
+                    yearPpt, yearDpi, yearPst,
+                    yearCritical = yCritical, yearMajor = yMajor, yearMinor = yMinor, yDefTotal,
+
+                    // Charts
+                    monthlyData,
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { error = ex.Message });
+            }
+        }
     }
 
     // ─────────────────────────────────────────────────────────────────

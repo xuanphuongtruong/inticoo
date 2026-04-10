@@ -1,0 +1,118 @@
+@page "/inspector-reviews"
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Admin")]
+@using System.Net.Http.Json
+@inject HttpClient Http
+@inject NavigationManager Navigation
+
+<PageTitle>Inspector Reviews - Inticoo</PageTitle>
+
+<div class="ir-page">
+    <div class="ir-header">
+        <h1 class="ir-title">Inspector Reviews</h1>
+        <p class="ir-sub">Monthly &amp; Yearly Inspection Metrics</p>
+    </div>
+
+    @if (_loading)
+    {
+        <div class="ir-loading"><div class="ir-spinner"></div> Loading inspectors...</div>
+    }
+    else
+    {
+        <div class="ir-search-row">
+            <div class="ir-search-wrap">
+                <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="#9ca3af" stroke-width="1.8">
+                    <circle cx="9" cy="9" r="6"/><path d="M15 15l3 3" stroke-linecap="round"/>
+                </svg>
+                <input class="ir-search" placeholder="Search inspector..." @bind="_search" @bind:event="oninput" />
+            </div>
+        </div>
+
+        <div class="ir-grid">
+            @foreach (var u in Filtered)
+            {
+                var initials = string.Join("", (u.FullName ?? "").Split(' ').Take(2).Select(w => w.FirstOrDefault()));
+                <div class="ir-card" @onclick="() => GoToReview(u.InspectorId)">
+                    <div class="ir-avatar">@initials</div>
+                    <div class="ir-info">
+                        <div class="ir-name">@u.FullName</div>
+                        <div class="ir-id">@u.InspectorId</div>
+                        @if (!string.IsNullOrEmpty(u.Nationality))
+                        { <div class="ir-meta">🌏 @u.Nationality</div> }
+                        @if (!string.IsNullOrEmpty(u.Category))
+                        { <div class="ir-meta">🏷 @u.Category</div> }
+                    </div>
+                    <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="#9ca3af" stroke-width="2">
+                        <path d="M7 4l6 6-6 6" stroke-linecap="round"/>
+                    </svg>
+                </div>
+            }
+            @if (!Filtered.Any())
+            { <div class="ir-empty">No inspectors found.</div> }
+        </div>
+    }
+</div>
+
+@code {
+    record InspectorItem(string? InspectorId, string? FullName, string? Nationality, string? Category);
+    List<InspectorItem> _inspectors = new();
+    bool _loading = true;
+    string _search = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var result = await Http.GetFromJsonAsync<UserListResult>("api/users?pageSize=500",
+                new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+            _inspectors = (result?.Items ?? new())
+                .Where(u => !string.IsNullOrEmpty(u.InspectorId))
+                .Select(u => new InspectorItem(u.InspectorId, u.FullName, u.Nationality, u.Category))
+                .ToList();
+        }
+        catch { }
+        _loading = false;
+    }
+
+    IEnumerable<InspectorItem> Filtered => string.IsNullOrWhiteSpace(_search)
+        ? _inspectors
+        : _inspectors.Where(u =>
+            (u.FullName ?? "").Contains(_search, StringComparison.OrdinalIgnoreCase) ||
+            (u.InspectorId ?? "").Contains(_search, StringComparison.OrdinalIgnoreCase));
+
+    void GoToReview(string? id)
+    {
+        if (!string.IsNullOrEmpty(id))
+            Navigation.NavigateTo($"/inspector-reviews/{id}");
+    }
+
+    class UserListResult { public List<UserItem> Items { get; set; } = new(); }
+    class UserItem
+    {
+        public string? InspectorId { get; set; }
+        public string? FullName    { get; set; }
+        public string? Nationality { get; set; }
+        public string? Category    { get; set; }
+    }
+}
+
+<style>
+    .ir-page { max-width: 1100px; margin: 0 auto; font-family: "DM Sans", sans-serif; }
+    .ir-header { margin-bottom: 24px; }
+    .ir-title  { font-size: 26px; font-weight: 800; color: #ffffff; margin: 0 0 4px; }
+    .ir-sub    { font-size: 13px; color: rgba(255,255,255,0.7); margin: 0; }
+    .ir-loading { display:flex;align-items:center;gap:10px;padding:60px;justify-content:center;color:#ffffff; }
+    .ir-spinner { width:20px;height:20px;border:3px solid rgba(255,255,255,0.3);border-top-color:#ffffff;border-radius:50%;animation:ispin .7s linear infinite; }
+    @@keyframes ispin { to { transform:rotate(360deg); } }
+    .ir-search-row { margin-bottom: 20px; }
+    .ir-search-wrap { display:flex;align-items:center;gap:8px;background:#fff;border:1px solid #e5e7eb;border-radius:10px;padding:8px 14px;max-width:360px; }
+    .ir-search { border:none;outline:none;font-size:14px;color:#1a2d5a;font-family:inherit;flex:1;background:transparent; }
+    .ir-grid { display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px; }
+    .ir-card { background:#fff;border:1px solid #e5e7eb;border-radius:14px;padding:18px;display:flex;align-items:center;gap:14px;cursor:pointer;transition:all .2s; }
+    .ir-card:hover { box-shadow:0 6px 20px rgba(0,0,0,0.08);border-color:#bfdbfe;transform:translateY(-2px); }
+    .ir-avatar { width:46px;height:46px;border-radius:12px;background:linear-gradient(135deg,#0f172a,#1d4ed8);color:#fff;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;flex-shrink:0;text-transform:uppercase; }
+    .ir-info { flex:1;min-width:0; }
+    .ir-name { font-size:14px;font-weight:700;color:#1a2d5a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis; }
+    .ir-id   { font-size:12px;color:#6b7280;margin-top:2px; }
+    .ir-meta { font-size:11.5px;color:#9ca3af;margin-top:3px; }
+    .ir-empty { grid-column:1/-1;text-align:center;padding:40px;color:#9ca3af; }
+</style>

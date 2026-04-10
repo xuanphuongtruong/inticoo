@@ -1,0 +1,132 @@
+@page "/vendor-reviews"
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Admin")]
+@using System.Net.Http.Json
+@inject HttpClient Http
+@inject NavigationManager Navigation
+
+<PageTitle>Vendor Reviews - Inticoo</PageTitle>
+
+<div class="vr-page">
+    <div class="vr-header">
+        <div>
+            <h1 class="vr-title">Vendor Reviews</h1>
+            <p class="vr-sub">Performance Overview · Vendor Quality Metrics & Inspection Results</p>
+        </div>
+    </div>
+
+    @if (_loading)
+    {
+        <div class="vr-loading"><div class="vr-spinner"></div> Loading vendors...</div>
+    }
+    else
+    {
+        <!-- Search -->
+        <div class="vr-search-row">
+            <div class="vr-search-wrap">
+                <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="#9ca3af" stroke-width="1.8">
+                    <circle cx="9" cy="9" r="6"/><path d="M15 15l3 3" stroke-linecap="round"/>
+                </svg>
+                <input class="vr-search" placeholder="Search vendor..." @bind="_search" @bind:event="oninput" />
+            </div>
+        </div>
+
+        <div class="vr-grid">
+            @foreach (var v in Filtered)
+            {
+                var initials = string.Join("", (v.Name ?? "").Split(' ').Take(2).Select(w => w.FirstOrDefault()));
+                <div class="vr-card" @onclick="() => GoToReview(v.Code)">
+                    <div class="vr-card-avatar">@initials</div>
+                    <div class="vr-card-body">
+                        <div class="vr-card-name">@v.Name</div>
+                        <div class="vr-card-id">@v.Code</div>
+                        @if (!string.IsNullOrEmpty(v.Country))
+                        {
+                            <div class="vr-card-meta">📍 @v.Country</div>
+                        }
+                        @if (!string.IsNullOrEmpty(v.Category))
+                        {
+                            <div class="vr-card-meta">🏷 @v.Category</div>
+                        }
+                    </div>
+                    <div class="vr-card-arrow">
+                        <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="#9ca3af" stroke-width="2">
+                            <path d="M7 4l6 6-6 6" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                    </div>
+                </div>
+            }
+            @if (!Filtered.Any())
+            {
+                <div class="vr-empty">No vendors found.</div>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    private List<VendorItem> _vendors = new();
+    private bool _loading = true;
+    private string _search = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var result = await Http.GetFromJsonAsync<VendorListResult>("api/vendors?pageSize=200",
+                new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+            _vendors = result?.Items ?? new();
+        }
+        catch { }
+        _loading = false;
+    }
+
+    IEnumerable<VendorItem> Filtered => string.IsNullOrWhiteSpace(_search)
+        ? _vendors
+        : _vendors.Where(v =>
+            (v.Name ?? "").Contains(_search, StringComparison.OrdinalIgnoreCase) ||
+            (v.Code ?? "").Contains(_search, StringComparison.OrdinalIgnoreCase) ||
+            (v.Country ?? "").Contains(_search, StringComparison.OrdinalIgnoreCase));
+
+    void GoToReview(string? code)
+    {
+        if (!string.IsNullOrEmpty(code))
+            Navigation.NavigateTo($"/vendor-reviews/{code}");
+    }
+
+    class VendorListResult
+    {
+        public List<VendorItem> Items { get; set; } = new();
+    }
+    class VendorItem
+    {
+        public string? Code     { get; set; }
+        public string? Name     { get; set; }
+        public string? Country  { get; set; }
+        public string? Category { get; set; }
+    }
+}
+
+<style>
+    .vr-page { max-width: 1100px; margin: 0 auto; font-family: "DM Sans", sans-serif; }
+    .vr-header { margin-bottom: 24px; }
+    .vr-title  { font-size: 26px; font-weight: 800; color: #ffffff; margin: 0 0 4px; }
+    .vr-sub    { font-size: 13px; color: rgba(255,255,255,0.7); margin: 0; }
+    .vr-loading { display:flex; align-items:center; gap:10px; padding:60px; justify-content:center; color:#ffffff; }
+    .vr-spinner { width:20px;height:20px;border:3px solid rgba(255,255,255,0.3);border-top-color:#ffffff;border-radius:50%;animation:spin .7s linear infinite; }
+    @@keyframes spin { to { transform:rotate(360deg); } }
+
+    .vr-search-row { margin-bottom: 20px; }
+    .vr-search-wrap { display:flex;align-items:center;gap:8px;background:#fff;border:1px solid #e5e7eb;border-radius:10px;padding:8px 14px;max-width:360px; }
+    .vr-search { border:none;outline:none;font-size:14px;color:#1a2d5a;font-family:inherit;flex:1;background:transparent; }
+
+    .vr-grid { display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px; }
+    .vr-card { background:#fff;border:1px solid #e5e7eb;border-radius:14px;padding:18px;display:flex;align-items:center;gap:14px;cursor:pointer;transition:all .2s; }
+    .vr-card:hover { box-shadow:0 6px 20px rgba(0,0,0,0.08);border-color:#bfdbfe;transform:translateY(-2px); }
+    .vr-card-avatar { width:46px;height:46px;border-radius:12px;background:linear-gradient(135deg,#1d4ed8,#3b82f6);color:#fff;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;flex-shrink:0;text-transform:uppercase; }
+    .vr-card-body { flex:1;min-width:0; }
+    .vr-card-name { font-size:14px;font-weight:700;color:#1a2d5a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis; }
+    .vr-card-id   { font-size:12px;color:#6b7280;margin-top:2px; }
+    .vr-card-meta { font-size:11.5px;color:#9ca3af;margin-top:3px; }
+    .vr-card-arrow { flex-shrink:0; }
+    .vr-empty { grid-column:1/-1;text-align:center;padding:40px;color:#9ca3af; }
+</style>

@@ -787,49 +787,214 @@ namespace InticooInspection.API.Controllers
 
         // GET api/inspections/dashboard
         [HttpGet("dashboard")]
+        [AllowAnonymous]
         public async Task<IActionResult> Dashboard()
         {
             try
             {
-                var total = await _db.Inspections.CountAsync();
-                var pending = await _db.Inspections.CountAsync(i => i.Status == InspectionStatus.Pending);
-                var inProgress = await _db.Inspections.CountAsync(i => i.Status == InspectionStatus.InProgress);
-                var completed = await _db.Inspections.CountAsync(i => i.Status == InspectionStatus.Completed);
-                var rate = total > 0 ? Math.Round((double)completed / total * 100, 1) : 0;
+                var now = DateTime.UtcNow;
+                var currentYear  = now.Year;
+                var currentMonth = now.Month;
 
-                // Load recent inspections — avoid Steps.Count in EF Select projection
-                var recentRaw = await _db.Inspections
+                // ── Tổng quan ──
+                var allInspections = await _db.Inspections
                     .AsNoTracking()
-                    .OrderByDescending(i => i.CreatedAt)
-                    .Take(5)
-                    .Select(i => new
-                    {
-                        i.Id,
-                        i.Title,
-                        i.Status,
-                        i.CreatedAt,
-                        i.CreatedById,
-                    })
-                    .ToListAsync();
+                    .Select(i => new {
+                        i.Id, i.Status, i.InspectionType,
+                        i.InspectionDate, i.CreatedAt,
+                        i.JobNumber, i.CustomerName, i.CustomerId,
+                        i.ProductCategory, i.InspectorId, i.InspectorName,
+                        i.FinalResult
+                    }).ToListAsync();
 
-                var recent = recentRaw.Select(i => (object)new
+                var total     = allInspections.Count;
+                var pending   = allInspections.Count(i => i.Status == InspectionStatus.Pending);
+                var completed = allInspections.Count(i => i.Status == InspectionStatus.Completed);
+
+                var customerCount  = await _db.Customers.CountAsync();
+                var vendorCount    = await _db.Vendors.CountAsync();
+                var productCount   = await _db.Products.CountAsync();
+                var inspectorCount = await _userManager.Users
+                    .CountAsync(u => u.InspectorId != null && u.InspectorId != "");
+
+                // ── Inspections by Month (current year) ──
+                var thisYearInsp = allInspections
+                    .Where(i => i.InspectionDate.Year == currentYear)
+                    .ToList();
+
+                var byMonth = Enumerable.Range(1, 12).Select(m => new
                 {
-                    id = i.Id,
-                    title = i.Title,
-                    status = i.Status.ToString(),
-                    createdAt = i.CreatedAt,
-                    totalSteps = 0,
-                    completedSteps = 0
+                    month     = m,
+                    completed = thisYearInsp.Count(i => i.InspectionDate.Month == m && i.Status == InspectionStatus.Completed),
+                    pending   = thisYearInsp.Count(i => i.InspectionDate.Month == m && i.Status != InspectionStatus.Completed)
                 }).ToList();
+
+                // ── Current month stats ──
+                var thisMonth = thisYearInsp.Where(i => i.InspectionDate.Month == currentMonth).ToList();
+                var monthCompleted = thisMonth.Count(i => i.Status == InspectionStatus.Completed);
+                var monthPending   = thisMonth.Count(i => i.Status != InspectionStatus.Completed);
+
+                // ── Inspection Types by Month (current month) ──
+                var monthPpt = thisMonth.Count(i => i.InspectionType == InspectionType.PPT);
+                var monthDpi = thisMonth.Count(i => i.InspectionType == InspectionType.DPI);
+                var monthPst = thisMonth.Count(i => i.InspectionType == InspectionType.PST);
+
+                // ── Inspection Types by Year ──
+                var typeByMonth = Enumerable.Range(1, 12).Select(m => new
+                {
+                    month = m,
+                    ppt   = thisYearInsp.Count(i => i.InspectionDate.Month == m && i.InspectionType == InspectionType.PPT),
+                    dpi   = thisYearInsp.Count(i => i.InspectionDate.Month == m && i.InspectionType == InspectionType.DPI),
+                    pst   = thisYearInsp.Count(i => i.InspectionDate.Month == m && i.InspectionType == InspectionType.PST),
+                }).ToList();
+
+                var yearPpt = thisYearInsp.Count(i => i.InspectionType == InspectionType.PPT);
+                var yearDpi = thisYearInsp.Count(i => i.InspectionType == InspectionType.DPI);
+                var yearPst = thisYearInsp.Count(i => i.InspectionType == InspectionType.PST);
+
+                // ── Recent Inspections (latest 10) ──
+                var recent = allInspections
+                    .OrderByDescending(i => i.CreatedAt)
+                    .Take(10)
+                    .Select(i => new {
+                        i.JobNumber,
+                        i.CustomerName,
+                        i.CustomerId,
+                        i.ProductCategory,
+                        i.InspectorName,
+                        i.InspectorId,
+                        status      = i.Status.ToString(),
+                        inspType    = i.InspectionType.ToString(),
+                        i.FinalResult,
+                        date        = i.InspectionDate
+                    }).ToList();
+
+                // ── Top Customers (most inspections) ──
+                var topCustomers = allInspections
+                    .Where(i => !string.IsNullOrEmpty(i.CustomerName))
+                    .GroupBy(i => new { i.CustomerId, i.CustomerName })
+                    .Select(g => new { g.Key.CustomerId, g.Key.CustomerName, count = g.Count() })
+                    .OrderByDescending(x => x.count)
+                    .Take(5)
+                    .ToList();
+
+                // ── Top Inspectors (most jobs) ──
+                var topInspectors = allInspections
+                    .Where(i => !string.IsNullOrEmpty(i.InspectorId))
+                    .GroupBy(i => new { i.InspectorId, i.InspectorName })
+                    .Select(g => new { g.Key.InspectorId, g.Key.InspectorName, count = g.Count() })
+                    .OrderByDescending(x => x.count)
+                    .Take(5)
+                    .ToList();
 
                 return Ok(new
                 {
-                    totalInspections = total,
+                    updatedAt         = now,
+                    totalInspections  = total,
                     pendingInspections = pending,
-                    inProgressInspections = inProgress,
                     completedInspections = completed,
-                    completionRate = rate,
-                    recentInspections = recent
+                    customerCount, vendorCount, productCount, inspectorCount,
+
+                    // Inspections by Month
+                    monthCompleted, monthPending,
+                    byMonth,
+
+                    // Types
+                    monthPpt, monthDpi, monthPst,
+                    yearPpt, yearDpi, yearPst,
+                    typeByMonth,
+
+                    // Lists
+                    recentInspections = recent,
+                    topCustomers,
+                    topInspectors
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { error = ex.Message, inner = ex.InnerException?.Message });
+            }
+        }
+
+        // GET api/inspections/inspector-review/{inspectorId}?year=2026&month=4
+        [HttpGet("inspector-review/{inspectorId}")]
+        [AllowAnonymous]
+        public async Task<IActionResult> GetInspectorReview(string inspectorId, [FromQuery] int? year, [FromQuery] int? month)
+        {
+            try
+            {
+                var now         = DateTime.UtcNow;
+                var targetYear  = year  ?? now.Year;
+                var targetMonth = month ?? now.Month;
+
+                // Load all inspections for this inspector
+                var allInsp = await _db.Inspections
+                    .AsNoTracking()
+                    .Where(i => i.InspectorId == inspectorId)
+                    .Select(i => new {
+                        i.Id, i.InspectionDate, i.InspectionType,
+                        i.FinalResult, i.QcResultJson, i.Status,
+                        i.CreatedAt, i.CompletedAt
+                    }).ToListAsync();
+
+                // ── Monthly bar chart (current year) ──
+                var yearInsp = allInsp.Where(i => i.InspectionDate.Year == targetYear).ToList();
+
+                var monthlyData = Enumerable.Range(1, 12).Select(m => new
+                {
+                    month = m,
+                    ppt   = yearInsp.Count(i => i.InspectionDate.Month == m && i.InspectionType == InspectionType.PPT),
+                    dpi   = yearInsp.Count(i => i.InspectionDate.Month == m && i.InspectionType == InspectionType.DPI),
+                    pst   = yearInsp.Count(i => i.InspectionDate.Month == m && i.InspectionType == InspectionType.PST),
+                }).ToList();
+
+                // ── Yearly totals ──
+                var yearPpt = yearInsp.Count(i => i.InspectionType == InspectionType.PPT);
+                var yearDpi = yearInsp.Count(i => i.InspectionType == InspectionType.DPI);
+                var yearPst = yearInsp.Count(i => i.InspectionType == InspectionType.PST);
+
+                // ── Pass/Fail for year ──
+                var yearTotal   = yearInsp.Count;
+                var yearPassed  = yearInsp.Count(i => i.FinalResult == "PASSED");
+                var yearFailed  = yearInsp.Count(i => i.FinalResult == "FAILED");
+                var yearPassRate = yearTotal > 0 ? Math.Round((double)yearPassed / yearTotal * 100, 1) : 0;
+                var yearFailRate = yearTotal > 0 ? Math.Round((double)yearFailed / yearTotal * 100, 1) : 0;
+
+                // ── PST Pass/Fail by month (horizontal bar chart) ──
+                var pstByMonth = Enumerable.Range(1, 12).Select(m => new
+                {
+                    month   = m,
+                    passed  = yearInsp.Count(i => i.InspectionDate.Month == m && i.InspectionType == InspectionType.PST && i.FinalResult == "PASSED"),
+                    failed  = yearInsp.Count(i => i.InspectionDate.Month == m && i.InspectionType == InspectionType.PST && i.FinalResult == "FAILED"),
+                }).ToList();
+
+                // ── Average inspection duration (days from CreatedAt to CompletedAt) per type ──
+                double AvgDays(InspectionType t) {
+                    var completed = yearInsp
+                        .Where(i => i.InspectionType == t && i.CompletedAt.HasValue)
+                        .Select(i => (i.CompletedAt!.Value - i.CreatedAt).TotalDays)
+                        .ToList();
+                    return completed.Any() ? Math.Round(completed.Average(), 1) : 0;
+                }
+                var avgPst = AvgDays(InspectionType.PST);
+                var avgDpi = AvgDays(InspectionType.DPI);
+                var avgPpt = AvgDays(InspectionType.PPT);
+
+                // ── On-time rate: completed within expected (≤5 days) ──
+                var completedJobs = yearInsp.Where(i => i.CompletedAt.HasValue).ToList();
+                var onTime  = completedJobs.Count(i => (i.CompletedAt!.Value - i.CreatedAt).TotalDays <= 5);
+                var delayed = completedJobs.Count - onTime;
+                var onTimeRate  = completedJobs.Any() ? Math.Round((double)onTime  / completedJobs.Count * 100, 1) : 0;
+                var delayedRate = completedJobs.Any() ? Math.Round((double)delayed / completedJobs.Count * 100, 1) : 0;
+
+                return Ok(new
+                {
+                    inspectorId, targetYear, targetMonth,
+                    yearTotal, yearPassed, yearFailed, yearPassRate, yearFailRate,
+                    yearPpt, yearDpi, yearPst,
+                    avgDurationPst = avgPst, avgDurationDpi = avgDpi, avgDurationPpt = avgPpt,
+                    onTimeRate, delayedRate,
+                    monthlyData, pstByMonth,
                 });
             }
             catch (Exception ex)
