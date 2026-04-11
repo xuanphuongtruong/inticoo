@@ -11,7 +11,9 @@
 
             <!-- Logo -->
             <div class="navbar-logo">
-                <img src="logo.png" height="38" alt="Inticoo" style="object-fit:contain;" />
+                <NavLink href="/dashboard" style="display:flex;align-items:center;text-decoration:none;">
+                    <img src="logo.png" height="38" alt="Inticoo" style="object-fit:contain;" />
+                </NavLink>
             </div>
 
             <!-- ═══════════════════════════════════════════════
@@ -699,7 +701,7 @@
 
     /* ─── HAMBURGER — hiển thị trên tất cả màn hình ─── */
     .hamburger {
-        display: flex;
+        display: none;
         align-items: center;
         justify-content: center;
         background: none;
@@ -708,7 +710,7 @@
         color: #1a3a6b;
         padding: 6px;
         border-radius: 8px;
-        margin-left: 8px;
+        margin-left: auto;
         transition: background .2s;
         flex-shrink: 0;
     }
@@ -723,6 +725,7 @@
     @@media (max-width: 768px) {
         .navbar-links { display: none; }
         .navbar-right { display: none; }
+        .hamburger { display: flex; }
         .main-content { padding: 20px 16px; }
         .footer-copy { flex-direction: column; gap: 8px; text-align: center; }
     }
@@ -736,7 +739,7 @@
     .mobile-drawer-overlay {
         position: fixed;
         inset: 0;
-        background: rgba(0,0,0,0.5);
+        background: rgba(0,0,0,0.4);
         z-index: 999;
         animation: fadeIn .2s ease both;
     }
@@ -746,11 +749,11 @@
         to   { opacity: 1; }
     }
 
-    /* ─── MOBILE DRAWER (full screen dark) ─── */
+    /* ─── MOBILE DRAWER — white light theme ─── */
     .mobile-menu {
         position: fixed;
         top: 0; left: 0; right: 0; bottom: 0;
-        background: #0a0a0a;
+        background: #ffffff;
         z-index: 1000;
         overflow-y: auto;
         padding: 0 0 40px;
@@ -770,44 +773,44 @@
         align-items: center;
         justify-content: space-between;
         padding: 20px 24px 12px;
-        border-bottom: 1px solid rgba(255,255,255,0.08);
+        border-bottom: 1px solid #e5e7eb;
         margin-bottom: 8px;
     }
 
     .mobile-drawer-title {
-        font-size: 22px;
+        font-size: 20px;
         font-weight: 800;
-        color: #fff;
-        letter-spacing: .04em;
+        color: #1a2d5a;
+        letter-spacing: .02em;
         text-transform: uppercase;
         font-family: "DM Sans", sans-serif;
     }
 
     .mobile-drawer-close {
-        background: rgba(255,255,255,0.1);
+        background: #f3f4f6;
         border: none;
         border-radius: 50%;
         width: 36px; height: 36px;
         display: flex; align-items: center; justify-content: center;
-        color: #fff;
+        color: #1a2d5a;
         cursor: pointer;
         transition: background .15s;
     }
-    .mobile-drawer-close:hover { background: rgba(255,255,255,0.2); }
+    .mobile-drawer-close:hover { background: #e5e7eb; }
 
-    /* Section label — purple pill like mockup */
+    /* Section label */
     .mobile-nav-group-label {
         display: inline-flex;
         align-items: center;
-        font-size: 12px;
+        font-size: 11px;
         font-weight: 700;
         letter-spacing: .08em;
         text-transform: uppercase;
-        color: #cc66ff;
-        background: rgba(160,60,255,0.18);
+        color: #1d4ed8;
+        background: #eff6ff;
         border-radius: 6px;
         padding: 4px 10px;
-        margin: 16px 24px 6px;
+        margin: 14px 20px 4px;
     }
 
     /* Nav items */
@@ -815,10 +818,10 @@
         display: flex;
         align-items: center;
         gap: 12px;
-        padding: 13px 24px;
-        font-size: 18px;
+        padding: 13px 20px;
+        font-size: 16px;
         font-weight: 500;
-        color: #ffffff;
+        color: #1a2d5a;
         text-decoration: none;
         font-family: "DM Sans", sans-serif;
         transition: background .15s, color .15s;
@@ -830,25 +833,25 @@
         letter-spacing: .01em;
     }
 
-    .mobile-nav-item svg { color: rgba(255,255,255,0.4); flex-shrink: 0; }
-    .mobile-nav-item:hover { background: rgba(255,255,255,0.05); color: #cc66ff; }
-    .mobile-nav-item:hover svg { color: #cc66ff; }
-    .mobile-nav-item.active { color: #cc66ff; }
-    .mobile-nav-item.active svg { color: #cc66ff; }
+    .mobile-nav-item svg { color: #9ca3af; flex-shrink: 0; }
+    .mobile-nav-item:hover { background: #f0f5ff; color: #1d4ed8; }
+    .mobile-nav-item:hover svg { color: #1d4ed8; }
+    .mobile-nav-item.active { background: #eff6ff; color: #1d4ed8; font-weight: 600; }
+    .mobile-nav-item.active svg { color: #1d4ed8; }
 
     .mobile-nav-sub {
-        padding-left: 24px;
-        font-size: 18px;
-        color: #ffffff;
+        padding-left: 20px;
+        font-size: 15px;
+        color: #374151;
     }
 
     .mobile-nav-divider {
         height: 1px;
-        background: rgba(255,255,255,0.07);
-        margin: 8px 24px;
+        background: #e5e7eb;
+        margin: 8px 20px;
     }
 
-    .mobile-logout { color: #ff6b6b; }
-    .mobile-logout svg { color: rgba(255,100,100,0.5) !important; }
-    .mobile-logout:hover { background: rgba(255,50,50,0.08); color: #ff4444; }
+    .mobile-logout { color: #dc2626; }
+    .mobile-logout svg { color: #fca5a5 !important; }
+    .mobile-logout:hover { background: #fff5f5; color: #b91c1c; }
 </style>

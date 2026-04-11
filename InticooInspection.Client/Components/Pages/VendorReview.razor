@@ -150,15 +150,10 @@ else if (_data != null)
 
     </div>
 
-    <!-- ── Defect summary bar ── -->
-    <div class="rv-defbar">
-        <span class="rv-defbar-item critical">▲ @_data.MonthCritical Critical Defects</span>
-        <span class="rv-defbar-item major">  ▲ @_data.MonthMajor Major Defects</span>
-        <span class="rv-defbar-item minor">  ▲ @_data.MonthMinor Minor Defects</span>
-    </div>
+    <!-- ── Defect summary bar removed ── -->
 
     <!-- ── Monthly Bar Chart ── -->
-    <div class="rv-section-title">Total Inspection Completed (Monthly)</div>
+    <div class="rv-section-title">Total Inspection (Monthly)</div>
     <div class="rv-card" style="padding:24px 20px;">
         <div class="rv-legend-row">
             <span class="rv-leg-item"><span class="rv-leg-dot" style="background:#1d4ed8;"></span>Pre-Production Inspection</span>
@@ -180,9 +175,9 @@ else if (_data != null)
                     {
                         <div class="rv-bar-val">@total</div>
                         <div class="rv-bar-stack" style="height:@((int)hp)px;">
-                            @if (m.Pst > 0) { <div style="height:@((int)((double)m.Pst/total*100))%;background:#dc2626;"></div> }
-                            @if (m.Dpi > 0) { <div style="height:@((int)((double)m.Dpi/total*100))%;background:#f59e0b;"></div> }
                             @if (m.Ppt > 0) { <div style="height:@((int)((double)m.Ppt/total*100))%;background:#1d4ed8;"></div> }
+                            @if (m.Dpi > 0) { <div style="height:@((int)((double)m.Dpi/total*100))%;background:#f59e0b;"></div> }
+                            @if (m.Pst > 0) { <div style="height:@((int)((double)m.Pst/total*100))%;background:#dc2626;"></div> }
                         </div>
                     }
                     else
@@ -197,7 +192,7 @@ else if (_data != null)
     </div>
 
     <!-- ── Yearly Horizontal Bar ── -->
-    <div class="rv-section-title">Total Inspection Completed (Yearly) — @_data.TargetYear</div>
+    <div class="rv-section-title">Total Inspection for Year — @_data.TargetYear</div>
     <div class="rv-card" style="padding:24px 20px;">
         @{
             var maxYear = Math.Max(1, Math.Max(_data.YearPpt, Math.Max(_data.YearDpi, _data.YearPst)));
@@ -267,11 +262,6 @@ else if (_data != null)
                         <div class="rv-leg-row"><span class="rv-leg-dot" style="background:#22c55e;"></span> Pass Rate: <strong style="color:#16a34a;">@_data.YearPassRate%</strong></div>
                         <div class="rv-leg-row"><span class="rv-leg-dot" style="background:#ef4444;"></span> Fail Rate: <strong style="color:#dc2626;">@_data.YearFailRate%</strong></div>
                     </div>
-                </div>
-                <div class="rv-defbar" style="margin-top:0;">
-                    <span class="rv-defbar-item critical">▲ @_data.YearCritical Critical</span>
-                    <span class="rv-defbar-item major">  ▲ @_data.YearMajor Major</span>
-                    <span class="rv-defbar-item minor">  ▲ @_data.YearMinor Minor</span>
                 </div>
             </div>
         </div>
@@ -396,7 +386,7 @@ else if (_data != null)
 }
 
 <style>
-    .rv-page { max-width: 1000px; margin: 0 auto; font-family: "DM Sans", sans-serif; color: #1a2d5a; }
+    .rv-page { max-width: 100%; margin: 0 auto; font-family: "DM Sans", sans-serif; color: #1a2d5a; }
     .rv-loading { display:flex;align-items:center;gap:10px;padding:60px;justify-content:center;color:#ffffff; }
     .rv-spinner { width:22px;height:22px;border:3px solid rgba(255,255,255,0.3);border-top-color:#ffffff;border-radius:50%;animation:rspin .7s linear infinite; }
     @@keyframes rspin { to { transform:rotate(360deg); } }
@@ -454,9 +444,9 @@ else if (_data != null)
 
     /* ── Vertical bar chart ── */
     .rv-barchart { display:flex;align-items:flex-end;gap:6px;height:180px; }
-    .rv-bar-col  { display:flex;flex-direction:column;align-items:center;flex:1;height:100%; }
+    .rv-bar-col  { display:flex;flex-direction:column;align-items:center;flex:1;height:100%;justify-content:flex-end; }
     .rv-bar-val  { font-size:10px;color:#6b7280;font-weight:600;margin-bottom:4px; }
-    .rv-bar-stack { width:100%;max-width:28px;display:flex;flex-direction:column;border-radius:4px 4px 0 0;overflow:hidden;min-height:4px; }
+    .rv-bar-stack { width:100%;max-width:28px;display:flex;flex-direction:column-reverse;border-radius:4px 4px 0 0;overflow:hidden;min-height:4px; }
     .rv-bar-empty { width:100%;max-width:28px;height:4px;background:#e5e7eb;border-radius:4px; }
     .rv-bar-lbl  { font-size:9px;color:#9ca3af;margin-top:5px;font-weight:600;letter-spacing:.04em; }
 

@@ -46,7 +46,7 @@ else if (_data != null)
     </div>
 
     <!-- ══ MONTHLY BAR CHART ══ -->
-    <div class="ip-section-title">Total Inspection Completed (Monthly)</div>
+    <div class="ip-section-title">Total Inspection (Monthly)</div>
     <div class="ip-card">
         <div class="ip-legend-row">
             <span class="ip-leg"><span class="ip-dot" style="background:#1d4ed8;"></span>Pre-Production Inspection</span>
@@ -68,9 +68,9 @@ else if (_data != null)
                     {
                         <div class="ip-bar-val">@tot</div>
                         <div class="ip-bar-stack" style="height:@((int)hp)px;">
-                            @if (m.Pst > 0) { <div style="height:@((int)((double)m.Pst/tot*100))%;background:#dc2626;"></div> }
-                            @if (m.Dpi > 0) { <div style="height:@((int)((double)m.Dpi/tot*100))%;background:#f59e0b;"></div> }
                             @if (m.Ppt > 0) { <div style="height:@((int)((double)m.Ppt/tot*100))%;background:#1d4ed8;"></div> }
+                            @if (m.Dpi > 0) { <div style="height:@((int)((double)m.Dpi/tot*100))%;background:#f59e0b;"></div> }
+                            @if (m.Pst > 0) { <div style="height:@((int)((double)m.Pst/tot*100))%;background:#dc2626;"></div> }
                         </div>
                     }
                     else
@@ -85,7 +85,7 @@ else if (_data != null)
     </div>
 
     <!-- ══ YEARLY HORIZONTAL BAR ══ -->
-    <div class="ip-section-title">Total Inspection Completed (Yearly) — @_data.TargetYear</div>
+    <div class="ip-section-title">Total Inspection for Year — @_data.TargetYear</div>
     <div class="ip-card">
         @{ var maxY = Math.Max(1, Math.Max(_data.YearPpt, Math.Max(_data.YearDpi, _data.YearPst))); }
         <div class="ip-hbar-row">
@@ -143,15 +143,15 @@ else if (_data != null)
                     <span class="ip-ontime-lbl" style="color:#1d4ed8;">On Time</span>
                     <div class="ip-ontime-track">
                         <div class="ip-ontime-fill" style="width:@_data.OnTimeRate%;background:#1d4ed8;"></div>
-                        <span class="ip-ontime-pct">@_data.OnTimeRate%</span>
                     </div>
+                    <span class="ip-ontime-pct">@_data.OnTimeRate%</span>
                 </div>
                 <div class="ip-ontime-row">
                     <span class="ip-ontime-lbl" style="color:#f59e0b;">Delayed</span>
                     <div class="ip-ontime-track">
                         <div class="ip-ontime-fill" style="width:@_data.DelayedRate%;background:#f59e0b;"></div>
-                        <span class="ip-ontime-pct">@_data.DelayedRate%</span>
                     </div>
+                    <span class="ip-ontime-pct">@_data.DelayedRate%</span>
                 </div>
             </div>
         </div>
@@ -335,7 +335,7 @@ else if (_data != null)
 }
 
 <style>
-    .ip-page { max-width: 1000px; margin: 0 auto; font-family: "DM Sans", sans-serif; color: #1a2d5a; }
+    .ip-page { max-width: 100%; margin: 0 auto; font-family: "DM Sans", sans-serif; color: #1a2d5a; }
     .ip-loading { display:flex;align-items:center;gap:10px;padding:60px;justify-content:center;color:#ffffff; }
     .ip-spinner { width:22px;height:22px;border:3px solid rgba(255,255,255,0.3);border-top-color:#ffffff;border-radius:50%;animation:ipspin .7s linear infinite; }
     @@keyframes ipspin { to { transform:rotate(360deg); } }
@@ -370,9 +370,9 @@ else if (_data != null)
 
     /* Monthly bar chart */
     .ip-barchart { display:flex;align-items:flex-end;gap:5px;height:180px; }
-    .ip-bar-col  { display:flex;flex-direction:column;align-items:center;flex:1;height:100%; }
+    .ip-bar-col  { display:flex;flex-direction:column;align-items:center;flex:1;height:100%;justify-content:flex-end; }
     .ip-bar-val  { font-size:9.5px;color:#6b7280;font-weight:600;margin-bottom:3px; }
-    .ip-bar-stack { width:100%;max-width:26px;display:flex;flex-direction:column;border-radius:4px 4px 0 0;overflow:hidden;min-height:4px; }
+    .ip-bar-stack { width:100%;max-width:26px;display:flex;flex-direction:column-reverse;border-radius:4px 4px 0 0;overflow:hidden;min-height:4px; }
     .ip-bar-empty { width:100%;max-width:26px;height:4px;background:#e5e7eb;border-radius:4px; }
     .ip-bar-lbl  { font-size:8.5px;color:#9ca3af;margin-top:5px;font-weight:600;letter-spacing:.03em; }
 
@@ -396,7 +396,7 @@ else if (_data != null)
     .ip-ontime-lbl  { width:80px;font-size:14px;font-weight:600;flex-shrink:0; }
     .ip-ontime-track { flex:1;height:32px;background:#f3f4f6;border-radius:8px;overflow:hidden;position:relative; }
     .ip-ontime-fill  { height:100%;border-radius:8px;transition:width .4s; }
-    .ip-ontime-pct   { position:absolute;right:10px;top:50%;transform:translateY(-50%);font-size:14px;font-weight:700;color:#fff; }
+    .ip-ontime-pct   { width:48px;font-size:14px;font-weight:700;color:#1a2d5a;flex-shrink:0;text-align:right; }
 
     /* Pie chart */
     .ip-pie-wrap   { display:flex;align-items:center;gap:20px;flex-wrap:wrap;justify-content:center; }

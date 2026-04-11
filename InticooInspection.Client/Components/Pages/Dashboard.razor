@@ -116,9 +116,9 @@ else if (_data != null)
         </div>
 
         <!-- ── Inspections by Month ── -->
-        <div class="db-section-title">Inspections by Month</div>
+        <div class="db-section-title">Inspections (Monthly)</div>
         <div class="db-row">
-            <div class="db-chart-card" style="flex:2;">
+            <div class="db-chart-card" style="flex:1;">
                 <div class="db-mini-stats">
                     <div class="db-mini-stat">
                         <span class="db-mini-val" style="color:#3b82f6;">@_data.MonthCompleted</span>
@@ -144,8 +144,8 @@ else if (_data != null)
                             {
                                 <div class="db-bar-num">@total2</div>
                                 <div class="db-bar-wrap" style="height:@((int)heightPct)%">
-                                    <div class="db-bar-seg pending" style="height:@((int)(100-compPct))%;"></div>
                                     <div class="db-bar-seg completed" style="height:@((int)compPct)%;"></div>
+                                    <div class="db-bar-seg pending" style="height:@((int)(100-compPct))%;"></div>
                                 </div>
                             }
                             else
@@ -162,55 +162,14 @@ else if (_data != null)
                     <span class="db-leg-item"><span class="db-leg-dot" style="background:#f59e0b;"></span>Pending</span>
                 </div>
             </div>
-
-            <!-- Pie chart: Completed vs Pending -->
-            <div class="db-chart-card" style="flex:1;min-width:200px;">
-                <div class="db-pie-wrap">
-                    @{
-                        var tot = _data.TotalInspections;
-                        var compPct2 = tot > 0 ? (double)_data.CompletedInspections / tot * 100 : 0;
-                        var pendPct2 = 100 - compPct2;
-                        var compAngle = compPct2 / 100 * 360;
-                    }
-                    <svg viewBox="0 0 100 100" class="db-pie-svg">
-                        <circle cx="50" cy="50" r="40" fill="none" stroke="#e5e7eb" stroke-width="20"/>
-                        @if (compPct2 > 0 && compPct2 < 100)
-                        {
-                            var dashArr = compPct2 / 100 * 251.2;
-                            <circle cx="50" cy="50" r="40" fill="none" stroke="#3b82f6" stroke-width="20"
-                                    stroke-dasharray="@dashArr.ToString("F1") 251.2"
-                                    stroke-dashoffset="62.8" transform="rotate(-90 50 50)"/>
-                            <circle cx="50" cy="50" r="40" fill="none" stroke="#f59e0b" stroke-width="20"
-                                    stroke-dasharray="@(251.2 - dashArr) 251.2"
-                                    stroke-dashoffset="@(62.8 - dashArr)" transform="rotate(-90 50 50)"/>
-                        }
-                        else if (compPct2 >= 100)
-                        {
-                            <circle cx="50" cy="50" r="40" fill="none" stroke="#3b82f6" stroke-width="20"/>
-                        }
-                        else
-                        {
-                            <circle cx="50" cy="50" r="40" fill="none" stroke="#f59e0b" stroke-width="20"/>
-                        }
-                    </svg>
-                    <div class="db-pie-labels">
-                        <div class="db-pie-label" style="color:#f59e0b;">
-                            <strong>Pending</strong><br/>@pendPct2.ToString("F0")%
-                        </div>
-                        <div class="db-pie-label" style="color:#3b82f6;">
-                            <strong>Completed</strong><br/>@compPct2.ToString("F0")%
-                        </div>
-                    </div>
-                </div>
-            </div>
         </div>
 
         <!-- ── Inspection Types by Month ── -->
-        <div class="db-section-title">Inspection Types by Month
+        <div class="db-section-title">Inspection Types (Monthly)
             <span class="db-section-sub">PPT &nbsp;·&nbsp; DPI &nbsp;·&nbsp; PST</span>
         </div>
         <div class="db-row">
-            <div class="db-chart-card" style="flex:2;">
+            <div class="db-chart-card" style="flex:1;">
                 <div class="db-mini-stats">
                     <div class="db-mini-stat">
                         <span class="db-mini-val" style="color:#3b82f6;">@_data.MonthPpt</span>
@@ -239,9 +198,9 @@ else if (_data != null)
                             {
                                 <div class="db-bar-num">@total3</div>
                                 <div class="db-bar-wrap" style="height:@((int)hp)%">
-                                    @if (m.Pst > 0) { <div class="db-bar-seg" style="height:@((int)((double)m.Pst/total3*100))%;background:#10b981;"></div> }
-                                    @if (m.Dpi > 0) { <div class="db-bar-seg" style="height:@((int)((double)m.Dpi/total3*100))%;background:#f59e0b;"></div> }
                                     @if (m.Ppt > 0) { <div class="db-bar-seg" style="height:@((int)((double)m.Ppt/total3*100))%;background:#3b82f6;"></div> }
+                                    @if (m.Dpi > 0) { <div class="db-bar-seg" style="height:@((int)((double)m.Dpi/total3*100))%;background:#f59e0b;"></div> }
+                                    @if (m.Pst > 0) { <div class="db-bar-seg" style="height:@((int)((double)m.Pst/total3*100))%;background:#10b981;"></div> }
                                 </div>
                             }
                             else
@@ -259,48 +218,13 @@ else if (_data != null)
                     <span class="db-leg-item"><span class="db-leg-dot" style="background:#10b981;"></span>PST</span>
                 </div>
             </div>
-
-            <!-- Pie: Type distribution (full year) -->
-            <div class="db-chart-card" style="flex:1;min-width:200px;">
-                <div class="db-pie-wrap">
-                    @{
-                        var totType = _data.YearPpt + _data.YearDpi + _data.YearPst;
-                        var pptPct  = totType > 0 ? (double)_data.YearPpt / totType * 100 : 0;
-                        var dpiPct  = totType > 0 ? (double)_data.YearDpi / totType * 100 : 0;
-                        var pstPct  = totType > 0 ? (double)_data.YearPst / totType * 100 : 0;
-                        var pptDash = pptPct / 100 * 251.2;
-                        var dpiDash = dpiPct / 100 * 251.2;
-                        var pstDash = pstPct / 100 * 251.2;
-                    }
-                    <svg viewBox="0 0 100 100" class="db-pie-svg">
-                        <circle cx="50" cy="50" r="40" fill="none" stroke="#e5e7eb" stroke-width="20"/>
-                        @if (totType > 0)
-                        {
-                            <circle cx="50" cy="50" r="40" fill="none" stroke="#3b82f6" stroke-width="20"
-                                    stroke-dasharray="@pptDash.ToString("F1") 251.2"
-                                    stroke-dashoffset="62.8" transform="rotate(-90 50 50)"/>
-                            <circle cx="50" cy="50" r="40" fill="none" stroke="#f59e0b" stroke-width="20"
-                                    stroke-dasharray="@dpiDash.ToString("F1") 251.2"
-                                    stroke-dashoffset="@((62.8 - pptDash).ToString("F1"))" transform="rotate(-90 50 50)"/>
-                            <circle cx="50" cy="50" r="40" fill="none" stroke="#10b981" stroke-width="20"
-                                    stroke-dasharray="@pstDash.ToString("F1") 251.2"
-                                    stroke-dashoffset="@((62.8 - pptDash - dpiDash).ToString("F1"))" transform="rotate(-90 50 50)"/>
-                        }
-                    </svg>
-                    <div class="db-pie-labels" style="flex-direction:column;gap:6px;text-align:left;">
-                        <div style="color:#3b82f6;font-size:13px;font-weight:600;">PPT @pptPct.ToString("F0")%</div>
-                        <div style="color:#f59e0b;font-size:13px;font-weight:600;">DPI @dpiPct.ToString("F0")%</div>
-                        <div style="color:#10b981;font-size:13px;font-weight:600;">PST @pstPct.ToString("F0")%</div>
-                    </div>
-                </div>
-            </div>
         </div>
 
-        <!-- ── Bottom Row: Recent + Top Lists + Quick Actions ── -->
-        <div class="db-row" style="align-items:flex-start;gap:20px;">
+        <!-- ── Bottom Row: Recent Inspections full width ── -->
+        <div class="db-row" style="align-items:flex-start;gap:20px;flex-wrap:wrap;">
 
-            <!-- Recent Inspections -->
-            <!-- <div class="db-table-card" style="flex:3;">
+            <!-- Recent Inspections — full width on mobile, 2/3 on desktop -->
+            <div class="db-table-card" style="flex:2;min-width:300px;">
                 <div class="db-table-header">
                     <span class="db-table-title">Recent Inspections</span>
                     <div class="db-tab-group">
@@ -350,9 +274,9 @@ else if (_data != null)
                         </tbody>
                     </table>
                 </div>
-            </div> -->
+            </div>
 
-            <!-- Right column: Top Lists + Quick Actions -->
+            <!-- Right column: Quick Actions + Top Lists -->
             <div style="flex:1;min-width:240px;display:flex;flex-direction:column;gap:16px;">
 
                 <!-- Quick Actions -->
@@ -396,9 +320,7 @@ else if (_data != null)
                         ci++;
                     }
                     @if (!_data.TopCustomers.Any())
-                    {
-                        <div style="text-align:center;padding:12px;color:#9ca3af;font-size:13px;">No data</div>
-                    }
+                    { <div style="text-align:center;padding:12px;color:#9ca3af;font-size:13px;">No data</div> }
                 </div>
 
                 <!-- Top Inspectors -->
@@ -421,9 +343,7 @@ else if (_data != null)
                         ii++;
                     }
                     @if (!_data.TopInspectors.Any())
-                    {
-                        <div style="text-align:center;padding:12px;color:#9ca3af;font-size:13px;">No data</div>
-                    }
+                    { <div style="text-align:center;padding:12px;color:#9ca3af;font-size:13px;">No data</div> }
                 </div>
 
             </div>
@@ -582,9 +502,9 @@ else if (_data != null)
 
     /* ── Bar chart ── */
     .db-barchart { display:flex;align-items:flex-end;gap:6px;height:120px;margin-bottom:12px; }
-    .db-bar-col { display:flex;flex-direction:column;align-items:center;flex:1;height:100%; }
+    .db-bar-col { display:flex;flex-direction:column;align-items:center;flex:1;height:100%;justify-content:flex-end; }
     .db-bar-num { font-size:10px;color:#6b7280;margin-bottom:3px;font-weight:600; }
-    .db-bar-wrap { width:100%;max-width:28px;display:flex;flex-direction:column;border-radius:4px;overflow:hidden;min-height:4px; }
+    .db-bar-wrap { width:100%;max-width:28px;display:flex;flex-direction:column-reverse;border-radius:4px;overflow:hidden;min-height:4px; }
     .db-bar-seg { width:100%; }
     .db-bar-seg.completed { background:#3b82f6; }
     .db-bar-seg.pending   { background:#fbbf24; }

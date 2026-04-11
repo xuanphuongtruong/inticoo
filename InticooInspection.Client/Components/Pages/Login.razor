@@ -174,7 +174,19 @@
             }
 
             _password = string.Empty;
-            _errorMessage = result.Message ?? "Invalid username or password.";
+            // Parse message từ JSON nếu server trả về raw JSON string
+            var rawMsg = result.Message ?? "Invalid username or password.";
+            try
+            {
+                if (rawMsg.TrimStart().StartsWith("{"))
+                {
+                    var doc = System.Text.Json.JsonDocument.Parse(rawMsg);
+                    if (doc.RootElement.TryGetProperty("message", out var msgProp))
+                        rawMsg = msgProp.GetString() ?? rawMsg;
+                }
+            }
+            catch { }
+            _errorMessage = rawMsg;
         }
         finally
         {
