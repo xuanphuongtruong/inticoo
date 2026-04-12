@@ -120,8 +120,8 @@ else if (_data != null)
                         @if (!string.IsNullOrWhiteSpace(_data.GeneralRemark))
                         {
                         <tr>
-                            <td class="rpt-info-label" style="color:#e53935;font-weight:700;text-align:center;">Remark</td>
-                            <td class="rpt-info-val" colspan="3" style="color:#e53935;font-weight:500;">@_data.GeneralRemark</td>
+                            <td class="rpt-info-label">Remark</td>
+                            <td class="rpt-info-val" colspan="3">@_data.GeneralRemark</td>
                         </tr>
                         }
                     </tbody>
@@ -565,7 +565,7 @@ else if (_data != null)
                     }
 
                     <!-- ii. Compare Golden Sample -->
-                    <div class="rpt-sub-title">ii. Compare Golden Sample</div>
+                    <div class="rpt-sub-title">ii. Golden Sample/Comparison</div>
                     <div class="rpt-photo-grid-2">
                         @foreach (var _gu in (_qcData?.ProductSpec?.GoldenPhotos?.Where(p => !string.IsNullOrWhiteSpace(p)).ToList() ?? new List<string>()).Cast<string?>().Concat(Enumerable.Repeat<string?>(null, Math.Max(0, 4 - (_qcData?.ProductSpec?.GoldenPhotos?.Count(p => !string.IsNullOrWhiteSpace(p)) ?? 0)))).Take(4))
                         {

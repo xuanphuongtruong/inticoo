@@ -145,8 +145,9 @@ else
                         <td class="tc">
                             <div class="action-btns">
                                 <AuthorizeView Roles="Admin">
-                                    <button class="bico bedit" @onclick="async () => await OpenEdit(item)">Edit</button>
-                                    <button class="bico bdel" @onclick="() => ConfirmDelete(item)">Delete</button>
+                                    <button class="bico bedit" @onclick="async () => await OpenEdit(item)">
+                                            <svg width="13" height="13" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 2l4 4-10 10H4v-4L14 2z" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+                                    <button class="bico bdel" @onclick="() => ConfirmDelete(item)"><svg width="13" height="13" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 6h14M8 6V4h4v2M5 6l1 11h8l1-11" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
                                 </AuthorizeView>
                             </div>
                         </td>
@@ -1131,7 +1132,7 @@ else
     .dash { color:#c0c9d8; }
 
     /* action icon buttons */
-    .bico { display:inline-flex; align-items:center; justify-content:center; width:28px; height:28px; border:none; border-radius:6px; cursor:pointer; transition:all .15s; margin:0 2px; }
+    .bico { display:inline-flex; align-items:center; justify-content:center; width:28px; height:28px; border:none; border-radius:6px; cursor:pointer; transition:all .15s; margin:0 6px; }
     .bedit { background:#e8f0fe; color:#1565c0; } .bedit:hover { background:#1565c0; color:#fff; }
     .bdel  { background:#fef2f2; color:#dc2626; } .bdel:hover  { background:#dc2626; color:#fff; }
 

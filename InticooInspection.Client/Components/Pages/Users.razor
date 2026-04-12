@@ -107,8 +107,9 @@ else
                         </td>
                         <td class="tc">
                             <div class="action-btns">
-                                <button class="bico bedit"   @onclick="async () => await OpenEdit(u)"      title="Edit">&#9998;</button>
-                                <button class="bico bdel" @onclick="() => ConfirmDelete(u)" title="Delete">&#128465;</button>
+                                <button class="bico bedit"   @onclick="async () => await OpenEdit(u)"      title="Edit">
+                                        <svg width="13" height="13" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 2l4 4-10 10H4v-4L14 2z" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+                                <button class="bico bdel" @onclick="() => ConfirmDelete(u)" title="Delete"><svg width="13" height="13" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 6h14M8 6V4h4v2M5 6l1 11h8l1-11" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
                             </div>
                         </td>
                     </tr>

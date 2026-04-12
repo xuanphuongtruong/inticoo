@@ -47,12 +47,14 @@ else if (_data != null)
 
     <!-- ── Vendor Info bar ── -->
     <div class="rv-infobar">
-        <div class="rv-infobar-field">
+        <!-- <div class="rv-infobar-field"> -->
+        <div>
             <span class="rv-infobar-lbl">Vendor Name :</span>
             <span class="rv-infobar-val">@_data.VendorName</span>
         </div>
-        <div class="rv-infobar-field">
-            <span class="rv-infobar-lbl">Vendor ID :</span>
+        <!-- <div class="rv-infobar-field"> -->
+        <div>
+            <span class="rv-infobar-lbl">Vendor ID &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; :</span>
             <span class="rv-infobar-val">@_data.VendorId</span>
         </div>
     </div>
@@ -403,18 +405,18 @@ else if (_data != null)
     .rv-select:focus { border-color:#3b82f6; }
 
     /* ── Info bar ── */
-    .rv-infobar { display:flex;gap:40px;background:#fff;border:1px solid #e5e7eb;border-radius:10px;padding:12px 20px;margin-bottom:20px; }
+    .rv-infobar { gap:40px;background:#fff;border:1px solid #e5e7eb;border-radius:10px;padding:12px 20px;margin-bottom:20px; }
     .rv-infobar-lbl { font-size:13px;color:#6b7280;margin-right:6px; }
     .rv-infobar-val { font-size:13px;font-weight:600;color:#1a2d5a; }
 
     /* ── Section title ── */
     .rv-section-title { font-size:15px;font-weight:700;color:#ffffff;margin:16px 0 10px;display:flex;align-items:center;gap:8px; }
-    .rv-section-sub { font-size:12px;font-weight:400;color:#6b7280; }
+    .rv-section-sub { font-size:12px;font-weight:400;color:white; }
 
     /* ── Cards & rows ── */
     .rv-row { display:flex;gap:16px;margin-bottom:16px; }
     .rv-section-row { display:flex;gap:16px;margin-bottom:16px;align-items:flex-start; }
-    .rv-card { background:#fff;border:1px solid #e5e7eb;border-radius:14px;padding:20px;flex:1; }
+    .rv-card { background:#fff;border:1px solid #e5e7eb;border-radius:14px;padding:20px;flex:1; min-width: 360px;}
 
     /* ── Pie chart ── */
     .rv-pie-wrap { display:flex;align-items:center;gap:20px;flex-wrap:wrap;justify-content:center; }

@@ -282,7 +282,7 @@ else
                     <div class="qc-info-row"><span class="qc-info-lbl">Inner Packing Remark</span>
                         <span class="qc-info-val">@(string.IsNullOrEmpty(_data.Packaging.InnerPackingRemark) ? "—" : _data.Packaging.InnerPackingRemark)</span></div>
                     <div class="qc-info-row"><span class="qc-info-lbl">Outer Packing (mm)</span>
-                        <span class="qc-info-val">L: @_data.Packaging.OuterL &nbsp; W: @_data.Packaging.OuterW &nbsp; H: @_data.Packaging.OuterH</span></div>
+                        <span class="qc-info-val">L: @_data.Packaging.OuterL <br/>W: @_data.Packaging.OuterW <br/> H: @_data.Packaging.OuterH</span></div>
                     <div class="qc-info-row"><span class="qc-info-lbl">Weight (Kgs)</span>
                         <span class="qc-info-val">@_data.Packaging.OuterWeight</span></div>
                 </div>
@@ -764,13 +764,19 @@ else
                             </thead>
                             <tbody>
                                 <tr>
-                                    <td class="qc-info-lbl" style="vertical-align:top;padding:8px 6px">Test Requirement</td>
+                                    <td class="qc-info-lbl" style="vertical-align:top;padding:8px 6px">Test Procedure</td>
                                     <td style="font-size:13px;color:#333;padding:8px 6px;line-height:1.5">@pt.TestRequirement</td>
+                                </tr>
+                                <tr>
+                                    <td class="qc-info-lbl" style="padding:8px 6px">Test Requirement</td>
+                                    <td style="padding:4px 6px">
+                                        <input class="qc-info-input" type="number" @bind="pt.TestRequirement" placeholder="0" style="max-width:100px"/>
+                                    </td>
                                 </tr>
                                 <tr>
                                     <td class="qc-info-lbl" style="padding:8px 6px">Test Quantity</td>
                                     <td style="padding:4px 6px">
-                                        <input class="qc-info-input" type="number" @bind="pt.TestQuantity" placeholder="0" style="max-width:120px"/>
+                                        <input class="qc-info-input" type="number" @bind="pt.TestQuantity" placeholder="0" style="max-width:100px"/>
                                     </td>
                                 </tr>
                                 <tr>
@@ -952,7 +958,7 @@ else
                                     <label style="aspect-ratio:1;background:#f0f5ff;border:2px dashed #b0c8f0;
                                                   border-bottom:none;border-radius:8px 8px 0 0;
                                                   display:flex;align-items:center;justify-content:center;cursor:pointer;
-                                                  overflow:hidden;position:relative;min-height:120px">
+                                                  overflow:hidden;position:relative;min-height:120px;width:100px">
                                         @{ var defUKey = $"Def:{_data.Defects.IndexOf(dRef2)}:{pIdx}"; }
                                         @if (_uploadingKey == defUKey)
                                         { <div class="qc-photo-spinner"><div class="qc-spinner-ring"></div><span style="font-size:11px;color:#2D7DD2">Uploading…</span></div> }
@@ -970,7 +976,7 @@ else
                                     </label>
                                     <!-- Remark của ảnh này -->
                                     <input type="text"
-                                           style="width:100%;border:1px solid #dce6f8;border-top:1px solid #eef1f8;
+                                           style="width:100px;border:1px solid #dce6f8;border-top:1px solid #eef1f8;
                                                   border-radius:0 0 8px 8px;padding:6px 8px;font-size:11px;
                                                   background:#f8faff;outline:none;box-sizing:border-box;color:#555"
                                            placeholder="Remark…"
@@ -2557,7 +2563,7 @@ else
     }
     .qc-photo-box:hover { border-color: #2D7DD2; }
     .qc-photo-add { color: #2D7DD2; font-size: 13px; font-weight: 600; }
-    .qc-photo-img { width: 100%; height: 100%; object-fit: cover; }
+    .qc-photo-img {  height: 170px; object-fit: cover; }
     .qc-photo-del {
         position: absolute; top: 4px; right: 4px;
         background: rgba(0,0,0,.55); color: #fff;
@@ -2606,9 +2612,10 @@ else
         padding: 6px 10px; font-size: 13px; color: #1a1a2e;
         background: #f8faff; outline: none;
         transition: border-color .2s, box-shadow .2s;
+        max-width: 100px;
     }
     .qc-info-input:focus { border-color: #2D7DD2; box-shadow: 0 0 0 3px rgba(45,125,210,.12); }
-    .qc-info-input.sm { max-width: 90px; }
+    .qc-info-input.sm { max-width: 80px; }
     .qc-info-input.input-error { border-color: #e74c3c !important; background: #fff5f5; }
     .qc-info-input.input-error:focus { box-shadow: 0 0 0 3px rgba(231,76,60,.12); }
     .qc-photo-box3.photo-required { border-color: #e74c3c; background: #fff5f5; }

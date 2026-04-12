@@ -132,12 +132,10 @@ else
                             <AuthorizeView Roles="Admin">
                                 <div class="action-btns">
                                     <button class="bico bedit" @onclick="() => OpenEdit(item)" title="Edit">
-                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-                                        Edit
+                                        <svg width="13" height="13" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 2l4 4-10 10H4v-4L14 2z" stroke-linecap="round" stroke-linejoin="round"/></svg>
                                     </button>
                                     <button class="bico bdel" @onclick="() => ConfirmDelete(item)" title="Delete">
-                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
-                                        Delete
+                                        <svg width="13" height="13" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 6h14M8 6V4h4v2M5 6l1 11h8l1-11" stroke-linecap="round" stroke-linejoin="round"/></svg>
                                     </button>
                                 </div>
                             </AuthorizeView>
@@ -218,25 +216,33 @@ else
                 </div>
                 <div class="form-group">
                     <label>Product Category</label>
-                    <select class="form-input" @bind="_formCategory">
-                        <option value="">-- Select Category --</option>
-                        <option>Furniture</option>
-                        <option>Outdoor Furniture</option>
-                        <option>Indoor Furniture</option>
-                        <option>Office Furniture</option>
-                        <option>Bedroom Furniture</option>
-                        <option>Lighting</option>
-                        <option>Home Decor</option>
-                        <option>Electronics</option>
-                        <option>Toys &amp; Games</option>
-                        <option>Clothing &amp; Apparel</option>
-                        <option>Footwear</option>
-                        <option>Bags &amp; Luggage</option>
-                        <option>Kitchenware</option>
-                        <option>Sportswear</option>
-                        <option>Hardware &amp; Tools</option>
-                        <option>Other</option>
+                    <select class="form-input" multiple size="20" @onchange="OnCategoryChanged">
+                        <option value="Furniture"             selected="@_formCategories.Contains("Furniture")">Furniture</option>
+                        <option value="Outdoor Furniture"     selected="@_formCategories.Contains("Outdoor Furniture")">Outdoor Furniture</option>
+                        <option value="Indoor Furniture"      selected="@_formCategories.Contains("Indoor Furniture")">Indoor Furniture</option>
+                        <option value="Office Furniture"      selected="@_formCategories.Contains("Office Furniture")">Office Furniture</option>
+                        <option value="Lighting"              selected="@_formCategories.Contains("Lighting")">Lighting</option>
+                        <option value="Home Decor"            selected="@_formCategories.Contains("Home Decor")">Home Decor</option>
+                        <option value="Electronics"           selected="@_formCategories.Contains("Electronics")">Electronics</option>
+                        <option value="Toys &amp; Games"      selected="@_formCategories.Contains("Toys & Games")">Toys &amp; Games</option>
+                        <option value="Clothing &amp; Apparel" selected="@_formCategories.Contains("Clothing & Apparel")">Clothing &amp; Apparel</option>
+                        <option value="Footwear"              selected="@_formCategories.Contains("Footwear")">Footwear</option>
+                        <option value="Bags &amp; Luggage"    selected="@_formCategories.Contains("Bags & Luggage")">Bags &amp; Luggage</option>
+                        <option value="Kitchenware"           selected="@_formCategories.Contains("Kitchenware")">Kitchenware</option>
+                        <option value="Sportswear"            selected="@_formCategories.Contains("Sportswear")">Sportswear</option>
+                        <option value="Hardware &amp; Tools"  selected="@_formCategories.Contains("Hardware & Tools")">Hardware &amp; Tools</option>
+                        <option value="Other"                 selected="@_formCategories.Contains("Other")">Other</option>
                     </select>
+                    @if (_formCategories.Count > 0)
+                    {
+                        <div style="margin-top:6px; display:flex; flex-wrap:wrap; gap:4px;">
+                            @foreach (var cat in _formCategories.ToList())
+                            {
+                                var c = cat;
+                                <span class="cat-badge" style="cursor:pointer;" @onclick="() => { _formCategories.Remove(c); StateHasChanged(); }">@c ✕</span>
+                            }
+                        </div>
+                    }
                 </div>
                 <div class="form-group">
                     <label>Tax Code</label>
@@ -682,7 +688,8 @@ else
 
     // Form fields
     private string _formCustomerId = "", _formCompanyName = "", _formShortName = "";
-    private string _formBusinessType = "", _formCategory = "", _formTaxCode = "";
+    private string _formBusinessType = "", _formTaxCode = "";
+    private List<string> _formCategories = new();
     private string _formBusinessRefNo = "", _formPhone = "", _formWebsite = "";
     private string _formAddress1 = "", _formAddress2 = "", _formCity = "", _formState = "";
     private string _formCountry = "", _formPostalCode = "";
@@ -773,7 +780,7 @@ else
     {
         _editId = null;
         _formCustomerId = ""; _formCompanyName = ""; _formShortName = "";
-        _formBusinessType = ""; _formCategory = ""; _formTaxCode = ""; _formBusinessRefNo = "";
+        _formBusinessType = ""; _formCategories = new(); _formTaxCode = ""; _formBusinessRefNo = "";
         _formPhone = ""; _formWebsite = "";
         _formAddress1 = ""; _formAddress2 = ""; _formCity = ""; _formState = "";
         _formCountry = ""; _formPostalCode = "";
@@ -791,7 +798,10 @@ else
         _formCompanyName   = c.CompanyName;
         _formShortName     = c.ShortName     ?? "";
         _formBusinessType  = c.BusinessType  ?? "";
-        _formCategory      = c.Category      ?? "";
+        _formCategories    = string.IsNullOrEmpty(c.Category)
+                                ? new()
+                                : c.Category.Split(',', StringSplitOptions.RemoveEmptyEntries)
+                                            .Select(x => x.Trim()).ToList();
         _formTaxCode       = c.TaxCode       ?? "";
         _formBusinessRefNo = c.BusinessRefNo ?? "";
         _formPhone         = c.Phone         ?? "";
@@ -866,7 +876,7 @@ else
                 companyName   = _formCompanyName,
                 shortName     = _formShortName,
                 businessType  = _formBusinessType,
-                category      = _formCategory,
+                category      = string.Join(", ", _formCategories),
                 taxCode       = _formTaxCode,
                 businessRefNo = _formBusinessRefNo,
                 phone         = _formPhone,
@@ -992,6 +1002,12 @@ else
         public string Url      { get; set; } = "";
         public long   FileSize { get; set; }
     }
+    private void OnCategoryChanged(ChangeEventArgs e)
+    {
+        if (e.Value is string[] selected)
+            _formCategories = selected.Where(s => !string.IsNullOrEmpty(s)).ToList();
+    }
+
     private async Task LoadCountries()
     {
         try
@@ -1105,7 +1121,7 @@ else
     .dash { color:#c0c9d8; }
 
     /* action icon buttons */
-    .bico { display:inline-flex; align-items:center; justify-content:center; width:28px; height:28px; border:none; border-radius:6px; cursor:pointer; transition:all .15s; margin:0 2px; }
+    .bico { display:inline-flex; align-items:center; justify-content:center; width:28px; height:28px; border:none; border-radius:6px; cursor:pointer; transition:all .15s; margin:0 6px; }
     .bedit { background:#e8f0fe; color:#1565c0; } .bedit:hover { background:#1565c0; color:#fff; }
     .bdel  { background:#fef2f2; color:#dc2626; } .bdel:hover  { background:#dc2626; color:#fff; }
 

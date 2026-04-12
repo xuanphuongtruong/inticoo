@@ -73,7 +73,7 @@ else if (_data != null)
                         <circle cx="17" cy="7" r="3"/><path d="M14 21c0-3.314 1.343-6 3-6s3 2.686 3 6"/>
                     </svg>
                 </div>
-                <div class="db-card-badge" style="background:#ede9fe;color:#6d28d9;">—</div>
+                <div class="db-card-badge" style="background:#ede9fe;color:#6d28d9;"></div>
                 <div class="db-card-value">@_data.CustomerCount</div>
                 <div class="db-card-label">Customers</div>
             </div>
@@ -85,7 +85,7 @@ else if (_data != null)
                         <polyline points="9 22 9 12 15 12 15 22"/>
                     </svg>
                 </div>
-                <div class="db-card-badge" style="background:#fee2e2;color:#b91c1c;">—</div>
+                <div class="db-card-badge" style="background:#fee2e2;color:#b91c1c;"></div>
                 <div class="db-card-value">@_data.VendorCount</div>
                 <div class="db-card-label">Vendors</div>
             </div>
@@ -96,7 +96,7 @@ else if (_data != null)
                         <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
                     </svg>
                 </div>
-                <div class="db-card-badge" style="background:#d1fae5;color:#065f46;">—</div>
+                <div class="db-card-badge" style="background:#d1fae5;color:#065f46;"></div>
                 <div class="db-card-value">@_data.ProductCount</div>
                 <div class="db-card-label">Products</div>
             </div>
@@ -109,7 +109,7 @@ else if (_data != null)
                         <path d="M16 11l2 2 3-3" stroke-linecap="round" stroke-linejoin="round"/>
                     </svg>
                 </div>
-                <div class="db-card-badge" style="background:#cffafe;color:#0e7490;">—</div>
+                <div class="db-card-badge" style="background:#cffafe;color:#0e7490;"></div>
                 <div class="db-card-value">@_data.InspectorCount</div>
                 <div class="db-card-label">Inspectors</div>
             </div>
@@ -243,7 +243,6 @@ else if (_data != null)
                                 <th>JOB#</th>
                                 <th>CUSTOMERS / CATEGORY</th>
                                 <th>INSPECTOR NAME</th>
-                                <th>STATUS / DATE</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -253,6 +252,7 @@ else if (_data != null)
                                     <td>
                                         <span class="db-type-badge @r.InspType.ToLower()">@r.InspType</span>
                                         <div class="db-job-num">@(r.JobNumber ?? "—")</div>
+                                        <span class="db-status-badge @r.Status.ToLower()">@r.Status</span>
                                     </td>
                                     <td>
                                         <div class="db-cust-name">@(r.CustomerName ?? "—")</div>
@@ -260,9 +260,6 @@ else if (_data != null)
                                     </td>
                                     <td>
                                         <div class="db-inspector">@(r.InspectorName ?? "—")</div>
-                                    </td>
-                                    <td>
-                                        <span class="db-status-badge @r.Status.ToLower()">@r.Status</span>
                                         <div class="db-date">@r.Date.ToString("d MMM yyyy")</div>
                                     </td>
                                 </tr>
@@ -277,7 +274,7 @@ else if (_data != null)
             </div>
 
             <!-- Right column: Quick Actions + Top Lists -->
-            <div style="flex:1;min-width:240px;display:flex;flex-direction:column;gap:16px;">
+            <div style="flex:1;min-width:360px;display:flex;flex-direction:column;gap:16px;">
 
                 <!-- Quick Actions -->
                 <div class="db-action-card">
@@ -459,7 +456,7 @@ else if (_data != null)
 
 <style>
     /* ── Page ── */
-    .db-page { max-width: 1400px; margin: 0 auto; font-family: "DM Sans", sans-serif; color: #1a2d5a; }
+    .db-page { max-width: 100%; width: 100%; font-family: "DM Sans", sans-serif; color: #1a2d5a; }
     .db-loading { display:flex; align-items:center; gap:12px; padding:60px; justify-content:center; color:#ffffff; }
     .db-spinner { width:24px;height:24px;border:3px solid rgba(255,255,255,0.3);border-top-color:#ffffff;border-radius:50%;animation:spin .7s linear infinite; }
     .db-error { background:#fff5f5;border:1px solid #fecaca;border-radius:12px;padding:16px 20px;color:#dc2626;margin:20px 0; }

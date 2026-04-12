@@ -1321,42 +1321,49 @@ namespace InticooInspection.API.Controllers
         // Helper: Gửi email hoàn thành inspection cho Customer
         // ════════════════════════════════════════════════════════
         private async Task SendCompletionEmailAsync(Inspection inspection, string toEmail)
-        {
-            var smtp    = _config["Email:SmtpHost"]     ?? "smtp.gmail.com";
-            var port    = int.Parse(_config["Email:SmtpPort"] ?? "587");
-            var user    = _config["Email:Username"]     ?? "";
-            var pass    = _config["Email:Password"]     ?? "";
-            var from    = _config["Email:FromAddress"]  ?? user;
-            var fromName= _config["Email:FromName"]     ?? "Inticoo Global Services";
-            var baseUrl = _config["Email:ReportBaseUrl"]?? "https://app.inticoo.com";
+{
+    var smtp     = _config["Email:SmtpHost"]      ?? "smtp.gmail.com";
+    var port     = int.Parse(_config["Email:SmtpPort"] ?? "587");
+    var user     = _config["Email:Username"]      ?? "";
+    var pass     = _config["Email:Password"]      ?? "";
+    var from     = _config["Email:FromAddress"]   ?? user;
+    var fromName = _config["Email:FromName"]      ?? "Inticoo Global Services";
+    var baseUrl  = _config["Email:ReportBaseUrl"] ?? "https://app.inticoo.com";
 
-            var completedDate = (inspection.CompletedAt ?? DateTime.UtcNow).ToString("d MMMM yyyy");
-            var inspType      = inspection.InspectionType.ToString() switch
-            {
-                "DPI" => "During-Production Inspection",
-                "PPT" => "Pre-Production Inspection",
-                "PST" => "Pre-Shipment Inspection (Final Inspection)",
-                _     => inspection.InspectionType.ToString()
-            };
-            var result        = inspection.FinalResult ?? "N/A";
-            var reportLink    = $"{baseUrl}/inspection-report/{inspection.Id}";
+    var completedDate = (inspection.CompletedAt ?? DateTime.UtcNow).ToString("d MMMM yyyy");
 
-            var subject = $"Inspection Report Completed - {inspection.JobNumber}";
-            var body    = $@"Dear Sir/Madam,
+    var inspType = inspection.InspectionType.ToString() switch
+    {
+        "DPI" => "During Production Inspection",
+        "PPT" => "Pre-Production Inspection",
+        "PST" => "Final Inspection",
+        _     => inspection.InspectionType.ToString()
+    };
 
-This is a notification that the inspection report has been completed on {completedDate}.
+    var result     = inspection.FinalResult?.ToLower() switch
+    {
+        "passed" => "Pass",
+        "failed" => "Fail",
+        _        => inspection.FinalResult ?? "N/A"
+    };
+
+    var reportLink = $"{baseUrl}/inspection-report/{inspection.Id}";
+
+    var subject = $"Inspection Report Completed – Job No: {inspection.JobNumber}";
+
+    var body = $@"This is to notify you that the inspection report for Job Number {inspection.JobNumber ?? "—"} has been completed on {completedDate}.
 
 Please find the inspection details below:
-- Job No: {inspection.JobNumber ?? "—"}
-- Category: {inspection.ProductCategory ?? "—"}
-- Product Name: {inspection.ProductName ?? "—"}
-- Item Number: {inspection.ItemNumber ?? "—"}
-- Inspection Type: {inspType}
-- Vendor Name: {inspection.VendorName ?? "—"}
-- Vendor ID: {inspection.VendorId ?? "—"}
-- Result: {result}
+    • Job No: {inspection.JobNumber ?? "—"}
+    • Category: {inspection.ProductCategory ?? "—"}
+    • Product Name: {inspection.ProductName ?? "—"}
+    • Item Number: {inspection.ItemNumber ?? "—"}
+    • Inspection Type: {inspType}
+    • Vendor Name: {inspection.VendorName ?? "—"}
+    • Vendor ID: {inspection.VendorId ?? "—"}
+    • Result: {result}
 
-Here is the link to download the inspection report: {reportLink}
+The inspection report is attached as a PDF file for your reference.
 
 Should you have any questions or require further clarification, please feel free to contact us.
 
@@ -1364,25 +1371,32 @@ Best regards,
 Inticoo Global Services
 www.Inticoo.com";
 
-            using var client = new SmtpClient(smtp, port)
-            {
-                Credentials = new NetworkCredential(user, pass),
-                EnableSsl   = true,
-                DeliveryMethod = SmtpDeliveryMethod.Network
-            };
+    using var client = new SmtpClient(smtp, port)
+    {
+        Credentials    = new NetworkCredential(user, pass),
+        EnableSsl      = true,
+        DeliveryMethod = SmtpDeliveryMethod.Network
+    };
 
-            var msg = new MailMessage
-            {
-                From       = new MailAddress(from, fromName),
-                Subject    = subject,
-                Body       = body,
-                IsBodyHtml = false
-            };
-            msg.To.Add(toEmail);
+    var msg = new MailMessage
+    {
+        From       = new MailAddress(from, fromName),
+        Subject    = subject,
+        Body       = body,
+        IsBodyHtml = false
+    };
+    msg.To.Add(toEmail);
 
-            await client.SendMailAsync(msg);
-        }
+    // Đính kèm PDF report nếu có file trên server
+    var pdfPath = Path.Combine("Reports", $"{inspection.JobNumber}.pdf");
+    if (File.Exists(pdfPath))
+    {
+        var attachment = new Attachment(pdfPath, "application/pdf");
+        msg.Attachments.Add(attachment);
     }
+
+    await client.SendMailAsync(msg);
+}
 
     public class CreateInspectionRequest
     {
