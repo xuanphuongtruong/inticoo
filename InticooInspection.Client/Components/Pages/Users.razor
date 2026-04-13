@@ -89,7 +89,7 @@ else
                         <td class="dim sm td-country">@(string.IsNullOrEmpty(u.Country) ? "—" : u.Country)</td>
                         <td class="dim sm">@(string.IsNullOrEmpty(u.Mobile)   ? "—" : u.Mobile)</td>
                         <td class="dim sm">@(string.IsNullOrEmpty(u.Email)    ? "—" : u.Email)</td>
-                        <td class="td-c dim sm">@u.CreatedAt.ToString("dd MMM yyyy")</td>
+                        <td class="td-c dim sm">@u.CreatedAt.ToString("dd/MMM/yyyy")</td>
                         <td class="tc">
                             <button class="status-toggle @(u.IsActive ? "s-active" : "s-inactive")"
                                     @onclick="() => ToggleActive(u)">

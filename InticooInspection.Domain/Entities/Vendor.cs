@@ -56,6 +56,8 @@ namespace InticooInspection.Domain.Entities
         public DateTime     CreatedAt      { get; set; } = DateTime.UtcNow;
 
         public ICollection<VendorAttachment> Attachments { get; set; } = new List<VendorAttachment>();
+        public string? FactoryEvaluationNotes { get; set; }
+        public List<VendorFactoryEvalFile> FactoryEvalFiles { get; set; } = new();
     }
 
     public class VendorAttachment

@@ -1194,8 +1194,8 @@ namespace InticooInspection.Infrastructure.Migrations
                         .HasColumnType("nvarchar(100)");
 
                     b.Property<string>("Category")
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
 
                     b.Property<string>("City")
                         .HasMaxLength(100)
@@ -1231,6 +1231,9 @@ namespace InticooInspection.Infrastructure.Migrations
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
+
+                    b.Property<string>("FactoryEvaluationNotes")
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("Name")
                         .IsRequired()
@@ -1309,6 +1312,45 @@ namespace InticooInspection.Infrastructure.Migrations
                     b.HasIndex("VendorId");
 
                     b.ToTable("VendorAttachment");
+                });
+
+            modelBuilder.Entity("InticooInspection.Domain.Entities.VendorFactoryEvalFile", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("ContentType")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<long>("FileSize")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("OriginalName")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)");
+
+                    b.Property<string>("StoredName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<DateTime>("UploadedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("VendorId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("VendorId");
+
+                    b.ToTable("VendorFactoryEvalFiles");
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRole", b =>
@@ -1626,6 +1668,17 @@ namespace InticooInspection.Infrastructure.Migrations
                     b.Navigation("Vendor");
                 });
 
+            modelBuilder.Entity("InticooInspection.Domain.Entities.VendorFactoryEvalFile", b =>
+                {
+                    b.HasOne("InticooInspection.Domain.Entities.Vendor", "Vendor")
+                        .WithMany("FactoryEvalFiles")
+                        .HasForeignKey("VendorId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Vendor");
+                });
+
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<string>", b =>
                 {
                     b.HasOne("Microsoft.AspNetCore.Identity.IdentityRole", null)
@@ -1718,6 +1771,8 @@ namespace InticooInspection.Infrastructure.Migrations
             modelBuilder.Entity("InticooInspection.Domain.Entities.Vendor", b =>
                 {
                     b.Navigation("Attachments");
+
+                    b.Navigation("FactoryEvalFiles");
                 });
 #pragma warning restore 612, 618
         }

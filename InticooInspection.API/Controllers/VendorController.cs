@@ -1,6 +1,7 @@
 using InticooInspection.Domain.Entities;
 using InticooInspection.Infrastructure.Data;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -11,10 +12,12 @@ namespace InticooInspection.API.Controllers
     public class VendorController : ControllerBase
     {
         private readonly AppDbContext _db;
+        private readonly IWebHostEnvironment _env;
 
-        public VendorController(AppDbContext db)
+        public VendorController(AppDbContext db, IWebHostEnvironment env)
         {
             _db = db;
+            _env = env;
         }
 
         // ─────────────────────────────────────────────────────────────
@@ -43,58 +46,200 @@ namespace InticooInspection.API.Controllers
             [FromQuery] int page = 1,
             [FromQuery] int pageSize = 20)
         {
-            var query = _db.Vendors
-                           .Include(v => v.Attachments)
-                           .AsQueryable();
+            try
+            {
+                // Base filter query (no Include needed — we project directly)
+                var baseQuery = _db.Vendors.AsQueryable();
 
-            if (!string.IsNullOrWhiteSpace(search))
-                query = query.Where(v =>
-                    v.Code.Contains(search) ||
-                    v.Name.Contains(search) ||
-                    (v.ShortName    != null && v.ShortName.Contains(search)) ||
-                    (v.TaxCode      != null && v.TaxCode.Contains(search)) ||
-                    (v.ContactName  != null && v.ContactName.Contains(search)) ||
-                    (v.ContactPhone != null && v.ContactPhone.Contains(search)));
+                if (!string.IsNullOrWhiteSpace(search))
+                    baseQuery = baseQuery.Where(v =>
+                        v.Code.Contains(search) ||
+                        v.Name.Contains(search) ||
+                        (v.ShortName    != null && v.ShortName.Contains(search)) ||
+                        (v.TaxCode      != null && v.TaxCode.Contains(search)) ||
+                        (v.ContactName  != null && v.ContactName.Contains(search)) ||
+                        (v.ContactPhone != null && v.ContactPhone.Contains(search)) ||
+                        (v.Category     != null && v.Category.Contains(search)) ||
+                        (v.Country      != null && v.Country.Contains(search)));
 
-            if (!string.IsNullOrWhiteSpace(type) && Enum.TryParse<VendorType>(type, out var vType))
-                query = query.Where(v => v.Type == vType);
+                if (!string.IsNullOrWhiteSpace(type) && Enum.TryParse<VendorType>(type, out var vType))
+                    baseQuery = baseQuery.Where(v => v.Type == vType);
 
-            if (!string.IsNullOrWhiteSpace(status) && Enum.TryParse<VendorStatus>(status, out var vStatus))
-                query = query.Where(v => v.Status == vStatus);
+                if (!string.IsNullOrWhiteSpace(status) && Enum.TryParse<VendorStatus>(status, out var vStatus))
+                    baseQuery = baseQuery.Where(v => v.Status == vStatus);
 
-            var total = await query.CountAsync();
-            var items = await query
-                .OrderBy(v => v.Code)
-                .Skip((page - 1) * pageSize)
-                .Take(pageSize)
-                .Select(v => ToDto(v))
-                .ToListAsync();
+                var total = await baseQuery.CountAsync();
 
-            return Ok(new { total, page, pageSize, items });
+                // Project to anonymous type in SQL — avoids circular refs & lazy load issues
+                var projected = await baseQuery
+                    .OrderBy(v => v.Code)
+                    .Skip((page - 1) * pageSize)
+                    .Take(pageSize)
+                    .Select(v => new
+                    {
+                        v.Id, v.Code, v.Name, v.ShortName,
+                        v.Type, v.Status, v.Category,
+                        v.TaxCode, v.BusinessRegNo, v.Phone, v.Website, v.Notes,
+                        v.Address1, v.Address2, v.City, v.State, v.Country, v.PostalCode,
+                        v.ContactName, v.ContactTitle, v.ContactPhone, v.ContactEmail,
+                        v.FactoryEvaluationNotes,
+                        v.CompanyAddress, v.BillingAddress, v.AttachmentPath, v.AttachmentName,
+                        v.CreatedAt,
+                        Attachments = v.Attachments.Select(a => new {
+                            a.Id, a.OriginalName, a.ContentType, a.FileSize, a.UploadedAt,
+                            a.StoredName
+                        }).ToList(),
+                        FactoryEvalFileCount = v.FactoryEvalFiles.Count()
+                    })
+                    .ToListAsync();
+
+                var baseUrl = $"{Request.Scheme}://{Request.Host}";
+                var items = projected.Select(v => new VendorDto
+                {
+                    Id             = v.Id,
+                    Code           = v.Code,
+                    Name           = v.Name,
+                    ShortName      = v.ShortName,
+                    Type           = (int)v.Type,
+                    Status         = (int)v.Status,
+                    Category       = v.Category,
+                    TaxCode        = v.TaxCode,
+                    BusinessRegNo  = v.BusinessRegNo,
+                    Phone          = v.Phone,
+                    Website        = v.Website,
+                    Notes          = v.Notes,
+                    Address1       = v.Address1,
+                    Address2       = v.Address2,
+                    City           = v.City,
+                    State          = v.State,
+                    Country        = v.Country,
+                    PostalCode     = v.PostalCode,
+                    ContactName    = v.ContactName,
+                    ContactTitle   = v.ContactTitle,
+                    ContactPhone   = v.ContactPhone,
+                    ContactEmail   = v.ContactEmail,
+                    FactoryEvaluationNotes = v.FactoryEvaluationNotes,
+                    CompanyAddress = v.CompanyAddress,
+                    BillingAddress = v.BillingAddress,
+                    AttachmentPath = v.AttachmentPath,
+                    AttachmentName = v.AttachmentName,
+                    CreatedAt      = v.CreatedAt,
+                    Attachments    = v.Attachments.Select(a => new AttachmentDto
+                    {
+                        Id           = a.Id,
+                        OriginalName = a.OriginalName,
+                        ContentType  = a.ContentType,
+                        FileSize     = a.FileSize,
+                        UploadedAt   = a.UploadedAt,
+                        DownloadUrl  = $"{baseUrl}/uploads/vendors/{v.Id}/{a.StoredName}"
+                    }).ToList(),
+                    FactoryEvalFileCount = v.FactoryEvalFileCount
+                }).ToList();
+
+                return Ok(new { total, page, pageSize, items });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { error = ex.Message, inner = ex.InnerException?.Message });
+            }
         }
 
         [HttpGet("{id}")]
         [AllowAnonymous]
         public async Task<IActionResult> GetById(int id)
         {
-            var v = await _db.Vendors
-                             .Include(x => x.Attachments)
-                             .FirstOrDefaultAsync(x => x.Id == id);
-            return v == null ? NotFound() : Ok(ToDto(v));
+            try
+            {
+                var v = await _db.Vendors
+                    .Where(x => x.Id == id)
+                    .Select(v => new
+                    {
+                        v.Id, v.Code, v.Name, v.ShortName,
+                        v.Type, v.Status, v.Category,
+                        v.TaxCode, v.BusinessRegNo, v.Phone, v.Website, v.Notes,
+                        v.Address1, v.Address2, v.City, v.State, v.Country, v.PostalCode,
+                        v.ContactName, v.ContactTitle, v.ContactPhone, v.ContactEmail,
+                        v.FactoryEvaluationNotes,
+                        v.CompanyAddress, v.BillingAddress, v.AttachmentPath, v.AttachmentName,
+                        v.CreatedAt,
+                        Attachments = v.Attachments.Select(a => new {
+                            a.Id, a.OriginalName, a.ContentType, a.FileSize, a.UploadedAt,
+                            a.StoredName
+                        }).ToList()
+                    })
+                    .FirstOrDefaultAsync();
+
+                var baseUrl = $"{Request.Scheme}://{Request.Host}";
+
+                if (v == null) return NotFound();
+
+                var dto = new VendorDto
+                {
+                    Id             = v.Id,
+                    Code           = v.Code,
+                    Name           = v.Name,
+                    ShortName      = v.ShortName,
+                    Type           = (int)v.Type,
+                    Status         = (int)v.Status,
+                    Category       = v.Category,
+                    TaxCode        = v.TaxCode,
+                    BusinessRegNo  = v.BusinessRegNo,
+                    Phone          = v.Phone,
+                    Website        = v.Website,
+                    Notes          = v.Notes,
+                    Address1       = v.Address1,
+                    Address2       = v.Address2,
+                    City           = v.City,
+                    State          = v.State,
+                    Country        = v.Country,
+                    PostalCode     = v.PostalCode,
+                    ContactName    = v.ContactName,
+                    ContactTitle   = v.ContactTitle,
+                    ContactPhone   = v.ContactPhone,
+                    ContactEmail   = v.ContactEmail,
+                    FactoryEvaluationNotes = v.FactoryEvaluationNotes,
+                    CompanyAddress = v.CompanyAddress,
+                    BillingAddress = v.BillingAddress,
+                    AttachmentPath = v.AttachmentPath,
+                    AttachmentName = v.AttachmentName,
+                    CreatedAt      = v.CreatedAt,
+                    Attachments    = v.Attachments.Select(a => new AttachmentDto
+                    {
+                        Id           = a.Id,
+                        OriginalName = a.OriginalName,
+                        ContentType  = a.ContentType,
+                        FileSize     = a.FileSize,
+                        UploadedAt   = a.UploadedAt,
+                        DownloadUrl  = $"{baseUrl}/uploads/vendors/{v.Id}/{a.StoredName}"
+                    }).ToList()
+                };
+                return Ok(dto);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { error = ex.Message, inner = ex.InnerException?.Message });
+            }
         }
 
         [HttpGet("next-code")]
         [AllowAnonymous]
         public async Task<IActionResult> GetNextCode()
         {
-            var last = await _db.Vendors
-                .Where(v => v.Code.StartsWith("VP"))
-                .OrderByDescending(v => v.Code)
-                .FirstOrDefaultAsync();
-            int next = 100001;
-            if (last != null && last.Code.Length > 2)
-                if (int.TryParse(last.Code.Substring(2), out int num)) next = num + 1;
-            return Ok(new { code = $"VP{next}" });
+            try
+            {
+                var last = await _db.Vendors
+                    .Where(v => v.Code.StartsWith("VP"))
+                    .OrderByDescending(v => v.Code)
+                    .FirstOrDefaultAsync();
+                int next = 100001;
+                if (last != null && last.Code.Length > 2)
+                    if (int.TryParse(last.Code.Substring(2), out int num)) next = num + 1;
+                return Ok(new { code = $"VP{next}" });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { error = ex.Message, inner = ex.InnerException?.Message });
+            }
         }
 
         [HttpPost]
@@ -202,7 +347,7 @@ namespace InticooInspection.API.Controllers
                     contentType  = att.ContentType,
                     fileSize     = att.FileSize,
                     uploadedAt   = att.UploadedAt,
-                    downloadUrl  = $"api/vendors/{id}/attachments/{att.Id}/download"
+                    downloadUrl  = $"{Request.Scheme}://{Request.Host}/uploads/vendors/{id}/{att.StoredName}"
                 });
             }
 
@@ -226,7 +371,7 @@ namespace InticooInspection.API.Controllers
                 contentType  = a.ContentType,
                 fileSize     = a.FileSize,
                 uploadedAt   = a.UploadedAt,
-                downloadUrl  = $"api/vendors/{id}/attachments/{a.Id}/download"
+                downloadUrl  = $"{Request.Scheme}://{Request.Host}/uploads/vendors/{id}/{a.StoredName}"
             });
             return Ok(result);
         }
@@ -313,7 +458,7 @@ namespace InticooInspection.API.Controllers
 
         private string GetUploadDir(int vendorId)
         {
-            var dir = Path.Combine(Directory.GetCurrentDirectory(), "uploads", "vendors", vendorId.ToString());
+            var dir = Path.Combine(_env.WebRootPath, "uploads", "vendors", vendorId.ToString());
             Directory.CreateDirectory(dir);
             return dir;
         }
@@ -348,6 +493,7 @@ namespace InticooInspection.API.Controllers
             ContactTitle   = v.ContactTitle,
             ContactPhone   = v.ContactPhone,
             ContactEmail   = v.ContactEmail,
+            FactoryEvaluationNotes = v.FactoryEvaluationNotes,
             CompanyAddress = v.CompanyAddress,
             BillingAddress = v.BillingAddress,
             AttachmentPath = v.AttachmentPath,
@@ -360,7 +506,7 @@ namespace InticooInspection.API.Controllers
                 ContentType  = a.ContentType,
                 FileSize     = a.FileSize,
                 UploadedAt   = a.UploadedAt,
-                DownloadUrl  = $"api/vendors/{v.Id}/attachments/{a.Id}/download"
+                DownloadUrl  = $"/uploads/vendors/{v.Id}/{a.StoredName}"
             }).ToList()
         };
 
@@ -387,9 +533,93 @@ namespace InticooInspection.API.Controllers
             v.ContactTitle   = r.ContactTitle;
             v.ContactPhone   = r.ContactPhone;
             v.ContactEmail   = r.ContactEmail;
+            v.FactoryEvaluationNotes = r.FactoryEvaluationNotes;
             v.CompanyAddress = r.CompanyAddress;
             v.BillingAddress = r.BillingAddress;
             return v;
+        }
+
+
+        // ─────────────────────────────────────────────────────────────
+        // FACTORY EVALUATION FILES
+        // ─────────────────────────────────────────────────────────────
+
+        [HttpPost("{id}/factory-eval/files")]
+        public async Task<IActionResult> UploadFactoryEvalFiles(int id, [FromForm] List<IFormFile> files)
+        {
+            var vendor = await _db.Vendors.Include(v => v.FactoryEvalFiles).FirstOrDefaultAsync(v => v.Id == id);
+            if (vendor == null) return NotFound();
+            if (files == null || files.Count == 0) return BadRequest(new { message = "No files uploaded." });
+
+            var dir = GetFactoryEvalDir(id);
+            var added = new List<object>();
+            foreach (var file in files)
+            {
+                if (file.Length == 0) continue;
+                var storedName = $"{Guid.NewGuid()}{Path.GetExtension(file.FileName)}";
+                var filePath   = Path.Combine(dir, storedName);
+                await using var stream = new FileStream(filePath, FileMode.Create);
+                await file.CopyToAsync(stream);
+                var fe = new VendorFactoryEvalFile
+                {
+                    VendorId     = id,
+                    StoredName   = storedName,
+                    OriginalName = file.FileName,
+                    ContentType  = file.ContentType,
+                    FileSize     = file.Length,
+                    UploadedAt   = DateTime.UtcNow
+                };
+                vendor.FactoryEvalFiles.Add(fe);
+                await _db.SaveChangesAsync();
+                added.Add(new { id = fe.Id, originalName = fe.OriginalName, contentType = fe.ContentType,
+                    fileSize = fe.FileSize, uploadedAt = fe.UploadedAt,
+                    downloadUrl = $"{Request.Scheme}://{Request.Host}/uploads/vendors/{id}/factory-eval/{fe.StoredName}" });
+            }
+            return Ok(new { success = true, files = added });
+        }
+
+        [HttpGet("{id}/factory-eval/files")]
+        [AllowAnonymous]
+        public async Task<IActionResult> GetFactoryEvalFiles(int id)
+        {
+            var files = await _db.Set<VendorFactoryEvalFile>()
+                .Where(f => f.VendorId == id).OrderBy(f => f.UploadedAt).ToListAsync();
+            var result = files.Select(f => new {
+                id = f.Id, originalName = f.OriginalName, contentType = f.ContentType,
+                fileSize = f.FileSize, uploadedAt = f.UploadedAt,
+                downloadUrl = $"{Request.Scheme}://{Request.Host}/uploads/vendors/{id}/factory-eval/{f.StoredName}"
+            });
+            return Ok(result);
+        }
+
+        [HttpGet("{id}/factory-eval/files/{fileId}/download")]
+        [AllowAnonymous]
+        public async Task<IActionResult> DownloadFactoryEvalFile(int id, int fileId)
+        {
+            var f = await _db.Set<VendorFactoryEvalFile>().FirstOrDefaultAsync(x => x.Id == fileId && x.VendorId == id);
+            if (f == null) return NotFound();
+            var path = Path.Combine(GetFactoryEvalDir(id), f.StoredName);
+            if (!System.IO.File.Exists(path)) return NotFound();
+            return File(await System.IO.File.ReadAllBytesAsync(path), f.ContentType, f.OriginalName);
+        }
+
+        [HttpDelete("{id}/factory-eval/files/{fileId}")]
+        public async Task<IActionResult> DeleteFactoryEvalFile(int id, int fileId)
+        {
+            var f = await _db.Set<VendorFactoryEvalFile>().FirstOrDefaultAsync(x => x.Id == fileId && x.VendorId == id);
+            if (f == null) return NotFound();
+            var path = Path.Combine(GetFactoryEvalDir(id), f.StoredName);
+            if (System.IO.File.Exists(path)) System.IO.File.Delete(path);
+            _db.Set<VendorFactoryEvalFile>().Remove(f);
+            await _db.SaveChangesAsync();
+            return Ok(new { success = true });
+        }
+
+        private string GetFactoryEvalDir(int vendorId)
+        {
+            var dir = Path.Combine(_env.WebRootPath, "uploads", "vendors", vendorId.ToString(), "factory-eval");
+            Directory.CreateDirectory(dir);
+            return dir;
         }
 
         // ─────────────────────────────────────────────────────────────────
@@ -546,6 +776,8 @@ namespace InticooInspection.API.Controllers
         public string? ContactTitle   { get; set; }
         public string? ContactPhone   { get; set; }
         public string? ContactEmail   { get; set; }
+        // Factory Evaluation
+        public string? FactoryEvaluationNotes { get; set; }
         // Legacy
         public string? CompanyAddress { get; set; }
         public string? BillingAddress { get; set; }
@@ -585,11 +817,13 @@ namespace InticooInspection.API.Controllers
         public string?          ContactTitle   { get; set; }
         public string?          ContactPhone   { get; set; }
         public string?          ContactEmail   { get; set; }
+        public string?          FactoryEvaluationNotes { get; set; }
         public string?          CompanyAddress { get; set; }
         public string?          BillingAddress { get; set; }
         public string?          AttachmentPath { get; set; }
         public string?          AttachmentName { get; set; }
         public DateTime         CreatedAt      { get; set; }
-        public List<AttachmentDto> Attachments { get; set; } = new();
+        public List<AttachmentDto> Attachments       { get; set; } = new();
+        public int                 FactoryEvalFileCount { get; set; }
     }
 }

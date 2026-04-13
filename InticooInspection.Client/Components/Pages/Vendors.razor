@@ -71,6 +71,7 @@ else
                     <th rowspan="2">Category</th>
                     <th colspan="3" class="th-grp">Vendor Address</th>
                     <th colspan="3" class="th-grp">Contact Information</th>
+                    <th rowspan="2" class="tc">Factory Evaluetion</th>
                     <th rowspan="2" class="tc">Files</th>
                     <th rowspan="2" class="tc">Status</th>
                     <th rowspan="2" class="tc">Full Detail</th>
@@ -114,6 +115,18 @@ else
                         <td class="small-td">@(string.IsNullOrEmpty(item.ContactName)  ? "-" : item.ContactName)</td>
                         <td class="muted small-td">@(string.IsNullOrEmpty(item.ContactTitle) ? "-" : item.ContactTitle)</td>
                         <td class="mono small-td">@(string.IsNullOrEmpty(item.ContactPhone)  ? "-" : item.ContactPhone)</td>
+                        <td class="tc">
+                            @if (item.FactoryEvalFileCount > 0)
+                            {
+                                <span class="file-count-badge file-count-btn fe-badge"
+                                      @onclick="async (e) => await ToggleFePopup(e, item)"
+                                      @onclick:stopPropagation="true">
+                                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                                    @item.FactoryEvalFileCount
+                                </span>
+                            }
+                            else { <span class="muted">—</span> }
+                        </td>
                         <td class="tc">
                             @if (item.Attachments.Count > 0)
                             {
@@ -207,6 +220,53 @@ else
     </div>
 }
 
+<!-- Factory Eval File Popup -->
+@if (_fePopupVendor != null)
+{
+    <div class="fp-backdrop" @onclick="CloseFePopup"></div>
+    <div class="fp-popup" style="top:@(_fePopupY)px;left:@(_fePopupX)px;width:420px;" @onclick:stopPropagation="true">
+        <div class="fp-header">
+            <span class="fp-title">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+                Factory Eval — @_fePopupVendor.Name
+            </span>
+            <button class="fp-close" @onclick="CloseFePopup">&#x2715;</button>
+        </div>
+        @if (_fePopupLoading)
+        {
+            <div style="padding:20px;text-align:center;"><div class="spinner"></div></div>
+        }
+        else
+        {
+            <div class="fp-list">
+                @foreach (var f in _fePopupFiles)
+                {
+                    <div class="fp-item">
+                        <div class="fp-icon">@((MarkupString)GetFileIconSvg(f.ContentType))</div>
+                        <div class="fp-info">
+                            <span class="fp-name">@f.OriginalName</span>
+                            <span class="fp-meta">@FormatFileSize(f.FileSize) · @f.UploadedAt.ToLocalTime().ToString("dd/MM/yyyy")</span>
+                        </div>
+                        <div class="fp-actions">
+                            @if (f.ContentType.StartsWith("image/") || f.ContentType == "application/pdf")
+                            {
+                                <a href="@f.DownloadUrl" target="_blank" class="fp-btn fp-btn-view">
+                                    <svg width="12" height="12" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 10s3.5-6 8-6 8 6 8 6-3.5 6-8 6-8-6-8-6Z"/><circle cx="10" cy="10" r="2.5"/></svg>
+                                    View
+                                </a>
+                            }
+                            <a href="@f.DownloadUrl" download="@f.OriginalName" class="fp-btn fp-btn-dl">
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                                Download
+                            </a>
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+    </div>
+}
+
 <!-- ═══════════════════ Modal Create / Edit ═══════════════════ -->
 @if (_showModal)
 {
@@ -251,27 +311,34 @@ else
                     <label>Short Name</label>
                     <input class="form-input" type="text" placeholder="Abbreviation" @bind="_f.ShortName" @bind:event="oninput" />
                 </div>
-                <div class="fg fg-1">
-                    <label>Product Category</label>
-                    <select class="form-input" @bind="_f.Category">
-                        <option value="">-- Select Category --</option>
-                        <option>Furniture</option>
-                        <option>Outdoor Furniture</option>
-                        <option>Indoor Furniture</option>
-                        <option>Office Furniture</option>
-                        <option>Bedroom Furniture</option>
-                        <option>Lighting</option>
-                        <option>Home Decor</option>
-                        <option>Electronics</option>
-                        <option>Toys &amp; Games</option>
-                        <option>Clothing &amp; Apparel</option>
-                        <option>Footwear</option>
-                        <option>Bags &amp; Luggage</option>
-                        <option>Kitchenware</option>
-                        <option>Sportswear</option>
-                        <option>Hardware &amp; Tools</option>
-                        <option>Other</option>
-                    </select>
+                <div class="fg fg-3" style="grid-column:span 3;">
+                    <label>Product Category <span style="font-size:11px;color:#9baac8;font-weight:400;">(chọn nhiều)</span></label>
+                    <div class="cat-check-list">
+                        @foreach (var _catOpt in new[] {
+                            "Furniture","Outdoor Furniture","Indoor Furniture","Office Furniture",
+                            "Lighting","Home Decor","Electronics","Toys & Games",
+                            "Clothing & Apparel","Footwear","Bags & Luggage","Kitchenware",
+                            "Sportswear","Hardware & Tools","Other"
+                        })
+                        {
+                            var catVal = _catOpt;
+                            var isChecked = _formCategories.Contains(catVal);
+                            <label class="cat-check-item @(isChecked ? "cat-check-active" : "")">
+                                <input type="checkbox" checked="@isChecked" @onchange="() => ToggleVendorCategory(catVal)" />
+                                @catVal
+                            </label>
+                        }
+                    </div>
+                    @if (_formCategories.Count > 0)
+                    {
+                        <div style="margin-top:6px;display:flex;flex-wrap:wrap;gap:4px;">
+                            @foreach (var _c in _formCategories.ToList())
+                            {
+                                var _cv = _c;
+                                <span class="cat-badge" style="cursor:pointer;" @onclick="() => { _formCategories.Remove(_cv); StateHasChanged(); }">@_cv ✕</span>
+                            }
+                        </div>
+                    }
                 </div>
                 <div class="fg fg-1">
                     <label>Tax Code</label>
@@ -372,6 +439,83 @@ else
             <div class="fg-row">
                 <div class="fg fg-3">
                     <textarea class="form-input" rows="3" placeholder="Additional notes..." @bind="_f.Notes" @bind:event="oninput"></textarea>
+                </div>
+            </div>
+
+            <!-- Factory Evaluation -->
+            <div class="section-title">Factory Evaluation</div>
+            <div class="fg-row">
+                <div class="fg fg-3">
+                    <label>Evaluation Notes</label>
+                    <textarea class="form-input" rows="3" placeholder="Factory evaluation summary, audit findings..." @bind="_f.FactoryEvaluationNotes" @bind:event="oninput"></textarea>
+                </div>
+            </div>
+            @{ int totalFe = _factoryEvalFiles.Count + _pendingFactoryFiles.Count; }
+            @if (totalFe > 0)
+            {
+                <div class="section-subtitle">
+                    Factory Evaluation Files
+                    <span class="att-count-label">@totalFe file(s)</span>
+                </div>
+            }
+            @if (_factoryEvalFiles.Count > 0)
+            {
+                <div class="att-list">
+                    @foreach (var fa in _factoryEvalFiles)
+                    {
+                        var _fa = fa;
+                        <div class="att-item">
+                            <div class="att-icon">@((MarkupString)GetFileIconSvg(_fa.ContentType))</div>
+                            <div class="att-info">
+                                <a href="@_fa.DownloadUrl" target="_blank" class="att-name">@_fa.OriginalName</a>
+                                <span class="att-meta">@FormatFileSize(_fa.FileSize) · @_fa.UploadedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</span>
+                            </div>
+                            <a href="@_fa.DownloadUrl" target="_blank" class="att-action-btn att-download" title="Download">
+                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                            </a>
+                            <button class="att-action-btn att-delete" @onclick="() => DeleteFactoryEvalFile(_fa)" disabled="@_uploadLoading">
+                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+                            </button>
+                        </div>
+                    }
+                </div>
+            }
+            @if (_pendingFactoryFiles.Count > 0)
+            {
+                <div class="att-list">
+                    @foreach (var pf in _pendingFactoryFiles)
+                    {
+                        var _pf = pf;
+                        <div class="att-item att-pending">
+                            <div class="att-icon">@((MarkupString)GetFileIconSvgByName(_pf.Name))</div>
+                            <div class="att-info">
+                                <span class="att-name" style="color:rgba(255,255,255,0.75);cursor:default">@_pf.Name</span>
+                                <span class="att-meta">@FormatFileSize(_pf.Size) &nbsp;·&nbsp; <span class="pending-badge">Pending</span></span>
+                            </div>
+                            <button class="att-action-btn att-delete" @onclick="() => _pendingFactoryFiles.Remove(_pf)">
+                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+                            </button>
+                        </div>
+                    }
+                </div>
+            }
+            <div class="upload-zone @(_isDragOverFe ? "drag-over" : "")"
+                 @ondragover:preventDefault="true"
+                 @ondragenter="() => _isDragOverFe = true"
+                 @ondragleave="() => _isDragOverFe = false"
+                 @ondrop="HandleDropFe">
+                <div class="upload-zone-inner">
+                    <div class="upload-icon-wrap">
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                    </div>
+                    <div class="upload-text">
+                        Drag &amp; drop factory evaluation files, or
+                        <label class="browse-link">
+                            choose files
+                            <InputFile OnChange="HandleFactoryEvalUpload" style="display:none" accept=".pdf,.jpg,.jpeg,.png,.xlsx,.docx" multiple disabled="@_uploadLoading" />
+                        </label>
+                    </div>
+                    <span class="upload-hint">PDF, JPG, PNG, XLSX, DOCX &nbsp;·&nbsp; Max 20 MB / file</span>
                 </div>
             </div>
 
@@ -610,6 +754,13 @@ else
     private List<AttachmentDto> _attachments  = new();  // saved on server
     private List<PendingFile>   _pendingFiles = new();  // in-memory, not yet uploaded
 
+    private List<AttachmentDto> _factoryEvalFiles   = new();
+    private List<PendingFile>   _pendingFactoryFiles = new();
+    private bool   _isDragOverFe = false;
+
+    // Multi-select categories
+    private List<string> _formCategories = new();
+
     private bool   _uploadLoading  = false;
     private int    _uploadingCount = 0;
     private string _uploadError    = "";
@@ -622,6 +773,12 @@ else
     private VendorDto? _filePopupVendor = null;
     private double _filePopupX = 0, _filePopupY = 0;
 
+    // Factory Eval popup
+    private VendorDto? _fePopupVendor  = null;
+    private double     _fePopupX = 0, _fePopupY = 0;
+    private bool       _fePopupLoading = false;
+    private List<AttachmentDto> _fePopupFiles = new();
+
     private void ToggleFilePopup(MouseEventArgs e, VendorDto vendor)
     {
         if (_filePopupVendor?.Id == vendor.Id) { _filePopupVendor = null; return; }
@@ -632,6 +789,25 @@ else
     }
 
     private void CloseFilePopup() => _filePopupVendor = null;
+
+    private async Task ToggleFePopup(MouseEventArgs e, VendorDto vendor)
+    {
+        if (_fePopupVendor?.Id == vendor.Id) { _fePopupVendor = null; return; }
+        _fePopupVendor  = vendor;
+        _fePopupX       = Math.Max(10, e.ClientX - 340);
+        _fePopupY       = e.ClientY + 12;
+        _fePopupFiles   = new();
+        _fePopupLoading = true;
+        try
+        {
+            var list = await Http.GetFromJsonAsync<List<AttachmentDto>>($"api/vendors/{vendor.Id}/factory-eval/files");
+            _fePopupFiles = list ?? new();
+        }
+        catch { }
+        finally { _fePopupLoading = false; }
+    }
+
+    private void CloseFePopup() => _fePopupVendor = null;
 
     protected override async Task OnInitializedAsync()
     {
@@ -704,6 +880,8 @@ else
     {
         _editId = null; _f = new(); _formError = "";
         _attachments.Clear(); _pendingFiles.Clear(); _uploadError = "";
+        _factoryEvalFiles.Clear(); _pendingFactoryFiles.Clear();
+        _formCategories = new();
         try
         {
             var result = await Http.GetFromJsonAsync<NextCodeResult>("api/vendors/next-code");
@@ -742,7 +920,15 @@ else
         };
         _attachments = v.Attachments.ToList();
         _pendingFiles.Clear();
+        _formCategories = string.IsNullOrEmpty(v.Category) ? new() :
+            v.Category.Split(',', StringSplitOptions.RemoveEmptyEntries).Select(x => x.Trim()).ToList();
         _uploadError = ""; _formError = "";
+        // Load factory eval files
+        _factoryEvalFiles.Clear(); _pendingFactoryFiles.Clear();
+        try {
+            var feFiles = await Http.GetFromJsonAsync<List<AttachmentDto>>($"api/vendors/{v.Id}/factory-eval/files");
+            if (feFiles != null) _factoryEvalFiles = feFiles;
+        } catch { }
         _showModal = true;
         if (!string.IsNullOrEmpty(v.Country))
         {
@@ -784,7 +970,8 @@ else
                 shortName     = _f.ShortName,
                 type          = _f.Type,
                 status        = _f.Status,
-                category      = _f.Category,
+                category      = string.Join(", ", _formCategories),
+                factoryEvaluationNotes = _f.FactoryEvaluationNotes,
                 taxCode       = _f.TaxCode,
                 businessRegNo = _f.BusinessRegNo,
                 phone         = _f.Phone,
@@ -832,9 +1019,12 @@ else
             int targetId = newId ?? _editId ?? 0;
             if (_pendingFiles.Count > 0 && targetId > 0)
                 await UploadPendingFiles(targetId);
+            if (_pendingFactoryFiles.Count > 0 && targetId > 0)
+                await UploadPendingFactoryFiles(targetId);
 
             _showModal = false;
             _pendingFiles.Clear();
+            _pendingFactoryFiles.Clear();
             await LoadPage(_page);
         }
         catch { _formError = "Connection error."; }
@@ -966,6 +1156,89 @@ else
         if (response.IsSuccessStatusCode) { _deleteItem = null; await LoadPage(_page); }
     }
 
+    private void ToggleVendorCategory(string cat)
+    {
+        if (_formCategories.Contains(cat)) _formCategories.Remove(cat);
+        else _formCategories.Add(cat);
+    }
+
+    private void HandleDropFe(DragEventArgs e) => _isDragOverFe = false;
+
+    private async Task HandleFactoryEvalUpload(InputFileChangeEventArgs e)
+    {
+        var files = e.GetMultipleFiles(20);
+        if (_editId != null)
+        {
+            await UploadFactoryFilesNow(_editId.Value, files);
+        }
+        else
+        {
+            foreach (var f in files)
+            {
+                try
+                {
+                    using var ms = new System.IO.MemoryStream();
+                    await f.OpenReadStream(20 * 1024 * 1024).CopyToAsync(ms);
+                    _pendingFactoryFiles.Add(new PendingFile { Name = f.Name, Size = f.Size, Data = ms.ToArray(),
+                        MimeType = string.IsNullOrEmpty(f.ContentType) ? "application/octet-stream" : f.ContentType });
+                }
+                catch { }
+            }
+        }
+    }
+
+    private async Task UploadFactoryFilesNow(int vendorId, IReadOnlyList<IBrowserFile> files)
+    {
+        if (files.Count == 0) return;
+        _uploadLoading = true; _uploadError = "";
+        try
+        {
+            using var content = new MultipartFormDataContent();
+            foreach (var file in files)
+                content.Add(new StreamContent(file.OpenReadStream(20 * 1024 * 1024)), "files", file.Name);
+            var response = await Http.PostAsync($"api/vendors/{vendorId}/factory-eval/files", content);
+            if (response.IsSuccessStatusCode)
+            {
+                var feFiles = await Http.GetFromJsonAsync<List<AttachmentDto>>($"api/vendors/{vendorId}/factory-eval/files");
+                if (feFiles != null) _factoryEvalFiles = feFiles;
+            }
+            else _uploadError = "Factory eval upload failed.";
+        }
+        catch (Exception ex) { _uploadError = $"Error: {ex.Message}"; }
+        finally { _uploadLoading = false; }
+    }
+
+    private async Task UploadPendingFactoryFiles(int vendorId)
+    {
+        _uploadLoading = true;
+        try
+        {
+            using var content = new MultipartFormDataContent();
+            foreach (var pf in _pendingFactoryFiles)
+            {
+                var sc = new ByteArrayContent(pf.Data);
+                sc.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue(pf.MimeType);
+                content.Add(sc, "files", pf.Name);
+            }
+            await Http.PostAsync($"api/vendors/{vendorId}/factory-eval/files", content);
+        }
+        catch { }
+        finally { _uploadLoading = false; }
+    }
+
+    private async Task DeleteFactoryEvalFile(AttachmentDto att)
+    {
+        if (_editId == null) return;
+        _uploadLoading = true;
+        try
+        {
+            var r = await Http.DeleteAsync($"api/vendors/{_editId}/factory-eval/files/{att.Id}");
+            if (r.IsSuccessStatusCode) _factoryEvalFiles.Remove(att);
+        }
+        catch { }
+        finally { _uploadLoading = false; }
+    }
+
     // ── Helpers ──────────────────────────────────────────────────────
     private static string FormatFileSize(long bytes)
     {
@@ -1043,6 +1316,7 @@ else
         public string Address1 = "", Address2 = "", City = "", State = "";
         public string Country = "", PostalCode = "";
         public string ContactName = "", ContactTitle = "", ContactPhone = "", ContactEmail = "";
+        public string FactoryEvaluationNotes = "";
     }
 
     private class VendorDto
@@ -1069,12 +1343,14 @@ else
         public string? ContactTitle   { get; set; }
         public string? ContactPhone   { get; set; }
         public string? ContactEmail   { get; set; }
+        public string? FactoryEvaluationNotes { get; set; }
         public string? CompanyAddress { get; set; }
         public string? BillingAddress { get; set; }
         public string? AttachmentPath { get; set; }
         public string? AttachmentName { get; set; }
         public DateTime CreatedAt     { get; set; }
-        public List<AttachmentDto> Attachments { get; set; } = new();
+        public List<AttachmentDto> Attachments       { get; set; } = new();
+        public int                 FactoryEvalFileCount { get; set; }
     }
 }
 
@@ -1268,6 +1544,8 @@ else
     /* file count badge / file popup */
     .file-count-btn { display:inline-flex; align-items:center; gap:5px; padding:3px 10px; background:#e6f1fb; border:1px solid #b5d4f4; border-radius:20px; color:#1e90d6; font-size:12px; font-weight:600; cursor:pointer; transition:all .2s; }
     .file-count-btn:hover { background:#cce4f8; border-color:#85b7eb; transform:translateY(-1px); }
+    .fe-badge { background:#fef3c7 !important; border-color:#fcd34d !important; color:#92400e !important; }
+    .fe-badge:hover { background:#fde68a !important; }
     .file-count-badge { display:inline-flex; align-items:center; gap:4px; padding:3px 8px; border-radius:20px; font-size:12px; font-weight:600; background:#e6f1fb; color:#1e90d6; border:1px solid #b5d4f4; }
     .fp-backdrop { position:fixed; inset:0; z-index:1100; }
     .fp-popup    { position:fixed; z-index:1101; width:380px; background:#fff; border:1px solid #c9d8ee; border-radius:14px; box-shadow:0 20px 60px rgba(0,0,0,.18); overflow:hidden; animation:fp-in .15s ease; }
@@ -1338,6 +1616,20 @@ else
     .detail-link  { color:#1e90d6; font-size:13px; text-decoration:none; }
     .detail-link:hover { text-decoration:underline; }
     .detail-notes { font-size:13px; color:#4a6080; line-height:1.7; }
+    .section-title {
+        font-size: 11px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: .08em;
+        color: #1e90d6;
+        margin: 20px 0 12px;
+        padding-bottom: 7px;
+        border-bottom: 1.5px solid #c7e3f8;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: wrap;
+}
 
     /* misc */
     .check-label  { display:flex; align-items:center; gap:8px; cursor:pointer; font-size:14px; color:#4a6080; }
@@ -1368,6 +1660,14 @@ else
     .page-btn   { padding:8px 16px; background:#f0f4fb; border:1px solid #c9d8ee; border-radius:8px; color:#4a6080; font-size:13px; cursor:pointer; }
     .page-btn:disabled { opacity:.4; cursor:not-allowed; }
     .page-info  { font-size:13px; color:#9baac8; }
+
+    /* category checkbox list */
+    .cat-check-list { display:flex; flex-wrap:wrap; gap:6px; padding:10px; background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.15); border-radius:10px; }
+    .cat-check-item { display:inline-flex; align-items:center; gap:6px; padding:5px 12px; border-radius:20px; font-size:12px; font-weight:600; cursor:pointer; border:1px solid rgba(255,255,255,.2); background:rgba(255,255,255,.07); color:rgba(255,255,255,.7); transition:all .15s; user-select:none; }
+    .cat-check-item input[type=checkbox] { display:none; }
+    .cat-check-item:hover { background:rgba(30,144,214,.25); border-color:#1e90d6; color:#fff; }
+    .cat-check-active { background:#1e90d6 !important; border-color:#1e90d6 !important; color:#fff !important; }
+    .section-subtitle { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.08em; color:rgba(255,255,255,.4); margin:12px 0 6px; }
 
     @@media (max-width:900px) {
         .modal-card { width:92vw; padding:20px 18px; }

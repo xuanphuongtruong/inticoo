@@ -214,28 +214,28 @@ else
                         }
                     </div>
                 </div>
-                <div class="form-group">
-                    <label>Product Category</label>
-                    <select class="form-input" multiple size="20" @onchange="OnCategoryChanged">
-                        <option value="Furniture"             selected="@_formCategories.Contains("Furniture")">Furniture</option>
-                        <option value="Outdoor Furniture"     selected="@_formCategories.Contains("Outdoor Furniture")">Outdoor Furniture</option>
-                        <option value="Indoor Furniture"      selected="@_formCategories.Contains("Indoor Furniture")">Indoor Furniture</option>
-                        <option value="Office Furniture"      selected="@_formCategories.Contains("Office Furniture")">Office Furniture</option>
-                        <option value="Lighting"              selected="@_formCategories.Contains("Lighting")">Lighting</option>
-                        <option value="Home Decor"            selected="@_formCategories.Contains("Home Decor")">Home Decor</option>
-                        <option value="Electronics"           selected="@_formCategories.Contains("Electronics")">Electronics</option>
-                        <option value="Toys &amp; Games"      selected="@_formCategories.Contains("Toys & Games")">Toys &amp; Games</option>
-                        <option value="Clothing &amp; Apparel" selected="@_formCategories.Contains("Clothing & Apparel")">Clothing &amp; Apparel</option>
-                        <option value="Footwear"              selected="@_formCategories.Contains("Footwear")">Footwear</option>
-                        <option value="Bags &amp; Luggage"    selected="@_formCategories.Contains("Bags & Luggage")">Bags &amp; Luggage</option>
-                        <option value="Kitchenware"           selected="@_formCategories.Contains("Kitchenware")">Kitchenware</option>
-                        <option value="Sportswear"            selected="@_formCategories.Contains("Sportswear")">Sportswear</option>
-                        <option value="Hardware &amp; Tools"  selected="@_formCategories.Contains("Hardware & Tools")">Hardware &amp; Tools</option>
-                        <option value="Other"                 selected="@_formCategories.Contains("Other")">Other</option>
-                    </select>
+                <div class="form-group full-width">
+                    <label>Product Category <span style="font-size:11px;color:#9baac8;font-weight:400;">(chọn nhiều)</span></label>
+                    <div class="cat-check-list">
+                        @foreach (var _catOpt in new[] {
+                            "Furniture","Outdoor Furniture","Indoor Furniture","Office Furniture",
+                            "Lighting","Home Decor","Electronics","Toys & Games",
+                            "Clothing & Apparel","Footwear","Bags & Luggage","Kitchenware",
+                            "Sportswear","Hardware & Tools","Other"
+                        })
+                        {
+                            var catVal = _catOpt;
+                            var isChecked = _formCategories.Contains(catVal);
+                            <label class="cat-check-item @(isChecked ? "cat-check-active" : "")">
+                                <input type="checkbox" checked="@isChecked"
+                                       @onchange="() => ToggleCategory(catVal)" />
+                                @catVal
+                            </label>
+                        }
+                    </div>
                     @if (_formCategories.Count > 0)
                     {
-                        <div style="margin-top:6px; display:flex; flex-wrap:wrap; gap:4px;">
+                        <div style="margin-top:8px; display:flex; flex-wrap:wrap; gap:4px;">
                             @foreach (var cat in _formCategories.ToList())
                             {
                                 var c = cat;
@@ -1002,10 +1002,12 @@ else
         public string Url      { get; set; } = "";
         public long   FileSize { get; set; }
     }
-    private void OnCategoryChanged(ChangeEventArgs e)
+    private void ToggleCategory(string cat)
     {
-        if (e.Value is string[] selected)
-            _formCategories = selected.Where(s => !string.IsNullOrEmpty(s)).ToList();
+        if (_formCategories.Contains(cat))
+            _formCategories.Remove(cat);
+        else
+            _formCategories.Add(cat);
     }
 
     private async Task LoadCountries()
@@ -1365,6 +1367,13 @@ else
     .page-btn   { padding:8px 16px; background:#f0f4fb; border:1px solid #c9d8ee; border-radius:8px; color:#4a6080; font-size:13px; cursor:pointer; }
     .page-btn:disabled { opacity:.4; cursor:not-allowed; }
     .page-info  { font-size:13px; color:#9baac8; }
+
+    /* category checkbox list */
+    .cat-check-list { display:flex; flex-wrap:wrap; gap:6px; padding:10px; background:#f7fafd; border:1px solid #dde4ef; border-radius:10px; }
+    .cat-check-item { display:inline-flex; align-items:center; gap:6px; padding:5px 12px; border-radius:20px; font-size:12px; font-weight:600; cursor:pointer; border:1px solid #c9d8ee; background:#f0f4fb; color:#4a6080; transition:all .15s; user-select:none; }
+    .cat-check-item input[type=checkbox] { display:none; }
+    .cat-check-item:hover { background:#e0eaf7; border-color:#1e90d6; color:#1e90d6; }
+    .cat-check-active { background:#1e90d6 !important; border-color:#1e90d6 !important; color:#fff !important; }
 
     @@media (max-width:900px) {
         .modal-card { width:92vw; padding:20px 18px; }

@@ -8,7 +8,8 @@ namespace InticooInspection.Infrastructure.Data
     {
         public AppDbContext(DbContextOptions<AppDbContext> options) : base(options) { }
 
-        public DbSet<Vendor>         Vendors         { get; set; }
+        public DbSet<Vendor>              Vendors              { get; set; }
+        public DbSet<VendorFactoryEvalFile> VendorFactoryEvalFiles { get; set; }
         public DbSet<Customer>       Customers       { get; set; }
         public DbSet<Product>        Products        { get; set; }
         public DbSet<CustomerFile>   CustomerFiles   => Set<CustomerFile>();
@@ -280,7 +281,8 @@ namespace InticooInspection.Infrastructure.Data
                 e.Property(x => x.Code).IsRequired().HasMaxLength(50);
                 e.Property(x => x.Name).IsRequired().HasMaxLength(200);
                 e.Property(x => x.ShortName).HasMaxLength(100);
-                e.Property(x => x.Category).HasMaxLength(100);
+                e.Property(x => x.Category).HasMaxLength(500);  // multi-category comma-separated
+                e.Property(x => x.FactoryEvaluationNotes).HasColumnType("nvarchar(max)");
                 e.Property(x => x.TaxCode).HasMaxLength(50);
                 e.Property(x => x.BusinessRegNo).HasMaxLength(100);
                 e.Property(x => x.Phone).HasMaxLength(50);
@@ -300,6 +302,18 @@ namespace InticooInspection.Infrastructure.Data
                  .WithOne(a => a.Vendor)
                  .HasForeignKey(a => a.VendorId)
                  .OnDelete(DeleteBehavior.Cascade);
+                e.HasMany(x => x.FactoryEvalFiles)
+                 .WithOne(f => f.Vendor)
+                 .HasForeignKey(f => f.VendorId)
+                 .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            builder.Entity<VendorFactoryEvalFile>(e =>
+            {
+                e.HasKey(x => x.Id);
+                e.Property(x => x.StoredName).IsRequired().HasMaxLength(200);
+                e.Property(x => x.OriginalName).IsRequired().HasMaxLength(300);
+                e.Property(x => x.ContentType).HasMaxLength(100);
             });
         }
     }

@@ -120,15 +120,6 @@ namespace InticooInspection.API.Controllers
                 var vendorByCode = allVendors.GroupBy(v => v.Code).ToDictionary(g => g.Key, g => g.First());
                 var vendorByName = allVendors.GroupBy(v => v.Name).ToDictionary(g => g.Key, g => g.First());
 
-                // Helper: look up vendor by VendorId (may be Code or Name)
-                object? LookupVendor(string? vid)
-                {
-                    if (string.IsNullOrEmpty(vid)) return null;
-                    if (vendorByCode.TryGetValue(vid, out var byCode)) return byCode;
-                    if (vendorByName.TryGetValue(vid, out var byName)) return byName;
-                    return null;
-                }
-
                 var vendorAddressDict     = allVendors.ToDictionary(v => v.Code,
                     v => !string.IsNullOrEmpty(v.Address1) ? v.Address1 : v.CompanyAddress ?? "");
                 var vendorCountryDict     = allVendors.ToDictionary(v => v.Code, v => v.Country ?? "");
@@ -1389,7 +1380,7 @@ www.Inticoo.com";
 
     // Đính kèm PDF report nếu có file trên server
     var pdfPath = Path.Combine("Reports", $"{inspection.JobNumber}.pdf");
-    if (File.Exists(pdfPath))
+    if (System.IO.File.Exists(pdfPath))
     {
         var attachment = new Attachment(pdfPath, "application/pdf");
         msg.Attachments.Add(attachment);
@@ -1397,6 +1388,8 @@ www.Inticoo.com";
 
     await client.SendMailAsync(msg);
 }
+
+    } // end class InspectionController
 
     public class CreateInspectionRequest
     {

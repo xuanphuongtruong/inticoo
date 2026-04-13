@@ -31,7 +31,9 @@ namespace InticooInspection.API.Controllers
                     (c.Phone         != null && c.Phone.Contains(search))         ||
                     (c.Email         != null && c.Email.Contains(search))         ||
                     (c.TaxCode       != null && c.TaxCode.Contains(search))       ||
-                    (c.Country       != null && c.Country.Contains(search)));
+                    (c.Country       != null && c.Country.Contains(search))       ||
+                    (c.Category      != null && c.Category.Contains(search))      ||
+                    (c.CustomerId    != null && c.CustomerId.Contains(search)));
 
             var total = await query.CountAsync();
             var items = await query
