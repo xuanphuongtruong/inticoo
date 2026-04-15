@@ -54,6 +54,7 @@ namespace InticooInspection.API.Controllers
                         i.InspectorId,
                         i.InspectorName,
                         i.PoNumber,
+                        i.FinalResult,
                     })
                     .ToListAsync();
 
@@ -202,7 +203,8 @@ namespace InticooInspection.API.Controllers
                         inspectionType = MapInspType(i.InspectionTypeVal),
                         inspectorId = iid,
                         inspectorName = inspName,
-                        poNumber = i.PoNumber ?? ""
+                        poNumber = i.PoNumber ?? "",
+                        finalResult = i.FinalResult
                     };
                 }).ToList();
 

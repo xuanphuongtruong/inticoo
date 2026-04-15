@@ -242,10 +242,11 @@ namespace InticooInspection.Infrastructure.Data
                 e.HasKey(x => x.Id);
                 e.Property(x => x.Category).IsRequired().HasMaxLength(200);
                 e.Property(x => x.StandardCode).IsRequired().HasMaxLength(300);
-                e.Property(x => x.StandardName).HasMaxLength(500);
                 e.Property(x => x.ProductType).IsRequired().HasMaxLength(200);
                 e.Property(x => x.Market).HasMaxLength(100);
-                e.Property(x => x.ProtocolName).IsRequired().HasMaxLength(500);
+                e.Property(x => x.ProtocolName).IsRequired().HasMaxLength(2000);
+                e.Property(x => x.TestProtocol).HasColumnType("nvarchar(max)");
+                e.Property(x => x.Procedure).HasColumnType("nvarchar(max)");
                 e.Property(x => x.Requirements).HasColumnType("nvarchar(max)");
                 e.HasIndex(x => new { x.Category, x.IsActive });
                 e.HasIndex(x => new { x.ProductType, x.IsActive });

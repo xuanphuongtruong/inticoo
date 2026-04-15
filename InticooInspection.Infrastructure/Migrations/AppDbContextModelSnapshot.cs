@@ -981,8 +981,12 @@ namespace InticooInspection.Infrastructure.Migrations
                         .HasColumnType("bit");
 
                     b.Property<string>("Market")
+                        .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("Procedure")
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("ProductType")
                         .IsRequired()
@@ -991,8 +995,8 @@ namespace InticooInspection.Infrastructure.Migrations
 
                     b.Property<string>("ProtocolName")
                         .IsRequired()
-                        .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
 
                     b.Property<string>("Requirements")
                         .HasColumnType("nvarchar(max)");
@@ -1005,9 +1009,11 @@ namespace InticooInspection.Infrastructure.Migrations
                         .HasMaxLength(300)
                         .HasColumnType("nvarchar(300)");
 
-                    b.Property<string>("StandardName")
-                        .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
+                    b.Property<string>("TestProtocol")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2");
 
                     b.HasKey("Id");
 

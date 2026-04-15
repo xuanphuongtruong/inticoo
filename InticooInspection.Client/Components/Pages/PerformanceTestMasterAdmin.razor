@@ -1,0 +1,614 @@
+@page "/admin/performance-test-master"
+@using System.Net.Http.Json
+@using System.Text.Json
+@inject HttpClient Http
+@inject Blazored.SessionStorage.ISessionStorageService SessionStorage
+
+<div class="ptm-page">
+
+    <!-- ═══════ HEADER ═══════ -->
+    <div class="ptm-header">
+        <div class="ptm-header-left">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#2D7DD2" stroke-width="2" stroke-linecap="round">
+                <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/>
+                <rect x="9" y="3" width="6" height="4" rx="1"/>
+                <path d="M9 12h6M9 16h4"/>
+            </svg>
+            <div>
+                <div class="ptm-title">Performance Test Master</div>
+                <div class="ptm-subtitle">Quản lý danh sách tiêu chuẩn kiểm tra · @_items.Count bản ghi</div>
+            </div>
+        </div>
+        <button class="ptm-add-btn" @onclick="OpenCreate">
+            <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M10 4v12M4 10h12"/></svg>
+            Thêm mới
+        </button>
+    </div>
+
+    <!-- ═══════ FILTERS ═══════ -->
+    <div class="ptm-filters">
+        <div class="ptm-filter-group">
+            <label class="ptm-filter-label">Category</label>
+            <select class="ptm-select" @bind="_filterCategory">
+                <option value="">Tất cả</option>
+                @foreach (var c in _categories) { <option value="@c">@c</option> }
+            </select>
+        </div>
+        <div class="ptm-filter-group">
+            <label class="ptm-filter-label">Product Type</label>
+            <select class="ptm-select" @bind="_filterProductType">
+                <option value="">Tất cả</option>
+                @foreach (var p in _productTypes) { <option value="@p">@p</option> }
+            </select>
+        </div>
+        <div class="ptm-filter-group">
+            <label class="ptm-filter-label">Market</label>
+            <select class="ptm-select" @bind="_filterMarket">
+                <option value="">Tất cả</option>
+                @foreach (var m in _markets) { <option value="@m">@m</option> }
+            </select>
+        </div>
+        <div class="ptm-filter-group">
+            <label class="ptm-filter-label">Trạng thái</label>
+            <select class="ptm-select" @bind="_filterActive">
+                <option value="all">Tất cả</option>
+                <option value="active">Đang dùng</option>
+                <option value="inactive">Ẩn</option>
+            </select>
+        </div>
+        <div class="ptm-filter-group ptm-search-group">
+            <label class="ptm-filter-label">Tìm kiếm</label>
+            <input class="ptm-search" placeholder="Protocol / Standard / Test..." @bind="_searchText" @bind:event="oninput" />
+        </div>
+    </div>
+
+    <!-- ═══════ TABLE ═══════ -->
+    @if (_loading)
+    {
+        <div class="ptm-loading"><div class="ptm-spinner"></div><span>Đang tải...</span></div>
+    }
+    else if (!FilteredItems().Any())
+    {
+        <div class="ptm-empty">
+            <svg width="48" height="48" viewBox="0 0 48 48" fill="none" stroke="#ccc" stroke-width="1.5">
+                <rect x="8" y="10" width="32" height="32" rx="4"/><path d="M16 10V6M32 10V6M8 22h32" stroke-linecap="round"/><circle cx="24" cy="32" r="4"/>
+            </svg>
+            <p>Không có dữ liệu</p>
+        </div>
+    }
+    else
+    {
+        <div class="ptm-table-wrap">
+            <table class="ptm-table">
+                <thead>
+                    <tr>
+                        <th class="th-no">#</th>
+                        <th class="th-category">Category</th>
+                        <th class="th-protocol">Protocol Name</th>
+                        <th class="th-std">Standard Code</th>
+                        <th class="th-type">Type</th>
+                        <th class="th-market">Market</th>
+                        <th class="th-testprot">Test Protocol</th>
+                        <th class="th-req">Requirements</th>
+                        <th class="th-status">Status</th>
+                        <th class="th-action">Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var item in FilteredItems())
+                    {
+                        <tr class="@(item.IsActive ? "" : "row-inactive")">
+                            <td class="td-no">@item.SortOrder</td>
+                            <td class="td-category">
+                                <span class="ptm-cat-badge cat-@Slug(item.Category)">@item.Category</span>
+                            </td>
+                            <td class="td-protocol" title="@item.ProtocolName">@Truncate(item.ProtocolName, 50)</td>
+                            <td class="td-std">
+                                @if (!string.IsNullOrEmpty(item.StandardCode))
+                                { <span class="ptm-std-chip">@item.StandardCode</span> }
+                                else { <span class="ptm-na">—</span> }
+                            </td>
+                            <td class="td-type">
+                                <span class="ptm-type-badge type-@item.ProductType.ToLower()">@item.ProductType</span>
+                            </td>
+                            <td class="td-market">
+                                <span class="ptm-market-badge market-@item.Market.ToLower()">@item.Market</span>
+                            </td>
+                            <td class="td-testprot" title="@item.TestProtocol">
+                                @if (!string.IsNullOrEmpty(item.TestProtocol))
+                                { <span class="ptm-tp-text">@Truncate(item.TestProtocol, 55)</span> }
+                                else { <span class="ptm-na">—</span> }
+                            </td>
+                            <td class="td-req" title="@item.Requirements">
+                                @if (!string.IsNullOrEmpty(item.Requirements))
+                                { <span class="ptm-req-text">@Truncate(item.Requirements, 45)</span> }
+                                else { <span class="ptm-na">—</span> }
+                            </td>
+                            <td class="td-status">
+                                <button class="ptm-toggle @(item.IsActive ? "tog-on" : "tog-off")"
+                                        @onclick="() => ToggleActive(item)">
+                                    @(item.IsActive ? "Active" : "Inactive")
+                                </button>
+                            </td>
+                            <td class="td-action">
+                                <button class="ptm-btn-edit" @onclick="() => OpenEdit(item)" title="Sửa">
+                                    <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M11 4l5 5-9 9H2v-5L11 4z"/></svg>
+                                </button>
+                                <button class="ptm-btn-del" @onclick="() => ConfirmDelete(item)" title="Xóa">
+                                    <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 6h14M8 6V4h4v2M6 6l1 12h6l1-12"/></svg>
+                                </button>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+        <div class="ptm-count">Hiển thị @FilteredItems().Count / @_items.Count bản ghi</div>
+    }
+</div>
+
+<!-- ═══════ MODAL THÊM/SỬA ═══════ -->
+@if (_showModal)
+{
+    <div class="ptm-overlay" @onclick="CloseModal">
+        <div class="ptm-modal" @onclick:stopPropagation="true">
+            <div class="ptm-modal-header">
+                <span class="ptm-modal-title">@(_editId == null ? "Thêm mới" : "Chỉnh sửa") Test Protocol</span>
+                <button class="ptm-modal-close" @onclick="CloseModal">
+                    <svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M5 5l10 10M15 5L5 15"/></svg>
+                </button>
+            </div>
+
+            <div class="ptm-modal-body">
+                @if (!string.IsNullOrEmpty(_modalError))
+                { <div class="ptm-modal-error">@_modalError</div> }
+
+                <!-- Row 1: Category + Standard Code -->
+                <div class="ptm-form-row">
+                    <div class="ptm-form-group">
+                        <label class="ptm-label">Category <span class="req">*</span></label>
+                        <select class="ptm-input" @bind="_form.Category">
+                            <option value="">-- Chọn --</option>
+                            @foreach (var c in _categories) { <option value="@c">@c</option> }
+                        </select>
+                    </div>
+                    <div class="ptm-form-group">
+                        <label class="ptm-label">Standard Code</label>
+                        <input class="ptm-input" placeholder="ISTA 1A / EN581-1..." @bind="_form.StandardCode" />
+                    </div>
+                </div>
+
+                <!-- Protocol Name -->
+                <div class="ptm-form-group">
+                    <label class="ptm-label">Protocol Name <span class="req">*</span></label>
+                    <input class="ptm-input" placeholder="Tên đầy đủ: EN581-1 & EN581-2:2015 (Outdoor Seating for Europe market)" @bind="_form.ProtocolName" />
+                </div>
+
+                <!-- Row 2: ProductType + Market + SortOrder -->
+                <div class="ptm-form-row ptm-form-row-3">
+                    <div class="ptm-form-group">
+                        <label class="ptm-label">Product Type</label>
+                        <select class="ptm-input" @bind="_form.ProductType">
+                            <option value="All">All</option>
+                            <option value="Seating">Seating</option>
+                            <option value="Table">Table</option>
+                            <option value="Bed">Bed</option>
+                            <option value="Wood">Wood</option>
+                        </select>
+                    </div>
+                    <div class="ptm-form-group">
+                        <label class="ptm-label">Market</label>
+                        <select class="ptm-input" @bind="_form.Market">
+                            <option value="All">All</option>
+                            <option value="Europe">Europe</option>
+                            <option value="US">US</option>
+                        </select>
+                    </div>
+                    <div class="ptm-form-group">
+                        <label class="ptm-label">Sort Order</label>
+                        <input class="ptm-input" type="number" min="0" @bind="_form.SortOrder" />
+                    </div>
+                </div>
+
+                <!-- Test Protocol (tên/mô tả bước) -->
+                <div class="ptm-form-group">
+                    <label class="ptm-label">Test Protocol (Tên bước kiểm tra)</label>
+                    <input class="ptm-input" placeholder="VD: 1. General Safety Requirements. / 2. Seat and back static load test..." @bind="_form.TestProtocol" />
+                </div>
+
+                <!-- Procedure -->
+                <div class="ptm-form-group">
+                    <label class="ptm-label">Test Procedure (Quy trình thực hiện)</label>
+                    <textarea class="ptm-textarea" rows="5" placeholder="Mô tả chi tiết từng bước thực hiện..." @bind="_form.Procedure"></textarea>
+                </div>
+
+                <!-- Requirements -->
+                <div class="ptm-form-group">
+                    <label class="ptm-label">Requirements (Tiêu chí đạt)</label>
+                    <textarea class="ptm-textarea" rows="2" placeholder="VD: No product damage is allowed. / Must meet all." @bind="_form.Requirements"></textarea>
+                </div>
+
+                <!-- Active -->
+                <div class="ptm-form-group ptm-form-check">
+                    <input type="checkbox" id="chk-active" @bind="_form.IsActive" />
+                    <label for="chk-active">Đang sử dụng (Active)</label>
+                </div>
+            </div>
+
+            <div class="ptm-modal-footer">
+                <button class="ptm-btn-cancel" @onclick="CloseModal" disabled="@_saving">Hủy</button>
+                <button class="ptm-btn-save" @onclick="SaveAsync" disabled="@_saving">
+                    @if (_saving)
+                    { <div class="ptm-spinner-sm"></div><span>Đang lưu...</span> }
+                    else
+                    {
+                        <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M4 10l5 5 7-8"/></svg>
+                        <span>@(_editId == null ? "Thêm mới" : "Cập nhật")</span>
+                    }
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+<!-- ═══════ CONFIRM XÓA ═══════ -->
+@if (_deleteTarget != null)
+{
+    <div class="ptm-overlay" @onclick="() => _deleteTarget = null">
+        <div class="ptm-confirm-modal" @onclick:stopPropagation="true">
+            <div class="ptm-confirm-icon">
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#e53935" stroke-width="2" stroke-linecap="round">
+                    <circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/>
+                </svg>
+            </div>
+            <div class="ptm-confirm-title">Xác nhận xóa</div>
+            <div class="ptm-confirm-msg">
+                Xóa bản ghi:<br />
+                <strong>"@Truncate(_deleteTarget.TestProtocol ?? _deleteTarget.ProtocolName, 60)"</strong><br />
+                <span style="color:#e53935;font-size:12px;">Hành động này không thể hoàn tác.</span>
+            </div>
+            <div class="ptm-confirm-btns">
+                <button class="ptm-btn-cancel" @onclick="() => _deleteTarget = null">Hủy</button>
+                <button class="ptm-btn-delete" @onclick="DeleteAsync" disabled="@_saving">
+                    @if (_saving) { <span>Đang xóa...</span> } else { <span>Xóa</span> }
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private bool   _loading = true;
+    private bool   _saving  = false;
+    private string _modalError = "";
+    private List<TestMasterItem> _items = new();
+
+    private string _filterCategory    = "";
+    private string _filterProductType = "";
+    private string _filterMarket      = "";
+    private string _filterActive      = "all";
+    private string _searchText        = "";
+
+    private readonly List<string> _categories   = new() { "Packaging Test","Product test","Moisture content test","Adhessive test" };
+    private readonly List<string> _productTypes = new() { "All","Seating","Table","Bed","Wood" };
+    private readonly List<string> _markets      = new() { "All","Europe","US" };
+
+    private bool  _showModal  = false;
+    private int?  _editId     = null;
+    private FormModel _form   = new();
+    private TestMasterItem? _deleteTarget = null;
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        try
+        {
+            await SetAuthHeader();
+            var result = await Http.GetFromJsonAsync<List<TestMasterItem>>(
+                "api/performance-test-master?activeOnly=false",
+                new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+            _items = result ?? new();
+        }
+        catch (Exception ex) { Console.WriteLine($"[PTM] Load: {ex.Message}"); }
+        finally { _loading = false; }
+    }
+
+    private List<TestMasterItem> FilteredItems()
+    {
+        var q = _items.AsEnumerable();
+        if (!string.IsNullOrEmpty(_filterCategory))    q = q.Where(x => x.Category    == _filterCategory);
+        if (!string.IsNullOrEmpty(_filterProductType)) q = q.Where(x => x.ProductType == _filterProductType);
+        if (!string.IsNullOrEmpty(_filterMarket))      q = q.Where(x => x.Market      == _filterMarket);
+        if (_filterActive == "active")   q = q.Where(x => x.IsActive);
+        if (_filterActive == "inactive") q = q.Where(x => !x.IsActive);
+        if (!string.IsNullOrEmpty(_searchText))
+        {
+            var s = _searchText.ToLower();
+            q = q.Where(x =>
+                x.ProtocolName.ToLower().Contains(s) ||
+                (x.StandardCode?.ToLower().Contains(s) ?? false) ||
+                (x.TestProtocol?.ToLower().Contains(s) ?? false));
+        }
+        return q.OrderBy(x => x.SortOrder).ThenBy(x => x.Id).ToList();
+    }
+
+    private void OpenCreate()
+    {
+        _editId = null;
+        _form   = new FormModel { IsActive = true, ProductType = "All", Market = "All" };
+        _modalError = "";
+        _showModal  = true;
+    }
+
+    private void OpenEdit(TestMasterItem item)
+    {
+        _editId = item.Id;
+        _form = new FormModel
+        {
+            Category     = item.Category,
+            ProtocolName = item.ProtocolName,
+            StandardCode = item.StandardCode,
+            ProductType  = item.ProductType,
+            Market       = item.Market,
+            TestProtocol = item.TestProtocol,
+            Procedure    = item.Procedure,
+            Requirements = item.Requirements,
+            SortOrder    = item.SortOrder,
+            IsActive     = item.IsActive,
+        };
+        _modalError = "";
+        _showModal  = true;
+    }
+
+    private void CloseModal() { _showModal = false; _modalError = ""; }
+
+    private async Task SaveAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_form.Category) || string.IsNullOrWhiteSpace(_form.ProtocolName))
+        { _modalError = "Vui lòng nhập Category và Protocol Name."; return; }
+
+        _saving = true; _modalError = "";
+        try
+        {
+            await SetAuthHeader();
+            var payload = new {
+                _form.Category, _form.ProtocolName, _form.StandardCode,
+                _form.ProductType, _form.Market,
+                _form.TestProtocol, _form.Procedure, _form.Requirements,
+                _form.SortOrder, _form.IsActive
+            };
+            HttpResponseMessage resp = _editId == null
+                ? await Http.PostAsJsonAsync("api/performance-test-master", payload)
+                : await Http.PutAsJsonAsync($"api/performance-test-master/{_editId}", payload);
+
+            if (resp.IsSuccessStatusCode) { _showModal = false; await LoadAsync(); }
+            else _modalError = $"Lỗi {resp.StatusCode}: {await resp.Content.ReadAsStringAsync()}";
+        }
+        catch (Exception ex) { _modalError = ex.Message; }
+        finally { _saving = false; }
+    }
+
+    private void ConfirmDelete(TestMasterItem item) => _deleteTarget = item;
+
+    private async Task DeleteAsync()
+    {
+        if (_deleteTarget == null) return;
+        _saving = true;
+        try
+        {
+            await SetAuthHeader();
+            var resp = await Http.DeleteAsync($"api/performance-test-master/{_deleteTarget.Id}");
+            if (resp.IsSuccessStatusCode) { _deleteTarget = null; await LoadAsync(); }
+        }
+        catch (Exception ex) { Console.WriteLine($"[PTM] Delete: {ex.Message}"); }
+        finally { _saving = false; }
+    }
+
+    private async Task ToggleActive(TestMasterItem item)
+    {
+        try
+        {
+            await SetAuthHeader();
+            var resp = await Http.PatchAsync($"api/performance-test-master/{item.Id}/toggle-active", null);
+            if (resp.IsSuccessStatusCode) item.IsActive = !item.IsActive;
+        }
+        catch { }
+    }
+
+    private async Task SetAuthHeader()
+    {
+        var token = await SessionStorage.GetItemAsync<string>("auth_token");
+        if (!string.IsNullOrEmpty(token))
+            Http.DefaultRequestHeaders.Authorization =
+                new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+    }
+
+    private static string Truncate(string? s, int max) =>
+        string.IsNullOrEmpty(s) ? "" : s.Length <= max ? s : s[..max] + "…";
+    private static string Slug(string s) => s.ToLower().Replace(" ", "").Replace("/","");
+
+    private class TestMasterItem
+    {
+        public int     Id           { get; set; }
+        public string  Category     { get; set; } = "";
+        public string  ProtocolName { get; set; } = "";
+        public string  StandardCode { get; set; } = "";
+        public string  ProductType  { get; set; } = "All";
+        public string  Market       { get; set; } = "All";
+        public string? TestProtocol { get; set; }
+        public string? Procedure    { get; set; }
+        public string? Requirements { get; set; }
+        public int     SortOrder    { get; set; }
+        public bool    IsActive     { get; set; }
+    }
+
+    private class FormModel
+    {
+        public string  Category     { get; set; } = "";
+        public string  ProtocolName { get; set; } = "";
+        public string? StandardCode { get; set; }
+        public string  ProductType  { get; set; } = "All";
+        public string  Market       { get; set; } = "All";
+        public string? TestProtocol { get; set; }
+        public string? Procedure    { get; set; }
+        public string? Requirements { get; set; }
+        public int     SortOrder    { get; set; } = 0;
+        public bool    IsActive     { get; set; } = true;
+    }
+}
+
+<style>
+    .ptm-page {
+        font-family: 'SF Pro Display', -apple-system, 'Segoe UI', sans-serif;
+        background: #f0f3f8; min-height: 100vh; padding: 24px 20px 48px;
+    }
+    .ptm-header {
+        display: flex; align-items: center; justify-content: space-between;
+        background: white; border-radius: 14px; padding: 18px 24px;
+        box-shadow: 0 2px 10px rgba(0,0,0,.07); margin-bottom: 16px;
+    }
+    .ptm-header-left { display: flex; align-items: center; gap: 14px; }
+    .ptm-title { font-size: 18px; font-weight: 800; color: #1a1a2e; }
+    .ptm-subtitle { font-size: 12px; color: #aaa; margin-top: 2px; }
+    .ptm-add-btn {
+        display: inline-flex; align-items: center; gap: 7px;
+        background: linear-gradient(135deg,#2D7DD2,#1a5fa8); color: white;
+        border: none; border-radius: 10px; padding: 10px 20px;
+        font-size: 14px; font-weight: 700; cursor: pointer; transition: all .2s;
+        box-shadow: 0 3px 10px rgba(45,125,210,.35);
+    }
+    .ptm-add-btn:hover { box-shadow: 0 5px 16px rgba(45,125,210,.45); transform: translateY(-1px); }
+
+    .ptm-filters {
+        display: flex; flex-wrap: wrap; gap: 12px;
+        background: white; border-radius: 12px; padding: 14px 20px;
+        box-shadow: 0 2px 8px rgba(0,0,0,.06); margin-bottom: 16px;
+    }
+    .ptm-filter-group { display: flex; flex-direction: column; gap: 4px; }
+    .ptm-filter-label { font-size: 11px; font-weight: 600; color: #999; text-transform: uppercase; letter-spacing: .05em; }
+    .ptm-select, .ptm-search {
+        border: 1.5px solid #e4eaf4; border-radius: 8px; padding: 7px 10px;
+        font-size: 13px; color: #333; background: #fafbfe; outline: none;
+        transition: border .2s; min-width: 130px;
+    }
+    .ptm-search { min-width: 220px; }
+    .ptm-select:focus, .ptm-search:focus { border-color: #2D7DD2; }
+    .ptm-search-group { flex: 1; }
+
+    .ptm-table-wrap { background: white; border-radius: 14px; box-shadow: 0 2px 10px rgba(0,0,0,.07); overflow-x: auto; }
+    .ptm-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .ptm-table thead tr { background: #f5f8fc; border-bottom: 2px solid #e4eaf4; }
+    .ptm-table th {
+        padding: 12px 12px; text-align: left;
+        font-size: 11px; font-weight: 700; color: #7a8fad;
+        text-transform: uppercase; letter-spacing: .05em; white-space: nowrap;
+    }
+    .ptm-table tbody tr { border-bottom: 1px solid #f0f3f8; transition: background .15s; }
+    .ptm-table tbody tr:hover { background: #f7fafd; }
+    .ptm-table tbody tr:last-child { border-bottom: none; }
+    .ptm-table td { padding: 10px 12px; vertical-align: top; }
+    .row-inactive { opacity: .45; }
+
+    .th-no,.td-no         { width: 44px; color: #b0bdd4; font-weight: 600; vertical-align: middle !important; }
+    .th-category,.td-category { width: 140px; vertical-align: middle !important; }
+    .th-std,.td-std       { width: 160px; }
+    .th-type,.td-type     { width: 90px; vertical-align: middle !important; }
+    .th-market,.td-market { width: 80px; vertical-align: middle !important; }
+    .th-status,.td-status { width: 90px; vertical-align: middle !important; }
+    .th-action,.td-action { width: 72px; vertical-align: middle !important; }
+    .th-protocol,.td-protocol,.th-testprot,.td-testprot,.th-req,.td-req { max-width: 200px; }
+
+    .ptm-cat-badge { display: inline-block; font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 6px; white-space: nowrap; }
+    .cat-packagingtest       { background: #fff3e0; color: #e65100; }
+    .cat-producttest         { background: #e3f2fd; color: #1565c0; }
+    .cat-moisturecontenttest { background: #e8f5e9; color: #2e7d32; }
+    .cat-adhessivetest       { background: #f3e5f5; color: #6a1b9a; }
+
+    .ptm-std-chip { display: inline-block; font-size: 11px; font-weight: 600; background: #eef3fb; color: #2D7DD2; padding: 2px 8px; border-radius: 5px; }
+    .ptm-type-badge { display: inline-block; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 5px; background: #f5f5f5; color: #666; }
+    .type-seating { background: #e8eaf6; color: #3949ab; }
+    .type-table   { background: #e0f7fa; color: #00838f; }
+    .type-bed     { background: #fce4ec; color: #c62828; }
+    .type-wood    { background: #fff8e1; color: #f57f17; }
+    .type-all     { background: #f5f5f5; color: #757575; }
+    .ptm-market-badge { display: inline-block; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 5px; }
+    .market-europe { background: #e8f5e9; color: #2e7d32; }
+    .market-us     { background: #fff3e0; color: #e65100; }
+    .market-all    { background: #f5f5f5; color: #757575; }
+    .ptm-na { color: #ccc; }
+    .ptm-tp-text,.ptm-req-text { font-size: 12px; color: #555; line-height: 1.45; display: block; }
+
+    .ptm-toggle {
+        display: inline-block; font-size: 11px; font-weight: 700;
+        padding: 4px 10px; border-radius: 20px; border: none; cursor: pointer; transition: all .15s;
+    }
+    .tog-on  { background: #e8f5e9; color: #2e7d32; }
+    .tog-on:hover  { background: #c8e6c9; }
+    .tog-off { background: #f5f5f5; color: #9e9e9e; }
+    .tog-off:hover { background: #e0e0e0; }
+
+    .ptm-btn-edit,.ptm-btn-del {
+        display: inline-flex; align-items: center; justify-content: center;
+        width: 30px; height: 30px; border-radius: 7px; border: none; cursor: pointer; transition: all .15s;
+    }
+    .ptm-btn-edit { background: #e3f2fd; color: #1565c0; margin-right: 4px; }
+    .ptm-btn-edit:hover { background: #bbdefb; }
+    .ptm-btn-del  { background: #fce4ec; color: #c62828; }
+    .ptm-btn-del:hover  { background: #f8bbd9; }
+
+    .ptm-count { text-align: right; font-size: 12px; color: #aaa; padding: 10px 16px; }
+    .ptm-loading { display: flex; align-items: center; justify-content: center; gap: 12px; padding: 60px; color: #888; font-size: 14px; }
+    .ptm-spinner { width: 32px; height: 32px; border: 3px solid #dde6f4; border-top-color: #2D7DD2; border-radius: 50%; animation: ptm-spin .7s linear infinite; }
+    .ptm-spinner-sm { width: 14px; height: 14px; border: 2px solid rgba(255,255,255,.4); border-top-color: white; border-radius: 50%; animation: ptm-spin .7s linear infinite; }
+    @@keyframes ptm-spin { to { transform: rotate(360deg); } }
+    .ptm-empty { display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 60px; color: #bbb; font-size: 14px; background: white; border-radius: 14px; }
+
+    .ptm-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.45); display: flex; align-items: center; justify-content: center; z-index: 1000; padding: 16px; }
+    .ptm-modal { background: white; border-radius: 16px; width: 100%; max-width: 640px; box-shadow: 0 20px 60px rgba(0,0,0,.2); display: flex; flex-direction: column; max-height: 92vh; }
+    .ptm-modal-header { display: flex; align-items: center; justify-content: space-between; padding: 18px 22px 14px; border-bottom: 1px solid #f0f3f8; }
+    .ptm-modal-title { font-size: 16px; font-weight: 800; color: #1a1a2e; }
+    .ptm-modal-close { background: none; border: none; cursor: pointer; color: #aaa; padding: 4px; border-radius: 6px; transition: color .15s; }
+    .ptm-modal-close:hover { color: #333; }
+    .ptm-modal-body { padding: 18px 22px; overflow-y: auto; flex: 1; display: flex; flex-direction: column; gap: 13px; }
+    .ptm-modal-error { background: #fce4ec; color: #c62828; padding: 10px 14px; border-radius: 8px; font-size: 13px; }
+
+    .ptm-form-row { display: flex; gap: 14px; }
+    .ptm-form-row > * { flex: 1; }
+    .ptm-form-row-3 > * { flex: 1; }
+    .ptm-form-group { display: flex; flex-direction: column; gap: 5px; }
+    .ptm-label { font-size: 12px; font-weight: 600; color: #666; }
+    .ptm-label .req { color: #e53935; }
+    .ptm-input,.ptm-textarea {
+        border: 1.5px solid #e4eaf4; border-radius: 8px; padding: 8px 11px;
+        font-size: 13px; color: #333; background: #fafbfe; outline: none;
+        transition: border .2s; font-family: inherit;
+    }
+    .ptm-input:focus,.ptm-textarea:focus { border-color: #2D7DD2; }
+    .ptm-textarea { resize: vertical; min-height: 80px; }
+    .ptm-form-check { flex-direction: row !important; align-items: center; gap: 8px; }
+    .ptm-form-check label { font-size: 13px; color: #444; cursor: pointer; }
+    .ptm-modal-footer { display: flex; align-items: center; justify-content: flex-end; gap: 10px; padding: 14px 22px; border-top: 1px solid #f0f3f8; }
+
+    .ptm-btn-cancel { padding: 9px 20px; border-radius: 9px; border: 1.5px solid #e4eaf4; background: white; font-size: 13px; font-weight: 600; color: #666; cursor: pointer; transition: all .15s; }
+    .ptm-btn-cancel:hover { border-color: #bbb; color: #333; }
+    .ptm-btn-cancel:disabled { opacity: .5; cursor: not-allowed; }
+    .ptm-btn-save { display: inline-flex; align-items: center; gap: 6px; padding: 9px 22px; border-radius: 9px; border: none; background: linear-gradient(135deg,#2D7DD2,#1a5fa8); color: white; font-size: 13px; font-weight: 700; cursor: pointer; transition: all .2s; box-shadow: 0 3px 10px rgba(45,125,210,.3); }
+    .ptm-btn-save:hover { box-shadow: 0 5px 14px rgba(45,125,210,.4); }
+    .ptm-btn-save:disabled { opacity: .6; cursor: not-allowed; }
+
+    .ptm-confirm-modal { background: white; border-radius: 16px; width: 100%; max-width: 380px; padding: 32px 28px 24px; text-align: center; box-shadow: 0 20px 60px rgba(0,0,0,.2); }
+    .ptm-confirm-icon { margin-bottom: 14px; }
+    .ptm-confirm-title { font-size: 18px; font-weight: 800; color: #1a1a2e; margin-bottom: 10px; }
+    .ptm-confirm-msg { font-size: 14px; color: #555; line-height: 1.6; margin-bottom: 22px; }
+    .ptm-confirm-btns { display: flex; gap: 10px; justify-content: center; }
+    .ptm-btn-delete { padding: 9px 28px; border-radius: 9px; border: none; background: linear-gradient(135deg,#e53935,#b71c1c); color: white; font-size: 14px; font-weight: 700; cursor: pointer; transition: all .2s; box-shadow: 0 3px 10px rgba(229,57,53,.3); }
+    .ptm-btn-delete:hover { box-shadow: 0 5px 14px rgba(229,57,53,.4); }
+    .ptm-btn-delete:disabled { opacity: .6; cursor: not-allowed; }
+
+    @@media (max-width: 640px) {
+        .ptm-form-row { flex-direction: column; }
+        .ptm-header { flex-direction: column; gap: 12px; align-items: flex-start; }
+    }
+</style>

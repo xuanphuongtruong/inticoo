@@ -292,7 +292,7 @@
                                 }
                                 else
                                 {
-                                    <span class="iss-result-badge res-na">@job.OverallResult?.ToUpper()</span>
+                                    <span class="iss-result-badge res-na">@job.FinalResult?.ToUpper()</span>
                                 }
                             </div>
                         </div>
@@ -596,6 +596,7 @@
         public DateTime CreatedAt       { get; set; }
         public DateTime? CompletedAt    { get; set; }
         public string?   OverallResult  { get; set; }
+        public string?   FinalResult    { get; set; }
         public string?   ReportUrl      { get; set; }
     }
 
@@ -810,6 +811,7 @@
         CreatedAt       = i.CreatedAt,
         CompletedAt     = i.CompletedAt,
         OverallResult   = null,
+        FinalResult     = i.FinalResult,
         ReportUrl       = null,
         PoNumber        = i.PoNumber,
     };
@@ -976,6 +978,7 @@
         public string?   InspectorName   { get; set; }
         public string?   InspectorId     { get; set; }
         public string?   PoNumber        { get; set; }
+        public string?   FinalResult     { get; set; }
         public DateTime? InspectionDate  { get; set; }
         public DateTime  CreatedAt       { get; set; }
         public DateTime? CompletedAt     { get; set; }
@@ -1051,7 +1054,7 @@
 
     /* Monthly grid */
     .iss-month-header {
-        display: flex; justify-content: space-between; align-items: baseline;
+        display: flex; justify-content: flex-start; align-items: baseline; gap: 8px;
         margin-bottom: 8px;
     }
     .iss-month-title { font-size: 11px; font-weight: 700; color: #666; text-transform: uppercase; letter-spacing: .06em; }
