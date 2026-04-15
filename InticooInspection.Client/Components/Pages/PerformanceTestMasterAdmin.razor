@@ -16,12 +16,12 @@
             </svg>
             <div>
                 <div class="ptm-title">Performance Test Master</div>
-                <div class="ptm-subtitle">Quản lý danh sách tiêu chuẩn kiểm tra · @_items.Count bản ghi</div>
+                <div class="ptm-subtitle">Manage test standard list · @_items.Count records</div>
             </div>
         </div>
         <button class="ptm-add-btn" @onclick="OpenCreate">
             <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M10 4v12M4 10h12"/></svg>
-            Thêm mới
+            + Add New
         </button>
     </div>
 
@@ -30,34 +30,20 @@
         <div class="ptm-filter-group">
             <label class="ptm-filter-label">Category</label>
             <select class="ptm-select" @bind="_filterCategory">
-                <option value="">Tất cả</option>
+                <option value="">All</option>
                 @foreach (var c in _categories) { <option value="@c">@c</option> }
             </select>
         </div>
         <div class="ptm-filter-group">
-            <label class="ptm-filter-label">Product Type</label>
-            <select class="ptm-select" @bind="_filterProductType">
-                <option value="">Tất cả</option>
-                @foreach (var p in _productTypes) { <option value="@p">@p</option> }
-            </select>
-        </div>
-        <div class="ptm-filter-group">
-            <label class="ptm-filter-label">Market</label>
-            <select class="ptm-select" @bind="_filterMarket">
-                <option value="">Tất cả</option>
-                @foreach (var m in _markets) { <option value="@m">@m</option> }
-            </select>
-        </div>
-        <div class="ptm-filter-group">
-            <label class="ptm-filter-label">Trạng thái</label>
+            <label class="ptm-filter-label">Status</label>
             <select class="ptm-select" @bind="_filterActive">
-                <option value="all">Tất cả</option>
-                <option value="active">Đang dùng</option>
-                <option value="inactive">Ẩn</option>
+                <option value="all">All</option>
+                <option value="active">Active</option>
+                <option value="inactive">Inactive</option>
             </select>
         </div>
         <div class="ptm-filter-group ptm-search-group">
-            <label class="ptm-filter-label">Tìm kiếm</label>
+            <label class="ptm-filter-label">Search</label>
             <input class="ptm-search" placeholder="Protocol / Standard / Test..." @bind="_searchText" @bind:event="oninput" />
         </div>
     </div>
@@ -65,7 +51,7 @@
     <!-- ═══════ TABLE ═══════ -->
     @if (_loading)
     {
-        <div class="ptm-loading"><div class="ptm-spinner"></div><span>Đang tải...</span></div>
+        <div class="ptm-loading"><div class="ptm-spinner"></div><span>Loading...</span></div>
     }
     else if (!FilteredItems().Any())
     {
@@ -73,7 +59,7 @@
             <svg width="48" height="48" viewBox="0 0 48 48" fill="none" stroke="#ccc" stroke-width="1.5">
                 <rect x="8" y="10" width="32" height="32" rx="4"/><path d="M16 10V6M32 10V6M8 22h32" stroke-linecap="round"/><circle cx="24" cy="32" r="4"/>
             </svg>
-            <p>Không có dữ liệu</p>
+            <p>No data found</p>
         </div>
     }
     else
@@ -85,9 +71,6 @@
                         <th class="th-no">#</th>
                         <th class="th-category">Category</th>
                         <th class="th-protocol">Protocol Name</th>
-                        <th class="th-std">Standard Code</th>
-                        <th class="th-type">Type</th>
-                        <th class="th-market">Market</th>
                         <th class="th-testprot">Test Protocol</th>
                         <th class="th-req">Requirements</th>
                         <th class="th-status">Status</th>
@@ -103,17 +86,6 @@
                                 <span class="ptm-cat-badge cat-@Slug(item.Category)">@item.Category</span>
                             </td>
                             <td class="td-protocol" title="@item.ProtocolName">@Truncate(item.ProtocolName, 50)</td>
-                            <td class="td-std">
-                                @if (!string.IsNullOrEmpty(item.StandardCode))
-                                { <span class="ptm-std-chip">@item.StandardCode</span> }
-                                else { <span class="ptm-na">—</span> }
-                            </td>
-                            <td class="td-type">
-                                <span class="ptm-type-badge type-@item.ProductType.ToLower()">@item.ProductType</span>
-                            </td>
-                            <td class="td-market">
-                                <span class="ptm-market-badge market-@item.Market.ToLower()">@item.Market</span>
-                            </td>
                             <td class="td-testprot" title="@item.TestProtocol">
                                 @if (!string.IsNullOrEmpty(item.TestProtocol))
                                 { <span class="ptm-tp-text">@Truncate(item.TestProtocol, 55)</span> }
@@ -131,10 +103,10 @@
                                 </button>
                             </td>
                             <td class="td-action">
-                                <button class="ptm-btn-edit" @onclick="() => OpenEdit(item)" title="Sửa">
+                                <button class="ptm-btn-edit" @onclick="() => OpenEdit(item)" title="Edit">
                                     <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M11 4l5 5-9 9H2v-5L11 4z"/></svg>
                                 </button>
-                                <button class="ptm-btn-del" @onclick="() => ConfirmDelete(item)" title="Xóa">
+                                <button class="ptm-btn-del" @onclick="() => ConfirmDelete(item)" title="Delete">
                                     <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 6h14M8 6V4h4v2M6 6l1 12h6l1-12"/></svg>
                                 </button>
                             </td>
@@ -143,7 +115,7 @@
                 </tbody>
             </table>
         </div>
-        <div class="ptm-count">Hiển thị @FilteredItems().Count / @_items.Count bản ghi</div>
+        <div class="ptm-count">Showing @FilteredItems().Count / @_items.Count records</div>
     }
 </div>
 
@@ -153,7 +125,7 @@
     <div class="ptm-overlay" @onclick="CloseModal">
         <div class="ptm-modal" @onclick:stopPropagation="true">
             <div class="ptm-modal-header">
-                <span class="ptm-modal-title">@(_editId == null ? "Thêm mới" : "Chỉnh sửa") Test Protocol</span>
+                <span class="ptm-modal-title">@(_editId == null ? "+ Add New" : "Edit") Test Protocol</span>
                 <button class="ptm-modal-close" @onclick="CloseModal">
                     <svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M5 5l10 10M15 5L5 15"/></svg>
                 </button>
@@ -163,87 +135,61 @@
                 @if (!string.IsNullOrEmpty(_modalError))
                 { <div class="ptm-modal-error">@_modalError</div> }
 
-                <!-- Row 1: Category + Standard Code -->
-                <div class="ptm-form-row">
-                    <div class="ptm-form-group">
-                        <label class="ptm-label">Category <span class="req">*</span></label>
-                        <select class="ptm-input" @bind="_form.Category">
-                            <option value="">-- Chọn --</option>
-                            @foreach (var c in _categories) { <option value="@c">@c</option> }
-                        </select>
-                    </div>
-                    <div class="ptm-form-group">
-                        <label class="ptm-label">Standard Code</label>
-                        <input class="ptm-input" placeholder="ISTA 1A / EN581-1..." @bind="_form.StandardCode" />
-                    </div>
+                <!-- Category -->
+                <div class="ptm-form-group">
+                    <label class="ptm-label">Category <span class="req">*</span></label>
+                    <select class="ptm-input" @bind="_form.Category">
+                        <option value="">-- Select --</option>
+                        @foreach (var c in _categories) { <option value="@c">@c</option> }
+                    </select>
                 </div>
 
                 <!-- Protocol Name -->
                 <div class="ptm-form-group">
                     <label class="ptm-label">Protocol Name <span class="req">*</span></label>
-                    <input class="ptm-input" placeholder="Tên đầy đủ: EN581-1 & EN581-2:2015 (Outdoor Seating for Europe market)" @bind="_form.ProtocolName" />
+                    <input class="ptm-input" placeholder="Full name: EN581-1 & EN581-2:2015 (Outdoor Seating for Europe market)" @bind="_form.ProtocolName" />
                 </div>
 
-                <!-- Row 2: ProductType + Market + SortOrder -->
-                <div class="ptm-form-row ptm-form-row-3">
-                    <div class="ptm-form-group">
-                        <label class="ptm-label">Product Type</label>
-                        <select class="ptm-input" @bind="_form.ProductType">
-                            <option value="All">All</option>
-                            <option value="Seating">Seating</option>
-                            <option value="Table">Table</option>
-                            <option value="Bed">Bed</option>
-                            <option value="Wood">Wood</option>
-                        </select>
-                    </div>
-                    <div class="ptm-form-group">
-                        <label class="ptm-label">Market</label>
-                        <select class="ptm-input" @bind="_form.Market">
-                            <option value="All">All</option>
-                            <option value="Europe">Europe</option>
-                            <option value="US">US</option>
-                        </select>
-                    </div>
-                    <div class="ptm-form-group">
-                        <label class="ptm-label">Sort Order</label>
-                        <input class="ptm-input" type="number" min="0" @bind="_form.SortOrder" />
-                    </div>
+                <!-- Sort Order -->
+                <div class="ptm-form-group" style="max-width:160px">
+                    <label class="ptm-label">Sort Order</label>
+                    <input class="ptm-input" type="number" min="0" @bind="_form.SortOrder" />
                 </div>
 
                 <!-- Test Protocol (tên/mô tả bước) -->
                 <div class="ptm-form-group">
-                    <label class="ptm-label">Test Protocol (Tên bước kiểm tra)</label>
-                    <input class="ptm-input" placeholder="VD: 1. General Safety Requirements. / 2. Seat and back static load test..." @bind="_form.TestProtocol" />
+                    <label class="ptm-label">Test Protocol (Step name)</label>
+                    <input class="ptm-input" placeholder="E.g.: 1. General Safety Requirements. / 2. Seat and back static load test..." @bind="_form.TestProtocol" />
                 </div>
 
                 <!-- Procedure -->
                 <div class="ptm-form-group">
-                    <label class="ptm-label">Test Procedure (Quy trình thực hiện)</label>
-                    <textarea class="ptm-textarea" rows="5" placeholder="Mô tả chi tiết từng bước thực hiện..." @bind="_form.Procedure"></textarea>
+                    <label class="ptm-label">Test Procedure</label>
+                    <textarea class="ptm-textarea" rows="5" placeholder="Describe step-by-step procedure..." @bind="_form.Procedure"></textarea>
                 </div>
 
                 <!-- Requirements -->
                 <div class="ptm-form-group">
-                    <label class="ptm-label">Requirements (Tiêu chí đạt)</label>
-                    <textarea class="ptm-textarea" rows="2" placeholder="VD: No product damage is allowed. / Must meet all." @bind="_form.Requirements"></textarea>
+                    <label class="ptm-label">Requirements</label>
+                    <textarea class="ptm-textarea" rows="2" placeholder="E.g.: No product damage is allowed. / Must meet all." @bind="_form.Requirements"></textarea>
                 </div>
 
                 <!-- Active -->
                 <div class="ptm-form-group ptm-form-check">
                     <input type="checkbox" id="chk-active" @bind="_form.IsActive" />
-                    <label for="chk-active">Đang sử dụng (Active)</label>
+                    <label for="chk-active">Active</label>
                 </div>
             </div>
 
             <div class="ptm-modal-footer">
-                <button class="ptm-btn-cancel" @onclick="CloseModal" disabled="@_saving">Hủy</button>
+                <button class="ptm-btn-cancel" @onclick="CloseModal" disabled="@_saving">Cancel</button>
                 <button class="ptm-btn-save" @onclick="SaveAsync" disabled="@_saving">
                     @if (_saving)
-                    { <div class="ptm-spinner-sm"></div><span>Đang lưu...</span> }
+                    { <div class="ptm-spinner-sm"></div><span>Saving...</span> }
                     else
                     {
                         <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M4 10l5 5 7-8"/></svg>
-                        <span>@(_editId == null ? "Thêm mới" : "Cập nhật")</span>
+                        <span>@(_editId == null ? "+ Add New" : "Cập nhật")</span>
                     }
                 </button>
             </div>
@@ -261,16 +207,16 @@
                     <circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/>
                 </svg>
             </div>
-            <div class="ptm-confirm-title">Xác nhận xóa</div>
+            <div class="ptm-confirm-title">Confirm Delete</div>
             <div class="ptm-confirm-msg">
-                Xóa bản ghi:<br />
+                Delete record:<br />
                 <strong>"@Truncate(_deleteTarget.TestProtocol ?? _deleteTarget.ProtocolName, 60)"</strong><br />
-                <span style="color:#e53935;font-size:12px;">Hành động này không thể hoàn tác.</span>
+                <span style="color:#e53935;font-size:12px;">This action cannot be undone.</span>
             </div>
             <div class="ptm-confirm-btns">
-                <button class="ptm-btn-cancel" @onclick="() => _deleteTarget = null">Hủy</button>
+                <button class="ptm-btn-cancel" @onclick="() => _deleteTarget = null">Cancel</button>
                 <button class="ptm-btn-delete" @onclick="DeleteAsync" disabled="@_saving">
-                    @if (_saving) { <span>Đang xóa...</span> } else { <span>Xóa</span> }
+                    @if (_saving) { <span>Deleting...</span> } else { <span>Delete</span> }
                 </button>
             </div>
         </div>
@@ -283,32 +229,30 @@
     private string _modalError = "";
     private List<TestMasterItem> _items = new();
 
-    private string _filterCategory    = "";
-    private string _filterProductType = "";
-    private string _filterMarket      = "";
-    private string _filterActive      = "all";
+    private string _filterCategory = "";
+    private string _filterActive    = "all";
     private string _searchText        = "";
 
-    private readonly List<string> _categories   = new() { "Packaging Test","Product test","Moisture content test","Adhessive test" };
-    private readonly List<string> _productTypes = new() { "All","Seating","Table","Bed","Wood" };
-    private readonly List<string> _markets      = new() { "All","Europe","US" };
+    private readonly List<string> _categories = new() { "Packaging Test","Product test","Moisture content test","Adhessive test" };
 
     private bool  _showModal  = false;
     private int?  _editId     = null;
     private FormModel _form   = new();
     private TestMasterItem? _deleteTarget = null;
 
-    protected override async Task OnInitializedAsync() => await LoadAsync();
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender) { await LoadAsync(); StateHasChanged(); }
+    }
 
     private async Task LoadAsync()
     {
         _loading = true;
         try
         {
-            await SetAuthHeader();
+            var opts = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
             var result = await Http.GetFromJsonAsync<List<TestMasterItem>>(
-                "api/performance-test-master?activeOnly=false",
-                new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                "api/performance-test-master?activeOnly=false", opts);
             _items = result ?? new();
         }
         catch (Exception ex) { Console.WriteLine($"[PTM] Load: {ex.Message}"); }
@@ -318,9 +262,7 @@
     private List<TestMasterItem> FilteredItems()
     {
         var q = _items.AsEnumerable();
-        if (!string.IsNullOrEmpty(_filterCategory))    q = q.Where(x => x.Category    == _filterCategory);
-        if (!string.IsNullOrEmpty(_filterProductType)) q = q.Where(x => x.ProductType == _filterProductType);
-        if (!string.IsNullOrEmpty(_filterMarket))      q = q.Where(x => x.Market      == _filterMarket);
+        if (!string.IsNullOrEmpty(_filterCategory)) q = q.Where(x => x.Category == _filterCategory);
         if (_filterActive == "active")   q = q.Where(x => x.IsActive);
         if (_filterActive == "inactive") q = q.Where(x => !x.IsActive);
         if (!string.IsNullOrEmpty(_searchText))
@@ -328,7 +270,6 @@
             var s = _searchText.ToLower();
             q = q.Where(x =>
                 x.ProtocolName.ToLower().Contains(s) ||
-                (x.StandardCode?.ToLower().Contains(s) ?? false) ||
                 (x.TestProtocol?.ToLower().Contains(s) ?? false));
         }
         return q.OrderBy(x => x.SortOrder).ThenBy(x => x.Id).ToList();
@@ -337,7 +278,7 @@
     private void OpenCreate()
     {
         _editId = null;
-        _form   = new FormModel { IsActive = true, ProductType = "All", Market = "All" };
+        _form   = new FormModel { IsActive = true };
         _modalError = "";
         _showModal  = true;
     }
@@ -349,9 +290,6 @@
         {
             Category     = item.Category,
             ProtocolName = item.ProtocolName,
-            StandardCode = item.StandardCode,
-            ProductType  = item.ProductType,
-            Market       = item.Market,
             TestProtocol = item.TestProtocol,
             Procedure    = item.Procedure,
             Requirements = item.Requirements,
@@ -367,24 +305,41 @@
     private async Task SaveAsync()
     {
         if (string.IsNullOrWhiteSpace(_form.Category) || string.IsNullOrWhiteSpace(_form.ProtocolName))
-        { _modalError = "Vui lòng nhập Category và Protocol Name."; return; }
+        { _modalError = "Please enter Category and Protocol Name."; return; }
 
         _saving = true; _modalError = "";
         try
         {
-            await SetAuthHeader();
-            var payload = new {
-                _form.Category, _form.ProtocolName, _form.StandardCode,
-                _form.ProductType, _form.Market,
-                _form.TestProtocol, _form.Procedure, _form.Requirements,
-                _form.SortOrder, _form.IsActive
-            };
-            HttpResponseMessage resp = _editId == null
-                ? await Http.PostAsJsonAsync("api/performance-test-master", payload)
-                : await Http.PutAsJsonAsync($"api/performance-test-master/{_editId}", payload);
+            var token = await SessionStorage.GetItemAsync<string>("auth_token") ?? "";
+            if (string.IsNullOrEmpty(token))
+            { _modalError = "Not authenticated. Please log in again."; _saving = false; return; }
 
+            var reqPayload = new UpsertPayload
+            {
+                Category     = _form.Category,
+                ProtocolName = _form.ProtocolName,
+                TestProtocol = _form.TestProtocol,
+                Procedure    = _form.Procedure,
+                Requirements = _form.Requirements,
+                SortOrder    = _form.SortOrder,
+                IsActive     = _form.IsActive
+            };
+
+            var json    = System.Text.Json.JsonSerializer.Serialize(reqPayload,
+                          new System.Text.Json.JsonSerializerOptions { PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase });
+            var content = new StringContent(json, System.Text.Encoding.UTF8, "application/json");
+            var url     = _editId == null ? "api/performance-test-master" : $"api/performance-test-master/{_editId}";
+            var method  = _editId == null ? HttpMethod.Post : HttpMethod.Put;
+            var msg     = new HttpRequestMessage(method, url) { Content = content };
+            msg.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+
+            var resp = await Http.SendAsync(msg);
             if (resp.IsSuccessStatusCode) { _showModal = false; await LoadAsync(); }
-            else _modalError = $"Lỗi {resp.StatusCode}: {await resp.Content.ReadAsStringAsync()}";
+            else
+            {
+                var body = await resp.Content.ReadAsStringAsync();
+                _modalError = $"Error {(int)resp.StatusCode}: {body}";
+            }
         }
         catch (Exception ex) { _modalError = ex.Message; }
         finally { _saving = false; }
@@ -398,8 +353,10 @@
         _saving = true;
         try
         {
-            await SetAuthHeader();
-            var resp = await Http.DeleteAsync($"api/performance-test-master/{_deleteTarget.Id}");
+            var token = await SessionStorage.GetItemAsync<string>("auth_token") ?? "";
+            var msg   = new HttpRequestMessage(HttpMethod.Delete, $"api/performance-test-master/{_deleteTarget.Id}");
+            msg.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+            var resp = await Http.SendAsync(msg);
             if (resp.IsSuccessStatusCode) { _deleteTarget = null; await LoadAsync(); }
         }
         catch (Exception ex) { Console.WriteLine($"[PTM] Delete: {ex.Message}"); }
@@ -410,9 +367,11 @@
     {
         try
         {
-            await SetAuthHeader();
-            var resp = await Http.PatchAsync($"api/performance-test-master/{item.Id}/toggle-active", null);
-            if (resp.IsSuccessStatusCode) item.IsActive = !item.IsActive;
+            var token = await SessionStorage.GetItemAsync<string>("auth_token") ?? "";
+            var msg   = new HttpRequestMessage(HttpMethod.Patch, $"api/performance-test-master/{item.Id}/toggle-active");
+            msg.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+            var resp = await Http.SendAsync(msg);
+            if (resp.IsSuccessStatusCode) { item.IsActive = !item.IsActive; StateHasChanged(); }
         }
         catch { }
     }
@@ -434,9 +393,17 @@
         public int     Id           { get; set; }
         public string  Category     { get; set; } = "";
         public string  ProtocolName { get; set; } = "";
-        public string  StandardCode { get; set; } = "";
-        public string  ProductType  { get; set; } = "All";
-        public string  Market       { get; set; } = "All";
+        public string? TestProtocol { get; set; }
+        public string? Procedure    { get; set; }
+        public string? Requirements { get; set; }
+        public int     SortOrder    { get; set; }
+        public bool    IsActive     { get; set; }
+    }
+
+    private class UpsertPayload
+    {
+        public string  Category     { get; set; } = "";
+        public string  ProtocolName { get; set; } = "";
         public string? TestProtocol { get; set; }
         public string? Procedure    { get; set; }
         public string? Requirements { get; set; }
@@ -448,9 +415,6 @@
     {
         public string  Category     { get; set; } = "";
         public string  ProtocolName { get; set; } = "";
-        public string? StandardCode { get; set; }
-        public string  ProductType  { get; set; } = "All";
-        public string  Market       { get; set; } = "All";
         public string? TestProtocol { get; set; }
         public string? Procedure    { get; set; }
         public string? Requirements { get; set; }
@@ -519,6 +483,7 @@
     .th-status,.td-status { width: 90px; vertical-align: middle !important; }
     .th-action,.td-action { width: 72px; vertical-align: middle !important; }
     .th-protocol,.td-protocol,.th-testprot,.td-testprot,.th-req,.td-req { max-width: 200px; }
+    .td-protocol { color: #1a1a2e; font-weight: 500; }
 
     .ptm-cat-badge { display: inline-block; font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 6px; white-space: nowrap; }
     .cat-packagingtest       { background: #fff3e0; color: #e65100; }

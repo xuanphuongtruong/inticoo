@@ -81,7 +81,6 @@
                         <th rowspan="2" class="th-y">Inspection Date</th>
                         <th rowspan="2" class="th-y">Customer Name</th>
                         <th rowspan="2" class="th-y">Category</th>
-                        <th rowspan="2" class="th-y">Product Type</th>
                         <th rowspan="2" class="th-y">Inspection Type</th>
                         <th rowspan="2" class="th-y">Vendor Name</th>
                         <th colspan="2" class="th-grp">Vendor Address</th>
@@ -114,7 +113,6 @@
                                 <td class="tc">@(it.InspectionDate.HasValue ? it.InspectionDate.Value.ToString("dd/MM/yyyy") : "—")</td>
                                 <td class="fw">@(string.IsNullOrEmpty(it.CustomerName) ? "—" : it.CustomerName)</td>
                                 <td>@(string.IsNullOrEmpty(it.ProductCategory) ? "—" : it.ProductCategory)</td>
-                                <td>@(string.IsNullOrEmpty(it.ProductType) ? "—" : it.ProductType)</td>
                                 <td class="tc">
                                     @if (!string.IsNullOrEmpty(it.InspectionType))
                                     {

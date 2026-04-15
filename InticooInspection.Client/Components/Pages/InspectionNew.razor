@@ -556,6 +556,7 @@
                         <div class="col-no">No</div>
                         <div class="col-flex">Category</div>
                         <div class="col-flex">Test Item</div>
+                        <div class="col-flex">Test Protocol</div>
                         <div class="col-flex2">Test Requirement</div>
                         <div class="col-flex">Remark</div>
                     </div>
@@ -567,6 +568,7 @@
                             <div class="col-no">@(idx + 1)</div>
                             <div class="col-flex"><input @bind="test.Category" placeholder="Category..." class="table-input" /></div>
                             <div class="col-flex"><input @bind="test.TestItem" placeholder="Test item..." class="table-input" /></div>
+                            <div class="col-flex"><input @bind="test.TestProtocol" placeholder="Protocol..." class="table-input" /></div>
                             <div class="col-flex2"><input @bind="test.TestRequirement" placeholder="Requirement..." class="table-input" /></div>
                             <div class="col-flex"><input @bind="test.Remark" placeholder="Remark..." class="table-input" /></div>
                         </div>
@@ -581,6 +583,7 @@
                         <div class="col-no">No</div>
                         <div class="col-flex">Category</div>
                         <div class="col-flex">Test Item</div>
+                        <div class="col-flex">Test Protocol</div>
                         <div class="col-flex2">Test Requirement</div>
                         <div class="col-flex">Remark</div>
                     </div>
@@ -621,6 +624,11 @@
                                         }
                                     </select>
                                 }
+                            </div>
+                            <div class="col-flex">
+                                <input @bind="test.TestProtocol"
+                                       placeholder="Protocol auto-filled..."
+                                       class="table-input" readonly />
                             </div>
                             <div class="col-flex2">
                                 <textarea @bind="test.TestRequirement"
@@ -1290,7 +1298,9 @@
     {
         PerformanceTests[idx].Category        = e.Value?.ToString() ?? "";
         PerformanceTests[idx].TestItem        = "";
+        PerformanceTests[idx].TestProtocol    = "";
         PerformanceTests[idx].TestRequirement = "";
+        PerformanceTests[idx].MasterId        = null;
     }
 
     private void OnPerfTestItemChanged(ChangeEventArgs e, int idx)
@@ -1300,6 +1310,8 @@
         var master = _perfMaster.FirstOrDefault(x =>
             x.Category     == PerformanceTests[idx].Category &&
             x.ProtocolName == selected);
+        PerformanceTests[idx].MasterId        = master?.Id;
+        PerformanceTests[idx].TestProtocol    = master?.Procedure ?? "";
         PerformanceTests[idx].TestRequirement = master?.Requirements ?? "";
     }
 
@@ -1789,8 +1801,10 @@
                     .Where(t => !string.IsNullOrWhiteSpace(t.Category) || !string.IsNullOrWhiteSpace(t.TestItem))
                     .Select(t => new
                     {
+                        masterId        = t.MasterId,
                         category        = t.Category,
                         testItem        = t.TestItem,
+                        testProtocol    = t.TestProtocol,
                         testRequirement = t.TestRequirement,
                         remark          = t.Remark
                     }).ToArray(),
@@ -1906,8 +1920,10 @@
 
     private class PerformanceTestRow
     {
+        public int?   MasterId       { get; set; }
         public string Category        { get; set; } = "";
         public string TestItem        { get; set; } = "";
+        public string TestProtocol    { get; set; } = "";
         public string TestRequirement { get; set; } = "";
         public string Remark          { get; set; } = "";
     }
@@ -1982,13 +1998,25 @@
 
     private class PerformanceTestMasterDto
     {
+        [System.Text.Json.Serialization.JsonPropertyName("id")]
         public int     Id           { get; set; }
+        [System.Text.Json.Serialization.JsonPropertyName("category")]
         public string  Category     { get; set; } = "";
+        [System.Text.Json.Serialization.JsonPropertyName("standardCode")]
         public string  StandardCode { get; set; } = "";
+        [System.Text.Json.Serialization.JsonPropertyName("productType")]
         public string  ProductType  { get; set; } = "";
+        [System.Text.Json.Serialization.JsonPropertyName("market")]
         public string  Market       { get; set; } = "";
+        [System.Text.Json.Serialization.JsonPropertyName("protocolName")]
         public string  ProtocolName { get; set; } = "";
+        [System.Text.Json.Serialization.JsonPropertyName("testProtocol")]
+        public string? TestProtocol { get; set; }
+        [System.Text.Json.Serialization.JsonPropertyName("procedure")]
+        public string? Procedure    { get; set; }
+        [System.Text.Json.Serialization.JsonPropertyName("requirements")]
         public string? Requirements { get; set; }
+        [System.Text.Json.Serialization.JsonPropertyName("sortOrder")]
         public int     SortOrder    { get; set; }
     }
 }

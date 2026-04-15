@@ -134,9 +134,9 @@ namespace InticooInspection.API.Controllers
                 var allProducts = await _db.Products
                     .Select(p => new { p.ProductName, p.ProductType })
                     .ToListAsync();
-                var productTypeDict = new Dictionary<string, string>();
+                var productTypeDict = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
                 foreach (var p in allProducts)
-                    if (!productTypeDict.ContainsKey(p.ProductName))
+                    if (p.ProductName != null && !productTypeDict.ContainsKey(p.ProductName))
                         productTypeDict[p.ProductName] = p.ProductType ?? "";
 
                 // ── Map enums → strings in-memory ──
@@ -440,8 +440,10 @@ namespace InticooInspection.API.Controllers
                 // Performance Tests
                 performanceTests = inspection.PerformanceTests.Select(t => new
                 {
+                    masterId = t.MasterId,
                     category = t.Category,
                     testItem = t.TestItem,
+                    testProtocol = t.TestProtocol,
                     testRequirement = t.TestRequirement,
                     remark = t.Remark
                 }),
@@ -652,8 +654,10 @@ namespace InticooInspection.API.Controllers
                     .Select((t, i) => new InspectionPerformanceTest
                     {
                         Order = i + 1,
+                        MasterId = t.MasterId,
                         Category = t.Category,
                         TestItem = t.TestItem,
+                        TestProtocol = t.TestProtocol,
                         TestRequirement = t.TestRequirement,
                         Remark = t.Remark
                     }).ToList(),
@@ -1161,8 +1165,10 @@ namespace InticooInspection.API.Controllers
                     .Select((t, i) => new InspectionPerformanceTest
                     {
                         Order = i + 1,
+                        MasterId = t.MasterId,
                         Category = t.Category,
                         TestItem = t.TestItem,
+                        TestProtocol = t.TestProtocol,
                         TestRequirement = t.TestRequirement,
                         Remark = t.Remark
                     }).ToList();
@@ -1480,8 +1486,10 @@ www.Inticoo.com";
 
     public class PerformanceTestRequest
     {
+        public int?    MasterId       { get; set; }
         public string? Category        { get; set; }
         public string? TestItem        { get; set; }
+        public string? TestProtocol    { get; set; }
         public string? TestRequirement { get; set; }
         public string? Remark          { get; set; }
     }

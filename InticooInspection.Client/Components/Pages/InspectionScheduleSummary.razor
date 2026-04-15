@@ -276,23 +276,30 @@
                                 <span class="iss-it-badge it-@job.InspectionType.ToLower()">@job.InspectionType</span>
                             </div>
                             <div class="iss-comp-card-right">
-                                @if (!string.IsNullOrEmpty(job.OverallResult))
+                                @{
+                                    var rawResult  = !string.IsNullOrEmpty(job.OverallResult)
+                                                     ? job.OverallResult
+                                                     : job.FinalResult ?? "";
+                                    var resultKey  = rawResult.ToLower();
+                                    var isPassed   = resultKey == "pass"   || resultKey == "passed";
+                                    var isFailed   = resultKey == "fail"   || resultKey == "failed";
+                                    var resultClass = isPassed ? "res-passed"
+                                                   : isFailed ? "res-failed"
+                                                   : "res-na";
+                                }
+                                @if (!string.IsNullOrEmpty(rawResult))
                                 {
-                                    <span class="iss-result-badge res-@job.OverallResult.ToLower()">
-                                        @if (job.OverallResult.ToLower() == "pass" || job.OverallResult.ToLower() == "passed")
+                                    <span class="iss-result-badge @resultClass">
+                                        @if (isPassed)
                                         {
                                             <svg width="11" height="11" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M4 10l5 5 7-8"/></svg>
                                         }
-                                        else
+                                        else if (isFailed)
                                         {
                                             <svg width="11" height="11" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M6 6l8 8M14 6l-8 8"/></svg>
                                         }
-                                        @job.OverallResult.ToUpper()
+                                        @rawResult.ToUpper()
                                     </span>
-                                }
-                                else
-                                {
-                                    <span class="iss-result-badge res-na">@job.FinalResult?.ToUpper()</span>
                                 }
                             </div>
                         </div>

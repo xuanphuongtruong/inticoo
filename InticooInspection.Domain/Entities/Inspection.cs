@@ -194,8 +194,10 @@ namespace InticooInspection.Domain.Entities
         public Inspection? Inspection { get; set; }
 
         public int     Order           { get; set; }
+        public int?    MasterId        { get; set; }   // FK → PerformanceTestMasters.Id
         public string? Category        { get; set; }
         public string? TestItem        { get; set; }
+        public string? TestProtocol    { get; set; }
         public string? TestRequirement { get; set; }
         public string? Remark          { get; set; }
     }

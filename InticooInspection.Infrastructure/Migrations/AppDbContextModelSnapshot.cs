@@ -686,6 +686,9 @@ namespace InticooInspection.Infrastructure.Migrations
                     b.Property<int>("InspectionId")
                         .HasColumnType("int");
 
+                    b.Property<int?>("MasterId")
+                        .HasColumnType("int");
+
                     b.Property<int>("Order")
                         .HasColumnType("int");
 
@@ -980,18 +983,8 @@ namespace InticooInspection.Infrastructure.Migrations
                     b.Property<bool>("IsActive")
                         .HasColumnType("bit");
 
-                    b.Property<string>("Market")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
-
                     b.Property<string>("Procedure")
                         .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("ProductType")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)");
 
                     b.Property<string>("ProtocolName")
                         .IsRequired()
@@ -1004,11 +997,6 @@ namespace InticooInspection.Infrastructure.Migrations
                     b.Property<int>("SortOrder")
                         .HasColumnType("int");
 
-                    b.Property<string>("StandardCode")
-                        .IsRequired()
-                        .HasMaxLength(300)
-                        .HasColumnType("nvarchar(300)");
-
                     b.Property<string>("TestProtocol")
                         .HasColumnType("nvarchar(max)");
 
@@ -1018,8 +1006,6 @@ namespace InticooInspection.Infrastructure.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("Category", "IsActive");
-
-                    b.HasIndex("ProductType", "IsActive");
 
                     b.ToTable("PerformanceTestMasters");
                 });

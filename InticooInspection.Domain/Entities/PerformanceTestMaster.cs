@@ -14,15 +14,6 @@ namespace InticooInspection.Domain.Entities
         /// <summary>Tên đầy đủ giao thức: "EN581-1 & EN581-2:2015 (Outdoor Seating for Europe market)"</summary>
         public string   ProtocolName  { get; set; } = "";
 
-        /// <summary>Mã tiêu chuẩn ngắn: "ISTA 1A" | "EN581-1 & EN581-2:2015"</summary>
-        public string   StandardCode  { get; set; } = "";
-
-        /// <summary>Loại sản phẩm: "All" | "Seating" | "Table" | "Bed" | "Wood"</summary>
-        public string   ProductType   { get; set; } = "All";
-
-        /// <summary>Thị trường: "All" | "Europe" | "US"</summary>
-        public string   Market        { get; set; } = "All";
-
         /// <summary>Tên/mô tả bước kiểm tra: "1. General Safety Requirements." | "2. Seat and back static load test..."</summary>
         public string?  TestProtocol  { get; set; }
 

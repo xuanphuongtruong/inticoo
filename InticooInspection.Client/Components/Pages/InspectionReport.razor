@@ -191,6 +191,8 @@ else if (_data != null)
             </div>
 
             <!-- ══ SECTION A: Quantity Conformity ══ -->
+            @if (IsPass("A"))
+            {
             <div class="rpt-section page-break-after">
                 <div class="rpt-section-title rpt-section-title-lg">A. Quantity Conformity</div>
 
@@ -264,14 +266,14 @@ else if (_data != null)
                     </div>
                 </div>
             </div>
+            } @* end IsPass("A") *@
 
             <!-- ══ SECTION B: Packaging & Identification ══ -->
-            @{
-                var pr = _qcData?.Packaging;
-                // Lấy CartonDataList — nếu có thì lặp theo carton, không thì dùng legacy single
-                var cartonDataList = pr?.CartonDataList;
-                int cartonCount = cartonDataList?.Count > 0 ? cartonDataList.Count : 1;
-            }
+            @if (IsPass("B"))
+            {
+            var pr = _qcData?.Packaging;
+            var cartonDataList = pr?.CartonDataList;
+            int cartonCount = cartonDataList?.Count > 0 ? cartonDataList.Count : 1;
 
             @for (int ci = 0; ci < cartonCount; ci++)
             {
@@ -521,8 +523,11 @@ else if (_data != null)
                     </div>
                 </div>
             }
+            } @* end IsPass("B") *@
 
             <!-- ══ SECTION C (1/2): Product Specification Compliance — Size + Golden ══ -->
+            @if (IsPass("C"))
+            {
             <div class="rpt-section page-break-after">
                 <div class="rpt-section-title rpt-section-title-lg">C. Product Specification Compliance (1/2)</div>
 
@@ -643,12 +648,14 @@ else if (_data != null)
                     </div>
                 </div>
             </div>
+            } @* end IsPass("C") *@
 
             <!-- ══ SECTION D: Performance Testing — mỗi test 1 trang riêng ══ -->
-            @{
-                var _qcPerf     = _qcData?.PerformanceTests?.Any() == true ? _qcData.PerformanceTests : null;
-                var _legacyPerf = _data.PerformanceTests?.Any() == true ? _data.PerformanceTests : null;
-            }
+            @if (IsPass("D"))
+            {
+            var _qcPerf     = _qcData?.PerformanceTests?.Any() == true ? _qcData.PerformanceTests : null;
+            var _legacyPerf = _data.PerformanceTests?.Any() == true ? _data.PerformanceTests : null;
+
             @if (_qcPerf != null)
             {
                 @for (int di = 0; di < _qcPerf.Count; di++)
@@ -661,6 +668,9 @@ else if (_data != null)
                     var dTestReq = !string.IsNullOrWhiteSpace(test.TestRequirement)
                         ? test.TestRequirement
                         : (_data?.PerformanceTests?.ElementAtOrDefault(dIdx)?.TestRequirement ?? null);
+                    var dTestProto = !string.IsNullOrWhiteSpace(test.TestProtocol)
+                        ? test.TestProtocol
+                        : (_data?.PerformanceTests?.ElementAtOrDefault(dIdx)?.TestProtocol ?? null);
                     <div class="rpt-section page-break-after">
                         <div class="rpt-section-title rpt-section-title-lg">D. Performance Testing@(dSuffix)</div>
                         <table class="rpt-perf-table">
@@ -669,6 +679,13 @@ else if (_data != null)
                                     <td class="rpt-info-label">Test Item</td>
                                     <td class="rpt-info-val" colspan="3">@(test.TestItem ?? "—")</td>
                                 </tr>
+                                @if (!string.IsNullOrWhiteSpace(dTestProto))
+                                {
+                                    <tr>
+                                        <td class="rpt-info-label" style="vertical-align:top">Test Protocol</td>
+                                        <td class="rpt-info-val" colspan="3" style="white-space:pre-wrap;line-height:1.6">@dTestProto</td>
+                                    </tr>
+                                }
                                 <tr>
                                     <td class="rpt-info-label">Test Requirement</td>
                                     <td class="rpt-info-val" colspan="3">@(dTestReq ?? "—")</td>
@@ -725,6 +742,13 @@ else if (_data != null)
                         <table class="rpt-perf-table">
                             <tbody>
                                 <tr><td class="rpt-info-label">Test Item</td><td class="rpt-info-val">@(t.TestItem ?? "—")</td></tr>
+                                @if (!string.IsNullOrWhiteSpace(t.TestProtocol))
+                                {
+                                    <tr>
+                                        <td class="rpt-info-label" style="vertical-align:top">Test Protocol</td>
+                                        <td class="rpt-info-val" style="white-space:pre-wrap;line-height:1.6">@t.TestProtocol</td>
+                                    </tr>
+                                }
                                 <tr><td class="rpt-info-label">Test Requirement</td><td class="rpt-info-val">@(t.TestRequirement ?? "—")</td></tr>
                                 <tr><td class="rpt-info-label">Remark</td><td class="rpt-info-val">@(t.Remark ?? "—")</td></tr>
                             </tbody>
@@ -751,8 +775,11 @@ else if (_data != null)
                     </div>
                 </div>
             }
+            } @* end IsPass("D") *@
 
             <!-- ══ SECTION E: Appearance & Craftsmanship (AQL) ══ -->
+            @if (IsPass("E"))
+            {
             <div class="rpt-section page-break-after">
                 <div class="rpt-section-title rpt-section-title-lg">E. Appearance &amp; Craftsmanship</div>
 
@@ -869,8 +896,11 @@ else if (_data != null)
                     </div>
                 </div>
             </div>
+            } @* end IsPass("E") *@
 
             <!-- ══ SECTION F: Major + Minor Defects ══ -->
+            @if (IsPass("F"))
+            {
             <div class="rpt-section page-break-after">
                 <div class="rpt-section-title rpt-section-title-lg">F. Details of Defect Found (cont.)</div>
 
@@ -924,6 +954,7 @@ else if (_data != null)
                     </div>
                 </div>
             </div>
+            } @* end IsPass("F") *@
 
             <!-- ══ FINAL PAGE: Conclusion & Signature ══ -->
             <div class="rpt-section rpt-section-final">
@@ -1089,6 +1120,16 @@ else if (_data != null)
         _                  => "final-na"
     };
 
+    // Helper: kiểm tra Overall Conclusion letter có Compliance = Pass không
+    bool IsPass(string letter)
+    {
+        // Ưu tiên _qcData, fallback _data
+        var qcOc   = _qcData?.OverallConclusions?.FirstOrDefault(o => o.Letter == letter);
+        if (qcOc != null) return qcOc.Compliance == "Pass";
+        var dataOc = _data?.OverallConclusions?.FirstOrDefault(o => o.Letter == letter);
+        return dataOc?.Compliance == "Pass";
+    }
+
     // ── Computed page count properties ──
     // Layout: 1(Cover) + 1(A) + cartonCount×4(B) + 2(C1+C2) + perfCount(D) + 3(E,F,Final)
     int CartonPageCount => (_qcData?.Packaging?.CartonDataList?.Count > 0
@@ -1190,6 +1231,7 @@ else if (_data != null)
     public class PerfTestDto
     {
         public string? TestItem        { get; set; }
+        public string? TestProtocol    { get; set; }
         public string? TestRequirement { get; set; }
         public string? Remark          { get; set; }
     }
@@ -1284,6 +1326,7 @@ else if (_data != null)
     public class QcPerformanceTestDto
     {
         public string?      TestItem        { get; set; }
+        public string?      TestProtocol    { get; set; }
         public string?      TestRequirement { get; set; }
         public string?      Remark          { get; set; }
         public string?      Result          { get; set; }

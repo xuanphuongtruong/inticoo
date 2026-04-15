@@ -764,14 +764,34 @@ else
                             </thead>
                             <tbody>
                                 <tr>
-                                    <td class="qc-info-lbl" style="vertical-align:top;padding:8px 6px">Test Procedure</td>
-                                    <td style="font-size:13px;color:#333;padding:8px 6px;line-height:1.5">@pt.TestRequirement</td>
+                                    <td class="qc-info-lbl" style="vertical-align:middle;padding:8px 6px">Test Protocol</td>
+                                    <td style="padding:6px 6px">
+                                        <div style="display:flex;align-items:center;gap:10px">
+                                            <span style="font-size:13px;color:#333;line-height:1.4;flex:1">
+                                                @if (string.IsNullOrEmpty(pt.TestProtocol))
+                                                {
+                                                    <span style="color:#bbb">—</span>
+                                                }
+                                                else
+                                                {
+                                                    @(pt.TestProtocol.Length > 60 ? pt.TestProtocol[..60] + "…" : pt.TestProtocol)
+                                                }
+                                            </span>
+                                            @if (!string.IsNullOrEmpty(pt.TestProtocol))
+                                            {
+                                                <button class="proto-view-btn" @onclick="() => ShowProtocolPopup(pt.TestProtocol)">
+                                                    <svg width="13" height="13" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                                                        <path d="M1 10s3.5-7 9-7 9 7 9 7-3.5 7-9 7-9-7-9-7z"/><circle cx="10" cy="10" r="3"/>
+                                                    </svg>
+                                                    View
+                                                </button>
+                                            }
+                                        </div>
+                                    </td>
                                 </tr>
                                 <tr>
-                                    <td class="qc-info-lbl" style="padding:8px 6px">Test Requirement</td>
-                                    <td style="padding:4px 6px">
-                                        <input class="qc-info-input" type="number" @bind="pt.TestRequirement" placeholder="0" style="max-width:100px"/>
-                                    </td>
+                                    <td class="qc-info-lbl" style="vertical-align:top;padding:8px 6px">Test Requirement</td>
+                                    <td style="font-size:13px;color:#333;padding:8px 6px;line-height:1.5">@pt.TestRequirement</td>
                                 </tr>
                                 <tr>
                                     <td class="qc-info-lbl" style="padding:8px 6px">Test Quantity</td>
@@ -1171,6 +1191,25 @@ else
     {
         <div class="qc-toast @(_saveError ? "toast-err" : "toast-ok")">@_saveMsg</div>
     }
+
+    <!-- TEST PROTOCOL POPUP -->
+    @if (_showProtocolPopup)
+    {
+        <div class="proto-backdrop" @onclick="CloseProtocolPopup">
+            <div class="proto-modal" @onclick:stopPropagation="true">
+                <div class="proto-modal-header">
+                    <span class="proto-modal-title">Test Protocol</span>
+                    <button class="proto-close-btn" @onclick="CloseProtocolPopup">✕</button>
+                </div>
+                <div class="proto-modal-body">
+                    @_protocolPopupText
+                </div>
+                <div class="proto-modal-footer">
+                    <button class="proto-ok-btn" @onclick="CloseProtocolPopup">Close</button>
+                </div>
+            </div>
+        </div>
+    }
 }
 
 <!-- ═══════════════════════ CODE-BEHIND ═══════════════════════ -->
@@ -1187,6 +1226,12 @@ else
     QcFormData _data = new();
     int _currentStepIdx = 0;
     int _cartonCount = 1;       // số carton từ DB (CartonNumber)
+
+    // ── Popup TestProtocol ──
+    bool   _showProtocolPopup  = false;
+    string _protocolPopupText  = "";
+    void ShowProtocolPopup(string text) { _protocolPopupText = text; _showProtocolPopup = true; }
+    void CloseProtocolPopup()           { _showProtocolPopup = false; }
 
     // ── Step definitions ──
     record StepDef(string StepLabel, string Title, bool CanSkip = false);
@@ -1328,6 +1373,7 @@ else
             _data.PerformanceTests = _inspection.PerformanceTests.Select(pt => new QcPerformanceTest
             {
                 TestItem        = pt.TestItem ?? "",
+                TestProtocol    = pt.TestProtocol ?? "",
                 TestRequirement = pt.TestRequirement ?? "",
                 Category        = pt.Category ?? "",
                 Photos          = new List<string> { "", "", "", "" }
@@ -1455,7 +1501,13 @@ else
     // ── Navigation ──
     void HandleBack()
     {
-        if (_currentStepIdx > 0) _currentStepIdx--;
+        if (_currentStepIdx > 0)
+        {
+            _currentStepIdx--;
+            // Skip ngược lại nếu bước đó bị tắt (Compliance không phải Pass)
+            while (_currentStepIdx > 1 && IsStepSkippedByCompliance(_currentStepIdx))
+                _currentStepIdx--;
+        }
         else GoBack();
     }
     bool _qtyValidated    = false;
@@ -1582,8 +1634,48 @@ else
         }
 
         if (_currentStepIdx < _steps.Count - 1) _currentStepIdx++;
+        // Auto-skip step nếu Compliance không phải Pass
+        while (_currentStepIdx < _steps.Count - 1 && IsStepSkippedByCompliance(_currentStepIdx))
+            _currentStepIdx++;
         // Khi vào F step, đảm bảo có default defect cho mỗi loại
         EnsureDefaultDefects();
+    }
+
+    // Trả về true nếu step này cần bỏ qua vì Overall Conclusion của section đó không phải "Pass"
+    bool IsStepSkippedByCompliance(int stepIdx)
+    {
+        int bEnd  = STEP_PKG_ID + _cartonCount * B_STEPS_PER_CARTON;      // last B sub-step index
+        int cBase = bEnd + 1;                                               // C-i
+        int dBase = cBase + 3;                                              // D start (C-i, C-ii, C-iii = 3 steps)
+        int dEnd  = dBase + Math.Max(1, _data.PerformanceTests.Count) - 1; // D last step
+        int eStep = dEnd + 1;                                               // E
+        int fBase = eStep + 1;                                              // F (Critical/Major/Minor)
+
+        // Lấy compliance theo Letter
+        string GetCompliance(string letter) =>
+            _data.OverallConclusions.FirstOrDefault(o => o.Letter == letter)?.Compliance ?? "";
+
+        bool isPass(string letter) => GetCompliance(letter) == "Pass";
+
+        // A — Quantity Conformity (step 2)
+        if (stepIdx == STEP_QTY && !isPass("A")) return true;
+
+        // B — Packaging steps (STEP_PKG_ID và các B sub-steps)
+        if ((stepIdx == STEP_PKG_ID || (stepIdx > STEP_PKG_ID && stepIdx <= bEnd)) && !isPass("B")) return true;
+
+        // C — Product Specification (C-i, C-ii, C-iii)
+        if (stepIdx >= cBase && stepIdx <= cBase + 2 && !isPass("C")) return true;
+
+        // D — Performance Testing
+        if (stepIdx >= dBase && stepIdx <= dEnd && !isPass("D")) return true;
+
+        // E — Appearance & Craftsmanship
+        if (stepIdx == eStep && !isPass("E")) return true;
+
+        // F — Details of Defect Found (F Critical/Major/Minor = 3 steps)
+        if (stepIdx >= fBase && stepIdx <= fBase + 2 && !isPass("F")) return true;
+
+        return false;
     }
 
     void EnsureDefaultDefects()
@@ -2294,6 +2386,7 @@ else
     {
         [JsonPropertyName("category")]        public string? Category        { get; set; }
         [JsonPropertyName("testItem")]        public string? TestItem        { get; set; }
+        [JsonPropertyName("testProtocol")]    public string? TestProtocol    { get; set; }
         [JsonPropertyName("testRequirement")] public string? TestRequirement { get; set; }
         [JsonPropertyName("remark")]          public string? Remark          { get; set; }
     }
@@ -2456,6 +2549,7 @@ else
     {
         public string       Category        { get; set; } = "";
         public string       TestItem        { get; set; } = "";
+        public string       TestProtocol    { get; set; } = "";
         public string       TestRequirement { get; set; } = "";
         public int          TestQuantity    { get; set; }
         public string       Remark         { get; set; } = "";
@@ -2881,6 +2975,60 @@ else
         .qc-nav-bar { left: 50%; transform: translateX(-50%); right: auto; width: 100%; }
         .qc-info-lbl { min-width: 160px; font-size: 13px; }
     }
+
+    /* ── Test Protocol View Button ── */
+    .proto-view-btn {
+        display: inline-flex; align-items: center; gap: 5px;
+        background: #e8f0fe; color: #1565c0;
+        border: 1px solid #c5d8f8; border-radius: 8px;
+        padding: 5px 12px; font-size: 12px; font-weight: 600;
+        cursor: pointer; white-space: nowrap; flex-shrink: 0;
+        transition: all .15s;
+    }
+    .proto-view-btn:hover { background: #1565c0; color: #fff; border-color: #1565c0; }
+
+    /* ── Test Protocol Popup ── */
+    .proto-backdrop {
+        position: fixed; inset: 0; background: rgba(0,0,0,.45);
+        display: flex; align-items: center; justify-content: center;
+        z-index: 2000; padding: 20px;
+    }
+    .proto-modal {
+        background: #fff; border-radius: 16px;
+        width: 100%; max-width: 520px;
+        box-shadow: 0 20px 60px rgba(0,0,0,.25);
+        display: flex; flex-direction: column; max-height: 80vh;
+    }
+    .proto-modal-header {
+        display: flex; align-items: center; justify-content: space-between;
+        padding: 16px 20px 12px;
+        border-bottom: 1px solid #eef0f5;
+    }
+    .proto-modal-title {
+        font-size: 15px; font-weight: 700; color: #1a1a2e;
+    }
+    .proto-close-btn {
+        background: none; border: none; font-size: 18px; color: #aaa;
+        cursor: pointer; line-height: 1; padding: 2px 6px;
+    }
+    .proto-close-btn:hover { color: #333; }
+    .proto-modal-body {
+        padding: 18px 20px; overflow-y: auto; flex: 1;
+        font-size: 14px; color: #333; line-height: 1.7;
+        white-space: pre-wrap;
+    }
+    .proto-modal-footer {
+        padding: 12px 20px 16px;
+        border-top: 1px solid #eef0f5;
+        display: flex; justify-content: flex-end;
+    }
+    .proto-ok-btn {
+        background: #2D7DD2; color: #fff; border: none;
+        border-radius: 10px; padding: 9px 24px;
+        font-size: 14px; font-weight: 600; cursor: pointer;
+        transition: background .15s;
+    }
+    .proto-ok-btn:hover { background: #1565c0; }
 </style>
 
 
