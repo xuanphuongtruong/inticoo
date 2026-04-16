@@ -24,7 +24,7 @@
   },
   "globalHeaders": {
     "Cache-Control": "no-cache",
-    "Content-Security-Policy": "script-src 'self' 'unsafe-eval' 'sha256-INTRR93shvyJbfhKCSIBjnwp0wkHJwR+kVj65P0+tTA=' 'sha256-VU+DO7X23WpDAIsbTMcwDhl+DiFngTatd3JjSOvvd2U=' https://gc.kis.v2.scr.kaspersky-labs.com wss://gc.kis.v2.scr.kaspersky-labs.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://gc.kis.v2.scr.kaspersky-labs.com wss://gc.kis.v2.scr.kaspersky-labs.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https:; connect-src 'self' https://inticoo-e4hrerayb4b7h4fk.southeastasia-01.azurewebsites.net wss: https:; worker-src 'self' blob:;"
+    "Content-Security-Policy": "script-src 'self' 'unsafe-eval' 'sha256-INTRR93shvyJbfhKCSIBjnwp0wkHJwR+kVj65P0+tTA=' 'sha256-VU+DO7X23WpDAIsbTMcwDhl+DiFngTatd3JjSOvvd2U=' https://gc.kis.v2.scr.kaspersky-labs.com wss://gc.kis.v2.scr.kaspersky-labs.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://gc.kis.v2.scr.kaspersky-labs.com wss://gc.kis.v2.scr.kaspersky-labs.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https:; connect-src 'self' https://inticoo-e4hrerayb4b7h4fk.southeastasia-01.azurewebsites.net https://inticooapp-ccekhsdmgde3esfb.centralus-01.azurewebsites.net wss: https:; worker-src 'self' blob:;"
   },
   "routes": [
     {
