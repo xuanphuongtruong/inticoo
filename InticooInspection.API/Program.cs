@@ -74,7 +74,10 @@ builder.Services.AddCors(options =>
             .WithOrigins(
                 "http://localhost:5186",
                 "https://localhost:5186",
-                "https://black-grass-002608310.2.azurestaticapps.net"
+                "https://black-grass-002608310.2.azurestaticapps.net",
+                "https://lively-cliff-0413efc10.2.azurestaticapps.net",
+                "https://gentle-pebble-0ad999710.2.azurestaticapps.net",
+                "https://mango-hill-0001b6310.2.azurestaticapps.net"
             )
             .AllowAnyHeader()
             .AllowAnyMethod()
