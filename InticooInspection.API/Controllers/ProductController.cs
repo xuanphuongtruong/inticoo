@@ -1,3 +1,4 @@
+using InticooInspection.API.Services;
 using InticooInspection.Domain.Entities;
 using InticooInspection.Infrastructure.Data;
 using Microsoft.AspNetCore.Mvc;
@@ -10,12 +11,12 @@ namespace InticooInspection.API.Controllers
     public class ProductController : ControllerBase
     {
         private readonly AppDbContext _db;
-        private readonly IWebHostEnvironment _env;
+        private readonly AzureBlobService _blobService;
 
-        public ProductController(AppDbContext db, IWebHostEnvironment env)
+        public ProductController(AppDbContext db, AzureBlobService blobService)
         {
-            _db  = db;
-            _env = env;
+            _db          = db;
+            _blobService = blobService;
         }
 
         // ── GET api/products ──────────────────────────────────────────
@@ -91,7 +92,6 @@ namespace InticooInspection.API.Controllers
         [Microsoft.AspNetCore.Authorization.AllowAnonymous]
         public async Task<IActionResult> GetNextCode()
         {
-            // Lấy tất cả code dạng PI + số, tìm số lớn nhất
             var codes = await _db.Products
                 .Where(p => p.ProductCode != null && p.ProductCode.StartsWith("PI"))
                 .Select(p => p.ProductCode!)
@@ -190,7 +190,6 @@ namespace InticooInspection.API.Controllers
             if (string.IsNullOrWhiteSpace(req.ProductName))
                 return BadRequest(new { message = "Product name is required." });
 
-            // Resolve foreign keys
             var customer = await _db.Customers
                 .FirstOrDefaultAsync(c => c.CustomerId == req.CustomerId);
             var vendor = await _db.Vendors
@@ -221,7 +220,6 @@ namespace InticooInspection.API.Controllers
             _db.Products.Add(product);
             await _db.SaveChangesAsync();
 
-            // Save references (skip empty rows)
             var refs = req.References
                 .Where(r => !string.IsNullOrWhiteSpace(r.Name) || !string.IsNullOrWhiteSpace(r.FileUrl))
                 .Select((r, i) => new ProductReference
@@ -273,11 +271,9 @@ namespace InticooInspection.API.Controllers
             product.IsActive      = req.IsActive;
             product.EstablishDate = req.EstablishDate;
 
-            // Only update photo if a new one was uploaded
             if (!string.IsNullOrWhiteSpace(req.PhotoUrl))
                 product.PhotoUrl = req.PhotoUrl;
 
-            // Replace references: delete old, insert new
             var oldRefs = await _db.ProductReferences
                 .Where(r => r.ProductId == id)
                 .ToListAsync();
@@ -307,17 +303,13 @@ namespace InticooInspection.API.Controllers
         {
             var product = await _db.Products.FindAsync(id);
             if (product == null) return NotFound();
-
-            // Delete photo file if exists
-            if (!string.IsNullOrEmpty(product.PhotoUrl))
-                DeletePhotoFile(product.PhotoUrl);
-
             _db.Products.Remove(product);
             await _db.SaveChangesAsync();
             return Ok(new { success = true });
         }
 
         // ── POST api/products/{id}/photo ──────────────────────────────
+        // ✅ Đã sửa: upload lên Azure Blob Storage thay vì lưu local
         [HttpPost("{id}/photo")]
         public async Task<IActionResult> UploadPhoto(int id, IFormFile file)
         {
@@ -326,7 +318,6 @@ namespace InticooInspection.API.Controllers
             if (file == null || file.Length == 0)
                 return BadRequest(new { message = "No file uploaded." });
 
-            // Validate image
             var allowedTypes = new[] { "image/jpeg", "image/png", "image/webp", "image/gif" };
             if (!allowedTypes.Contains(file.ContentType.ToLower()))
                 return BadRequest(new { message = "Only image files are allowed (jpg, png, webp)." });
@@ -334,29 +325,18 @@ namespace InticooInspection.API.Controllers
             if (file.Length > 5 * 1024 * 1024)
                 return BadRequest(new { message = "File size must be under 5MB." });
 
-            // Delete old photo
-            if (!string.IsNullOrEmpty(product.PhotoUrl))
-                DeletePhotoFile(product.PhotoUrl);
-
-            // Save new photo
-            var wwwroot   = string.IsNullOrEmpty(_env.WebRootPath)
-                ? Path.Combine(_env.ContentRootPath, "wwwroot") : _env.WebRootPath;
-            var uploadDir = Path.Combine(wwwroot, "uploads", "products");
-            Directory.CreateDirectory(uploadDir);
+            // ✅ Upload lên Azure Blob Storage
             var fileName = $"{id}_{Guid.NewGuid()}{Path.GetExtension(file.FileName)}";
-            var filePath = Path.Combine(uploadDir, fileName);
+            await using var stream = file.OpenReadStream();
+            var url = await _blobService.UploadAsync("products", fileName, stream, file.ContentType);
 
-            await using var stream = new FileStream(filePath, FileMode.Create);
-            await file.CopyToAsync(stream);
-
-            product.PhotoUrl = $"/uploads/products/{fileName}";
+            product.PhotoUrl = url;
             await _db.SaveChangesAsync();
 
-            return Ok(new { success = true, photoUrl = product.PhotoUrl });
+            return Ok(new { success = true, photoUrl = url });
         }
 
         // ── GET api/products/categories ───────────────────────────────
-        // Legacy: lấy từ Products table (giữ tương thích)
         [HttpGet("categories")]
         [Microsoft.AspNetCore.Authorization.AllowAnonymous]
         public async Task<IActionResult> GetCategories()
@@ -371,7 +351,6 @@ namespace InticooInspection.API.Controllers
         }
 
         // ── GET api/products/productcategories ────────────────────────
-        // Lấy từ bảng ProductCategories (chuẩn)
         [HttpGet("productcategories")]
         [Microsoft.AspNetCore.Authorization.AllowAnonymous]
         public async Task<IActionResult> GetProductCategories()
@@ -386,6 +365,7 @@ namespace InticooInspection.API.Controllers
         }
 
         // ── POST api/products/{id}/references/upload ──────────────────
+        // ✅ Đã sửa: upload lên Azure Blob Storage thay vì lưu local
         [HttpPost("{id}/references/upload")]
         public async Task<IActionResult> UploadReferenceFile(int id, IFormFile file)
         {
@@ -397,38 +377,18 @@ namespace InticooInspection.API.Controllers
             if (file.Length > 20 * 1024 * 1024)
                 return BadRequest(new { message = "File size must be under 20MB." });
 
-            var wwwrootRef   = string.IsNullOrEmpty(_env.WebRootPath)
-                ? Path.Combine(_env.ContentRootPath, "wwwroot") : _env.WebRootPath;
-            var uploadDir = Path.Combine(wwwrootRef, "uploads", "product-references");
-            Directory.CreateDirectory(uploadDir);
-            var fileName = $"{id}_{Guid.NewGuid()}{Path.GetExtension(file.FileName)}";
-            var filePath = Path.Combine(uploadDir, fileName);
-
-            await using var stream = new FileStream(filePath, FileMode.Create);
-            await file.CopyToAsync(stream);
+            // ✅ Upload lên Azure Blob Storage
+            var ext      = Path.GetExtension(file.FileName);
+            var fileName = $"{id}_{Guid.NewGuid()}{ext}";
+            await using var stream = file.OpenReadStream();
+            var url = await _blobService.UploadAsync("references", fileName, stream, file.ContentType);
 
             return Ok(new
             {
                 success  = true,
-                fileUrl  = $"/uploads/product-references/{fileName}",
+                fileUrl  = url,
                 fileName = file.FileName
             });
-        }
-
-        // ── Helpers ───────────────────────────────────────────────────
-        private void DeletePhotoFile(string photoUrl)
-        {
-            try
-            {
-                // photoUrl = "/uploads/products/filename.jpg"
-                var wwwroot  = string.IsNullOrEmpty(_env.WebRootPath)
-                    ? Path.Combine(_env.ContentRootPath, "wwwroot") : _env.WebRootPath;
-                var relative = photoUrl.TrimStart('/').Replace('/', Path.DirectorySeparatorChar);
-                var fullPath = Path.Combine(wwwroot, relative);
-                if (System.IO.File.Exists(fullPath))
-                    System.IO.File.Delete(fullPath);
-            }
-            catch { /* ignore file delete errors */ }
         }
     }
 
