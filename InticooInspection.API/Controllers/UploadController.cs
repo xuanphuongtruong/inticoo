@@ -1,4 +1,5 @@
 using InticooInspection.API.Helpers;
+using InticooInspection.API.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -9,15 +10,15 @@ namespace InticooInspection.API.Controllers
     [Authorize]
     public class UploadController : ControllerBase
     {
-        private readonly IWebHostEnvironment _env;
+        private readonly AzureBlobService _blobService;
 
-        public UploadController(IWebHostEnvironment env)
+        public UploadController(AzureBlobService blobService)
         {
-            _env = env;
+            _blobService = blobService;
         }
 
         // POST api/upload/photo
-        // Nhận file ảnh, nén về ~300-400 KB, lưu vào wwwroot/uploads/photos/, trả về URL tương đối
+        // Nhận file ảnh, nén về ~300-400 KB, upload lên Azure Blob Storage, trả về URL
         [HttpPost("photo")]
         [AllowAnonymous]
         [RequestSizeLimit(10 * 1024 * 1024)] // 10 MB
@@ -38,17 +39,11 @@ namespace InticooInspection.API.Controllers
             var baseName = Path.GetFileNameWithoutExtension(file.FileName);
             var fileName = $"{baseName}_{Guid.NewGuid():N}{ext}";
 
-            var uploadDir = Path.Combine(_env.ContentRootPath, "wwwroot", "uploads", "photos");
-            Directory.CreateDirectory(uploadDir);
-            var filePath = Path.Combine(uploadDir, fileName);
-
-            await using (var fs = new FileStream(filePath, FileMode.Create))
-                await compressed.CopyToAsync(fs);
-
+            // Upload lên Azure Blob Storage
+            var url = await _blobService.UploadAsync("photos", fileName, compressed, "image/jpeg");
             await compressed.DisposeAsync();
 
-            var relativeUrl = $"uploads/photos/{fileName}";
-            return Ok(new { url = relativeUrl });
+            return Ok(new { url });
         }
     }
 }

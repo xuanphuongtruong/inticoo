@@ -1,4 +1,5 @@
 using InticooInspection.API.Helpers;
+using InticooInspection.API.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -9,7 +10,7 @@ namespace InticooInspection.API.Controllers
     [AllowAnonymous]
     public class FileController : ControllerBase
     {
-        private readonly IWebHostEnvironment _env;
+        private readonly AzureBlobService _blobService;
 
         private static readonly string[] AllowedCvExtensions    = { ".pdf", ".doc", ".docx" };
         private static readonly string[] AllowedImageExtensions = { ".jpg", ".jpeg", ".png", ".webp", ".gif" };
@@ -17,23 +18,12 @@ namespace InticooInspection.API.Controllers
         private const long MaxImageSize =  5 * 1024 * 1024;  //  5 MB
         private const long MaxFileSize  = 20 * 1024 * 1024;  // 20 MB
 
-        public FileController(IWebHostEnvironment env)
+        public FileController(AzureBlobService blobService)
         {
-            _env = env;
+            _blobService = blobService;
         }
 
-        // ── Tự tạo wwwroot + subfolder nếu chưa có ──
-        private string GetUploadDir(string subFolder)
-        {
-            var webRoot = string.IsNullOrEmpty(_env.WebRootPath)
-                ? Path.Combine(_env.ContentRootPath, "wwwroot")
-                : _env.WebRootPath;
-            var dir = Path.Combine(webRoot, "uploads", subFolder);
-            Directory.CreateDirectory(dir);
-            return dir;
-        }
-
-        /// <summary>POST api/files/upload-cv — Upload CV, trả về { success, url }</summary>
+        /// <summary>POST api/files/upload-cv — Upload CV lên Azure Blob Storage, trả về { success, url }</summary>
         [HttpPost("upload-cv")]
         public async Task<IActionResult> UploadCv(IFormFile file)
         {
@@ -47,12 +37,12 @@ namespace InticooInspection.API.Controllers
                 return BadRequest(new { success = false, message = "Only PDF, DOC or DOCX files are allowed." });
 
             var uniqueName = $"{Guid.NewGuid()}{ext}";
-            var filePath   = Path.Combine(GetUploadDir("cv"), uniqueName);
 
-            using (var stream = new FileStream(filePath, FileMode.Create))
-                await file.CopyToAsync(stream);
+            // Upload lên Azure Blob Storage
+            await using var stream = file.OpenReadStream();
+            var url = await _blobService.UploadAsync("cv", uniqueName, stream, file.ContentType);
 
-            return Ok(new { success = true, url = $"/uploads/cv/{uniqueName}" });
+            return Ok(new { success = true, url });
         }
 
         /// <summary>POST api/files/upload-photo — Upload ảnh, nén về ~300-400 KB, trả về { url, fileName }</summary>
@@ -75,17 +65,15 @@ namespace InticooInspection.API.Controllers
             var safeName   = Path.GetFileNameWithoutExtension(file.FileName)
                                  .Replace(" ", "_").Replace("..", "");
             var uniqueName = $"{safeName}_{Guid.NewGuid():N}{compressedExt}";
-            var filePath   = Path.Combine(GetUploadDir("photos"), uniqueName);
 
-            await using (var fs = new FileStream(filePath, FileMode.Create))
-                await compressed.CopyToAsync(fs);
-
+            // Upload lên Azure Blob Storage
+            var url = await _blobService.UploadAsync("photos", uniqueName, compressed, "image/jpeg");
             await compressed.DisposeAsync();
 
-            return Ok(new { url = $"/uploads/photos/{uniqueName}", fileName = file.FileName });
+            return Ok(new { url, fileName = file.FileName });
         }
 
-        /// <summary>POST api/files/upload — Upload file tham chiếu.
+        /// <summary>POST api/files/upload — Upload file tham chiếu lên Azure Blob Storage.
         /// Nếu là ảnh thì nén ~300-400 KB, trả về { url, fileName }</summary>
         [HttpPost("upload")]
         public async Task<IActionResult> Upload(IFormFile file)
@@ -98,35 +86,31 @@ namespace InticooInspection.API.Controllers
             var ext      = Path.GetExtension(file.FileName).ToLowerInvariant();
             var safeName = Path.GetFileNameWithoutExtension(file.FileName)
                                .Replace(" ", "_").Replace("..", "");
-
             string uniqueName;
-            string filePath;
+            string url;
 
             if (ImageCompressor.IsImageExtension(ext))
             {
-                // Ảnh → nén trước khi lưu
+                // Ảnh → nén trước khi upload
                 await using var inputStream = file.OpenReadStream();
                 var (compressed, compressedExt) = await ImageCompressor.CompressAsync(inputStream);
 
                 uniqueName = $"{safeName}_{Guid.NewGuid():N}{compressedExt}";
-                filePath   = Path.Combine(GetUploadDir("references"), uniqueName);
 
-                await using (var fs = new FileStream(filePath, FileMode.Create))
-                    await compressed.CopyToAsync(fs);
-
+                // Upload lên Azure Blob Storage
+                url = await _blobService.UploadAsync("references", uniqueName, compressed, "image/jpeg");
                 await compressed.DisposeAsync();
             }
             else
             {
-                // File không phải ảnh (PDF, DOCX, ...) → lưu thẳng
+                // File không phải ảnh (PDF, DOCX, ...) → upload thẳng
                 uniqueName = $"{safeName}_{Guid.NewGuid():N}{ext}";
-                filePath   = Path.Combine(GetUploadDir("references"), uniqueName);
 
-                using var stream = new FileStream(filePath, FileMode.Create);
-                await file.CopyToAsync(stream);
+                await using var stream = file.OpenReadStream();
+                url = await _blobService.UploadAsync("references", uniqueName, stream, file.ContentType);
             }
 
-            return Ok(new { url = $"/uploads/references/{uniqueName}", fileName = file.FileName });
+            return Ok(new { url, fileName = file.FileName });
         }
     }
 }
