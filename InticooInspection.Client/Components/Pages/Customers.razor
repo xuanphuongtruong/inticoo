@@ -281,20 +281,8 @@ else
                 </div>
                 <div class="form-group">
                     <label>City</label>
-                    @if (_loadingCities)
-                    {
-                        <div class="form-input" style="color:#9baac8;font-style:italic;">Loading cities...</div>
-                    }
-                    else
-                    {
-                        <select class="form-input" @bind="_formCity" disabled="@(string.IsNullOrEmpty(_formCountry))">
-                            <option value="">-- Select City --</option>
-                            @foreach (var ct in _cities)
-                            {
-                                <option value="@ct.Name">@ct.Name</option>
-                            }
-                        </select>
-                    }
+                    <input class="form-input" type="text" placeholder="Enter city"
+                           @bind="_formCity" @bind:event="oninput" />
                 </div>
                 <div class="form-group">
                     <label>State / Province</label>
@@ -309,7 +297,7 @@ else
                     }
                     else
                     {
-                        <select class="form-input" value="@_formCountry" @onchange="OnCountryChanged">
+                        <select class="form-input" @bind="_formCountry">
                             <option value="">-- Select Country --</option>
                             @foreach (var co in _countries)
                             {
@@ -699,11 +687,9 @@ else
     private string _formError = "";
     private bool   _saving = false;
 
-    // Country/City dropdowns
+    // Country dropdown
     private List<CountryItem> _countries       = new();
-    private List<CityItem>    _cities          = new();
     private bool              _loadingCountries = true;
-    private bool              _loadingCities    = false;
 
     // File upload
     private List<IBrowserFile>   _selectedFiles  = new();
@@ -808,7 +794,7 @@ else
         _formWebsite       = c.Website       ?? "";
         _formAddress1      = c.Address1      ?? "";
         _formAddress2      = c.Address2      ?? "";
-        _formCity          = "";
+        _formCity          = c.City          ?? "";
         _formState         = c.State         ?? "";
         _formCountry       = c.Country       ?? "";
         _formPostalCode    = c.PostalCode    ?? "";
@@ -828,7 +814,6 @@ else
         }
         catch { _existingFiles = new(); }
         _showModal = true;
-        await LoadCitiesForCountry(c.Country ?? "", c.City ?? "");
     }
 
     private void CloseModal() => _showModal = false;
@@ -1022,56 +1007,12 @@ else
         finally { _loadingCountries = false; }
     }
 
-    private async Task OnCountryChanged(ChangeEventArgs e)
-    {
-        _formCountry = e.Value?.ToString() ?? "";
-        _formCity    = "";
-        _cities      = new();
-        if (string.IsNullOrEmpty(_formCountry)) return;
-
-        _loadingCities = true;
-        try
-        {
-            var country = _countries.FirstOrDefault(c => c.Name == _formCountry);
-            if (country == null) return;
-            var opts = new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true };
-            var json = await Http.GetStringAsync($"api/geo/cities?countryId={country.Id}");
-            _cities = System.Text.Json.JsonSerializer.Deserialize<List<CityItem>>(json, opts) ?? new();
-        }
-        catch { }
-        finally { _loadingCities = false; }
-    }
-
-    private async Task LoadCitiesForCountry(string countryName, string cityName)
-    {
-        if (string.IsNullOrEmpty(countryName)) return;
-        var country = _countries.FirstOrDefault(c => c.Name == countryName);
-        if (country == null) return;
-        _loadingCities = true;
-        try
-        {
-            var opts = new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true };
-            var json = await Http.GetStringAsync($"api/geo/cities?countryId={country.Id}");
-            _cities = System.Text.Json.JsonSerializer.Deserialize<List<CityItem>>(json, opts) ?? new();
-            _formCity = cityName;
-        }
-        catch { }
-        finally { _loadingCities = false; }
-    }
-
     private class CountryItem
     {
         public int    Id     { get; set; }
         public string Name   { get; set; } = "";
         public string Code   { get; set; } = "";
         public string Region { get; set; } = "";
-    }
-
-    private class CityItem
-    {
-        public int    Id        { get; set; }
-        public string Name      { get; set; } = "";
-        public bool   IsCapital { get; set; }
     }
 
 }

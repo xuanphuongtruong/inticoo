@@ -371,20 +371,7 @@ else
                 </div>
                 <div class="fg fg-1">
                     <label>City</label>
-                    @if (_loadingCities)
-                    {
-                        <div class="form-input" style="color:#9baac8;font-style:italic;">Loading...</div>
-                    }
-                    else
-                    {
-                        <select class="form-input" @bind="_f.City" disabled="@(string.IsNullOrEmpty(_f.Country))">
-                            <option value="">-- Select City --</option>
-                            @foreach (var ct in _cities)
-                            {
-                                <option value="@ct.Name">@ct.Name</option>
-                            }
-                        </select>
-                    }
+                    <input class="form-input" type="text" placeholder="Enter city" @bind="_f.City" @bind:event="oninput" />
                 </div>
                 <div class="fg fg-1">
                     <label>State / Province</label>
@@ -398,7 +385,7 @@ else
                     }
                     else
                     {
-                        <select class="form-input" value="@_f.Country" @onchange="OnCountryChanged">
+                        <select class="form-input" @bind="_f.Country">
                             <option value="">-- Select Country --</option>
                             @foreach (var c in _countries)
                             {
@@ -746,9 +733,7 @@ else
 
     // Country/City dropdowns
     private List<CountryItem> _countries      = new();
-    private List<CityItem>    _cities          = new();
     private bool              _loadingCountries = true;
-    private bool              _loadingCities    = false;
     private bool   _saving   = false;
 
     private List<AttachmentDto> _attachments  = new();  // saved on server
@@ -825,26 +810,6 @@ else
         }
         catch { }
         finally { _loadingCountries = false; }
-    }
-
-    private async Task OnCountryChanged(ChangeEventArgs e)
-    {
-        _f.Country = e.Value?.ToString() ?? "";
-        _f.City    = "";
-        _cities    = new();
-        if (string.IsNullOrEmpty(_f.Country)) return;
-
-        _loadingCities = true;
-        try
-        {
-            var country = _countries.FirstOrDefault(c => c.Name == _f.Country);
-            if (country == null) return;
-            var opts = new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true };
-            var json = await Http.GetStringAsync($"api/geo/cities?countryId={country.Id}");
-            _cities = System.Text.Json.JsonSerializer.Deserialize<List<CityItem>>(json, opts) ?? new();
-        }
-        catch { }
-        finally { _loadingCities = false; }
     }
 
     private async Task SetAuthHeader()
@@ -930,23 +895,7 @@ else
             if (feFiles != null) _factoryEvalFiles = feFiles;
         } catch { }
         _showModal = true;
-        if (!string.IsNullOrEmpty(v.Country))
-        {
-            var country = _countries.FirstOrDefault(c => c.Name == v.Country);
-            if (country != null)
-            {
-                _loadingCities = true;
-                try
-                {
-                    var opts = new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true };
-                    var json = await Http.GetStringAsync($"api/geo/cities?countryId={country.Id}");
-                    _cities = System.Text.Json.JsonSerializer.Deserialize<List<CityItem>>(json, opts) ?? new();
-                    _f.City = v.City ?? "";
-                }
-                catch { }
-                finally { _loadingCities = false; }
-            }
-        }
+        _f.City = v.City ?? "";
     }
 
     private void OpenDetail(VendorDto v) { _detailItem = v; }
@@ -1298,13 +1247,6 @@ else
         public string Name   { get; set; } = "";
         public string Code   { get; set; } = "";
         public string Region { get; set; } = "";
-    }
-
-    private class CityItem
-    {
-        public int    Id        { get; set; }
-        public string Name      { get; set; } = "";
-        public bool   IsCapital { get; set; }
     }
 
     private class VendorForm
