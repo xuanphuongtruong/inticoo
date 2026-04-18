@@ -228,10 +228,15 @@ else
             </div>
             <div class="frow">
                 <div class="fcell">
-                    <label class="flabel">Date of Birth <span class="label-hint">(DD/MM/YYYY)</span></label>
-                    <input class="form-input" type="text" placeholder="DD/MM/YYYY" maxlength="10"
-                           value="@(_formDateOfBirth?.ToString("dd/MM/yyyy"))"
-                           @onchange="OnDateOfBirthChanged" />
+                    <label class="flabel">Date of Birth</label>
+                    <div class="dob-wrap">
+                        <input class="form-input dob-native" type="date"
+                               value="@(_formDateOfBirth?.ToString("yyyy-MM-dd"))"
+                               @onchange="e => _formDateOfBirth = DateTime.TryParse(e.Value?.ToString(), out var d) ? d : null" />
+                        <div class="dob-display @(_formDateOfBirth.HasValue ? "" : "dob-placeholder")">
+                            @(_formDateOfBirth?.ToString("dd/MM/yyyy") ?? "DD/MM/YYYY")
+                        </div>
+                    </div>
                 </div>
                 <div class="fcell">
                     <label class="flabel">Gender</label>
@@ -699,27 +704,6 @@ else
         else _formLanguages.Add(lang);
     }
 
-    // Parse Date of Birth from DD/MM/YYYY text input
-    private void OnDateOfBirthChanged(ChangeEventArgs e)
-    {
-        var input = e.Value?.ToString()?.Trim() ?? "";
-        if (string.IsNullOrEmpty(input))
-        {
-            _formDateOfBirth = null;
-            return;
-        }
-
-        // Chấp nhận các separator: /, -, .
-        var formats = new[] { "dd/MM/yyyy", "d/M/yyyy", "dd-MM-yyyy", "d-M-yyyy", "dd.MM.yyyy", "d.M.yyyy" };
-        if (DateTime.TryParseExact(input, formats,
-                System.Globalization.CultureInfo.InvariantCulture,
-                System.Globalization.DateTimeStyles.None, out var dt))
-        {
-            _formDateOfBirth = dt;
-        }
-        // Nếu parse fail thì giữ nguyên giá trị cũ (không reset về null để user sửa lại)
-    }
-
     private async Task LoadCustomers()
     {
         _loadingCustomers = true;
@@ -1120,6 +1104,31 @@ else
     .form-input::placeholder { color:#b0bdd4; }
     .form-input-disabled,.form-input[disabled],.form-input[readonly] { background:#f0f4f8; color:#9baac8; cursor:not-allowed; }
     .form-textarea { min-height:80px; resize:vertical; }
+
+    /* Date of Birth: native date picker with overlay to force DD/MM/YYYY display */
+    .dob-wrap { position:relative; width:100%; }
+    .dob-native {
+        /* Ẩn text native của date input, chỉ giữ icon calendar và vùng click */
+        color:transparent;
+        caret-color:transparent;
+    }
+    .dob-native::-webkit-datetime-edit,
+    .dob-native::-webkit-datetime-edit-fields-wrapper,
+    .dob-native::-webkit-datetime-edit-text,
+    .dob-native::-webkit-datetime-edit-day-field,
+    .dob-native::-webkit-datetime-edit-month-field,
+    .dob-native::-webkit-datetime-edit-year-field { color:transparent; }
+    .dob-native::-webkit-calendar-picker-indicator { opacity:1; cursor:pointer; }
+    .dob-display {
+        position:absolute;
+        top:50%; left:13px;
+        transform:translateY(-50%);
+        font-size:14px;
+        color:#1a2d5a;
+        pointer-events:none;
+        font-family:inherit;
+    }
+    .dob-display.dob-placeholder { color:#b0bdd4; }
 
     /* upload */
     .upload-zone { border:2px dashed #c9d8ee; border-radius:12px; padding:4px; transition:border-color .2s,background .2s; margin-bottom:12px; cursor:pointer; }
