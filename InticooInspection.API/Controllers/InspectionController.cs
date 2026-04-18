@@ -701,6 +701,7 @@ namespace InticooInspection.API.Controllers
 
         // PUT api/inspections/{id}/status
         [HttpPut("{id}/status")]
+        [AllowAnonymous]
         public async Task<IActionResult> UpdateStatus(int id, [FromBody] UpdateStatusRequest request)
         {
             var inspection = await _db.Inspections.FindAsync(id);
@@ -719,6 +720,7 @@ namespace InticooInspection.API.Controllers
 
         // PUT api/inspections/{id}/steps/{stepId}
         [HttpPut("{id}/steps/{stepId}")]
+        [AllowAnonymous]
         public async Task<IActionResult> UpdateStep(int id, int stepId, [FromBody] UpdateStepRequest request)
         {
             var step = await _db.InspectionSteps.FindAsync(stepId);
@@ -758,6 +760,7 @@ namespace InticooInspection.API.Controllers
 
         // PUT api/inspections/{id}/overall
         [HttpPut("{id}/overall")]
+        [AllowAnonymous]
         public async Task<IActionResult> UpdateOverall(int id, [FromBody] List<OverallConclusionRequest> request)
         {
             var inspection = await _db.Inspections

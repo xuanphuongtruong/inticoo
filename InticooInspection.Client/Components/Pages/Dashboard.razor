@@ -224,7 +224,7 @@ else if (_data != null)
         <div class="db-row" style="align-items:flex-start;gap:20px;flex-wrap:wrap;">
 
             <!-- Recent Inspections — full width on mobile, 2/3 on desktop -->
-            <div class="db-table-card" style="flex:2;min-width:300px;">
+            <div class="db-table-card db-main-col" style="flex:2;min-width:300px;">
                 <div class="db-table-header">
                     <span class="db-table-title">Recent Inspections</span>
                     <div class="db-tab-group">
@@ -274,7 +274,7 @@ else if (_data != null)
             </div>
 
             <!-- Right column: Quick Actions + Top Lists -->
-            <div style="flex:1;min-width:stretch;display:flex;flex-direction:column;gap:16px;">
+            <div class="db-side-col" style="flex:1;min-width:0;display:flex;flex-direction:column;gap:16px;">
 
                 <!-- Quick Actions -->
                 <div class="db-action-card">
@@ -456,7 +456,7 @@ else if (_data != null)
 
 <style>
     /* ── Page ── */
-    .db-page { max-width: 100%; width: 100%; font-family: "DM Sans", sans-serif; color: #1a2d5a; }
+    .db-page { max-width: 100%; width: 100%; box-sizing: border-box; font-family: "DM Sans", sans-serif; color: #1a2d5a; }
     .db-loading { display:flex; align-items:center; gap:12px; padding:60px; justify-content:center; color:#ffffff; }
     .db-spinner { width:24px;height:24px;border:3px solid rgba(255,255,255,0.3);border-top-color:#ffffff;border-radius:50%;animation:spin .7s linear infinite; }
     .db-error { background:#fff5f5;border:1px solid #fecaca;border-radius:12px;padding:16px 20px;color:#dc2626;margin:20px 0; }
@@ -577,9 +577,64 @@ else if (_data != null)
 
     /* ── Responsive ── */
     @@media (max-width:1200px) { .db-cards-grid { grid-template-columns:repeat(3,1fr); } }
+
     @@media (max-width:900px)  {
         .db-cards-grid { grid-template-columns:repeat(2,1fr); }
-        .db-row { flex-direction:column; }
+
+        /* Stack row dọc và force tất cả child chiếm 100% ngang */
+        .db-row {
+            flex-direction: column;
+            flex-wrap: nowrap;
+        }
+        .db-row > * {
+            width: 100% !important;
+            flex: 1 1 auto !important;
+            min-width: 0 !important;
+            max-width: 100% !important;
+        }
+
+        /* Nested flex column cũng phải full width */
+        .db-side-col {
+            width: 100% !important;
+            flex: 1 1 auto !important;
+        }
+        .db-side-col > * {
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        /* Card chính Recent Inspections */
+        .db-main-col {
+            width: 100% !important;
+            min-width: 0 !important;
+        }
     }
-    @@media (max-width:600px)  { .db-cards-grid { grid-template-columns:1fr 1fr; } }
+
+    @@media (max-width:600px)  {
+        .db-cards-grid { grid-template-columns:1fr 1fr; }
+
+        /* Page không bị đẩy rộng do table con có min-width */
+        html, body { overflow-x: hidden; }
+        .db-page {
+            padding-left: env(safe-area-inset-left, 0);
+            padding-right: env(safe-area-inset-right, 0);
+            box-sizing: border-box;
+        }
+
+        /* Table Recent Inspections: cho phép scroll ngang trong khung thay vì đẩy card rộng ra */
+        .db-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+        .db-table { font-size: 12.5px; }
+        .db-table td, .db-table th { padding: 10px 12px; }
+
+        /* Header table wrap khi chật */
+        .db-table-header { padding: 14px 16px; gap: 8px; }
+        .db-table-title { font-size: 14px; }
+        .db-table-count { font-size: 11px; margin-left: 0; }
+
+        /* Card padding nhỏ lại */
+        .db-card { padding: 14px; }
+        .db-card-value { font-size: 22px; }
+
+        .db-chart-card { padding: 16px; }
+    }
 </style>
