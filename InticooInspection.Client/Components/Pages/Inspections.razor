@@ -144,6 +144,12 @@
                                                     <path d="M4 6h12M8 6V4h4v2M7 6v10h6V6" stroke-linecap="round" stroke-linejoin="round"/>
                                                 </svg>
                                             </button>
+                                            <button class="bico bcancel" @onclick="() => ConfirmCancel(it)" title="Cancel">
+                                                <svg width="13" height="13" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2">
+                                                    <circle cx="10" cy="10" r="7.5"/>
+                                                    <path d="M5.5 5.5l9 9" stroke-linecap="round"/>
+                                                </svg>
+                                            </button>
                                         }
                                         else
                                         {
@@ -224,6 +230,37 @@
     </div>
 }
 
+<!-- Cancel Confirmation Modal -->
+@if (_cancelTarget != null)
+{
+    <div class="modal-backdrop" @onclick="CancelCancelAction">
+        <div class="modal-box" @onclick:stopPropagation="true">
+            <div class="modal-icon">
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#d97706" stroke-width="2">
+                    <circle cx="12" cy="12" r="10"/>
+                    <path d="M8 8l8 8M16 8l-8 8" stroke-linecap="round"/>
+                </svg>
+            </div>
+            <h3 class="modal-title">Cancel Inspection</h3>
+            <p class="modal-msg">
+                Are you sure you want to cancel
+                <strong>@(string.IsNullOrEmpty(_cancelTarget.JobNumber) ? $"#{_cancelTarget.Id}" : _cancelTarget.JobNumber)</strong>?
+                This will mark the inspection as <strong>Cancelled</strong>.
+            </p>
+            @if (!string.IsNullOrEmpty(_cancelError))
+            {
+                <div class="modal-err">@_cancelError</div>
+            }
+            <div class="modal-actions">
+                <button class="btn-cancel-modal" @onclick="CancelCancelAction" disabled="@_cancelling">Back</button>
+                <button class="btn-cancel-confirm" @onclick="ExecuteCancel" disabled="@_cancelling">
+                    @if (_cancelling) { <span>Cancelling...</span> } else { <span>Confirm Cancel</span> }
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
 @code {
     private List<InspectionRow> _inspections = new();
     private bool   _loading      = true;
@@ -244,6 +281,11 @@
     private InspectionRow? _deleteTarget = null;
     private bool           _deleting     = false;
     private string         _deleteError  = "";
+
+    // Cancel state
+    private InspectionRow? _cancelTarget = null;
+    private bool           _cancelling   = false;
+    private string         _cancelError  = "";
 
     protected override async Task OnInitializedAsync()
     {
@@ -398,6 +440,34 @@
         finally { _deleting = false; Waiting.Hide(); }
     }
 
+    // ── Cancel ────────────────────────────────────────────────────
+    private void ConfirmCancel(InspectionRow item) { _cancelTarget = item; _cancelError = ""; }
+    private void CancelCancelAction()              { _cancelTarget = null; _cancelError = ""; }
+
+    private async Task ExecuteCancel()
+    {
+        if (_cancelTarget == null) return;
+        _cancelling = true; _cancelError = "";
+        Waiting.Show("Cancelling inspection...");
+        try
+        {
+            var token = await SessionStorage.GetItemAsync<string>("auth_token");
+            if (string.IsNullOrEmpty(token)) { _cancelError = "Session expired. Please log in again."; return; }
+            Http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+            // Backend enum: InspectionStatus.Cancelled
+            var body = new { Status = "Cancelled" };
+            var resp = await Http.PutAsJsonAsync($"api/inspections/{_cancelTarget.Id}/status", body);
+
+            if (resp.IsSuccessStatusCode)          { _cancelTarget = null; await LoadPage(_page); }
+            else if ((int)resp.StatusCode == 401)  _cancelError = "Unauthorized. Please log in again.";
+            else if ((int)resp.StatusCode == 403)  _cancelError = "You do not have permission to cancel this inspection.";
+            else                                   _cancelError = $"Cancel failed ({(int)resp.StatusCode})";
+        }
+        catch (Exception ex) { _cancelError = ex.Message; }
+        finally { _cancelling = false; Waiting.Hide(); }
+    }
+
     // ── Load ──────────────────────────────────────────────────────
     private async Task LoadPage(int page)
     {
@@ -520,7 +590,7 @@
     .th-y   { background:#fffde7; }
     .th-grp { background:#e3f2fd; }
     .th-no  { background:#f5f5f5; width:36px; }
-    .th-act { background:#f5f5f5; width:72px; }
+    .th-act { background:#f5f5f5; width:104px; }
     .ptable td { padding:7px 9px; border:1px solid #dde4ef; color:#1a2d5a; vertical-align:middle; }
     .tc  { text-align:center; }
     .fw  { font-weight:500; }
@@ -536,6 +606,7 @@
     .bico  { display:inline-flex; align-items:center; justify-content:center; width:26px; height:26px; border:none; border-radius:6px; cursor:pointer; transition:all .15s; margin:0 2px; }
     .bedit { background:#e8f0fe; color:#1565c0; } .bedit:hover { background:#1565c0; color:#fff; }
     .bdel  { background:#fee2e2; color:#dc2626; } .bdel:hover  { background:#dc2626; color:#fff; }
+    .bcancel { background:#fef3c7; color:#d97706; } .bcancel:hover { background:#d97706; color:#fff; }
     .bview { background:#f0f4fb; color:#7a8fad;  } .bview:hover { background:#e0eaf7; color:#1a2d5a; }
     .bview-report { background:#e6f4ff; color:#1e90d6; } .bview-report:hover { background:#1e90d6; color:#fff; }
 
@@ -575,6 +646,9 @@
     .btn-del-confirm { padding:9px 22px; background:#dc2626; border:none; border-radius:10px; color:#fff; font-size:13.5px; font-weight:600; cursor:pointer; font-family:"DM Sans",sans-serif; transition:background .2s; }
     .btn-del-confirm:hover:not(:disabled) { background:#b91c1c; }
     .btn-del-confirm:disabled, .btn-cancel-modal:disabled { opacity:.6; cursor:not-allowed; }
+    .btn-cancel-confirm { padding:9px 22px; background:#d97706; border:none; border-radius:10px; color:#fff; font-size:13.5px; font-weight:600; cursor:pointer; font-family:"DM Sans",sans-serif; transition:background .2s; }
+    .btn-cancel-confirm:hover:not(:disabled) { background:#b45309; }
+    .btn-cancel-confirm:disabled { opacity:.6; cursor:not-allowed; }
 
     @@keyframes spin { to { transform:rotate(360deg); } }
 </style>
