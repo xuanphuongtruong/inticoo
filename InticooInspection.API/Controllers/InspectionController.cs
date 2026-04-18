@@ -109,11 +109,19 @@ namespace InticooInspection.API.Controllers
 
                 // Vendor lookup — load tất cả vendors (bao gồm contact info)
                 var allVendors = await _db.Vendors
-                    .Select(v => new {
-                        v.Code, v.Name, v.CompanyAddress, v.Country,
-                        v.Address1, v.Address2,
+                    .Select(v => new
+                    {
+                        v.Code,
+                        v.Name,
+                        v.CompanyAddress,
+                        v.Country,
+                        v.Address1,
+                        v.Address2,
                         v.Phone,
-                        v.ContactName, v.ContactTitle, v.ContactPhone, v.ContactEmail
+                        v.ContactName,
+                        v.ContactTitle,
+                        v.ContactPhone,
+                        v.ContactEmail
                     })
                     .ToListAsync();
 
@@ -121,14 +129,14 @@ namespace InticooInspection.API.Controllers
                 var vendorByCode = allVendors.GroupBy(v => v.Code).ToDictionary(g => g.Key, g => g.First());
                 var vendorByName = allVendors.GroupBy(v => v.Name).ToDictionary(g => g.Key, g => g.First());
 
-                var vendorAddressDict     = allVendors.ToDictionary(v => v.Code,
+                var vendorAddressDict = allVendors.ToDictionary(v => v.Code,
                     v => !string.IsNullOrEmpty(v.Address1) ? v.Address1 : v.CompanyAddress ?? "");
-                var vendorCountryDict     = allVendors.ToDictionary(v => v.Code, v => v.Country ?? "");
+                var vendorCountryDict = allVendors.ToDictionary(v => v.Code, v => v.Country ?? "");
                 var vendorContactNameDict = allVendors.ToDictionary(v => v.Code, v => v.ContactName ?? "");
-                var vendorContactTitleDict= allVendors.ToDictionary(v => v.Code, v => v.ContactTitle ?? "");
-                var vendorContactPhoneDict= allVendors.ToDictionary(v => v.Code, v => v.ContactPhone ?? "");
-                var vendorContactOfficeDict= allVendors.ToDictionary(v => v.Code, v => v.Phone ?? "");
-                var vendorContactEmailDict= allVendors.ToDictionary(v => v.Code, v => v.ContactEmail ?? "");
+                var vendorContactTitleDict = allVendors.ToDictionary(v => v.Code, v => v.ContactTitle ?? "");
+                var vendorContactPhoneDict = allVendors.ToDictionary(v => v.Code, v => v.ContactPhone ?? "");
+                var vendorContactOfficeDict = allVendors.ToDictionary(v => v.Code, v => v.Phone ?? "");
+                var vendorContactEmailDict = allVendors.ToDictionary(v => v.Code, v => v.ContactEmail ?? "");
 
                 // Product type lookup — load tất cả products
                 var allProducts = await _db.Products
@@ -168,13 +176,13 @@ namespace InticooInspection.API.Controllers
                     var vByName = vByCode == null && vendorByName.TryGetValue(i.VendorName ?? "", out var vbn) ? vbn : null;
                     var v = vByCode ?? vByName;
 
-                    var vAddr    = v != null ? (!string.IsNullOrEmpty(v.Address1) ? v.Address1 : v.CompanyAddress ?? "") : "";
-                    var vCountry = v?.Country  ?? "";
-                    var vcName   = v?.ContactName  ?? "";
-                    var vcTitle  = v?.ContactTitle  ?? "";
-                    var vcPhone  = v?.ContactPhone  ?? "";
-                    var vcOffice = v?.Phone         ?? "";
-                    var vcEmail  = v?.ContactEmail  ?? "";
+                    var vAddr = v != null ? (!string.IsNullOrEmpty(v.Address1) ? v.Address1 : v.CompanyAddress ?? "") : "";
+                    var vCountry = v?.Country ?? "";
+                    var vcName = v?.ContactName ?? "";
+                    var vcTitle = v?.ContactTitle ?? "";
+                    var vcPhone = v?.ContactPhone ?? "";
+                    var vcOffice = v?.Phone ?? "";
+                    var vcEmail = v?.ContactEmail ?? "";
 
                     productTypeDict.TryGetValue(i.ProductName ?? "", out var ptype);
 
@@ -193,11 +201,11 @@ namespace InticooInspection.API.Controllers
                         vendorId = i.VendorId,
                         vendorAddress = vAddr,
                         vendorCountry = vCountry,
-                        vendorContactName     = vcName,
+                        vendorContactName = vcName,
                         vendorContactPosition = vcTitle,
-                        vendorContactMobile   = vcPhone,
-                        vendorContactOffice   = vcOffice,
-                        vendorContactEmail    = vcEmail,
+                        vendorContactMobile = vcPhone,
+                        vendorContactOffice = vcOffice,
+                        vendorContactEmail = vcEmail,
                         productCategory = i.ProductCategory,
                         productType = ptype ?? "",
                         inspectionType = MapInspType(i.InspectionTypeVal),
@@ -269,12 +277,12 @@ namespace InticooInspection.API.Controllers
                     vendorAddress = !string.IsNullOrEmpty(vendor.Address1)
                                     ? vendor.Address1
                                     : vendor.CompanyAddress ?? "";
-                    vendorCountry = vendor.Country        ?? "";
-                    contactName   = vendor.ContactName    ?? "";
-                    contactTitle  = vendor.ContactTitle   ?? "";
-                    contactPhone  = vendor.ContactPhone   ?? "";
-                    contactOffice = vendor.Phone          ?? "";
-                    contactEmail  = vendor.ContactEmail   ?? "";
+                    vendorCountry = vendor.Country ?? "";
+                    contactName = vendor.ContactName ?? "";
+                    contactTitle = vendor.ContactTitle ?? "";
+                    contactPhone = vendor.ContactPhone ?? "";
+                    contactOffice = vendor.Phone ?? "";
+                    contactEmail = vendor.ContactEmail ?? "";
                 }
             }
 
@@ -292,17 +300,17 @@ namespace InticooInspection.API.Controllers
             static string MapDefectAql(DefectAqlLevel? v) => v switch
             {
                 DefectAqlLevel.AQL_0_065 => "0.065",
-                DefectAqlLevel.AQL_0_1   => "0.1",
-                DefectAqlLevel.AQL_0_15  => "0.15",
-                DefectAqlLevel.AQL_0_25  => "0.25",
-                DefectAqlLevel.AQL_0_4   => "0.40",
-                DefectAqlLevel.AQL_0_65  => "0.65",
-                DefectAqlLevel.AQL_1_0   => "1.0",
-                DefectAqlLevel.AQL_1_5   => "1.5",
-                DefectAqlLevel.AQL_2_5   => "2.5",
-                DefectAqlLevel.AQL_4_0   => "4.0",
-                DefectAqlLevel.AQL_6_5   => "6.5",
-                _                        => "Not Allowed"
+                DefectAqlLevel.AQL_0_1 => "0.1",
+                DefectAqlLevel.AQL_0_15 => "0.15",
+                DefectAqlLevel.AQL_0_25 => "0.25",
+                DefectAqlLevel.AQL_0_4 => "0.40",
+                DefectAqlLevel.AQL_0_65 => "0.65",
+                DefectAqlLevel.AQL_1_0 => "1.0",
+                DefectAqlLevel.AQL_1_5 => "1.5",
+                DefectAqlLevel.AQL_2_5 => "2.5",
+                DefectAqlLevel.AQL_4_0 => "4.0",
+                DefectAqlLevel.AQL_6_5 => "6.5",
+                _ => "Not Allowed"
             };
             static string MapAqlLevel(AqlInspectionLevel v) => v switch
             {
@@ -353,11 +361,11 @@ namespace InticooInspection.API.Controllers
                 vendorId = inspection.VendorId,
                 vendorAddress = vendorAddress,
                 vendorCountry = vendorCountry,
-                contactName   = contactName,
-                contactTitle  = contactTitle,
-                contactPhone  = contactPhone,
+                contactName = contactName,
+                contactTitle = contactTitle,
+                contactPhone = contactPhone,
                 contactOffice = contactOffice,
-                contactEmail  = contactEmail,
+                contactEmail = contactEmail,
                 inspectionLocation = !string.IsNullOrEmpty(inspectorCountry)
                     ? inspectorCountry
                     : inspection.InspectionLocation,
@@ -370,7 +378,7 @@ namespace InticooInspection.API.Controllers
                 productCategory = inspection.ProductCategory,
                 totalShipmentQty = inspection.TotalShipmentQty,
                 totalCartonBoxes = inspection.TotalCartonBoxes,
-                generalRemark    = inspection.GeneralRemark,
+                generalRemark = inspection.GeneralRemark,
                 inspectorId = inspection.InspectorId,
                 inspectorName = inspection.InspectorName,
                 createdAt = inspection.CreatedAt,
@@ -393,11 +401,11 @@ namespace InticooInspection.API.Controllers
                 aqlMinorSampleSize = inspection.MinorSampleSize,
                 aqlMinorAccept = inspection.MinorAccept,
                 aqlMinorReject = inspection.MinorReject,
-                photo1Url           = inspection.Photo1Url,
-                photo2Url           = inspection.Photo2Url,
-                finalResult         = inspection.FinalResult,
-                inspectorComments   = inspection.InspectorComments,
-                signatureUrl        = inspection.SignatureUrl,
+                photo1Url = inspection.Photo1Url,
+                photo2Url = inspection.Photo2Url,
+                finalResult = inspection.FinalResult,
+                inspectorComments = inspection.InspectorComments,
+                signatureUrl = inspection.SignatureUrl,
                 inspectionReference = inspection.QcInspectionRef,
 
                 // Packaging
@@ -510,10 +518,10 @@ namespace InticooInspection.API.Controllers
             {
                 "PPT" => "PPT",
                 "PST" => "PST",
-                _     => "DPI"
+                _ => "DPI"
             };
             var yearSuffix = (DateTime.UtcNow.Year % 100).ToString("D2"); // "26", "27", ...
-            var jnPrefix   = $"{typePrefix}-JN";
+            var jnPrefix = $"{typePrefix}-JN";
 
             // Đếm số inspection cùng loại để lấy số thứ tự tiếp theo
             var count = await _db.Inspections
@@ -588,7 +596,7 @@ namespace InticooInspection.API.Controllers
                 ProductCategory = request.ProductCategory,
                 TotalShipmentQty = request.TotalShipmentQty,
                 TotalCartonBoxes = request.TotalCartonBoxes,
-                GeneralRemark    = request.GeneralRemark,
+                GeneralRemark = request.GeneralRemark,
                 InspectorId = request.InspectorId,
                 InspectorName = request.InspectorName,
                 JobNumber = jobNumber,
@@ -793,27 +801,35 @@ namespace InticooInspection.API.Controllers
             try
             {
                 var now = DateTime.UtcNow;
-                var currentYear  = now.Year;
+                var currentYear = now.Year;
                 var currentMonth = now.Month;
 
                 // ── Tổng quan ──
                 var allInspections = await _db.Inspections
                     .AsNoTracking()
-                    .Select(i => new {
-                        i.Id, i.Status, i.InspectionType,
-                        i.InspectionDate, i.CreatedAt,
-                        i.JobNumber, i.CustomerName, i.CustomerId,
-                        i.ProductCategory, i.InspectorId, i.InspectorName,
+                    .Select(i => new
+                    {
+                        i.Id,
+                        i.Status,
+                        i.InspectionType,
+                        i.InspectionDate,
+                        i.CreatedAt,
+                        i.JobNumber,
+                        i.CustomerName,
+                        i.CustomerId,
+                        i.ProductCategory,
+                        i.InspectorId,
+                        i.InspectorName,
                         i.FinalResult
                     }).ToListAsync();
 
-                var total     = allInspections.Count;
-                var pending   = allInspections.Count(i => i.Status == InspectionStatus.Pending);
+                var total = allInspections.Count;
+                var pending = allInspections.Count(i => i.Status == InspectionStatus.Pending);
                 var completed = allInspections.Count(i => i.Status == InspectionStatus.Completed);
 
-                var customerCount  = await _db.Customers.CountAsync();
-                var vendorCount    = await _db.Vendors.CountAsync();
-                var productCount   = await _db.Products.CountAsync();
+                var customerCount = await _db.Customers.CountAsync();
+                var vendorCount = await _db.Vendors.CountAsync();
+                var productCount = await _db.Products.CountAsync();
                 var inspectorCount = await _userManager.Users
                     .CountAsync(u => u.InspectorId != null && u.InspectorId != "");
 
@@ -824,15 +840,15 @@ namespace InticooInspection.API.Controllers
 
                 var byMonth = Enumerable.Range(1, 12).Select(m => new
                 {
-                    month     = m,
+                    month = m,
                     completed = thisYearInsp.Count(i => i.InspectionDate.Month == m && i.Status == InspectionStatus.Completed),
-                    pending   = thisYearInsp.Count(i => i.InspectionDate.Month == m && i.Status != InspectionStatus.Completed)
+                    pending = thisYearInsp.Count(i => i.InspectionDate.Month == m && i.Status != InspectionStatus.Completed)
                 }).ToList();
 
                 // ── Current month stats ──
                 var thisMonth = thisYearInsp.Where(i => i.InspectionDate.Month == currentMonth).ToList();
                 var monthCompleted = thisMonth.Count(i => i.Status == InspectionStatus.Completed);
-                var monthPending   = thisMonth.Count(i => i.Status != InspectionStatus.Completed);
+                var monthPending = thisMonth.Count(i => i.Status != InspectionStatus.Completed);
 
                 // ── Inspection Types by Month (current month) ──
                 var monthPpt = thisMonth.Count(i => i.InspectionType == InspectionType.PPT);
@@ -843,9 +859,9 @@ namespace InticooInspection.API.Controllers
                 var typeByMonth = Enumerable.Range(1, 12).Select(m => new
                 {
                     month = m,
-                    ppt   = thisYearInsp.Count(i => i.InspectionDate.Month == m && i.InspectionType == InspectionType.PPT),
-                    dpi   = thisYearInsp.Count(i => i.InspectionDate.Month == m && i.InspectionType == InspectionType.DPI),
-                    pst   = thisYearInsp.Count(i => i.InspectionDate.Month == m && i.InspectionType == InspectionType.PST),
+                    ppt = thisYearInsp.Count(i => i.InspectionDate.Month == m && i.InspectionType == InspectionType.PPT),
+                    dpi = thisYearInsp.Count(i => i.InspectionDate.Month == m && i.InspectionType == InspectionType.DPI),
+                    pst = thisYearInsp.Count(i => i.InspectionDate.Month == m && i.InspectionType == InspectionType.PST),
                 }).ToList();
 
                 var yearPpt = thisYearInsp.Count(i => i.InspectionType == InspectionType.PPT);
@@ -856,17 +872,18 @@ namespace InticooInspection.API.Controllers
                 var recent = allInspections
                     .OrderByDescending(i => i.CreatedAt)
                     .Take(10)
-                    .Select(i => new {
+                    .Select(i => new
+                    {
                         i.JobNumber,
                         i.CustomerName,
                         i.CustomerId,
                         i.ProductCategory,
                         i.InspectorName,
                         i.InspectorId,
-                        status      = i.Status.ToString(),
-                        inspType    = i.InspectionType.ToString(),
+                        status = i.Status.ToString(),
+                        inspType = i.InspectionType.ToString(),
                         i.FinalResult,
-                        date        = i.InspectionDate
+                        date = i.InspectionDate
                     }).ToList();
 
                 // ── Top Customers (most inspections) ──
@@ -889,19 +906,27 @@ namespace InticooInspection.API.Controllers
 
                 return Ok(new
                 {
-                    updatedAt         = now,
-                    totalInspections  = total,
+                    updatedAt = now,
+                    totalInspections = total,
                     pendingInspections = pending,
                     completedInspections = completed,
-                    customerCount, vendorCount, productCount, inspectorCount,
+                    customerCount,
+                    vendorCount,
+                    productCount,
+                    inspectorCount,
 
                     // Inspections by Month
-                    monthCompleted, monthPending,
+                    monthCompleted,
+                    monthPending,
                     byMonth,
 
                     // Types
-                    monthPpt, monthDpi, monthPst,
-                    yearPpt, yearDpi, yearPst,
+                    monthPpt,
+                    monthDpi,
+                    monthPst,
+                    yearPpt,
+                    yearDpi,
+                    yearPst,
                     typeByMonth,
 
                     // Lists
@@ -923,18 +948,24 @@ namespace InticooInspection.API.Controllers
         {
             try
             {
-                var now         = DateTime.UtcNow;
-                var targetYear  = year  ?? now.Year;
+                var now = DateTime.UtcNow;
+                var targetYear = year ?? now.Year;
                 var targetMonth = month ?? now.Month;
 
                 // Load all inspections for this inspector
                 var allInsp = await _db.Inspections
                     .AsNoTracking()
                     .Where(i => i.InspectorId == inspectorId)
-                    .Select(i => new {
-                        i.Id, i.InspectionDate, i.InspectionType,
-                        i.FinalResult, i.QcResultJson, i.Status,
-                        i.CreatedAt, i.CompletedAt
+                    .Select(i => new
+                    {
+                        i.Id,
+                        i.InspectionDate,
+                        i.InspectionType,
+                        i.FinalResult,
+                        i.QcResultJson,
+                        i.Status,
+                        i.CreatedAt,
+                        i.CompletedAt
                     }).ToListAsync();
 
                 // ── Monthly bar chart (current year) ──
@@ -943,9 +974,9 @@ namespace InticooInspection.API.Controllers
                 var monthlyData = Enumerable.Range(1, 12).Select(m => new
                 {
                     month = m,
-                    ppt   = yearInsp.Count(i => i.InspectionDate.Month == m && i.InspectionType == InspectionType.PPT),
-                    dpi   = yearInsp.Count(i => i.InspectionDate.Month == m && i.InspectionType == InspectionType.DPI),
-                    pst   = yearInsp.Count(i => i.InspectionDate.Month == m && i.InspectionType == InspectionType.PST),
+                    ppt = yearInsp.Count(i => i.InspectionDate.Month == m && i.InspectionType == InspectionType.PPT),
+                    dpi = yearInsp.Count(i => i.InspectionDate.Month == m && i.InspectionType == InspectionType.DPI),
+                    pst = yearInsp.Count(i => i.InspectionDate.Month == m && i.InspectionType == InspectionType.PST),
                 }).ToList();
 
                 // ── Yearly totals ──
@@ -954,22 +985,23 @@ namespace InticooInspection.API.Controllers
                 var yearPst = yearInsp.Count(i => i.InspectionType == InspectionType.PST);
 
                 // ── Pass/Fail for year ──
-                var yearTotal   = yearInsp.Count;
-                var yearPassed  = yearInsp.Count(i => i.FinalResult == "PASSED");
-                var yearFailed  = yearInsp.Count(i => i.FinalResult == "FAILED");
+                var yearTotal = yearInsp.Count;
+                var yearPassed = yearInsp.Count(i => i.FinalResult == "PASSED");
+                var yearFailed = yearInsp.Count(i => i.FinalResult == "FAILED");
                 var yearPassRate = yearTotal > 0 ? Math.Round((double)yearPassed / yearTotal * 100, 1) : 0;
                 var yearFailRate = yearTotal > 0 ? Math.Round((double)yearFailed / yearTotal * 100, 1) : 0;
 
                 // ── PST Pass/Fail by month (horizontal bar chart) ──
                 var pstByMonth = Enumerable.Range(1, 12).Select(m => new
                 {
-                    month   = m,
-                    passed  = yearInsp.Count(i => i.InspectionDate.Month == m && i.InspectionType == InspectionType.PST && i.FinalResult == "PASSED"),
-                    failed  = yearInsp.Count(i => i.InspectionDate.Month == m && i.InspectionType == InspectionType.PST && i.FinalResult == "FAILED"),
+                    month = m,
+                    passed = yearInsp.Count(i => i.InspectionDate.Month == m && i.InspectionType == InspectionType.PST && i.FinalResult == "PASSED"),
+                    failed = yearInsp.Count(i => i.InspectionDate.Month == m && i.InspectionType == InspectionType.PST && i.FinalResult == "FAILED"),
                 }).ToList();
 
                 // ── Average inspection duration (days from CreatedAt to CompletedAt) per type ──
-                double AvgDays(InspectionType t) {
+                double AvgDays(InspectionType t)
+                {
                     var completed = yearInsp
                         .Where(i => i.InspectionType == t && i.CompletedAt.HasValue)
                         .Select(i => (i.CompletedAt!.Value - i.CreatedAt).TotalDays)
@@ -982,19 +1014,31 @@ namespace InticooInspection.API.Controllers
 
                 // ── On-time rate: completed within expected (≤5 days) ──
                 var completedJobs = yearInsp.Where(i => i.CompletedAt.HasValue).ToList();
-                var onTime  = completedJobs.Count(i => (i.CompletedAt!.Value - i.CreatedAt).TotalDays <= 5);
+                var onTime = completedJobs.Count(i => (i.CompletedAt!.Value - i.CreatedAt).TotalDays <= 5);
                 var delayed = completedJobs.Count - onTime;
-                var onTimeRate  = completedJobs.Any() ? Math.Round((double)onTime  / completedJobs.Count * 100, 1) : 0;
+                var onTimeRate = completedJobs.Any() ? Math.Round((double)onTime / completedJobs.Count * 100, 1) : 0;
                 var delayedRate = completedJobs.Any() ? Math.Round((double)delayed / completedJobs.Count * 100, 1) : 0;
 
                 return Ok(new
                 {
-                    inspectorId, targetYear, targetMonth,
-                    yearTotal, yearPassed, yearFailed, yearPassRate, yearFailRate,
-                    yearPpt, yearDpi, yearPst,
-                    avgDurationPst = avgPst, avgDurationDpi = avgDpi, avgDurationPpt = avgPpt,
-                    onTimeRate, delayedRate,
-                    monthlyData, pstByMonth,
+                    inspectorId,
+                    targetYear,
+                    targetMonth,
+                    yearTotal,
+                    yearPassed,
+                    yearFailed,
+                    yearPassRate,
+                    yearFailRate,
+                    yearPpt,
+                    yearDpi,
+                    yearPst,
+                    avgDurationPst = avgPst,
+                    avgDurationDpi = avgDpi,
+                    avgDurationPpt = avgPpt,
+                    onTimeRate,
+                    delayedRate,
+                    monthlyData,
+                    pstByMonth,
                 });
             }
             catch (Exception ex)
@@ -1095,7 +1139,7 @@ namespace InticooInspection.API.Controllers
                 inspection.ProductCategory = request.ProductCategory;
                 inspection.TotalShipmentQty = request.TotalShipmentQty;
                 inspection.TotalCartonBoxes = request.TotalCartonBoxes;
-                inspection.GeneralRemark    = request.GeneralRemark;
+                inspection.GeneralRemark = request.GeneralRemark;
                 inspection.InspectorId = request.InspectorId;
                 inspection.InspectorName = request.InspectorName;
                 inspection.Photo1Url = request.Photo1Url;
@@ -1238,15 +1282,15 @@ namespace InticooInspection.API.Controllers
                 // 1. Các field quan trọng — lưu thẳng vào DB column riêng
                 //    để query/filter/report nhanh, không cần parse JSON
                 // ════════════════════════════════════════════════════════
-                inspection.FinalResult        = request.FinalResult;       // "PASSED"|"FAILED"|"NA"
-                inspection.SignatureUrl       = request.SignatureUrl;
-                inspection.InspectorComments  = request.InspectorComments;
-                inspection.QcInspectionRef   = request.InspectionReference;
+                inspection.FinalResult = request.FinalResult;       // "PASSED"|"FAILED"|"NA"
+                inspection.SignatureUrl = request.SignatureUrl;
+                inspection.InspectorComments = request.InspectorComments;
+                inspection.QcInspectionRef = request.InspectionReference;
                 inspection.InspectionLocation = request.InspectionLocation ?? inspection.InspectionLocation;
-                inspection.InspectionDate     = request.InspectionDate ?? inspection.InspectionDate;
+                inspection.InspectionDate = request.InspectionDate ?? inspection.InspectionDate;
                 if (!string.IsNullOrEmpty(request.Photo1Url)) inspection.Photo1Url = request.Photo1Url;
                 if (!string.IsNullOrEmpty(request.Photo2Url)) inspection.Photo2Url = request.Photo2Url;
-                inspection.Status      = InspectionStatus.Completed;
+                inspection.Status = InspectionStatus.Completed;
                 inspection.CompletedAt = DateTime.UtcNow;
 
                 // ════════════════════════════════════════════════════════
@@ -1255,14 +1299,14 @@ namespace InticooInspection.API.Controllers
                 // ════════════════════════════════════════════════════════
                 var qcData = new
                 {
-                    schemaVersion      = request.SchemaVersion,
+                    schemaVersion = request.SchemaVersion,
                     overallConclusions = request.OverallConclusions,
                     quantityConformity = request.QuantityConformity,
-                    packaging          = request.Packaging,
-                    productSpec        = request.ProductSpec,
-                    aql                = request.Aql,
-                    performanceTests   = request.PerformanceTests,
-                    defects            = request.Defects,
+                    packaging = request.Packaging,
+                    productSpec = request.ProductSpec,
+                    aql = request.Aql,
+                    performanceTests = request.PerformanceTests,
+                    defects = request.Defects,
                 };
                 inspection.QcResultJson = System.Text.Json.JsonSerializer.Serialize(qcData,
                     new System.Text.Json.JsonSerializerOptions { WriteIndented = false });
@@ -1277,12 +1321,12 @@ namespace InticooInspection.API.Controllers
                         .Select((o, i) => new InspectionOverallConclusion
                         {
                             InspectionId = id,
-                            Order        = i + 1,
-                            Letter       = o.Letter,
-                            Label        = o.Label,
-                            Compliance   = Enum.TryParse<OverallCompliance>(o.Compliance, true, out var cp)
+                            Order = i + 1,
+                            Letter = o.Letter,
+                            Label = o.Label,
+                            Compliance = Enum.TryParse<OverallCompliance>(o.Compliance, true, out var cp)
                                              ? cp : OverallCompliance.None,
-                            Remark       = o.Remark
+                            Remark = o.Remark
                         }).ToList();
                 }
 
@@ -1323,49 +1367,42 @@ namespace InticooInspection.API.Controllers
         // Helper: Gửi email hoàn thành inspection cho Customer
         // ════════════════════════════════════════════════════════
         private async Task SendCompletionEmailAsync(Inspection inspection, string toEmail)
-{
-    var smtp     = _config["Email:SmtpHost"]      ?? "smtp.gmail.com";
-    var port     = int.Parse(_config["Email:SmtpPort"] ?? "587");
-    var user     = _config["Email:Username"]      ?? "";
-    var pass     = _config["Email:Password"]      ?? "";
-    var from     = _config["Email:FromAddress"]   ?? user;
-    var fromName = _config["Email:FromName"]      ?? "Inticoo Global Services";
-    var baseUrl  = _config["Email:ReportBaseUrl"] ?? "https://app.inticoo.com";
+        {
+            var smtp = _config["Email:SmtpHost"] ?? "smtp.gmail.com";
+            var port = int.Parse(_config["Email:SmtpPort"] ?? "587");
+            var user = _config["Email:Username"] ?? "";
+            var pass = _config["Email:Password"] ?? "";
+            var from = _config["Email:FromAddress"] ?? user;
+            var fromName = _config["Email:FromName"] ?? "Inticoo Global Services";
+            var baseUrl = _config["Email:ReportBaseUrl"] ?? "https://app.inticoo.com";
 
-    var completedDate = (inspection.CompletedAt ?? DateTime.UtcNow).ToString("d MMMM yyyy");
+            var completedDate = (inspection.CompletedAt ?? DateTime.UtcNow).ToString("d MMMM yyyy");
+            var inspType = inspection.InspectionType.ToString() switch
+            {
+                "DPI" => "During-Production Inspection",
+                "PPT" => "Pre-Production Inspection",
+                "PST" => "Pre-Shipment Inspection (Final Inspection)",
+                _ => inspection.InspectionType.ToString()
+            };
+            var result = inspection.FinalResult ?? "N/A";
+            var reportLink = $"{baseUrl}/inspection-report/{inspection.Id}";
 
-    var inspType = inspection.InspectionType.ToString() switch
-    {
-        "DPI" => "During Production Inspection",
-        "PPT" => "Pre-Production Inspection",
-        "PST" => "Final Inspection",
-        _     => inspection.InspectionType.ToString()
-    };
+            var subject = $"Inspection Report Completed - {inspection.JobNumber}";
+            var body = $@"Dear Sir/Madam,
 
-    var result     = inspection.FinalResult?.ToLower() switch
-    {
-        "passed" => "Pass",
-        "failed" => "Fail",
-        _        => inspection.FinalResult ?? "N/A"
-    };
-
-    var reportLink = $"{baseUrl}/inspection-report/{inspection.Id}";
-
-    var subject = $"Inspection Report Completed – Job No: {inspection.JobNumber}";
-
-    var body = $@"This is to notify you that the inspection report for Job Number {inspection.JobNumber ?? "—"} has been completed on {completedDate}.
+This is a notification that the inspection report has been completed on {completedDate}.
 
 Please find the inspection details below:
-    • Job No: {inspection.JobNumber ?? "—"}
-    • Category: {inspection.ProductCategory ?? "—"}
-    • Product Name: {inspection.ProductName ?? "—"}
-    • Item Number: {inspection.ItemNumber ?? "—"}
-    • Inspection Type: {inspType}
-    • Vendor Name: {inspection.VendorName ?? "—"}
-    • Vendor ID: {inspection.VendorId ?? "—"}
-    • Result: {result}
+- Job No: {inspection.JobNumber ?? "—"}
+- Category: {inspection.ProductCategory ?? "—"}
+- Product Name: {inspection.ProductName ?? "—"}
+- Item Number: {inspection.ItemNumber ?? "—"}
+- Inspection Type: {inspType}
+- Vendor Name: {inspection.VendorName ?? "—"}
+- Vendor ID: {inspection.VendorId ?? "—"}
+- Result: {result}
 
-The inspection report is attached as a PDF file for your reference.
+Here is the link to download the inspection report: {reportLink}
 
 Should you have any questions or require further clarification, please feel free to contact us.
 
@@ -1373,33 +1410,24 @@ Best regards,
 Inticoo Global Services
 www.Inticoo.com";
 
-    using var client = new SmtpClient(smtp, port)
-    {
-        Credentials    = new NetworkCredential(user, pass),
-        EnableSsl      = true,
-        DeliveryMethod = SmtpDeliveryMethod.Network
-    };
+            using var client = new SmtpClient(smtp, port)
+            {
+                Credentials = new NetworkCredential(user, pass),
+                EnableSsl = true,
+                DeliveryMethod = SmtpDeliveryMethod.Network
+            };
 
-    var msg = new MailMessage
-    {
-        From       = new MailAddress(from, fromName),
-        Subject    = subject,
-        Body       = body,
-        IsBodyHtml = false
-    };
-    msg.To.Add(toEmail);
+            var msg = new MailMessage
+            {
+                From = new MailAddress(from, fromName),
+                Subject = subject,
+                Body = body,
+                IsBodyHtml = false
+            };
+            msg.To.Add(toEmail);
 
-    // Đính kèm PDF report nếu có file trên server
-    var pdfPath = Path.Combine("Reports", $"{inspection.JobNumber}.pdf");
-    if (System.IO.File.Exists(pdfPath))
-    {
-        var attachment = new Attachment(pdfPath, "application/pdf");
-        msg.Attachments.Add(attachment);
-    }
-
-    await client.SendMailAsync(msg);
-}
-
+            await client.SendMailAsync(msg);
+        }
     } // end class InspectionController
 
     public class CreateInspectionRequest
