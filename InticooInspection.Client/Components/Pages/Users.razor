@@ -143,25 +143,72 @@ else
                 <div class="error-alert">@_formError</div>
             }
 
-            @* ── Inspector ID + Status ── *@
+            @* ── Status (User ID is auto-generated, hidden from UI) ── *@
             <div class="frow">
-                <div class="fcell">
-                    <label class="flabel">User ID</label>
-                    @if (_editId == null)
-                    {
-                        <div class="form-input form-input-auto" style="background:#e6f1fb;color:#1e90d6;font-weight:700;font-family:monospace;border-color:#b5d4f4;">@_formInspectorId</div>
-                    }
-                    else
-                    {
-                        <input class="form-input" type="text" @bind="_formInspectorId" @bind:event="oninput" />
-                    }
-                </div>
-                <div class="fcell">
+                <div class="fcell fcell-full">
                     <label class="flabel">Status</label>
                     <label class="check-label" style="margin-top:6px;">
                         <input type="checkbox" @bind="_formIsActive" />
                         <span>@(_formIsActive ? "Active" : "Inactive")</span>
                     </label>
+                </div>
+            </div>
+
+            @* ── Section: Role (moved to top) ── *@
+            <div class="fsection-title">Role <span class="req">*</span></div>
+            <div class="form-group">
+                @if (_availableRoles.Count == 0)
+                {
+                    <p style="color:rgba(255,255,255,0.4);font-size:13px;">Loading roles...</p>
+                }
+                else
+                {
+                    <div class="roles-picker">
+                        @foreach (var role in _availableRoles)
+                        {
+                            var r = role;
+                            <label class="role-check @(_formRoles.Contains(r) ? "checked" : "")"
+                                   @onclick="() => SelectRole(r)" style="cursor:pointer;">
+                                <span class="role-badge role-@r.ToLower()">@r</span>
+                            </label>
+                        }
+                    </div>
+                }
+            </div>
+
+            @if (_formRoles.Contains("Customer"))
+            {
+                <div class="form-group">
+                    @if (_loadingCustomers)
+                    {
+                        <div class="form-input" style="color:#9baac8;font-style:italic;">Loading customers...</div>
+                    }
+                    else
+                    {
+                        <select class="form-input" @bind="_formCustomerId">
+                            <option value="">-- Select Customer --</option>
+                            @foreach (var c in _customers)
+                            {
+                                <option value="@c.CustomerId">@c.CustomerId — @c.CompanyName</option>
+                            }
+                        </select>
+                    }
+                </div>
+            }
+
+            @* ── Section: Login (moved to top) ── *@
+            <div class="fsection-title">Login</div>
+            <div class="frow">
+                <div class="fcell">
+                    <label class="flabel">User Name <span class="req">*</span></label>
+                    <input class="form-input" type="text" placeholder="Enter username"
+                           @bind="_formUsername" @bind:event="oninput" />
+                </div>
+                <div class="fcell">
+                    <label class="flabel">@(_editId == null ? "Password *" : "New Password")<span class="label-hint"> @(_editId != null ? "(leave blank to keep)" : "")</span></label>
+                    <input class="form-input" type="password"
+                           placeholder="@(_editId == null ? "Enter password" : "Leave blank to keep current")"
+                           @bind="_formPassword" @bind:event="oninput" />
                 </div>
             </div>
 
@@ -181,10 +228,10 @@ else
             </div>
             <div class="frow">
                 <div class="fcell">
-                    <label class="flabel">Date of Birth</label>
-                    <input class="form-input" type="date"
-                           value="@(_formDateOfBirth?.ToString("yyyy-MM-dd"))"
-                           @onchange="e => _formDateOfBirth = DateTime.TryParse(e.Value?.ToString(), out var d) ? d : null" />
+                    <label class="flabel">Date of Birth <span class="label-hint">(DD/MM/YYYY)</span></label>
+                    <input class="form-input" type="text" placeholder="DD/MM/YYYY" maxlength="10"
+                           value="@(_formDateOfBirth?.ToString("dd/MM/yyyy"))"
+                           @onchange="OnDateOfBirthChanged" />
                 </div>
                 <div class="fcell">
                     <label class="flabel">Gender</label>
@@ -246,7 +293,7 @@ else
                 </div>
             </div>
             <div class="frow">
-                <div class="fcell">
+                <div class="fcell @(_formRoles.Contains("Inspector") ? "" : "fcell-full")">
                     <label class="flabel">Category</label>
                     <select class="form-input" @bind="_formCategory">
                         <option value="">-- Select Category --</option>
@@ -261,12 +308,15 @@ else
                         <option value="Other">Other</option>
                     </select>
                 </div>
-                <div class="fcell">
-                    <label class="flabel">Inspection Start Year</label>
-                    <input class="form-input" type="number" placeholder="e.g. 2015" min="1990" max="2099"
-                           value="@_formInspectionStartYear"
-                           @onchange="e => _formInspectionStartYear = int.TryParse(e.Value?.ToString(), out var y) ? y : null" />
-                </div>
+                @if (_formRoles.Contains("Inspector"))
+                {
+                    <div class="fcell">
+                        <label class="flabel">Inspection Start Year</label>
+                        <input class="form-input" type="number" placeholder="e.g. 2015" min="1990" max="2099"
+                               value="@_formInspectionStartYear"
+                               @onchange="e => _formInspectionStartYear = int.TryParse(e.Value?.ToString(), out var y) ? y : null" />
+                    </div>
+                }
             </div>
             <div class="frow">
                 <div class="fcell fcell-full">
@@ -335,22 +385,6 @@ else
                 </div>
             </div>
 
-            @* ── Section: Login ── *@
-            <div class="fsection-title">Login</div>
-            <div class="frow">
-                <div class="fcell">
-                    <label class="flabel">User Name <span class="req">*</span></label>
-                    <input class="form-input" type="text" placeholder="Enter username"
-                           @bind="_formUsername" @bind:event="oninput" />
-                </div>
-                <div class="fcell">
-                    <label class="flabel">@(_editId == null ? "Password *" : "New Password")<span class="label-hint"> @(_editId != null ? "(leave blank to keep)" : "")</span></label>
-                    <input class="form-input" type="password"
-                           placeholder="@(_editId == null ? "Enter password" : "Leave blank to keep current")"
-                           @bind="_formPassword" @bind:event="oninput" />
-                </div>
-            </div>
-
             @* ── Section: Profile Photo ── *@
             <div class="fsection-title">
                 Profile Photo
@@ -400,48 +434,6 @@ else
                     }
                 </div>
             </div>
-
-            @* ── Section: Role ── *@
-            <div class="fsection-title">Role <span class="req">*</span></div>
-            <div class="form-group">
-                @if (_availableRoles.Count == 0)
-                {
-                    <p style="color:rgba(255,255,255,0.4);font-size:13px;">Loading roles...</p>
-                }
-                else
-                {
-                    <div class="roles-picker">
-                        @foreach (var role in _availableRoles)
-                        {
-                            var r = role;
-                            <label class="role-check @(_formRoles.Contains(r) ? "checked" : "")"
-                                   @onclick="() => SelectRole(r)" style="cursor:pointer;">
-                                <span class="role-badge role-@r.ToLower()">@r</span>
-                            </label>
-                        }
-                    </div>
-                }
-            </div>
-
-            @if (_formRoles.Contains("Customer"))
-            {
-                <div class="form-group">
-                    @if (_loadingCustomers)
-                    {
-                        <div class="form-input" style="color:#9baac8;font-style:italic;">Loading customers...</div>
-                    }
-                    else
-                    {
-                        <select class="form-input" @bind="_formCustomerId">
-                            <option value="">-- Select Customer --</option>
-                            @foreach (var c in _customers)
-                            {
-                                <option value="@c.CustomerId">@c.CustomerId — @c.CompanyName</option>
-                            }
-                        </select>
-                    }
-                </div>
-            }
 
             @* ── Section: Personal Profile / CV ── *@
             @if (!_formRoles.Contains("Customer"))
@@ -705,6 +697,27 @@ else
     {
         if (_formLanguages.Contains(lang)) _formLanguages.Remove(lang);
         else _formLanguages.Add(lang);
+    }
+
+    // Parse Date of Birth from DD/MM/YYYY text input
+    private void OnDateOfBirthChanged(ChangeEventArgs e)
+    {
+        var input = e.Value?.ToString()?.Trim() ?? "";
+        if (string.IsNullOrEmpty(input))
+        {
+            _formDateOfBirth = null;
+            return;
+        }
+
+        // Chấp nhận các separator: /, -, .
+        var formats = new[] { "dd/MM/yyyy", "d/M/yyyy", "dd-MM-yyyy", "d-M-yyyy", "dd.MM.yyyy", "d.M.yyyy" };
+        if (DateTime.TryParseExact(input, formats,
+                System.Globalization.CultureInfo.InvariantCulture,
+                System.Globalization.DateTimeStyles.None, out var dt))
+        {
+            _formDateOfBirth = dt;
+        }
+        // Nếu parse fail thì giữ nguyên giá trị cũ (không reset về null để user sửa lại)
     }
 
     private async Task LoadCustomers()
