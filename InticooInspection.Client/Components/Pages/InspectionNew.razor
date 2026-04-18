@@ -196,7 +196,7 @@
                         </select>
                     }
                 </div>
-                <div class="field-group">
+                <div class="field-group"  style="display:none">
                     <label>Product Type</label>
                     <div class="readonly-field @(string.IsNullOrEmpty(Model.ProductType) ? "" : "accent")">
                         @(string.IsNullOrEmpty(Model.ProductType) ? "Auto-filled from Product" : Model.ProductType)
