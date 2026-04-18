@@ -8,12 +8,12 @@
 @using InticooInspection.Client.Services
 @inject WaitingService Waiting
 
-<PageTitle>Inspector Profile - Inticoo</PageTitle>
+<PageTitle>User Profile - Inticoo</PageTitle>
 
 <div class="top-bar">
     <div class="title-block">
-        <h1 class="page-title">Inspector Profile</h1>
-        <span class="page-sub">Manage inspector accounts and permissions</span>
+        <h1 class="page-title">User Profile</h1>
+        <span class="page-sub">Manage user accounts and permissions</span>
     </div>
     <div class="tb-divider"></div>
     <div class="search-wrap">
@@ -45,8 +45,8 @@ else
             <thead>
                 <tr class="thead-top">
                     <th rowspan="2" class="th-c th-no">No</th>
-                    <th rowspan="2" class="tc">Inspector Name</th>
-                    <th rowspan="2" class="tc">Inspector ID</th>
+                    <th rowspan="2" class="tc">User Name</th>
+                    <th rowspan="2" class="tc">User ID</th>
                     <th rowspan="2" class="tc">Category</th>
                     <th colspan="3" class="th-c th-group-header">Home Address</th>
                     <th rowspan="2" class="tc">Mobile</th>
@@ -134,7 +134,7 @@ else
     <div class="modal-overlay" @onclick="CloseModal">
         <div class="modal-card" @onclick:stopPropagation="true">
             <div class="modal-header">
-                <h2>@(_editId == null ? "New Inspector" : "Edit Inspector")</h2>
+                <h2>@(_editId == null ? "New User" : "Edit User")</h2>
                 <button class="modal-close" @onclick="CloseModal">&#x2715;</button>
             </div>
 
@@ -146,7 +146,7 @@ else
             @* ── Inspector ID + Status ── *@
             <div class="frow">
                 <div class="fcell">
-                    <label class="flabel">Inspector ID</label>
+                    <label class="flabel">User ID</label>
                     @if (_editId == null)
                     {
                         <div class="form-input form-input-auto" style="background:#e6f1fb;color:#1e90d6;font-weight:700;font-family:monospace;border-color:#b5d4f4;">@_formInspectorId</div>
@@ -165,8 +165,8 @@ else
                 </div>
             </div>
 
-            @* ── Section: Inspector Details ── *@
-            <div class="fsection-title">Inspector Details</div>
+            @* ── Section: User Details ── *@
+            <div class="fsection-title">User Details</div>
             <div class="frow">
                 <div class="fcell">
                     <label class="flabel">Full Name <span class="req">*</span></label>
@@ -282,8 +282,8 @@ else
                 </div>
             </div>
 
-            @* ── Section: Inspector Address ── *@
-            <div class="fsection-title">Inspector Address</div>
+            @* ── Section: User Address ── *@
+            <div class="fsection-title">User Address</div>
             <div class="frow">
                 <div class="fcell fcell-full">
                     <label class="flabel">Address 1</label>
