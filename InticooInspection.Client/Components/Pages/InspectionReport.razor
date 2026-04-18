@@ -2184,10 +2184,125 @@ else if (_data != null)
             border-left: 1px solid #e0e0e0;
         }
     }
-    @@media (max-width: 640px) {
-        .rpt-section { padding: 18px 16px; }
-        .rpt-aql-grid { grid-template-columns: 1fr; }
-        .rpt-cover-header { flex-direction: column; gap: 8px; }
+    /* ══════════════════════════════════════════
+       RESPONSIVE — TABLET & MOBILE
+    ══════════════════════════════════════════ */
+    @@media (max-width: 860px) {
+        /* Ngăn overflow ngang gây "dải nền xanh" lòi ra bên phải trên iPhone */
+        html, body { overflow-x: hidden; }
+
+        .rpt-page {
+            padding-bottom: 40px;
+            /* Safe-area cho iPhone có notch / Dynamic Island */
+            padding-left: env(safe-area-inset-left, 0);
+            padding-right: env(safe-area-inset-right, 0);
+        }
+
+        .rpt-paper {
+            max-width: 100%;
+            margin: 12px 0;
+            padding: 0 10px;
+            box-sizing: border-box;
+        }
+
+        /* Toolbar: giữ nút không bị tràn, tôn trọng safe-area trên (notch) */
+        .rpt-toolbar {
+            padding: 10px 14px;
+            padding-top: calc(10px + env(safe-area-inset-top, 0));
+            padding-left: calc(14px + env(safe-area-inset-left, 0));
+            padding-right: calc(14px + env(safe-area-inset-right, 0));
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        .rpt-print-btn {
+            padding: 8px 14px;
+            font-size: 12px;
+        }
+        .rpt-back-btn { font-size: 13px; }
+
+        .rpt-section {
+            padding: 18px 14px 70px;
+            border-radius: 8px;
+            margin-bottom: 14px;
+        }
+
+        /* Bảng General Info: bỏ 4 cột → 2 cột, cho phép wrap */
+        .rpt-info-table,
+        .rpt-info-table tbody,
+        .rpt-info-table tr,
+        .rpt-info-table td {
+            display: block;
+            width: 100% !important;
+            box-sizing: border-box;
+        }
+        .rpt-info-table tr {
+            display: grid;
+            grid-template-columns: 40% 60%;
+            border-bottom: 1px solid var(--border);
+        }
+        .rpt-info-table td {
+            border: none !important;
+            border-right: 1px solid var(--border) !important;
+            padding: 8px 10px !important;
+            white-space: normal !important;
+            word-break: break-word;
+            font-size: 12px;
+        }
+        .rpt-info-table td:last-child { border-right: none !important; }
+        .rpt-info-label {
+            width: auto !important;
+            white-space: normal !important;
+        }
+
+        /* Các bảng còn lại: cho phép scroll ngang thay vì ép toàn trang rộng ra */
+        .rpt-result-table,
+        .rpt-sign-table,
+        .rpt-qty-table,
+        .rpt-spec-table,
+        .rpt-perf-table,
+        .rpt-aql-table,
+        .rpt-carton-table {
+            display: block;
+            width: 100%;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            font-size: 11px;
+        }
+
+        /* Grid 2 cột ảnh → 1 cột trên mobile để ảnh hiển thị rõ */
+        .rpt-photo-grid-2 {
+            grid-template-columns: 1fr !important;
+        }
+        .rpt-aql-grid {
+            grid-template-columns: 1fr !important;
+        }
+
+        /* Header cover: xếp dọc trên mobile */
+        .rpt-cover-header {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 12px;
+        }
         .rpt-title-block { text-align: left; }
+        .rpt-main-title { font-size: 18px; }
+
+        /* Ảnh cao 330px trên desktop → co lại cho vừa màn hình nhỏ */
+        .rpt-page .rpt-photo-cell img,
+        .rpt-page .rpt-photo-cell .rpt-photo,
+        .rpt-page .rpt-overview-photo-cell img,
+        .rpt-page .rpt-overview-photo-cell .rpt-overview-img {
+            height: auto !important;
+            max-height: 260px !important;
+        }
+
+        /* Footer nhỏ gọn hơn */
+        .rpt-footer-text { font-size: 10px; }
+    }
+
+    @@media (max-width: 480px) {
+        .rpt-section { padding: 14px 12px 60px; }
+        .rpt-main-title { font-size: 16px; letter-spacing: .02em; }
+        .rpt-section-title-lg { font-size: 14px; }
+        .rpt-info-table tr { grid-template-columns: 45% 55%; }
     }
 </style>
