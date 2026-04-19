@@ -304,9 +304,9 @@
                                 </span>
                                 <span class="iss-comp-val">
                                     @(job.CompletedAt.HasValue
-                                        ? job.CompletedAt.Value.ToString("d MMM yyyy")
+                                        ? job.CompletedAt.Value.ToString("d MMM yyyy", EnUs)
                                         : job.InspectionDate != DateTime.MinValue
-                                            ? job.InspectionDate.ToString("d MMM yyyy")
+                                            ? job.InspectionDate.ToString("d MMM yyyy", EnUs)
                                             : "—")
                                 </span>
                             </div>
@@ -379,10 +379,10 @@
                 var overdueCount = sortedJobs.Count(j => j.InspectionDate.Date < today);
 
                 <div class="iss-section-title">
-                    Today — @today.ToString("dddd, d MMMM yyyy")
+                    Today — @today.ToString("dddd, d MMMM yyyy", EnUs)
                     @if (overdueCount > 0)
                     {
-                        <span class="iss-overdue-count">@overdueCount overdue</span>
+                        <span class="iss-overdue-count">@overdueCount OVERDUE</span>
                     }
                 </div>
                 <div class="iss-card-grid">
@@ -397,7 +397,7 @@
                                 <div class="iss-jc-top-right">
                                     @if (isOverdue)
                                     {
-                                        <span class="iss-overdue-badge" title="Scheduled on @job.InspectionDate.ToString("d MMM yyyy")">
+                                        <span class="iss-overdue-badge" title="Scheduled on @job.InspectionDate.ToString("d MMM yyyy", EnUs)">
                                             <svg width="11" height="11" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.2">
                                                 <circle cx="10" cy="10" r="8"/>
                                                 <path d="M10 6v5M10 14h.01" stroke-linecap="round"/>
@@ -411,7 +411,7 @@
                             <div class="iss-jc-body">
                                 @if (isOverdue)
                                 {
-                                    <div class="iss-jf"><span class="iss-jl">Scheduled Date</span><span class="iss-jv iss-jv-overdue">@job.InspectionDate.ToString("d MMM yyyy")</span></div>
+                                    <div class="iss-jf"><span class="iss-jl">Scheduled Date</span><span class="iss-jv iss-jv-overdue">@job.InspectionDate.ToString("d MMM yyyy", EnUs)</span></div>
                                 }
                                 <div class="iss-jf"><span class="iss-jl">Customer Name</span><span class="iss-jv">@job.CustomerName</span></div>
                                 <div class="iss-jf"><span class="iss-jl">Category</span><span class="iss-jv">@(job.ProductCategory ?? "—")</span></div>
@@ -453,14 +453,14 @@
                 {
                     <div class="iss-day-group">
                         <div class="iss-day-hdr">
-                            <span class="iss-day-date">@grp.Key.ToString("ddd, d MMM yyyy")</span>
+                            <span class="iss-day-date">@grp.Key.ToString("ddd, d MMM yyyy", EnUs)</span>
                             <span class="iss-day-cnt">@grp.Count() job@(grp.Count() > 1 ? "s" : "")</span>
                         </div>
                         @foreach (var job in grp)
                         {
                             <div class="iss-list-item" @onclick="async () => await OpenJobDetail(job)">
                                 <div class="iss-li-body">
-                                    <div class="iss-li-row"><span class="iss-ll">Date</span><span class="iss-lv">@job.InspectionDate.ToString("d MMM yyyy")</span></div>
+                                    <div class="iss-li-row"><span class="iss-ll">Date</span><span class="iss-lv">@job.InspectionDate.ToString("d MMM yyyy", EnUs)</span></div>
                                     <div class="iss-li-row"><span class="iss-ll">Category</span><span class="iss-lv">@(job.ProductCategory ?? "—")</span></div>
                                     @* <div class="iss-li-row"><span class="iss-ll">Product Type</span><span class="iss-lv">@(job.ProductType ?? "—")</span></div> *@
                                     <div class="iss-li-row"><span class="iss-ll">Inspection Type</span><span class="iss-lv">@job.InspectionType</span></div>
@@ -508,7 +508,7 @@
                                 : new List<JobItem>();
                             <tr>
                                 <td class="iss-cal-cell @(j1.Any() ? "cell-has" : "")">
-                                    <div class="iss-cal-date">@d1.ToString("d MMM yyyy")</div>
+                                    <div class="iss-cal-date">@d1.ToString("d MMM yyyy", EnUs)</div>
                                     @foreach (var j in j1)
                                     {
                                         <div class="iss-cal-job" @onclick="async () => await OpenJobDetail(j)">
@@ -521,7 +521,7 @@
                                 @if (d2.HasValue)
                                 {
                                     <td class="iss-cal-cell @(j2.Any() ? "cell-has" : "")">
-                                        <div class="iss-cal-date">@d2.Value.ToString("d MMM yyyy")</div>
+                                        <div class="iss-cal-date">@d2.Value.ToString("d MMM yyyy", EnUs)</div>
                                         @foreach (var j in j2)
                                         {
                                             <div class="iss-cal-job" @onclick="async () => await OpenJobDetail(j)">
@@ -544,7 +544,7 @@
                         var dj = filtered.Where(j => j.InspectionDate.Date == day.Date).ToList();
                         <div class="iss-cal-day @(dj.Any() ? "cday-has" : "cday-empty")">
                             <div class="iss-cal-day-hdr">
-                                <span class="iss-cal-day-name">@day.ToString("ddd, d MMM")</span>
+                                <span class="iss-cal-day-name">@day.ToString("ddd, d MMM", EnUs)</span>
                                 @if (dj.Any())
                                 {
                                     <span class="iss-cal-day-cnt">@dj.Count</span>
@@ -597,6 +597,10 @@
     // Job detail state
     private bool               _detailLoading = false;
     private List<JobReference> _selectedJobRefs = new();
+
+    // Culture dùng cho toàn bộ format ngày tháng — ép tiếng Anh để không bị dịch theo OS
+    private static readonly System.Globalization.CultureInfo EnUs =
+        System.Globalization.CultureInfo.GetCultureInfo("en-US");
 
     // ────────────────────────────────────────────
     //  VIEW MODELS
