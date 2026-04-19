@@ -50,7 +50,7 @@
                     <div class="iss-field"><span class="iss-fl">Inspection Type</span><span class="iss-fv">@_selectedJob.InspectionType</span></div>
                     <div class="iss-field"><span class="iss-fl">PO Number</span><span class="iss-fv">@(string.IsNullOrEmpty(_selectedJob.PoNumber) ? "—" : _selectedJob.PoNumber)</span></div>
                     <div class="iss-field"><span class="iss-fl">Vendor Name</span><span class="iss-fv">@_selectedJob.VendorName</span></div>
-                    <div class="iss-field"><span class="iss-fl">Vendor Address</span><span class="iss-fv">@(string.IsNullOrEmpty(_selectedJob.VendorAddress) ? "—" : _selectedJob.VendorAddress)</span></div>
+                    <div class="iss-field"><span class="iss-fl">Vendor Address</span><span class="iss-fv">@(string.IsNullOrEmpty(_selectedJob.VendorCity) ? "—" : _selectedJob.VendorCity)</span></div>
                     @if (!string.IsNullOrEmpty(_selectedJob.VendorCountry))
                     {
                         <div class="iss-field"><span class="iss-fl">Country</span><span class="iss-fv">@_selectedJob.VendorCountry</span></div>
@@ -418,7 +418,7 @@
                                 @* <div class="iss-jf"><span class="iss-jl">Product Type</span><span class="iss-jv">@(job.ProductType ?? "—")</span></div> *@
                                 <div class="iss-jf"><span class="iss-jl">Inspection Type</span><span class="iss-jv">@job.InspectionType</span></div>
                                 <div class="iss-jf"><span class="iss-jl">Vendor Name</span><span class="iss-jv">@job.VendorName</span></div>
-                                <div class="iss-jf"><span class="iss-jl">Vendor Address</span><span class="iss-jv">@(string.IsNullOrEmpty(job.VendorAddress) ? "—" : job.VendorAddress)</span></div>
+                                <div class="iss-jf"><span class="iss-jl">Vendor Address</span><span class="iss-jv">@(string.IsNullOrEmpty(job.VendorCity) ? "—" : job.VendorCity)</span></div>
                                 @if (!string.IsNullOrEmpty(job.VendorContactName) || !string.IsNullOrEmpty(job.VendorContactMobile))
                                 {
                                     <div class="iss-jf iss-jf-section"><span class="iss-jl iss-jl-section">Vendor Information</span></div>
