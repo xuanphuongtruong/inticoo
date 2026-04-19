@@ -28,63 +28,79 @@ namespace InticooInspection.API.Controllers
             [FromQuery] int page     = 1,
             [FromQuery] int pageSize = 50)
         {
-            var query = _db.Products
-                           .Include(p => p.Customer)
-                           .Include(p => p.Vendor)
-                           .Include(p => p.References.OrderBy(r => r.SortOrder))
-                           .AsQueryable();
+            try
+            {
+                var query = _db.Products
+                               .Include(p => p.Customer)
+                               .Include(p => p.Vendor)
+                               .Include(p => p.References.OrderBy(r => r.SortOrder))
+                               .AsQueryable();
 
-            if (!string.IsNullOrWhiteSpace(search))
-                query = query.Where(p =>
-                    p.ProductName.Contains(search) ||
-                    (p.ProductCode  != null && p.ProductCode.Contains(search))  ||
-                    (p.ItemNumber   != null && p.ItemNumber.Contains(search))   ||
-                    (p.Customer     != null && p.Customer.CompanyName.Contains(search)) ||
-                    (p.Vendor       != null && p.Vendor.Name.Contains(search)));
+                if (!string.IsNullOrWhiteSpace(search))
+                    query = query.Where(p =>
+                        p.ProductName.Contains(search) ||
+                        (p.ProductCode  != null && p.ProductCode.Contains(search))  ||
+                        (p.ItemNumber   != null && p.ItemNumber.Contains(search))   ||
+                        (p.Customer     != null && p.Customer.CompanyName.Contains(search)) ||
+                        (p.Vendor       != null && p.Vendor.Name.Contains(search)));
 
-            if (!string.IsNullOrWhiteSpace(category))
-                query = query.Where(p => p.Category == category);
+                if (!string.IsNullOrWhiteSpace(category))
+                    query = query.Where(p => p.Category == category);
 
-            var total = await query.CountAsync();
-            var items = await query
-                .OrderBy(p => p.Id)
-                .Skip((page - 1) * pageSize)
-                .Take(pageSize)
-                .Select(p => new ProductDto
-                {
-                    Id           = p.Id,
-                    CustomerId   = p.Customer != null ? p.Customer.CustomerId   : "",
-                    CustomerName = p.Customer != null ? p.Customer.CompanyName  : "",
-                    VendorId     = p.Vendor   != null ? p.Vendor.Code           : "",
-                    VendorName   = p.Vendor   != null ? p.Vendor.Name           : "",
-                    Category     = p.Category    ?? "",
-                    ProductType  = p.ProductType ?? "",
-                    ProductName  = p.ProductName,
-                    ProductCode  = p.ProductCode  ?? "",
-                    ItemNumber   = p.ItemNumber   ?? "",
-                    ProductColor = p.ProductColor ?? "",
-                    ProductSize  = p.ProductSize  ?? "",
-                    SizeL        = p.SizeL,
-                    SizeW        = p.SizeW,
-                    SizeH        = p.SizeH,
-                    Weight       = p.Weight,
-                    PhotoUrl     = p.PhotoUrl     ?? "",
-                    Remark       = p.Remark       ?? "",
-                    IsActive      = p.IsActive,
-                    EstablishDate = p.EstablishDate,
-                    CreatedAt    = p.CreatedAt,
-                    References   = p.References.OrderBy(r => r.SortOrder).Select(r => new ProductReferenceDto
+                var total = await query.CountAsync();
+                var items = await query
+                    .OrderBy(p => p.Id)
+                    .Skip((page - 1) * pageSize)
+                    .Take(pageSize)
+                    .Select(p => new ProductDto
                     {
-                        Id        = r.Id,
-                        SortOrder = r.SortOrder,
-                        Name      = r.Name,
-                        FileUrl   = r.FileUrl,
-                        FileName  = r.FileName
-                    }).ToList()
-                })
-                .ToListAsync();
+                        Id           = p.Id,
+                        CustomerId   = p.Customer != null ? p.Customer.CustomerId   : "",
+                        CustomerName = p.Customer != null ? p.Customer.CompanyName  : "",
+                        VendorId     = p.Vendor   != null ? p.Vendor.Code           : "",
+                        VendorName   = p.Vendor   != null ? p.Vendor.Name           : "",
+                        Category     = p.Category    ?? "",
+                        ProductType  = p.ProductType ?? "",
+                        ProductName  = p.ProductName,
+                        ProductCode  = p.ProductCode  ?? "",
+                        ItemNumber   = p.ItemNumber   ?? "",
+                        ProductColor = p.ProductColor ?? "",
+                        ProductSize  = p.ProductSize  ?? "",
+                        SizeL        = p.SizeL,
+                        SizeW        = p.SizeW,
+                        SizeH        = p.SizeH,
+                        Weight       = p.Weight,
+                        PhotoUrl     = p.PhotoUrl     ?? "",
+                        Remark       = p.Remark       ?? "",
+                        IsActive      = p.IsActive,
+                        EstablishDate = p.EstablishDate,
+                        CreatedAt    = p.CreatedAt,
+                        References   = p.References.OrderBy(r => r.SortOrder).Select(r => new ProductReferenceDto
+                        {
+                            Id        = r.Id,
+                            SortOrder = r.SortOrder,
+                            Name      = r.Name,
+                            FileUrl   = r.FileUrl,
+                            FileName  = r.FileName
+                        }).ToList()
+                    })
+                    .ToListAsync();
 
-            return Ok(new { total, page, pageSize, items });
+                return Ok(new { total, page, pageSize, items });
+            }
+            catch (Exception ex)
+            {
+                // Log toàn bộ chain lỗi (InnerException có thông tin DB cụ thể)
+                var errors = new List<string>();
+                var e = ex;
+                while (e != null) { errors.Add($"{e.GetType().Name}: {e.Message}"); e = e.InnerException; }
+                return StatusCode(500, new
+                {
+                    error = "Failed to load products.",
+                    details = errors,
+                    hint = "Most likely cause: missing DB migration for ProductCategories/ProductReferences tables, or missing columns EstablishDate/IsActive. Run: dotnet ef database update"
+                });
+            }
         }
 
         // ── GET api/products/nextcode ─────────────────────────────────
@@ -355,13 +371,28 @@ namespace InticooInspection.API.Controllers
         [Microsoft.AspNetCore.Authorization.AllowAnonymous]
         public async Task<IActionResult> GetProductCategories()
         {
-            var cats = await _db.ProductCategories
-                .Where(c => c.IsActive)
-                .OrderBy(c => c.SortOrder)
-                .ThenBy(c => c.Name)
-                .Select(c => new { c.Id, c.Name })
-                .ToListAsync();
-            return Ok(cats);
+            try
+            {
+                var cats = await _db.ProductCategories
+                    .Where(c => c.IsActive)
+                    .OrderBy(c => c.SortOrder)
+                    .ThenBy(c => c.Name)
+                    .Select(c => new { c.Id, c.Name })
+                    .ToListAsync();
+                return Ok(cats);
+            }
+            catch (Exception ex)
+            {
+                var errors = new List<string>();
+                var e = ex;
+                while (e != null) { errors.Add($"{e.GetType().Name}: {e.Message}"); e = e.InnerException; }
+                return StatusCode(500, new
+                {
+                    error = "Failed to load product categories.",
+                    details = errors,
+                    hint = "Table 'ProductCategories' may not exist. Run: dotnet ef database update"
+                });
+            }
         }
 
         // ── POST api/products/{id}/references/upload ──────────────────

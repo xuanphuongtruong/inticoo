@@ -262,6 +262,14 @@
                             </svg>
                         </div>
                         <div class="dropdown-menu">
+                            <NavLink href="/change-password" class="dropdown-item">
+                                <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5">
+                                    <rect x="4" y="9" width="12" height="8" rx="1.5"/>
+                                    <path d="M7 9V6a3 3 0 0 1 6 0v3" stroke-linecap="round"/>
+                                </svg>
+                                Change Password
+                            </NavLink>
+                            <div class="dropdown-divider"></div>
                             <button class="dropdown-item logout-item" @onclick="Logout">
                                 <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5">
                                     <path d="M13 15l4-5-4-5M17 10H7" stroke-linecap="round" stroke-linejoin="round"/>
@@ -358,6 +366,9 @@
                 <!-- Sign Out -->
                 <AuthorizeView>
                     <div class="mobile-nav-divider" style="margin-top:auto;margin-bottom:16px;"></div>
+                    <NavLink href="/change-password" class="mobile-nav-item" @onclick="CloseMobileMenu">
+                        Change Password
+                    </NavLink>
                     <button class="mobile-nav-item mobile-logout" @onclick="Logout">
                         Sign Out
                     </button>
@@ -571,12 +582,15 @@
         cursor: pointer;
         width: 100%;
         text-align: left;
+        text-decoration: none;
         transition: background .15s;
         font-family: "DM Sans", sans-serif;
     }
 
     .dropdown-item:hover { background: #f0f5ff; }
+    .dropdown-item.active { background: #e6f1fb; color: #1565c0; }
     .logout-item:hover { color: #c62828; background: #fff5f5; }
+    .dropdown-divider { height: 1px; background: rgba(0,0,0,.08); margin: 4px 0; }
 
     /* ─── NAV DROPDOWN (desktop) ─── */
     .nav-dropdown {

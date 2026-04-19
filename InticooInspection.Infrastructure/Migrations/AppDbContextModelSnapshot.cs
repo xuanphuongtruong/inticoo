@@ -700,6 +700,9 @@ namespace InticooInspection.Infrastructure.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
 
+                    b.Property<string>("TestProtocol")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<string>("TestRequirement")
                         .HasMaxLength(500)
                         .HasColumnType("nvarchar(500)");

@@ -117,6 +117,8 @@ namespace InticooInspection.API.Controllers
                         v.Country,
                         v.Address1,
                         v.Address2,
+                        v.City,
+                        v.State,
                         v.Phone,
                         v.ContactName,
                         v.ContactTitle,
@@ -177,6 +179,10 @@ namespace InticooInspection.API.Controllers
                     var v = vByCode ?? vByName;
 
                     var vAddr = v != null ? (!string.IsNullOrEmpty(v.Address1) ? v.Address1 : v.CompanyAddress ?? "") : "";
+                    var vAddr1 = v?.Address1 ?? "";
+                    var vAddr2 = v?.Address2 ?? "";
+                    var vCity = v?.City ?? "";
+                    var vState = v?.State ?? "";
                     var vCountry = v?.Country ?? "";
                     var vcName = v?.ContactName ?? "";
                     var vcTitle = v?.ContactTitle ?? "";
@@ -200,6 +206,10 @@ namespace InticooInspection.API.Controllers
                         vendorName = i.VendorName,
                         vendorId = i.VendorId,
                         vendorAddress = vAddr,
+                        vendorAddress1 = vAddr1,
+                        vendorAddress2 = vAddr2,
+                        vendorCity = vCity,
+                        vendorState = vState,
                         vendorCountry = vCountry,
                         vendorContactName = vcName,
                         vendorContactPosition = vcTitle,
@@ -264,7 +274,7 @@ namespace InticooInspection.API.Controllers
             }
 
             // Lookup Vendor — địa chỉ và thông tin liên hệ (Vendor.cs: ContactName, ContactTitle, ContactPhone, ContactEmail)
-            string vendorAddress = "", vendorCountry = "";
+            string vendorAddress = "", vendorAddress1 = "", vendorAddress2 = "", vendorCity = "", vendorState = "", vendorCountry = "";
             string contactName = "", contactTitle = "", contactPhone = "", contactOffice = "", contactEmail = "";
             if (!string.IsNullOrEmpty(inspection.VendorId) || !string.IsNullOrEmpty(inspection.VendorName))
             {
@@ -277,6 +287,10 @@ namespace InticooInspection.API.Controllers
                     vendorAddress = !string.IsNullOrEmpty(vendor.Address1)
                                     ? vendor.Address1
                                     : vendor.CompanyAddress ?? "";
+                    vendorAddress1 = vendor.Address1 ?? "";
+                    vendorAddress2 = vendor.Address2 ?? "";
+                    vendorCity = vendor.City ?? "";
+                    vendorState = vendor.State ?? "";
                     vendorCountry = vendor.Country ?? "";
                     contactName = vendor.ContactName ?? "";
                     contactTitle = vendor.ContactTitle ?? "";
@@ -360,6 +374,10 @@ namespace InticooInspection.API.Controllers
                 vendorName = inspection.VendorName,
                 vendorId = inspection.VendorId,
                 vendorAddress = vendorAddress,
+                vendorAddress1 = vendorAddress1,
+                vendorAddress2 = vendorAddress2,
+                vendorCity = vendorCity,
+                vendorState = vendorState,
                 vendorCountry = vendorCountry,
                 contactName = contactName,
                 contactTitle = contactTitle,

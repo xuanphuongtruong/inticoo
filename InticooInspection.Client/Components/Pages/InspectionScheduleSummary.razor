@@ -46,81 +46,72 @@
                     <div class="iss-field"><span class="iss-fl">Job No</span><span class="iss-fv">@(_selectedJob.JobNumber ?? "—")</span></div>
                     <div class="iss-field"><span class="iss-fl">Customer Name</span><span class="iss-fv">@_selectedJob.CustomerName</span></div>
                     <div class="iss-field"><span class="iss-fl">Category</span><span class="iss-fv">@(_selectedJob.ProductCategory ?? "—")</span></div>
-                    <div class="iss-field"><span class="iss-fl">Product Type</span><span class="iss-fv">@(_selectedJob.ProductType ?? "—")</span></div>
+                    @* <div class="iss-field"><span class="iss-fl">Product Type</span><span class="iss-fv">@(_selectedJob.ProductType ?? "—")</span></div> *@
                     <div class="iss-field"><span class="iss-fl">Inspection Type</span><span class="iss-fv">@_selectedJob.InspectionType</span></div>
+                    <div class="iss-field"><span class="iss-fl">PO Number</span><span class="iss-fv">@(string.IsNullOrEmpty(_selectedJob.PoNumber) ? "—" : _selectedJob.PoNumber)</span></div>
                     <div class="iss-field"><span class="iss-fl">Vendor Name</span><span class="iss-fv">@_selectedJob.VendorName</span></div>
                     <div class="iss-field"><span class="iss-fl">Vendor Address</span><span class="iss-fv">@(string.IsNullOrEmpty(_selectedJob.VendorAddress) ? "—" : _selectedJob.VendorAddress)</span></div>
                     @if (!string.IsNullOrEmpty(_selectedJob.VendorCountry))
                     {
                         <div class="iss-field"><span class="iss-fl">Country</span><span class="iss-fv">@_selectedJob.VendorCountry</span></div>
                     }
+                    <div class="iss-field"><span class="iss-fl">Contact Name</span><span class="iss-fv">@(string.IsNullOrEmpty(_selectedJob.VendorContactName) ? "—" : _selectedJob.VendorContactName)</span></div>
+                    <div class="iss-field"><span class="iss-fl">Position</span><span class="iss-fv">@(string.IsNullOrEmpty(_selectedJob.VendorContactPosition) ? "—" : _selectedJob.VendorContactPosition)</span></div>
+                    <div class="iss-field"><span class="iss-fl">Mobile</span><span class="iss-fv">@(string.IsNullOrEmpty(_selectedJob.VendorContactMobile) ? "—" : _selectedJob.VendorContactMobile)</span></div>
                 </div>
 
-                @* Vendor Information *@
+                @* Vendor Contact Information — Address 1/2, City, State, Country *@
                 @{
-                    bool hasVendorInfo = !string.IsNullOrEmpty(_selectedJob.VendorContactName)
-                                     || !string.IsNullOrEmpty(_selectedJob.VendorContactPosition)
-                                     || !string.IsNullOrEmpty(_selectedJob.VendorContactMobile)
-                                     || !string.IsNullOrEmpty(_selectedJob.VendorContactOffice)
-                                     || !string.IsNullOrEmpty(_selectedJob.VendorContactEmail);
+                    bool hasVendorAddr = !string.IsNullOrEmpty(_selectedJob.VendorAddress1)
+                                      || !string.IsNullOrEmpty(_selectedJob.VendorAddress2)
+                                      || !string.IsNullOrEmpty(_selectedJob.VendorCity)
+                                      || !string.IsNullOrEmpty(_selectedJob.VendorState)
+                                      || !string.IsNullOrEmpty(_selectedJob.VendorCountry);
                 }
-                @if (hasVendorInfo)
+                @if (hasVendorAddr)
                 {
                     <div class="iss-vendor-section">
-                        <div class="iss-vendor-title">Vendor Information</div>
-                        @if (!string.IsNullOrEmpty(_selectedJob.VendorContactName))
+                        <div class="iss-vendor-title">Vendor Contact Information</div>
+                        @if (!string.IsNullOrEmpty(_selectedJob.VendorAddress1))
                         {
                             <div class="iss-vi-row">
                                 <span class="iss-vi-dot">•</span>
-                                <span class="iss-vi-label">Name</span>
-                                <span class="iss-vi-val">@_selectedJob.VendorContactName</span>
+                                <span class="iss-vi-label">Address 1</span>
+                                <span class="iss-vi-val">@_selectedJob.VendorAddress1</span>
                             </div>
                         }
-                        @if (!string.IsNullOrEmpty(_selectedJob.VendorContactPosition))
+                        @if (!string.IsNullOrEmpty(_selectedJob.VendorAddress2))
                         {
                             <div class="iss-vi-row">
                                 <span class="iss-vi-dot">•</span>
-                                <span class="iss-vi-label">Position</span>
-                                <span class="iss-vi-val">@_selectedJob.VendorContactPosition</span>
+                                <span class="iss-vi-label">Address 2</span>
+                                <span class="iss-vi-val">@_selectedJob.VendorAddress2</span>
                             </div>
                         }
-                        @if (!string.IsNullOrEmpty(_selectedJob.VendorContactMobile))
+                        @if (!string.IsNullOrEmpty(_selectedJob.VendorCity))
                         {
                             <div class="iss-vi-row">
                                 <span class="iss-vi-dot">•</span>
-                                <span class="iss-vi-label">Mobile</span>
-                                <span class="iss-vi-val">@_selectedJob.VendorContactMobile</span>
+                                <span class="iss-vi-label">City</span>
+                                <span class="iss-vi-val">@_selectedJob.VendorCity</span>
                             </div>
                         }
-                        @if (!string.IsNullOrEmpty(_selectedJob.VendorContactOffice))
+                        @if (!string.IsNullOrEmpty(_selectedJob.VendorState))
                         {
                             <div class="iss-vi-row">
                                 <span class="iss-vi-dot">•</span>
-                                <span class="iss-vi-label">Office</span>
-                                <span class="iss-vi-val">@_selectedJob.VendorContactOffice</span>
+                                <span class="iss-vi-label">State/Province</span>
+                                <span class="iss-vi-val">@_selectedJob.VendorState</span>
                             </div>
                         }
-                        @if (!string.IsNullOrEmpty(_selectedJob.VendorContactEmail))
+                        @if (!string.IsNullOrEmpty(_selectedJob.VendorCountry))
                         {
                             <div class="iss-vi-row">
                                 <span class="iss-vi-dot">•</span>
-                                <span class="iss-vi-label">Email</span>
-                                <span class="iss-vi-val">@_selectedJob.VendorContactEmail</span>
+                                <span class="iss-vi-label">Country</span>
+                                <span class="iss-vi-val">@_selectedJob.VendorCountry</span>
                             </div>
                         }
-                    </div>
-                }
-
-                @* Inspector Information *@
-                @if (!string.IsNullOrEmpty(_selectedJob.InspectorName))
-                {
-                    <div class="iss-vendor-section">
-                        <div class="iss-vendor-title">Inspector Information</div>
-                        <div class="iss-vi-row">
-                            <span class="iss-vi-dot">•</span>
-                            <span class="iss-vi-label">Name</span>
-                            <span class="iss-vi-val">@_selectedJob.InspectorName</span>
-                        </div>
                     </div>
                 }
 
@@ -378,19 +369,53 @@
             }
             else if (_timeFilter == "today")
             {
-                <div class="iss-section-title">Today — @DateTime.Today.ToString("dddd, d MMMM yyyy")</div>
-                <div class="iss-card-grid">
-                    @foreach (var job in filtered)
+                var today = DateTime.Today;
+                // Overdue (InspectionDate < today) hiển thị trước, sau đó đến hôm nay
+                var sortedJobs = filtered
+                    .OrderBy(j => j.InspectionDate.Date >= today)   // false (overdue) trước, true (today) sau
+                    .ThenBy(j => j.InspectionDate.Date)              // overdue cũ nhất lên đầu
+                    .ToList();
+
+                var overdueCount = sortedJobs.Count(j => j.InspectionDate.Date < today);
+
+                <div class="iss-section-title">
+                    Today — @today.ToString("dddd, d MMMM yyyy")
+                    @if (overdueCount > 0)
                     {
-                        <div class="iss-job-card" @onclick="async () => await OpenJobDetail(job)">
+                        <span class="iss-overdue-count">@overdueCount overdue</span>
+                    }
+                </div>
+                <div class="iss-card-grid">
+                    @foreach (var job in sortedJobs)
+                    {
+                        var isOverdue = job.InspectionDate.Date < today;
+                        var daysLate  = isOverdue ? (today - job.InspectionDate.Date).Days : 0;
+                        <div class="iss-job-card @(isOverdue ? "iss-job-card-overdue" : "")"
+                             @onclick="async () => await OpenJobDetail(job)">
                             <div class="iss-jc-top">
                                 <span class="iss-job-no">@(job.JobNumber ?? $"#{job.Id}")</span>
-                                <span class="iss-it-badge it-@job.InspectionType.ToLower()">@job.InspectionType</span>
+                                <div class="iss-jc-top-right">
+                                    @if (isOverdue)
+                                    {
+                                        <span class="iss-overdue-badge" title="Scheduled on @job.InspectionDate.ToString("d MMM yyyy")">
+                                            <svg width="11" height="11" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.2">
+                                                <circle cx="10" cy="10" r="8"/>
+                                                <path d="M10 6v5M10 14h.01" stroke-linecap="round"/>
+                                            </svg>
+                                            @(daysLate == 1 ? "1 day late" : $"{daysLate} days late")
+                                        </span>
+                                    }
+                                    <span class="iss-it-badge it-@job.InspectionType.ToLower()">@job.InspectionType</span>
+                                </div>
                             </div>
                             <div class="iss-jc-body">
+                                @if (isOverdue)
+                                {
+                                    <div class="iss-jf"><span class="iss-jl">Scheduled Date</span><span class="iss-jv iss-jv-overdue">@job.InspectionDate.ToString("d MMM yyyy")</span></div>
+                                }
                                 <div class="iss-jf"><span class="iss-jl">Customer Name</span><span class="iss-jv">@job.CustomerName</span></div>
                                 <div class="iss-jf"><span class="iss-jl">Category</span><span class="iss-jv">@(job.ProductCategory ?? "—")</span></div>
-                                <div class="iss-jf"><span class="iss-jl">Product Type</span><span class="iss-jv">@(job.ProductType ?? "—")</span></div>
+                                @* <div class="iss-jf"><span class="iss-jl">Product Type</span><span class="iss-jv">@(job.ProductType ?? "—")</span></div> *@
                                 <div class="iss-jf"><span class="iss-jl">Inspection Type</span><span class="iss-jv">@job.InspectionType</span></div>
                                 <div class="iss-jf"><span class="iss-jl">Vendor Name</span><span class="iss-jv">@job.VendorName</span></div>
                                 <div class="iss-jf"><span class="iss-jl">Vendor Address</span><span class="iss-jv">@(string.IsNullOrEmpty(job.VendorAddress) ? "—" : job.VendorAddress)</span></div>
@@ -437,10 +462,10 @@
                                 <div class="iss-li-body">
                                     <div class="iss-li-row"><span class="iss-ll">Date</span><span class="iss-lv">@job.InspectionDate.ToString("d MMM yyyy")</span></div>
                                     <div class="iss-li-row"><span class="iss-ll">Category</span><span class="iss-lv">@(job.ProductCategory ?? "—")</span></div>
-                                    <div class="iss-li-row"><span class="iss-ll">Product Type</span><span class="iss-lv">@(job.ProductType ?? "—")</span></div>
+                                    @* <div class="iss-li-row"><span class="iss-ll">Product Type</span><span class="iss-lv">@(job.ProductType ?? "—")</span></div> *@
                                     <div class="iss-li-row"><span class="iss-ll">Inspection Type</span><span class="iss-lv">@job.InspectionType</span></div>
                                     <div class="iss-li-row"><span class="iss-ll">Vendor Name</span><span class="iss-lv">@job.VendorName</span></div>
-                                    <div class="iss-li-row"><span class="iss-ll">Vendor Address</span><span class="iss-lv">@(string.IsNullOrEmpty(job.VendorAddress) ? "—" : job.VendorAddress)</span></div>
+                                    <div class="iss-li-row"><span class="iss-ll">Vendor Address</span><span class="iss-lv">@(string.IsNullOrEmpty(job.VendorCity) ? "—" : job.VendorCity)</span></div>
                                     @if (!string.IsNullOrEmpty(job.VendorContactName) || !string.IsNullOrEmpty(job.VendorContactMobile))
                                     {
                                         <div class="iss-li-row"><span class="iss-ll iss-jl-section">Vendor Information</span></div>
@@ -588,6 +613,10 @@
         public string   InspectionType  { get; set; } = "DPI";
         public string   VendorName      { get; set; } = "";
         public string?  VendorAddress   { get; set; }
+        public string?  VendorAddress1  { get; set; }
+        public string?  VendorAddress2  { get; set; }
+        public string?  VendorCity      { get; set; }
+        public string?  VendorState     { get; set; }
         public string?  VendorCountry   { get; set; }
         // Vendor Information (contact)
         public string?  VendorContactName     { get; set; }
@@ -671,7 +700,9 @@
 
         return _timeFilter switch
         {
-            "today"  => q.Where(j => j.InspectionDate.Date == today).ToList(),
+            // "today" now includes all overdue inspections (date <= today) so users can see
+            // jobs that are past due and need attention. Overdue items are highlighted in UI.
+            "today"  => q.Where(j => j.InspectionDate.Date <= today).ToList(),
             "7days"  => q.Where(j => j.InspectionDate.Date >= today &&
                                      j.InspectionDate.Date <  today.AddDays(7)).ToList(),
             "14days" => q.Where(j => j.InspectionDate.Date >= today &&
@@ -806,6 +837,11 @@
         InspectionType  = i.InspectionType ?? "DPI",
         VendorName      = i.VendorName  ?? "",
         VendorAddress   = string.IsNullOrEmpty(i.VendorAddress)   ? null : i.VendorAddress,
+        VendorAddress1  = string.IsNullOrEmpty(i.VendorAddress1)  ? null : i.VendorAddress1,
+        VendorAddress2  = string.IsNullOrEmpty(i.VendorAddress2)  ? null : i.VendorAddress2,
+        VendorCity      = string.IsNullOrEmpty(i.VendorCity)      ? null : i.VendorCity,
+        VendorState     = string.IsNullOrEmpty(i.VendorState)     ? null : i.VendorState,
+        VendorCountry   = string.IsNullOrEmpty(i.VendorCountry)   ? null : i.VendorCountry,
         VendorContactName     = i.VendorContactName,
         VendorContactPosition = i.VendorContactPosition,
         VendorContactMobile   = i.VendorContactMobile,
@@ -868,6 +904,14 @@
             // Vendor Address & Country
             if (root.TryGetProperty("vendorAddress", out var va) && va.ValueKind != JsonValueKind.Null)
                 _selectedJob.VendorAddress = va.GetString();
+            if (root.TryGetProperty("vendorAddress1", out var va1) && va1.ValueKind != JsonValueKind.Null)
+                _selectedJob.VendorAddress1 = va1.GetString();
+            if (root.TryGetProperty("vendorAddress2", out var va2) && va2.ValueKind != JsonValueKind.Null)
+                _selectedJob.VendorAddress2 = va2.GetString();
+            if (root.TryGetProperty("vendorCity", out var vci) && vci.ValueKind != JsonValueKind.Null)
+                _selectedJob.VendorCity = vci.GetString();
+            if (root.TryGetProperty("vendorState", out var vst) && vst.ValueKind != JsonValueKind.Null)
+                _selectedJob.VendorState = vst.GetString();
             if (root.TryGetProperty("vendorCountry", out var vc) && vc.ValueKind != JsonValueKind.Null)
                 _selectedJob.VendorCountry = vc.GetString();
 
@@ -974,6 +1018,11 @@
         public string?   VendorName      { get; set; }
         public string?   VendorId        { get; set; }
         public string?   VendorAddress   { get; set; }
+        public string?   VendorAddress1  { get; set; }
+        public string?   VendorAddress2  { get; set; }
+        public string?   VendorCity      { get; set; }
+        public string?   VendorState     { get; set; }
+        public string?   VendorCountry   { get; set; }
         public string?   VendorContactName     { get; set; }
         public string?   VendorContactPosition { get; set; }
         public string?   VendorContactMobile   { get; set; }
@@ -1200,6 +1249,43 @@
         display: flex; flex-direction: column; gap: 0;
     }
     .iss-job-card:hover { transform: translateY(-3px); box-shadow: 0 6px 20px rgba(0,0,0,.11); border-color: #bbd9f8; }
+
+    /* ── Overdue (inspection date trước hôm nay) ────────────────────── */
+    .iss-job-card-overdue {
+        background: linear-gradient(180deg, #fff7ed 0%, #ffedd5 100%);
+        border: 1px solid #fdba74;
+        box-shadow: 0 2px 10px rgba(234,88,12,.15);
+    }
+    .iss-job-card-overdue:hover {
+        border-color: #f97316;
+        box-shadow: 0 6px 22px rgba(234,88,12,.22);
+    }
+    .iss-job-card-overdue .iss-jc-top { border-bottom-color: rgba(249,115,22,.25); }
+    .iss-job-card-overdue .iss-job-no { color: #c2410c; }
+
+    .iss-jc-top-right {
+        display: flex; align-items: center; gap: 6px;
+    }
+    .iss-overdue-badge {
+        display: inline-flex; align-items: center; gap: 4px;
+        font-size: 10px; font-weight: 700;
+        padding: 2.5px 8px; border-radius: 10px;
+        background: #ea580c; color: #fff;
+        text-transform: uppercase; white-space: nowrap;
+        letter-spacing: .03em;
+    }
+    .iss-overdue-badge svg { flex-shrink: 0; }
+    .iss-jv-overdue { color: #c2410c; font-weight: 700; }
+
+    .iss-overdue-count {
+        display: inline-block;
+        margin-left: 10px;
+        font-size: 11px; font-weight: 700;
+        padding: 3px 9px; border-radius: 10px;
+        background: #ea580c; color: #fff;
+        text-transform: uppercase; letter-spacing: .04em;
+        vertical-align: middle;
+    }
 
     .iss-jc-top {
         display: flex; align-items: center; justify-content: space-between;

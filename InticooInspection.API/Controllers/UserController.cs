@@ -279,6 +279,46 @@ namespace InticooInspection.API.Controllers
             }
         }
 
+        // ─────────────────────────────────────────────────────────────────
+        // POST api/users/change-password
+        // Người dùng tự đổi mật khẩu của mình.
+        // Mọi role đều được phép gọi endpoint này.
+        // ─────────────────────────────────────────────────────────────────
+        [HttpPost("change-password")]
+        public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordRequest request)
+        {
+            if (string.IsNullOrWhiteSpace(request.Username))
+                return BadRequest(new { success = false, message = "Username is required." });
+            if (string.IsNullOrWhiteSpace(request.CurrentPassword))
+                return BadRequest(new { success = false, message = "Current password is required." });
+            if (string.IsNullOrWhiteSpace(request.NewPassword))
+                return BadRequest(new { success = false, message = "New password is required." });
+            if (request.NewPassword.Length < 6)
+                return BadRequest(new { success = false, message = "New password must be at least 6 characters." });
+            if (request.NewPassword == request.CurrentPassword)
+                return BadRequest(new { success = false, message = "New password must be different from current password." });
+
+            var user = await _userManager.FindByNameAsync(request.Username);
+            if (user == null)
+                return NotFound(new { success = false, message = "User not found." });
+
+            // Verify current password
+            var ok = await _userManager.CheckPasswordAsync(user, request.CurrentPassword);
+            if (!ok)
+                return BadRequest(new { success = false, message = "Current password is incorrect." });
+
+            // Dùng ChangePasswordAsync (Identity tự xử lý hash + validator)
+            var result = await _userManager.ChangePasswordAsync(user, request.CurrentPassword, request.NewPassword);
+            if (!result.Succeeded)
+                return BadRequest(new
+                {
+                    success = false,
+                    message = string.Join(", ", result.Errors.Select(e => e.Description))
+                });
+
+            return Ok(new { success = true, message = "Password changed successfully." });
+        }
+
         // ── Helper ───────────────────────────────────────────────────────────
         private static object MapToDto(AppUser u, IList<string> roles) => new
         {
@@ -311,6 +351,10 @@ namespace InticooInspection.API.Controllers
             customerId          = u.CustomerId
         };
     }
+
+    // ─────────────────────────────────────────────────────────────────
+    // DTOs
+    // ─────────────────────────────────────────────────────────────────
 
     public class CreateUserRequest
     {
@@ -370,5 +414,12 @@ namespace InticooInspection.API.Controllers
         public string?  PostalCode          { get; set; }
         public string?  Mobile              { get; set; }
         public string?  CustomerId          { get; set; }
+    }
+
+    public class ChangePasswordRequest
+    {
+        public string Username        { get; set; } = "";
+        public string CurrentPassword { get; set; } = "";
+        public string NewPassword     { get; set; } = "";
     }
 }
