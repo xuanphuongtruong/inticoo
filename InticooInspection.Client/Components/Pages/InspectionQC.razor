@@ -2780,9 +2780,13 @@ else
     }
     .qc-select-sm {
         border: 1px solid #dce6f8; border-radius: 5px;
-        padding: 4px 6px; font-size: 12px; background: #f8faff;
+        padding: 4px 22px 4px 6px; font-size: 12px; background: #f8faff;
         outline: none; cursor: pointer;
+        -webkit-appearance:none; -moz-appearance:none; appearance:none;
+        background-image:url("data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%231a2d5a' stroke-width='1.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+        background-repeat:no-repeat; background-position:right 6px center; background-size:9px 5px;
     }
+    .qc-select-sm::-ms-expand { display:none; }
     .qc-add-row-btn {
         display: flex; align-items: center; gap: 5px;
         background: #eef4ff; color: #2D7DD2; border: 1px solid #b0c8f0;
@@ -2819,8 +2823,13 @@ else
     .qc-aql-lbl { font-size: 11px; color: #888; font-weight: 600; }
     .qc-aql-input {
         border: 1px solid #dce6f8; border-radius: 7px;
-        padding: 7px 10px; font-size: 13px; background: #f8faff; outline: none;
+        padding: 7px 28px 7px 10px; font-size: 13px; background: #f8faff; outline: none;
+        cursor: pointer;
+        -webkit-appearance:none; -moz-appearance:none; appearance:none;
+        background-image:url("data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%231a2d5a' stroke-width='1.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+        background-repeat:no-repeat; background-position:right 10px center; background-size:10px 6px;
     }
+    .qc-aql-input::-ms-expand { display:none; }
     .qc-aql-cols { display: flex; gap: 8px; flex-wrap: wrap; }
     .qc-aql-col {
         flex: 1; min-width: 100px; border-radius: 10px;
@@ -2838,8 +2847,13 @@ else
     .qc-aql-field label { font-size: 10px; color: #888; display: block; margin-bottom: 3px; }
     .qc-aql-sm {
         width: 100%; border: 1px solid #dce6f8; border-radius: 5px;
-        padding: 5px 6px; font-size: 11px; background: #f8faff; outline: none;
+        padding: 5px 20px 5px 6px; font-size: 11px; background: #f8faff; outline: none;
+        cursor: pointer;
+        -webkit-appearance:none; -moz-appearance:none; appearance:none;
+        background-image:url("data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%231a2d5a' stroke-width='1.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+        background-repeat:no-repeat; background-position:right 5px center; background-size:9px 5px;
     }
+    .qc-aql-sm::-ms-expand { display:none; }
     .qc-aql-stat { display: flex; justify-content: space-between;
         font-size: 11px; color: #555; margin-top: 3px; }
     .red-stat { color: #e74c3c; font-weight: 700; }

@@ -196,7 +196,7 @@
                         </select>
                     }
                 </div>
-                <div class="field-group"  style="display:none">
+                        <div class="field-group" style="display:none">
                     <label>Product Type</label>
                     <div class="readonly-field @(string.IsNullOrEmpty(Model.ProductType) ? "" : "accent")">
                         @(string.IsNullOrEmpty(Model.ProductType) ? "Auto-filled from Product" : Model.ProductType)
@@ -2078,6 +2078,8 @@
         border-color: #1e90d6; box-shadow: 0 0 0 3px rgba(30,144,214,0.1);
     }
     .field-group input::placeholder { color: #b0bdd4; }
+    .field-group select { -webkit-appearance:none; -moz-appearance:none; appearance:none; background-image:url("data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%231a2d5a' stroke-width='1.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E"); background-repeat:no-repeat; background-position:right 12px center; background-size:10px 6px; padding-right:34px; cursor:pointer; }
+    .field-group select::-ms-expand { display:none; }
     .field-loading { font-size: 13px; color: #9baac8; padding: 9px 0; font-style: italic; }
     .readonly-field { background: #f0f4fb; border: 1.5px solid #e0e8f4; border-radius: 8px; padding: 9px 12px; font-size: 13px; color: #9baac8; min-height: 38px; }
     .readonly-field.accent { color: #1a2d5a; font-weight: 500; background: #e6f1fb; border-color: #b5d4f4; }
@@ -2193,7 +2195,8 @@
     .oc-no.active  { color: #fff; background: #e53935; }
     .oc-sep { color: #b0bec5; font-weight: 400; margin: 0 2px; }
     .oc-remark-input { width: 100%; background: transparent; border: none; border-bottom: 1px solid #e0e8f0; padding: 5px 4px; color: #4a6080; font-size: 13px; font-family: "DM Sans", sans-serif; outline: none; }
-    .overall-select { width: calc(100% - 14px); margin: 7px 7px 7px 4px; background: #f7fafd; border: 1.5px solid #c9d8ee; border-radius: 8px; padding: 7px 10px; color: #4a6080; font-size: 12.5px; font-family: "DM Sans", sans-serif; outline: none; cursor: pointer; transition: border-color .15s, background .15s; }
+    .overall-select { width: calc(100% - 14px); margin: 7px 7px 7px 4px; background: #f7fafd; border: 1.5px solid #c9d8ee; border-radius: 8px; padding: 7px 28px 7px 10px; color: #4a6080; font-size: 12.5px; font-family: "DM Sans", sans-serif; outline: none; cursor: pointer; transition: border-color .15s, background .15s; -webkit-appearance:none; -moz-appearance:none; appearance:none; background-image:url("data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%234a6080' stroke-width='1.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E"); background-repeat:no-repeat; background-position:right 10px center; background-size:10px 6px; }
+    .overall-select::-ms-expand { display:none; }
     .overall-select:focus { border-color: #1e90d6; box-shadow: 0 0 0 3px rgba(30,144,214,0.1); }
     .overall-select option { background: #fff; color: #1a2d5a; }
     .overall-select.compliance-pass { border-color: #86efac; color: #16a34a; background: #f0fdf4; }

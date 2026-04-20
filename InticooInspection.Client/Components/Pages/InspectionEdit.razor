@@ -2275,6 +2275,8 @@
     .field-group label { font-size: 11.5px; font-weight: 600; color: #7a8fad; text-transform: uppercase; letter-spacing: .05em; }
     .field-group input, .field-group select { background: #f7fafd; border: 1.5px solid #c9d8ee; border-radius: 9px; padding: 9px 12px; color: #1a2d5a; font-size: 13.5px; font-family: "DM Sans", sans-serif; outline: none; transition: border-color .15s, box-shadow .15s; width: 100%; box-sizing: border-box; }
     .field-group input::placeholder { color: #b0bdd4; }
+    .field-group select { -webkit-appearance:none; -moz-appearance:none; appearance:none; background-image:url("data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%231a2d5a' stroke-width='1.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E"); background-repeat:no-repeat; background-position:right 12px center; background-size:10px 6px; padding-right:34px; cursor:pointer; }
+    .field-group select::-ms-expand { display:none; }
     .field-group input:focus, .field-group select:focus { border-color: #1e90d6; background: #fff; box-shadow: 0 0 0 3px rgba(30,144,214,0.1); }
     .field-required { color: #e53935; margin-left: 2px; }
     .field-loading { background: #f0f4f8; border: 1.5px solid #e0e8f0; border-radius: 9px; padding: 9px 12px; color: #9baac8; font-size: 13px; font-style: italic; }

@@ -962,7 +962,8 @@
     .search-wrap svg { color:rgba(255,255,255,.4); flex-shrink:0; }
     .search-input { flex:1; background:none; border:none; outline:none; color:#fff; font-size:13px; font-family:"DM Sans",sans-serif; }
     .search-input::placeholder { color:rgba(255,255,255,.35); }
-    .filter-select { background:rgba(255,255,255,.1); border:1px solid rgba(255,255,255,.15); border-radius:8px; padding:8px 12px; color:#fff; font-size:13px; outline:none; cursor:pointer; min-width:140px; font-family:"DM Sans",sans-serif; flex-shrink:0; }
+    .filter-select { background:rgba(255,255,255,.1); border:1px solid rgba(255,255,255,.15); border-radius:8px; padding:8px 32px 8px 12px; color:#fff; font-size:13px; outline:none; cursor:pointer; min-width:140px; font-family:"DM Sans",sans-serif; flex-shrink:0; -webkit-appearance:none; -moz-appearance:none; appearance:none; background-image:url("data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23ffffff' stroke-width='1.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E"); background-repeat:no-repeat; background-position:right 10px center; background-size:10px 6px; }
+    .filter-select::-ms-expand { display:none; }
     .filter-select option { background:#1565c0; }
 
     .btn-add { display:flex; align-items:center; gap:7px; padding:8px 16px; background:#1e90d6; color:#fff; border:none; border-radius:8px; font-size:13px; font-weight:600; cursor:pointer; font-family:"DM Sans",sans-serif; white-space:nowrap; flex-shrink:0; transition:background .2s,transform .1s; }
@@ -1035,6 +1036,9 @@
     .form-input:focus { border-color: #1e90d6; background: #fff; box-shadow: 0 0 0 3px rgba(30,144,214,0.1); }
     .form-input::placeholder { color: #b0bdd4; }
     .form-input-disabled { background: #f0f4f8; color: #9baac8; cursor: not-allowed; }
+    select.form-input { -webkit-appearance:none; -moz-appearance:none; appearance:none; background-image:url("data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%231a2d5a' stroke-width='1.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E"); background-repeat:no-repeat; background-position:right 13px center; background-size:10px 6px; padding-right:36px; cursor:pointer; }
+    select.form-input:focus { background-color:#fff; }
+    select.form-input::-ms-expand { display:none; }
     .form-textarea { min-height: 80px; resize: vertical; }
     .modal-footer { display: flex; justify-content: flex-end; gap: 10px; padding-top: 20px; border-top: 1px solid #e8eef7; margin-top: 16px; }
     .btn-cancel { padding: 10px 20px; background: #f0f4fb; border: 1px solid #c9d8ee; border-radius: 9px; color: #4a6080; font-size: 14px; cursor: pointer; transition: background .15s; }
