@@ -29,10 +29,14 @@
     <div class="ptm-filters">
         <div class="ptm-filter-group">
             <label class="ptm-filter-label">Category</label>
-            <select class="ptm-select" @bind="_filterCategory">
-                <option value="">All</option>
-                @foreach (var c in _categories) { <option value="@c">@c</option> }
-            </select>
+            <ComboBox CssClass="ptm-combo-filter"
+                      Value="_filterCategory"
+                      ValueChanged="OnFilterCategoryChanged"
+                      Items="_categories"
+                      Placeholder="All categories"
+                      AllowCreate="false"
+                      AllowEmptyOption="true"
+                      EmptyOptionLabel="All" />
         </div>
         <div class="ptm-filter-group">
             <label class="ptm-filter-label">Status</label>
@@ -138,10 +142,12 @@
                 <!-- Category -->
                 <div class="ptm-form-group">
                     <label class="ptm-label">Category <span class="req">*</span></label>
-                    <select class="ptm-input" @bind="_form.Category">
-                        <option value="">-- Select --</option>
-                        @foreach (var c in _categories) { <option value="@c">@c</option> }
-                    </select>
+                    <ComboBox CssClass="ptm-combo-form"
+                              Value="_form.Category"
+                              ValueChanged="OnFormCategoryChanged"
+                              Items="_categories"
+                              Placeholder="Select or type a category"
+                              AllowCreate="true" />
                 </div>
 
                 <!-- Protocol Name -->
@@ -151,7 +157,7 @@
                 </div>
 
                 <!-- Sort Order -->
-                <div class="ptm-form-group" style="max-width:160px">
+                <div class="ptm-form-group" style="max-width:160px;display: none;">
                     <label class="ptm-label">Sort Order</label>
                     <input class="ptm-input" type="number" min="0" @bind="_form.SortOrder" />
                 </div>
@@ -189,7 +195,7 @@
                     else
                     {
                         <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M4 10l5 5 7-8"/></svg>
-                        <span>@(_editId == null ? "+ Add New" : "Cập nhật")</span>
+                        <span>@(_editId == null ? "+ Add New" : "Save")</span>
                     }
                 </button>
             </div>
@@ -281,6 +287,17 @@
         _form   = new FormModel { IsActive = true };
         _modalError = "";
         _showModal  = true;
+    }
+
+    // ─── ComboBox change handlers ───
+    private void OnFilterCategoryChanged(string value)
+    {
+        _filterCategory = value ?? "";
+    }
+
+    private void OnFormCategoryChanged(string value)
+    {
+        _form.Category = value ?? "";
     }
 
     private void OpenEdit(TestMasterItem item)
@@ -459,6 +476,11 @@
     }
     .ptm-search { min-width: 220px; }
     .ptm-select:focus, .ptm-search:focus { border-color: #2D7DD2; }
+
+    /* ComboBox sizing inside filters bar */
+    .ptm-combo-filter { min-width: 180px; max-width: 220px; }
+    /* ComboBox inside modal form (full width of row) */
+    .ptm-combo-form { width: 100%; }
     .ptm-search-group { flex: 1; }
 
     .ptm-table-wrap { background: white; border-radius: 14px; box-shadow: 0 2px 10px rgba(0,0,0,.07); overflow-x: auto; }
@@ -553,9 +575,12 @@
     .ptm-input:focus,.ptm-textarea:focus { border-color: #2D7DD2; }
     .ptm-textarea { resize: vertical; min-height: 80px; }
     .ptm-form-check { flex-direction: row !important; align-items: center; gap: 8px; }
-    .ptm-form-check label { font-size: 13px; color: #444; cursor: pointer; }
+    .ptm-form-check label { font-size: 20px; color: #444; cursor: pointer; }
     .ptm-modal-footer { display: flex; align-items: center; justify-content: flex-end; gap: 10px; padding: 14px 22px; border-top: 1px solid #f0f3f8; }
-
+    input#chk-active {
+        width: 26px;
+        height: 26px;
+    }
     .ptm-btn-cancel { padding: 9px 20px; border-radius: 9px; border: 1.5px solid #e4eaf4; background: white; font-size: 13px; font-weight: 600; color: #666; cursor: pointer; transition: all .15s; }
     .ptm-btn-cancel:hover { border-color: #bbb; color: #333; }
     .ptm-btn-cancel:disabled { opacity: .5; cursor: not-allowed; }

@@ -73,7 +73,6 @@ else if (_data != null)
                         <circle cx="17" cy="7" r="3"/><path d="M14 21c0-3.314 1.343-6 3-6s3 2.686 3 6"/>
                     </svg>
                 </div>
-                <div class="db-card-badge" style="background:#ede9fe;color:#6d28d9;"></div>
                 <div class="db-card-value">@_data.CustomerCount</div>
                 <div class="db-card-label">Customers</div>
             </div>
@@ -85,7 +84,6 @@ else if (_data != null)
                         <polyline points="9 22 9 12 15 12 15 22"/>
                     </svg>
                 </div>
-                <div class="db-card-badge" style="background:#fee2e2;color:#b91c1c;"></div>
                 <div class="db-card-value">@_data.VendorCount</div>
                 <div class="db-card-label">Vendors</div>
             </div>
@@ -96,7 +94,6 @@ else if (_data != null)
                         <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
                     </svg>
                 </div>
-                <div class="db-card-badge" style="background:#d1fae5;color:#065f46;"></div>
                 <div class="db-card-value">@_data.ProductCount</div>
                 <div class="db-card-label">Products</div>
             </div>
@@ -109,7 +106,6 @@ else if (_data != null)
                         <path d="M16 11l2 2 3-3" stroke-linecap="round" stroke-linejoin="round"/>
                     </svg>
                 </div>
-                <div class="db-card-badge" style="background:#cffafe;color:#0e7490;"></div>
                 <div class="db-card-value">@_data.InspectorCount</div>
                 <div class="db-card-label">Inspectors</div>
             </div>
@@ -499,9 +495,9 @@ else if (_data != null)
 
     /* ── Bar chart ── */
     .db-barchart { display:flex;align-items:flex-end;gap:6px;height:120px;margin-bottom:12px; }
-    .db-bar-col { display:flex;flex-direction:column;align-items:center;flex:1;height:100%;justify-content:flex-end; }
+    .db-bar-col { display:flex;flex-direction:column;flex:1;height:100%;justify-content:flex-end; }
     .db-bar-num { font-size:10px;color:#6b7280;margin-bottom:3px;font-weight:600; }
-    .db-bar-wrap { width:100%;max-width:28px;display:flex;flex-direction:column-reverse;border-radius:4px;overflow:hidden;min-height:4px; }
+    .db-bar-wrap { width:100%;max-width:20px;display:flex;flex-direction:column-reverse;border-radius:4px;overflow:hidden;min-height:4px; }
     .db-bar-seg { width:100%; }
     .db-bar-seg.completed { background:#3b82f6; }
     .db-bar-seg.pending   { background:#fbbf24; }

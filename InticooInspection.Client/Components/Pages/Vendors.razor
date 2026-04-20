@@ -95,7 +95,6 @@ else
                         <td class="tc muted">@rowNo</td>
                         <td>
                             <div class="vendor-cell">
-                                <div class="vendor-avatar">@GetInitials(item.Name)</div>
                                 <div>
                                     <div class="vendor-name">@item.Name</div>
                                     @if (!string.IsNullOrEmpty(item.ShortName))
@@ -312,7 +311,7 @@ else
                     <input class="form-input" type="text" placeholder="Abbreviation" @bind="_f.ShortName" @bind:event="oninput" />
                 </div>
                 <div class="fg fg-3" style="grid-column:span 3;">
-                    <label>Product Category <span style="font-size:11px;color:#9baac8;font-weight:400;">(chọn nhiều)</span></label>
+                    <label>Product Category <span style="font-size:11px;color:#9baac8;font-weight:400;">(Multi-select)</span></label>
                     <div class="cat-check-list">
                         @foreach (var _catOpt in new[] {
                             "Furniture","Outdoor Furniture","Indoor Furniture","Office Furniture",

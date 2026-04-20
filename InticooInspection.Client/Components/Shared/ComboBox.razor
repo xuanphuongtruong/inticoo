@@ -1,0 +1,266 @@
+@* Reusable searchable ComboBox — works consistently on macOS, Windows, Linux *@
+@implements IDisposable
+
+<div class="cmb-root @CssClass" @onfocusout="OnFocusOut" tabindex="-1">
+    <div class="cmb-control @(IsOpen ? "cmb-open" : "")" @onclick="ToggleOpen">
+        <input class="cmb-input"
+               type="text"
+               placeholder="@Placeholder"
+               value="@_query"
+               @oninput="OnInput"
+               @onfocus="OnFocus"
+               @onkeydown="OnKeyDown"
+               @ref="_inputRef" />
+        @if (AllowClear && !string.IsNullOrEmpty(Value))
+        {
+            <button type="button" class="cmb-clear" @onclick="Clear" @onclick:stopPropagation="true" tabindex="-1" title="Clear">✕</button>
+        }
+        <span class="cmb-arrow">
+            <svg width="10" height="6" viewBox="0 0 10 6" xmlns="http://www.w3.org/2000/svg">
+                <path d="M1 1l4 4 4-4" stroke="#7a8fad" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+        </span>
+    </div>
+
+    @if (IsOpen)
+    {
+        <div class="cmb-menu">
+            @if (AllowEmptyOption && string.IsNullOrEmpty(_query))
+            {
+                <div class="cmb-item cmb-item-empty @(string.IsNullOrEmpty(Value) ? "cmb-selected" : "")"
+                     @onclick="@(() => SelectItem(""))"
+                     @onclick:stopPropagation="true">
+                    @EmptyOptionLabel
+                </div>
+            }
+            @{
+                var list = FilteredItems().ToList();
+            }
+            @if (!list.Any())
+            {
+                @if (AllowCreate && !string.IsNullOrWhiteSpace(_query))
+                {
+                    <div class="cmb-item cmb-item-create"
+                         @onclick="@(() => SelectItem(_query.Trim()))"
+                         @onclick:stopPropagation="true">
+                        <span class="cmb-create-tag">Add</span> "@_query"
+                    </div>
+                }
+                else
+                {
+                    <div class="cmb-empty">No matches</div>
+                }
+            }
+            else
+            {
+                @for (int i = 0; i < list.Count; i++)
+                {
+                    var idx = i;
+                    var opt = list[idx];
+                    <div class="cmb-item @(idx == _highlightIndex ? "cmb-highlight" : "") @(opt == Value ? "cmb-selected" : "")"
+                         @onclick="@(() => SelectItem(opt))"
+                         @onclick:stopPropagation="true"
+                         @onmouseenter="@(() => _highlightIndex = idx)">
+                        @opt
+                    </div>
+                }
+                @if (AllowCreate
+                     && !string.IsNullOrWhiteSpace(_query)
+                     && !Items.Any(x => string.Equals(x, _query.Trim(), StringComparison.OrdinalIgnoreCase)))
+                {
+                    <div class="cmb-item cmb-item-create"
+                         @onclick="@(() => SelectItem(_query.Trim()))"
+                         @onclick:stopPropagation="true">
+                        <span class="cmb-create-tag">Add</span> "@_query"
+                    </div>
+                }
+            }
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public string Value { get; set; } = "";
+    [Parameter] public EventCallback<string> ValueChanged { get; set; }
+    [Parameter] public List<string> Items { get; set; } = new();
+    [Parameter] public string Placeholder { get; set; } = "Select...";
+    [Parameter] public string CssClass { get; set; } = "";
+    [Parameter] public bool AllowCreate { get; set; } = false;
+    [Parameter] public bool AllowClear { get; set; } = true;
+    [Parameter] public bool AllowEmptyOption { get; set; } = false;
+    [Parameter] public string EmptyOptionLabel { get; set; } = "All";
+
+    private bool IsOpen { get; set; }
+    private string _query = "";
+    private int _highlightIndex = -1;
+    private ElementReference _inputRef;
+    private string _lastSyncedValue = "";
+
+    protected override void OnParametersSet()
+    {
+        // Sync display text from Value when it changes from outside
+        if (Value != _lastSyncedValue)
+        {
+            _query = Value ?? "";
+            _lastSyncedValue = Value ?? "";
+        }
+    }
+
+    private IEnumerable<string> FilteredItems()
+    {
+        if (string.IsNullOrWhiteSpace(_query)) return Items;
+        var q = _query.Trim();
+        return Items.Where(x => x != null && x.Contains(q, StringComparison.OrdinalIgnoreCase));
+    }
+
+    private void ToggleOpen()
+    {
+        IsOpen = !IsOpen;
+        if (IsOpen) _highlightIndex = -1;
+    }
+
+    private void OnFocus()
+    {
+        IsOpen = true;
+        _highlightIndex = -1;
+    }
+
+    private void OnInput(ChangeEventArgs e)
+    {
+        _query = e.Value?.ToString() ?? "";
+        IsOpen = true;
+        _highlightIndex = 0;
+    }
+
+    private async Task SelectItem(string val)
+    {
+        _query = val ?? "";
+        _lastSyncedValue = val ?? "";
+        IsOpen = false;
+        await ValueChanged.InvokeAsync(val ?? "");
+    }
+
+    private async Task Clear()
+    {
+        await SelectItem("");
+    }
+
+    private async Task OnKeyDown(KeyboardEventArgs e)
+    {
+        var list = FilteredItems().ToList();
+        switch (e.Key)
+        {
+            case "ArrowDown":
+                IsOpen = true;
+                if (list.Count > 0)
+                    _highlightIndex = Math.Min(_highlightIndex + 1, list.Count - 1);
+                break;
+            case "ArrowUp":
+                if (list.Count > 0)
+                    _highlightIndex = Math.Max(_highlightIndex - 1, 0);
+                break;
+            case "Enter":
+                if (IsOpen)
+                {
+                    if (_highlightIndex >= 0 && _highlightIndex < list.Count)
+                        await SelectItem(list[_highlightIndex]);
+                    else if (AllowCreate && !string.IsNullOrWhiteSpace(_query))
+                        await SelectItem(_query.Trim());
+                    else if (!AllowCreate)
+                        // with strict mode + no match: just close dropdown, keep current Value
+                        IsOpen = false;
+                }
+                break;
+            case "Escape":
+                IsOpen = false;
+                _query = Value ?? "";
+                break;
+            case "Tab":
+                IsOpen = false;
+                break;
+        }
+    }
+
+    private async Task OnFocusOut(FocusEventArgs e)
+    {
+        // Delay a tick so click-on-item still fires before we close
+        await Task.Delay(150);
+        if (IsOpen)
+        {
+            IsOpen = false;
+            if (!AllowCreate)
+            {
+                // Revert to last valid value if user typed something not in list
+                if (!Items.Contains(_query) && _query != Value)
+                    _query = Value ?? "";
+            }
+            else
+            {
+                // In create mode: if user typed something new and didn't pick, commit it
+                if (!string.IsNullOrWhiteSpace(_query) && _query != Value)
+                    await SelectItem(_query.Trim());
+            }
+            StateHasChanged();
+        }
+    }
+
+    public void Dispose() { }
+}
+
+<style>
+    .cmb-root { position: relative; width: 100%; box-sizing: border-box; }
+    .cmb-control {
+        display: flex; align-items: center;
+        border: 1.5px solid #e4eaf4; border-radius: 8px;
+        background: #fafbfe; padding: 0 8px 0 0;
+        transition: border-color .15s, box-shadow .15s;
+        cursor: text;
+    }
+    .cmb-control.cmb-open,
+    .cmb-root:focus-within .cmb-control { border-color: #2D7DD2; box-shadow: 0 0 0 3px rgba(45,125,210,0.08); }
+
+    .cmb-input {
+        flex: 1; min-width: 0;
+        border: none; outline: none; background: transparent;
+        padding: 7px 10px; font-size: 13px; color: #333;
+        font-family: inherit;
+    }
+    .cmb-input::placeholder { color: #b0bdd4; }
+
+    .cmb-arrow {
+        display: inline-flex; align-items: center; justify-content: center;
+        padding: 0 6px; pointer-events: none;
+    }
+
+    .cmb-clear {
+        background: transparent; border: none; cursor: pointer;
+        color: #9baac8; font-size: 12px; padding: 2px 6px;
+        border-radius: 4px; line-height: 1;
+    }
+    .cmb-clear:hover { background: #eef2f8; color: #2D7DD2; }
+
+    .cmb-menu {
+        position: absolute; left: 0; right: 0; top: calc(100% + 4px);
+        background: #fff; border: 1px solid #e4eaf4; border-radius: 8px;
+        box-shadow: 0 6px 20px rgba(20,40,80,.12);
+        z-index: 50;
+        max-height: 240px; overflow-y: auto;
+        padding: 4px;
+    }
+    .cmb-item {
+        padding: 8px 10px; font-size: 13px; color: #333;
+        border-radius: 5px; cursor: pointer;
+        user-select: none;
+    }
+    .cmb-item.cmb-highlight,
+    .cmb-item:hover { background: #eef4ff; color: #2D7DD2; }
+    .cmb-item.cmb-selected { background: #e0ecff; color: #2D7DD2; font-weight: 600; }
+    .cmb-item.cmb-item-empty { color: #7a8fad; font-style: italic; }
+    .cmb-item.cmb-item-create { color: #1e7e34; }
+    .cmb-create-tag {
+        display: inline-block; background: #dcf0df; color: #1e7e34;
+        font-size: 10px; font-weight: 700; padding: 1px 6px; border-radius: 10px;
+        margin-right: 4px; text-transform: uppercase; letter-spacing: .03em;
+    }
+    .cmb-empty { padding: 10px; text-align: center; color: #9baac8; font-size: 12.5px; font-style: italic; }
+</style>

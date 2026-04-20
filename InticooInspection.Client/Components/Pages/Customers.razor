@@ -83,7 +83,6 @@ else
                         <td class="td-center muted">@((_page - 1) * _pageSize + _customers.IndexOf(item) + 1)</td>
                         <td>
                             <div class="company-cell">
-                                <div class="company-avatar">@GetInitials(item.CompanyName)</div>
                                 <div>
                                     <div class="company-name">@item.CompanyName</div>
                                     @if (!string.IsNullOrEmpty(item.ShortName))
@@ -215,7 +214,7 @@ else
                     </div>
                 </div>
                 <div class="form-group full-width">
-                    <label>Product Category <span style="font-size:11px;color:#9baac8;font-weight:400;">(chọn nhiều)</span></label>
+                    <label>Product Category <span style="font-size:11px;color:#9baac8;font-weight:400;">(Multi-select)</span></label>
                     <div class="cat-check-list">
                         @foreach (var _catOpt in new[] {
                             "Furniture","Outdoor Furniture","Indoor Furniture","Office Furniture",
