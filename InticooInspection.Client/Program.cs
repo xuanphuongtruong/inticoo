@@ -51,6 +51,7 @@ builder.Services.AddAuthorizationCore();
 builder.Services.AddScoped<AuthenticationStateProvider, JwtAuthStateProvider>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<WaitingService>();
+builder.Services.AddScoped<PageAccessService>();
 
 
 await builder.Build().RunAsync();
