@@ -1239,20 +1239,12 @@
     {
         try
         {
-            // Chỉ load User thuộc nhóm "Inspector" — backend được request filter qua query string ?group=Inspector
-            var all = await Http.GetFromJsonAsync<List<InspectorDropdownDto>>("api/users/dropdown?group=Inspector") ?? new();
-
-            // Filter client-side thêm lần nữa (an toàn nếu backend chưa hỗ trợ query filter):
-            //   giữ lại user có Groups/Roles chứa "Inspector" (case-insensitive).
-            //   Nếu DTO không có info về group/role (null hoặc list rỗng) → tin backend đã filter rồi, giữ nguyên.
-            _inspectors = all.Where(u =>
-            {
-                bool hasGroupInfo = (u.Groups != null && u.Groups.Count > 0) || (u.Roles != null && u.Roles.Count > 0);
-                if (!hasGroupInfo) return true;
-                bool inGroup = u.Groups != null && u.Groups.Any(g => string.Equals(g, "Inspector", StringComparison.OrdinalIgnoreCase));
-                bool inRole  = u.Roles  != null && u.Roles .Any(r => string.Equals(r, "Inspector", StringComparison.OrdinalIgnoreCase));
-                return inGroup || inRole;
-            }).ToList();
+            // Hệ thống xác định "nhóm Inspector" qua field InspectorId trên AspNetUsers
+            // (xem InspectionController.cs, vd: dòng `_userManager.Users.Where(u => u.InspectorId != null && u.InspectorId != "")`).
+            // Endpoint /api/users/dropdown hiện trả về toàn bộ user → filter client-side giữ lại
+            // những user có InspectorId không rỗng.
+            var all = await Http.GetFromJsonAsync<List<InspectorDropdownDto>>("api/users/dropdown") ?? new();
+            _inspectors = all.Where(u => !string.IsNullOrWhiteSpace(u.InspectorId)).ToList();
         }
         catch { _inspectors = new(); }
         finally { _loadingInspectors = false; }
@@ -2001,10 +1993,6 @@
         public string  Id         { get; set; } = "";
         public string? InspectorId { get; set; }
         public string  FullName   { get; set; } = "";
-        // Các field này là optional — nếu backend trả về sẽ dùng để filter client-side,
-        // nếu null thì coi như backend đã filter sẵn qua query string.
-        public List<string>? Groups { get; set; }
-        public List<string>? Roles  { get; set; }
     }
 
     private class CountryDto
