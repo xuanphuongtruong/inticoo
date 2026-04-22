@@ -1,5 +1,5 @@
 using System.Net.Http.Headers;
-using System.Net.Http.Json;
+using System.Text.Json;
 using Blazored.SessionStorage;
 
 namespace InticooInspection.Client.Services
@@ -18,6 +18,10 @@ namespace InticooInspection.Client.Services
         private readonly HttpClient _http;
         private readonly ISessionStorageService _session;
 
+        // Case-insensitive JSON options so we accept both pageAccess and PageAccess
+        private static readonly JsonSerializerOptions _jsonOpts =
+            new() { PropertyNameCaseInsensitive = true };
+
         private HashSet<string>? _cachedPages;   // null = not loaded yet
         private List<string>     _cachedRoles = new();
         private bool             _loaded      = false;
@@ -34,13 +38,8 @@ namespace InticooInspection.Client.Services
         public IReadOnlyCollection<string> Pages => _cachedPages ?? (IReadOnlyCollection<string>)Array.Empty<string>();
         public IReadOnlyCollection<string> Roles => _cachedRoles;
         public bool IsLoaded => _loaded;
-        public bool IsAdmin => _cachedRoles.Contains("Admin", StringComparer.OrdinalIgnoreCase);
+        public bool IsAdmin  => _cachedRoles.Contains("Admin", StringComparer.OrdinalIgnoreCase);
 
-        /// <summary>
-        /// Returns true if the user is an Admin (bypass), OR the given page key
-        /// is in the user's page access list. If access list has not been loaded
-        /// yet, returns false — callers should await EnsureLoadedAsync first.
-        /// </summary>
         public bool HasAccess(string pageKey)
         {
             if (!_loaded) return false;
@@ -79,19 +78,48 @@ namespace InticooInspection.Client.Services
         {
             try
             {
-                // Make sure Authorization header is set (in case consumer hasn't)
-                if (_http.DefaultRequestHeaders.Authorization == null)
+                // Always read token fresh and attach explicitly per-request.
+                // Do NOT rely on HttpClient.DefaultRequestHeaders because:
+                //   1) Another page may have set it to a different value
+                //   2) On first MainLayout render, other pages haven't run yet
+                string? token = null;
+                try
                 {
-                    try
-                    {
-                        var token = await _session.GetItemAsync<string>("auth_token");
-                        if (!string.IsNullOrEmpty(token))
-                            _http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
-                    }
-                    catch { /* ignore */ }
+                    token = await _session.GetItemAsync<string>("auth_token");
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"[PageAccess] Failed to read token from session: {ex.Message}");
                 }
 
-                var dto = await _http.GetFromJsonAsync<PageAccessDto>("api/users/me/page-access");
+                Console.WriteLine($"[PageAccess] Token present: {!string.IsNullOrEmpty(token)}");
+                if (string.IsNullOrEmpty(token))
+                {
+                    Console.WriteLine("[PageAccess] No token, aborting load. User not logged in yet?");
+                    _cachedPages = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                    _cachedRoles = new();
+                    return;
+                }
+
+                using var req = new HttpRequestMessage(HttpMethod.Get, "api/users/me/page-access");
+                req.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+                using var response = await _http.SendAsync(req);
+                Console.WriteLine($"[PageAccess] Status: {(int)response.StatusCode} {response.StatusCode}");
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    var body = await response.Content.ReadAsStringAsync();
+                    Console.WriteLine($"[PageAccess] Error body: {body}");
+                    _cachedPages = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                    _cachedRoles = new();
+                    return;
+                }
+
+                var raw = await response.Content.ReadAsStringAsync();
+                Console.WriteLine($"[PageAccess] Raw response: {raw}");
+
+                var dto = JsonSerializer.Deserialize<PageAccessDto>(raw, _jsonOpts);
                 if (dto != null)
                 {
                     _cachedPages = string.IsNullOrWhiteSpace(dto.PageAccess)
@@ -101,18 +129,21 @@ namespace InticooInspection.Client.Services
                                              .Select(x => x.Trim()),
                               StringComparer.OrdinalIgnoreCase);
                     _cachedRoles = dto.Roles ?? new();
+
+                    Console.WriteLine($"[PageAccess] Loaded pages: [{string.Join(", ", _cachedPages)}]");
+                    Console.WriteLine($"[PageAccess] Loaded roles: [{string.Join(", ", _cachedRoles)}]");
+                    Console.WriteLine($"[PageAccess] IsAdmin: {IsAdmin}");
                 }
                 else
                 {
+                    Console.WriteLine("[PageAccess] DTO was null after deserialize");
                     _cachedPages = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
                     _cachedRoles = new();
                 }
             }
-            catch
+            catch (Exception ex)
             {
-                // On failure, default to empty access. Admin claims will still come
-                // from JWT/AuthorizeView so core admin UI keeps working, but
-                // page-access-gated items will be hidden until a successful load.
+                Console.WriteLine($"[PageAccess] Exception: {ex.Message}");
                 _cachedPages = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
                 _cachedRoles = new();
             }
