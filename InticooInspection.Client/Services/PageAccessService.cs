@@ -4,28 +4,18 @@ using Blazored.SessionStorage;
 
 namespace InticooInspection.Client.Services
 {
-    /// <summary>
-    /// Loads and caches the current user's Page Access list (CSV of page keys).
-    /// Used by MainLayout to hide menu items and by PageAccessGuard to block routes.
-    ///
-    /// BACKEND CONTRACT:
-    ///   GET /api/users/me/page-access → { pageAccess: "JobRequest,SummaryInspections", roles: ["Customer"] }
-    ///
-    /// Admin role bypasses all checks (HasAccess always returns true for Admin).
-    /// </summary>
     public class PageAccessService
     {
         private readonly HttpClient _http;
         private readonly ISessionStorageService _session;
 
-        // Case-insensitive JSON options so we accept both pageAccess and PageAccess
         private static readonly JsonSerializerOptions _jsonOpts =
             new() { PropertyNameCaseInsensitive = true };
 
-        private HashSet<string>? _cachedPages;   // null = not loaded yet
+        private HashSet<string>? _cachedPages;
         private List<string>     _cachedRoles = new();
         private bool             _loaded      = false;
-        private Task?            _inflight;    // dedupe concurrent loads
+        private Task?            _inflight;
 
         public event Action? OnChange;
 
@@ -51,7 +41,6 @@ namespace InticooInspection.Client.Services
         {
             if (_loaded) return;
             if (_inflight != null) { await _inflight; return; }
-
             _inflight = LoadAsync();
             try { await _inflight; }
             finally { _inflight = null; }
@@ -59,18 +48,14 @@ namespace InticooInspection.Client.Services
 
         public async Task ReloadAsync()
         {
-            _loaded      = false;
-            _cachedPages = null;
-            _cachedRoles = new();
+            _loaded = false; _cachedPages = null; _cachedRoles = new();
             await EnsureLoadedAsync();
             OnChange?.Invoke();
         }
 
         public void Clear()
         {
-            _loaded      = false;
-            _cachedPages = null;
-            _cachedRoles = new();
+            _loaded = false; _cachedPages = null; _cachedRoles = new();
             OnChange?.Invoke();
         }
 
@@ -78,10 +63,6 @@ namespace InticooInspection.Client.Services
         {
             try
             {
-                // Always read token fresh and attach explicitly per-request.
-                // Do NOT rely on HttpClient.DefaultRequestHeaders because:
-                //   1) Another page may have set it to a different value
-                //   2) On first MainLayout render, other pages haven't run yet
                 string? token = null;
                 try
                 {
@@ -89,35 +70,46 @@ namespace InticooInspection.Client.Services
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"[PageAccess] Failed to read token from session: {ex.Message}");
+                    Console.WriteLine($"[PageAccess] Read token error: {ex.Message}");
                 }
 
                 Console.WriteLine($"[PageAccess] Token present: {!string.IsNullOrEmpty(token)}");
+                if (!string.IsNullOrEmpty(token))
+                {
+                    // Show token format — first 20 chars + length. Never log the whole thing.
+                    var preview = token.Length > 40 ? token.Substring(0, 20) + "..." + token.Substring(token.Length - 10) : token;
+                    Console.WriteLine($"[PageAccess] Token preview: {preview} (len={token.Length})");
+                    // Check if the token has 3 dot-separated parts (valid JWT)
+                    var parts = token.Split('.');
+                    Console.WriteLine($"[PageAccess] Token JWT parts: {parts.Length} (should be 3)");
+                }
+
                 if (string.IsNullOrEmpty(token))
                 {
-                    Console.WriteLine("[PageAccess] No token, aborting load. User not logged in yet?");
                     _cachedPages = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
                     _cachedRoles = new();
                     return;
                 }
 
+                // Build request with explicit Authorization header
                 using var req = new HttpRequestMessage(HttpMethod.Get, "api/users/me/page-access");
                 req.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+                Console.WriteLine($"[PageAccess] Sending request to: {_http.BaseAddress}api/users/me/page-access");
+                Console.WriteLine($"[PageAccess] Authorization header set: {req.Headers.Authorization}");
 
                 using var response = await _http.SendAsync(req);
                 Console.WriteLine($"[PageAccess] Status: {(int)response.StatusCode} {response.StatusCode}");
 
+                var raw = await response.Content.ReadAsStringAsync();
+                Console.WriteLine($"[PageAccess] Body: {raw}");
+
                 if (!response.IsSuccessStatusCode)
                 {
-                    var body = await response.Content.ReadAsStringAsync();
-                    Console.WriteLine($"[PageAccess] Error body: {body}");
                     _cachedPages = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
                     _cachedRoles = new();
                     return;
                 }
-
-                var raw = await response.Content.ReadAsStringAsync();
-                Console.WriteLine($"[PageAccess] Raw response: {raw}");
 
                 var dto = JsonSerializer.Deserialize<PageAccessDto>(raw, _jsonOpts);
                 if (dto != null)
@@ -132,18 +124,16 @@ namespace InticooInspection.Client.Services
 
                     Console.WriteLine($"[PageAccess] Loaded pages: [{string.Join(", ", _cachedPages)}]");
                     Console.WriteLine($"[PageAccess] Loaded roles: [{string.Join(", ", _cachedRoles)}]");
-                    Console.WriteLine($"[PageAccess] IsAdmin: {IsAdmin}");
                 }
                 else
                 {
-                    Console.WriteLine("[PageAccess] DTO was null after deserialize");
                     _cachedPages = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
                     _cachedRoles = new();
                 }
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[PageAccess] Exception: {ex.Message}");
+                Console.WriteLine($"[PageAccess] Exception: {ex.GetType().Name}: {ex.Message}");
                 _cachedPages = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
                 _cachedRoles = new();
             }

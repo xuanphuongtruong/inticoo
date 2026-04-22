@@ -91,18 +91,34 @@ namespace InticooInspection.API.Controllers
 
         // GET api/users/me/page-access
         // Returns the page-access CSV and roles of the currently authenticated user.
-        // IMPORTANT: must be declared BEFORE the {id} route so ASP.NET routing
-        // matches "me/page-access" as a literal, not as {id}="me/page-access".
+        // NOTE: We don't use [Authorize] because the controller has [AllowAnonymous]
+        // at class level which confuses the auth pipeline. Instead we check the
+        // JWT claims manually — if the token is missing or invalid, FindFirst
+        // returns null and we return 401 explicitly.
         [HttpGet("me/page-access")]
-        [Authorize]
         public async Task<IActionResult> GetMyPageAccess()
         {
+            // Try NameIdentifier first (ASP.NET remaps JWT `sub` to this),
+            // then fall back to Sub directly in case MapInboundClaims is false.
             var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
-                      ?? User.FindFirst(System.IdentityModel.Tokens.Jwt.JwtRegisteredClaimNames.Sub)?.Value;
-            if (string.IsNullOrEmpty(userId)) return Unauthorized();
+                      ?? User.FindFirst(System.IdentityModel.Tokens.Jwt.JwtRegisteredClaimNames.Sub)?.Value
+                      ?? User.FindFirst("sub")?.Value;
+
+            if (string.IsNullOrEmpty(userId))
+            {
+                // Log what we actually got so we can debug claim mapping issues
+                var claims = User.Claims.Select(c => $"{c.Type}={c.Value}").ToList();
+                return Unauthorized(new {
+                    message    = "No user id claim found in token.",
+                    isAuth     = User.Identity?.IsAuthenticated ?? false,
+                    authType   = User.Identity?.AuthenticationType,
+                    claimCount = claims.Count,
+                    claims     = claims
+                });
+            }
 
             var user = await _userManager.FindByIdAsync(userId);
-            if (user == null) return Unauthorized();
+            if (user == null) return Unauthorized(new { message = $"User id '{userId}' not found." });
 
             var roles = await _userManager.GetRolesAsync(user);
             return Ok(new
