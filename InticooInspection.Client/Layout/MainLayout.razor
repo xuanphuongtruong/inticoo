@@ -640,7 +640,9 @@
         gap: 0;
         flex: 1 1 auto;
         min-width: 0;
-        overflow: hidden;
+        /* NOTE: do NOT use overflow:hidden here — it clips dropdown menus and
+           silently hides nav items that don't fit. Breakpoints below switch
+           to hamburger before the bar actually overflows. */
     }
 
     .nav-link {
@@ -898,22 +900,23 @@
 
     /* ─── RESPONSIVE ─── */
     /* Wide screens: keep full padding. Shrink progressively as space gets tight. */
-    @@media (max-width: 1400px) {
+    @@media (max-width: 1500px) {
         .nav-link,
-        .nav-dropdown-btn { padding: 6px 12px; font-size: 13.5px; }
+        .nav-dropdown-btn { padding: 6px 11px; font-size: 13.5px; }
     }
 
-    @@media (max-width: 1200px) {
+    @@media (max-width: 1380px) {
         .welcome-text { display: none; }
         .nav-link,
-        .nav-dropdown-btn { padding: 6px 9px; font-size: 13px; gap: 2px; }
+        .nav-dropdown-btn { padding: 6px 8px; font-size: 13px; gap: 2px; }
         .nav-link svg,
         .nav-dropdown-btn svg:first-child { display: none; }
         .navbar-inner { gap: 8px; padding: 0 16px; }
     }
 
-    /* Below 1024 the admin menu (7 items) can't fit cleanly → collapse to hamburger. */
-    @@media (max-width: 1024px) {
+    /* Below 1280 the admin menu (Dashboard + 7 dropdowns) can't fit even with
+       compact padding → collapse to hamburger so nothing gets clipped. */
+    @@media (max-width: 1280px) {
         .navbar-links { display: none; }
         .navbar-right { display: none; }
         .hamburger { display: flex; }
