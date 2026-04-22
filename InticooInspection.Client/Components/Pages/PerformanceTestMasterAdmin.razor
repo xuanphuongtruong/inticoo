@@ -29,14 +29,59 @@
     <div class="ptm-filters">
         <div class="ptm-filter-group">
             <label class="ptm-filter-label">Category</label>
-            <ComboBox CssClass="ptm-combo-filter"
-                      Value="_filterCategory"
-                      ValueChanged="OnFilterCategoryChanged"
-                      Items="_categories"
-                      Placeholder="All categories"
-                      AllowCreate="false"
-                      AllowEmptyOption="true"
-                      EmptyOptionLabel="All" />
+            <div class="ptm-cmb-root ptm-combo-filter @(_filterCmbOpen ? "ptm-cmb-root-open" : "")" tabindex="-1"
+                 @onfocusout="@(async () => { await Task.Delay(150); if (_filterCmbOpen) { _filterCmbOpen = false; StateHasChanged(); } })">
+                <div class="ptm-cmb-control @(_filterCmbOpen ? "ptm-cmb-open" : "")" @onclick="@(() => _filterCmbOpen = !_filterCmbOpen)">
+                    <input class="ptm-cmb-input" type="text" placeholder="All categories"
+                           value="@_filterCmbQuery"
+                           @oninput="OnFilterCmbInput"
+                           @onfocus="@(() => _filterCmbOpen = true)"
+                           @onkeydown="OnFilterCmbKeyDown" />
+                    @if (!string.IsNullOrEmpty(_filterCategory))
+                    {
+                        <button type="button" class="ptm-cmb-clear"
+                                @onclick="@(() => SelectFilterCategory(""))"
+                                @onclick:stopPropagation="true" tabindex="-1" title="Clear">✕</button>
+                    }
+                    <span class="ptm-cmb-arrow">
+                        <svg width="10" height="6" viewBox="0 0 10 6" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M1 1l4 4 4-4" stroke="#7a8fad" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                    </span>
+                </div>
+                @if (_filterCmbOpen)
+                {
+                    <div class="ptm-cmb-menu">
+                        @if (string.IsNullOrEmpty(_filterCmbQuery))
+                        {
+                            <div class="ptm-cmb-item ptm-cmb-item-empty @(string.IsNullOrEmpty(_filterCategory) ? "ptm-cmb-selected" : "")"
+                                 @onclick="@(() => SelectFilterCategory(""))"
+                                 @onclick:stopPropagation="true">
+                                All
+                            </div>
+                        }
+                        @{ var filterList = FilterCmbItems().ToList(); }
+                        @if (!filterList.Any())
+                        {
+                            <div class="ptm-cmb-empty">No matches</div>
+                        }
+                        else
+                        {
+                            @for (int i = 0; i < filterList.Count; i++)
+                            {
+                                var idx = i;
+                                var opt = filterList[idx];
+                                <div class="ptm-cmb-item @(idx == _filterCmbHighlight ? "ptm-cmb-highlight" : "") @(opt == _filterCategory ? "ptm-cmb-selected" : "")"
+                                     @onclick="@(() => SelectFilterCategory(opt))"
+                                     @onclick:stopPropagation="true"
+                                     @onmouseenter="@(() => _filterCmbHighlight = idx)">
+                                    @opt
+                                </div>
+                            }
+                        }
+                    </div>
+                }
+            </div>
         </div>
         <div class="ptm-filter-group">
             <label class="ptm-filter-label">Status</label>
@@ -142,12 +187,71 @@
                 <!-- Category -->
                 <div class="ptm-form-group">
                     <label class="ptm-label">Category <span class="req">*</span></label>
-                    <ComboBox CssClass="ptm-combo-form"
-                              Value="_form.Category"
-                              ValueChanged="OnFormCategoryChanged"
-                              Items="_categories"
-                              Placeholder="Select or type a category"
-                              AllowCreate="true" />
+                    <div class="ptm-cmb-root ptm-combo-form @(_formCmbOpen ? "ptm-cmb-root-open" : "")" tabindex="-1"
+                         @onfocusout="@(async () => { await Task.Delay(150); if (_formCmbOpen) { if (!string.IsNullOrWhiteSpace(_formCmbQuery) && _formCmbQuery != _form.Category) { _form.Category = _formCmbQuery.Trim(); } _formCmbOpen = false; StateHasChanged(); } })">
+                        <div class="ptm-cmb-control @(_formCmbOpen ? "ptm-cmb-open" : "")" @onclick="@(() => _formCmbOpen = !_formCmbOpen)">
+                            <input class="ptm-cmb-input" type="text" placeholder="Select or type a category"
+                                   value="@_formCmbQuery"
+                                   @oninput="OnFormCmbInput"
+                                   @onfocus="@(() => _formCmbOpen = true)"
+                                   @onkeydown="OnFormCmbKeyDown" />
+                            @if (!string.IsNullOrEmpty(_form.Category))
+                            {
+                                <button type="button" class="ptm-cmb-clear"
+                                        @onclick="@(() => SelectFormCategory(""))"
+                                        @onclick:stopPropagation="true" tabindex="-1" title="Clear">✕</button>
+                            }
+                            <span class="ptm-cmb-arrow">
+                                <svg width="10" height="6" viewBox="0 0 10 6" xmlns="http://www.w3.org/2000/svg">
+                                    <path d="M1 1l4 4 4-4" stroke="#7a8fad" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+                                </svg>
+                            </span>
+                        </div>
+                        @if (_formCmbOpen)
+                        {
+                            <div class="ptm-cmb-menu">
+                                @{ var formList = FormCmbItems().ToList(); }
+                                @if (!formList.Any())
+                                {
+                                    @if (!string.IsNullOrWhiteSpace(_formCmbQuery))
+                                    {
+                                        <div class="ptm-cmb-item ptm-cmb-item-create"
+                                             @onclick="@(() => SelectFormCategory(_formCmbQuery.Trim()))"
+                                             @onclick:stopPropagation="true">
+                                            <span class="ptm-cmb-create-tag">Add</span> "@_formCmbQuery"
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <div class="ptm-cmb-empty">No categories</div>
+                                    }
+                                }
+                                else
+                                {
+                                    @for (int i = 0; i < formList.Count; i++)
+                                    {
+                                        var idx = i;
+                                        var opt = formList[idx];
+                                        <div class="ptm-cmb-item @(idx == _formCmbHighlight ? "ptm-cmb-highlight" : "") @(opt == _form.Category ? "ptm-cmb-selected" : "")"
+                                             @onclick="@(() => SelectFormCategory(opt))"
+                                             @onclick:stopPropagation="true"
+                                             @onmouseenter="@(() => _formCmbHighlight = idx)">
+                                            @opt
+                                        </div>
+                                    }
+                                    @if (!string.IsNullOrWhiteSpace(_formCmbQuery)
+                                         && !_categories.Any(x => string.Equals(x, _formCmbQuery.Trim(), StringComparison.OrdinalIgnoreCase)))
+                                    {
+                                        <div class="ptm-cmb-item ptm-cmb-item-create"
+                                             @onclick="@(() => SelectFormCategory(_formCmbQuery.Trim()))"
+                                             @onclick:stopPropagation="true">
+                                            <span class="ptm-cmb-create-tag">Add</span> "@_formCmbQuery"
+                                        </div>
+                                    }
+                                }
+                            </div>
+                        }
+                    </div>
                 </div>
 
                 <!-- Protocol Name -->
@@ -285,19 +389,116 @@
     {
         _editId = null;
         _form   = new FormModel { IsActive = true };
+        _formCmbQuery = "";
+        _formCmbOpen = false;
         _modalError = "";
         _showModal  = true;
     }
 
-    // ─── ComboBox change handlers ───
-    private void OnFilterCategoryChanged(string value)
+    // ─── Inline ComboBox state (filter) ───
+    private bool   _filterCmbOpen      = false;
+    private string _filterCmbQuery     = "";
+    private int    _filterCmbHighlight = -1;
+
+    // ─── Inline ComboBox state (form) ───
+    private bool   _formCmbOpen        = false;
+    private string _formCmbQuery       = "";
+    private int    _formCmbHighlight   = -1;
+
+    private IEnumerable<string> FilterCmbItems()
     {
-        _filterCategory = value ?? "";
+        if (string.IsNullOrWhiteSpace(_filterCmbQuery)) return _categories;
+        var q = _filterCmbQuery.Trim();
+        return _categories.Where(c => c.Contains(q, StringComparison.OrdinalIgnoreCase));
     }
 
-    private void OnFormCategoryChanged(string value)
+    private IEnumerable<string> FormCmbItems()
     {
-        _form.Category = value ?? "";
+        if (string.IsNullOrWhiteSpace(_formCmbQuery)) return _categories;
+        var q = _formCmbQuery.Trim();
+        return _categories.Where(c => c.Contains(q, StringComparison.OrdinalIgnoreCase));
+    }
+
+    private void OnFilterCmbInput(ChangeEventArgs e)
+    {
+        _filterCmbQuery = e.Value?.ToString() ?? "";
+        _filterCmbOpen = true;
+        _filterCmbHighlight = 0;
+    }
+
+    private void OnFormCmbInput(ChangeEventArgs e)
+    {
+        _formCmbQuery = e.Value?.ToString() ?? "";
+        _formCmbOpen = true;
+        _formCmbHighlight = 0;
+    }
+
+    private void SelectFilterCategory(string value)
+    {
+        _filterCategory     = value ?? "";
+        _filterCmbQuery     = value ?? "";
+        _filterCmbOpen      = false;
+        _filterCmbHighlight = -1;
+    }
+
+    private void SelectFormCategory(string value)
+    {
+        _form.Category    = value ?? "";
+        _formCmbQuery     = value ?? "";
+        _formCmbOpen      = false;
+        _formCmbHighlight = -1;
+    }
+
+    private void OnFilterCmbKeyDown(KeyboardEventArgs e)
+    {
+        var list = FilterCmbItems().ToList();
+        switch (e.Key)
+        {
+            case "ArrowDown":
+                _filterCmbOpen = true;
+                if (list.Count > 0) _filterCmbHighlight = Math.Min(_filterCmbHighlight + 1, list.Count - 1);
+                break;
+            case "ArrowUp":
+                if (list.Count > 0) _filterCmbHighlight = Math.Max(_filterCmbHighlight - 1, 0);
+                break;
+            case "Enter":
+                if (_filterCmbOpen && _filterCmbHighlight >= 0 && _filterCmbHighlight < list.Count)
+                    SelectFilterCategory(list[_filterCmbHighlight]);
+                else _filterCmbOpen = false;
+                break;
+            case "Escape":
+                _filterCmbOpen = false;
+                _filterCmbQuery = _filterCategory;
+                break;
+        }
+    }
+
+    private void OnFormCmbKeyDown(KeyboardEventArgs e)
+    {
+        var list = FormCmbItems().ToList();
+        switch (e.Key)
+        {
+            case "ArrowDown":
+                _formCmbOpen = true;
+                if (list.Count > 0) _formCmbHighlight = Math.Min(_formCmbHighlight + 1, list.Count - 1);
+                break;
+            case "ArrowUp":
+                if (list.Count > 0) _formCmbHighlight = Math.Max(_formCmbHighlight - 1, 0);
+                break;
+            case "Enter":
+                if (_formCmbOpen)
+                {
+                    if (_formCmbHighlight >= 0 && _formCmbHighlight < list.Count)
+                        SelectFormCategory(list[_formCmbHighlight]);
+                    else if (!string.IsNullOrWhiteSpace(_formCmbQuery))
+                        SelectFormCategory(_formCmbQuery.Trim());
+                }
+                break;
+            case "Escape":
+                _formCmbOpen = false;
+                _formCmbQuery = _form.Category;
+                break;
+        }
     }
 
     private void OpenEdit(TestMasterItem item)
@@ -313,6 +514,8 @@
             SortOrder    = item.SortOrder,
             IsActive     = item.IsActive,
         };
+        _formCmbQuery = item.Category ?? "";
+        _formCmbOpen = false;
         _modalError = "";
         _showModal  = true;
     }
@@ -481,6 +684,45 @@
     .ptm-combo-filter { min-width: 180px; max-width: 220px; }
     /* ComboBox inside modal form (full width of row) */
     .ptm-combo-form { width: 100%; }
+
+    /* ───────── Inline ComboBox ───────── */
+    .ptm-cmb-root { position: relative; box-sizing: border-box; }
+    .ptm-cmb-control {
+        display: flex; align-items: center;
+        border: 1.5px solid #e4eaf4; border-radius: 8px;
+        background: #fafbfe; padding: 0 8px 0 0;
+        transition: border-color .15s, box-shadow .15s;
+        cursor: text; min-height: 36px;
+    }
+    .ptm-cmb-control.ptm-cmb-open,
+    .ptm-cmb-root:focus-within .ptm-cmb-control { border-color: #2D7DD2; box-shadow: 0 0 0 3px rgba(45,125,210,0.08); }
+    .ptm-cmb-input {
+        flex: 1; min-width: 0;
+        border: none; outline: none; background: transparent;
+        padding: 7px 10px; font-size: 13px; color: #333;
+        font-family: inherit;
+    }
+    .ptm-cmb-input::placeholder { color: #b0bdd4; }
+    .ptm-cmb-arrow { display: inline-flex; align-items: center; justify-content: center; padding: 0 6px; pointer-events: none; }
+    .ptm-cmb-clear { background: transparent; border: none; cursor: pointer; color: #9baac8; font-size: 12px; padding: 2px 6px; border-radius: 4px; line-height: 1; }
+    .ptm-cmb-clear:hover { background: #eef2f8; color: #2D7DD2; }
+    .ptm-cmb-menu {
+        position: absolute; left: 0; right: 0; top: calc(100% + 4px);
+        background: #fff; border: 1px solid #e4eaf4; border-radius: 8px;
+        box-shadow: 0 6px 20px rgba(20,40,80,.12);
+        z-index: 50; max-height: 240px; overflow-y: auto; padding: 4px;
+    }
+    .ptm-cmb-item { padding: 8px 10px; font-size: 13px; color: #333; border-radius: 5px; cursor: pointer; user-select: none; }
+    .ptm-cmb-item.ptm-cmb-highlight, .ptm-cmb-item:hover { background: #eef4ff; color: #2D7DD2; }
+    .ptm-cmb-item.ptm-cmb-selected { background: #e0ecff; color: #2D7DD2; font-weight: 600; }
+    .ptm-cmb-item.ptm-cmb-item-empty { color: #7a8fad; font-style: italic; }
+    .ptm-cmb-item.ptm-cmb-item-create { color: #1e7e34; }
+    .ptm-cmb-create-tag {
+        display: inline-block; background: #dcf0df; color: #1e7e34;
+        font-size: 10px; font-weight: 700; padding: 1px 6px; border-radius: 10px;
+        margin-right: 4px; text-transform: uppercase; letter-spacing: .03em;
+    }
+    .ptm-cmb-empty { padding: 10px; text-align: center; color: #9baac8; font-size: 12.5px; font-style: italic; }
     .ptm-search-group { flex: 1; }
 
     .ptm-table-wrap { background: white; border-radius: 14px; box-shadow: 0 2px 10px rgba(0,0,0,.07); overflow-x: auto; }

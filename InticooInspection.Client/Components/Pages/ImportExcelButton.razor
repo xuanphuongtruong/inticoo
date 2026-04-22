@@ -1,0 +1,187 @@
+@*
+    Reusable Blazor component: Import Excel + Download Template
+    Path suggestion: Client/Shared/ImportExcelButton.razor
+
+    Usage:
+        <ImportExcelButton ApiBase="api/customers"
+                           ButtonLabel="Import Excel"
+                           OnImported="HandleImported" />
+
+    Required:
+      - BaseApi  : controller base path ("api/customers", "api/vendors", "api/products")
+      - OnImported: EventCallback fired after successful import (you reload list in parent)
+*@
+@using System.Net.Http.Headers
+@using System.Net.Http.Json
+@using Microsoft.AspNetCore.Components.Forms
+@inject HttpClient Http
+@inject IJSRuntime JS
+
+<div class="ie-wrap">
+    <button class="ie-btn ie-btn-dl" @onclick="DownloadTemplate" title="Download Excel template">
+        <svg width="13" height="13" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M10 3v10m0 0l-4-4m4 4l4-4M4 17h12"/>
+        </svg>
+        Template
+    </button>
+
+    <label class="ie-btn ie-btn-up @(@_uploading ? "disabled" : "")">
+        <svg width="13" height="13" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M10 17V7m0 0l-4 4m4-4l4 4M4 3h12"/>
+        </svg>
+        @(ButtonLabel)
+        <InputFile OnChange="OnFileSelected" accept=".xlsx" style="display:none" disabled="@_uploading" />
+    </label>
+</div>
+
+@if (_result != null)
+{
+    <div class="ie-result-overlay" @onclick="CloseResult">
+        <div class="ie-result-card" @onclick:stopPropagation="true">
+            <h3>Import Result</h3>
+            <div class="ie-stat">
+                <span class="ie-stat-ok">✓ Success: @_result.success</span>
+                <span class="ie-stat-fail">✗ Failed: @_result.failed</span>
+            </div>
+            @if (_result.errors != null && _result.errors.Count > 0)
+            {
+                <div class="ie-err-list">
+                    <div class="ie-err-title">Errors</div>
+                    <table>
+                        <thead><tr><th>Row</th><th>Message</th></tr></thead>
+                        <tbody>
+                            @foreach (var e in _result.errors)
+                            {
+                                <tr><td>@e.row</td><td>@e.message</td></tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+            <div class="ie-actions"><button class="ie-close" @onclick="CloseResult">Close</button></div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter, EditorRequired] public string ApiBase { get; set; } = "";
+    [Parameter] public string ButtonLabel { get; set; } = "Import Excel";
+    [Parameter] public EventCallback OnImported { get; set; }
+
+    private bool _uploading;
+    private ImportResult? _result;
+
+    private async Task DownloadTemplate()
+    {
+        try
+        {
+            var bytes = await Http.GetByteArrayAsync($"{ApiBase}/template");
+            var b64   = Convert.ToBase64String(bytes);
+            var name  = $"{ApiBase.Split('/').Last()}_template.xlsx";
+            await JS.InvokeVoidAsync("downloadFileFromBase64", name, b64,
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+        }
+        catch (Exception ex)
+        {
+            await JS.InvokeVoidAsync("alert", "Download failed: " + ex.Message);
+        }
+    }
+
+    private async Task OnFileSelected(InputFileChangeEventArgs e)
+    {
+        var file = e.File;
+        if (file == null) return;
+        if (!file.Name.EndsWith(".xlsx", StringComparison.OrdinalIgnoreCase))
+        {
+            await JS.InvokeVoidAsync("alert", "Please select a .xlsx file.");
+            return;
+        }
+
+        _uploading = true;
+        try
+        {
+            using var content = new MultipartFormDataContent();
+            // 10 MB cap
+            var stream = file.OpenReadStream(10 * 1024 * 1024);
+            var sc     = new StreamContent(stream);
+            sc.Headers.ContentType = new MediaTypeHeaderValue(
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+            content.Add(sc, "file", file.Name);
+
+            var res = await Http.PostAsync($"{ApiBase}/import", content);
+            if (!res.IsSuccessStatusCode)
+            {
+                var msg = await res.Content.ReadAsStringAsync();
+                await JS.InvokeVoidAsync("alert", "Import failed: " + msg);
+                return;
+            }
+            _result = await res.Content.ReadFromJsonAsync<ImportResult>();
+            if (_result != null && _result.success > 0)
+                await OnImported.InvokeAsync();
+        }
+        catch (Exception ex)
+        {
+            await JS.InvokeVoidAsync("alert", "Import error: " + ex.Message);
+        }
+        finally
+        {
+            _uploading = false;
+        }
+    }
+
+    private void CloseResult() => _result = null;
+
+    private class ImportResult
+    {
+        public int success { get; set; }
+        public int failed  { get; set; }
+        public List<RowError> errors { get; set; } = new();
+    }
+    private class RowError
+    {
+        public int    row     { get; set; }
+        public string message { get; set; } = "";
+    }
+}
+
+<style>
+    .ie-wrap { display:inline-flex; gap:8px; align-items:center; }
+    .ie-btn {
+        display:inline-flex; align-items:center; gap:6px;
+        padding:8px 14px; border-radius:8px; font-size:13px; font-weight:600;
+        cursor:pointer; border:none; white-space:nowrap;
+        font-family:"DM Sans",sans-serif; transition:background .2s,transform .1s;
+    }
+    .ie-btn-dl { background:#0f766e; color:#fff; }
+    .ie-btn-dl:hover { background:#115e59; transform:translateY(-1px); }
+    .ie-btn-up { background:#16a34a; color:#fff; }
+    .ie-btn-up:hover { background:#15803d; transform:translateY(-1px); }
+    .ie-btn-up.disabled { opacity:.6; pointer-events:none; }
+
+    .ie-result-overlay {
+        position:fixed; inset:0; background:rgba(0,0,0,.55);
+        display:flex; align-items:center; justify-content:center; z-index:9999;
+    }
+    .ie-result-card {
+        background:#1f2937; color:#f3f4f6; border-radius:12px; padding:22px 26px;
+        min-width:420px; max-width:720px; max-height:80vh; overflow:auto;
+        box-shadow:0 20px 40px rgba(0,0,0,.5); font-family:"DM Sans",sans-serif;
+    }
+    .ie-result-card h3 { margin:0 0 12px; font-size:18px; }
+    .ie-stat { display:flex; gap:18px; margin-bottom:14px; font-size:14px; }
+    .ie-stat-ok   { color:#4ade80; font-weight:600; }
+    .ie-stat-fail { color:#f87171; font-weight:600; }
+    .ie-err-list { margin-top:10px; }
+    .ie-err-title { font-weight:600; margin-bottom:6px; color:#fca5a5; }
+    .ie-err-list table { width:100%; border-collapse:collapse; font-size:13px; }
+    .ie-err-list th, .ie-err-list td {
+        border:1px solid #374151; padding:6px 10px; text-align:left;
+    }
+    .ie-err-list th { background:#111827; }
+    .ie-actions { display:flex; justify-content:flex-end; margin-top:14px; }
+    .ie-close {
+        padding:7px 16px; background:#374151; color:#fff; border:none;
+        border-radius:6px; cursor:pointer; font-size:13px;
+    }
+    .ie-close:hover { background:#4b5563; }
+</style>
