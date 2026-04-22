@@ -186,9 +186,20 @@ else
             <div class="fsection-title">Login</div>
             <div class="frow">
                 <div class="fcell">
-                    <label class="flabel">User Name <span class="req">*</span></label>
-                    <input class="form-input" type="text" placeholder="Enter username"
-                           @bind="_formUsername" @bind:event="oninput" />
+                    <label class="flabel">
+                        User Name
+                        @if (_editId == null) { <span class="req">*</span> }
+                    </label>
+                    @if (_editId == null)
+                    {
+                        <input class="form-input" type="text" placeholder="Enter username"
+                               @bind="_formUsername" @bind:event="oninput" autocomplete="off" />
+                    }
+                    else
+                    {
+                        <input class="form-input" type="text" readonly value="@_formUsername" />
+                        <div class="label-hint" style="margin-top:4px;">Username cannot be changed after creation.</div>
+                    }
                 </div>
                 <div class="fcell">
                     <label class="flabel">@(_editId == null ? "Password *" : "New Password")<span class="label-hint"> @(_editId != null ? "(leave blank to keep)" : "")</span></label>
