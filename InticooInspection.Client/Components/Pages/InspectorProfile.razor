@@ -7,6 +7,7 @@
 @inject NavigationManager Navigation
 @inject Blazored.SessionStorage.ISessionStorageService SessionStorage
 @using InticooInspection.Client.Services
+@using InticooInspection.Client.Helpers
 @inject WaitingService Waiting
 
 <PageTitle>Inspector Profile - Inticoo</PageTitle>
@@ -325,7 +326,9 @@ else
                     }
                     else
                     {
-                        <select class="form-input" @bind="_formCountry">
+                        <select class="form-input"
+                                value="@_formCountry"
+                                @onchange="OnCountryChanged">
                             <option value="">-- Select Country --</option>
                             @foreach (var c in _countries)
                             {
@@ -641,6 +644,16 @@ else
     }
 
     private void CloseModal() => _showModal = false;
+
+    /// <summary>
+    /// When country changes, auto-update the dial-code prefix of Mobile.
+    /// Uses CountryDialCodes helper to preserve digits the user already typed.
+    /// </summary>
+    private void OnCountryChanged(ChangeEventArgs e)
+    {
+        _formCountry = e.Value?.ToString() ?? "";
+        _formMobile  = CountryDialCodes.ApplyDialCode(_formMobile, _formCountry);
+    }
 
     private void ToggleLanguage(string lang)
     {

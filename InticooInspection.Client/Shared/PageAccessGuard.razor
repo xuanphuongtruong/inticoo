@@ -1,0 +1,88 @@
+@* 
+  PageAccessGuard — wrap the body of any route-level component to restrict
+  access based on the current user's Page Access list.
+
+  Usage (at the top of any protected page, e.g. Inspections.razor):
+
+      @page "/inspections"
+      ...
+      <PageAccessGuard RequiredPage="SummaryInspections">
+          ... your existing page content ...
+      </PageAccessGuard>
+
+  Behaviour:
+    - While the access list is loading, shows a subtle loading state.
+    - If the user is Admin → always renders ChildContent.
+    - If the user has the required page → renders ChildContent.
+    - Otherwise → redirects to /dashboard (or /unauthorized if you prefer,
+      change the RedirectTo parameter).
+*@
+
+@using InticooInspection.Client.Services
+@inject PageAccessService PageAccess
+@inject NavigationManager Nav
+@implements IDisposable
+
+@if (!PageAccess.IsLoaded)
+{
+    <div style="padding:40px;text-align:center;color:rgba(255,255,255,.6);">
+        <span class="spinner" style="width:18px;height:18px;border:2.5px solid rgba(30,144,214,.3);border-top-color:#1e90d6;border-radius:50%;display:inline-block;animation:spin .7s linear infinite;vertical-align:middle;margin-right:8px;"></span>
+        Checking permissions...
+    </div>
+}
+else if (_allowed)
+{
+    @ChildContent
+}
+else
+{
+    <div style="padding:60px;text-align:center;color:rgba(255,255,255,.7);">
+        <h3 style="color:#fff;">Access Denied</h3>
+        <p>You don't have permission to view this page. Redirecting...</p>
+    </div>
+}
+
+@code {
+    [Parameter] public string RequiredPage { get; set; } = "";
+    [Parameter] public string RedirectTo   { get; set; } = "/dashboard";
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    private bool _allowed = false;
+    private bool _redirected = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        PageAccess.OnChange += OnAccessChanged;
+        await PageAccess.EnsureLoadedAsync();
+        Evaluate();
+    }
+
+    private void OnAccessChanged()
+    {
+        Evaluate();
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void Evaluate()
+    {
+        if (!PageAccess.IsLoaded) return;
+
+        _allowed = string.IsNullOrEmpty(RequiredPage) || PageAccess.HasAccess(RequiredPage);
+
+        if (!_allowed && !_redirected)
+        {
+            _redirected = true;
+            // Small delay so the "Access Denied" message is briefly visible
+            _ = Task.Run(async () =>
+            {
+                await Task.Delay(800);
+                await InvokeAsync(() => Nav.NavigateTo(RedirectTo));
+            });
+        }
+    }
+
+    public void Dispose()
+    {
+        PageAccess.OnChange -= OnAccessChanged;
+    }
+}

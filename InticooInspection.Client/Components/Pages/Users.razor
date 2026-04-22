@@ -237,6 +237,25 @@ else
                 </div>
             </div>
 
+            @* ── Section: Page Access ── *@
+            <div class="fsection-title">Page Access</div>
+            <div class="form-group">
+                <p class="fhint">Select which pages this account can see and access.</p>
+                <div class="page-access-list">
+                    @foreach (var p in _pageAccessOptions)
+                    {
+                        var key = p.Key;
+                        var label = p.Label;
+                        <label class="page-access-row @(_formPageAccess.Contains(key) ? "pa-checked" : "")">
+                            <span class="pa-label">@label</span>
+                            <input type="checkbox"
+                                   checked="@_formPageAccess.Contains(key)"
+                                   @onchange="e => TogglePageAccess(key, e.Value)" />
+                        </label>
+                    }
+                </div>
+            </div>
+
             <div class="modal-footer">
                 <button class="btn-cancel" @onclick="CloseModal">Cancel</button>
                 <button class="btn-submit" @onclick="SaveUser" disabled="@_saving">
@@ -283,8 +302,21 @@ else
     private string  _formCustomerId = "";
     private bool    _formIsActive = true;
     private List<string> _formRoles = new();
+    private List<string> _formPageAccess = new();
     private string  _formError = "";
     private bool    _saving    = false;
+
+    // Page Access catalogue (key is stable, label is for display)
+    private readonly List<PageAccessOption> _pageAccessOptions = new()
+    {
+        new("JobRequest",          "Job Request"),
+        new("InspectionSchedule",  "Inspection Schedule"),
+        new("SummaryInspections",  "Summary Inspections"),
+        new("PerformanceReview",   "Performance Review"),
+    };
+    private record PageAccessOption(string Key, string Label);
+    private static readonly string[] CUSTOMER_DEFAULT_ACCESS = new[] { "InspectionSchedule", "SummaryInspections" };
+    private static readonly string[] INTICOO_DEFAULT_ACCESS  = new[] { "JobRequest", "InspectionSchedule", "SummaryInspections", "PerformanceReview" };
 
     // Dropdowns
     private List<CountryItem> _countries = new();
@@ -364,6 +396,7 @@ else
         _formUsername = ""; _formFullName = ""; _formEmail = ""; _formPassword = "";
         _formMobile = ""; _formCountry = ""; _formCustomerId = "";
         _formIsActive = true; _formRoles = new(); _formError = "";
+        _formPageAccess = new();
     }
 
     private async Task OpenCreate()
@@ -386,6 +419,12 @@ else
         _formPassword  = "";
         _formIsActive  = u.IsActive;
         _formRoles     = u.Roles.ToList();
+        _formPageAccess = string.IsNullOrWhiteSpace(u.PageAccess)
+                          ? new()
+                          : u.PageAccess.Split(',', StringSplitOptions.RemoveEmptyEntries)
+                                        .Select(x => x.Trim())
+                                        .Where(x => _pageAccessOptions.Any(o => o.Key == x))
+                                        .ToList();
         _formError     = "";
         _showModal     = true;
         await Task.CompletedTask;
@@ -397,7 +436,32 @@ else
     {
         _formRoles = new List<string> { role };
         if (role != "Customer") _formCustomerId = "";
+
+        // Set page access defaults by role (only when creating new — don't stomp edits)
+        if (_editId == null)
+        {
+            _formPageAccess = role switch
+            {
+                "Customer" => CUSTOMER_DEFAULT_ACCESS.ToList(),
+                "Inticoo"  => INTICOO_DEFAULT_ACCESS.ToList(),
+                _          => new()
+            };
+        }
+
         StateHasChanged();
+    }
+
+    private void TogglePageAccess(string key, object? checkedValue)
+    {
+        var isChecked = checkedValue is bool b && b;
+        if (isChecked)
+        {
+            if (!_formPageAccess.Contains(key)) _formPageAccess.Add(key);
+        }
+        else
+        {
+            _formPageAccess.Remove(key);
+        }
     }
 
     private async Task SaveUser()
@@ -426,7 +490,8 @@ else
                     country    = _formCountry,
                     customerId = _formCustomerId,
                     isActive   = _formIsActive,
-                    roles      = _formRoles
+                    roles      = _formRoles,
+                    pageAccess = string.Join(",", _formPageAccess)
                 };
                 response = await Http.PostAsJsonAsync("api/users", payload);
             }
@@ -441,7 +506,8 @@ else
                     country     = _formCountry,
                     customerId  = _formCustomerId,
                     isActive    = _formIsActive,
-                    roles       = _formRoles
+                    roles       = _formRoles,
+                    pageAccess  = string.Join(",", _formPageAccess)
                 };
                 response = await Http.PutAsJsonAsync($"api/users/{_editId}", payload);
             }
@@ -491,6 +557,7 @@ else
         public string?  CustomerId  { get; set; }
         public bool     IsActive    { get; set; }
         public List<string> Roles   { get; set; } = new();
+        public string?  PageAccess  { get; set; }   // CSV of page keys, e.g. "JobRequest,SummaryInspections"
         public DateTime CreatedAt   { get; set; }
     }
 
@@ -628,4 +695,20 @@ else
     .confirm-card h2 { margin:0 0 10px; color:#1a2d5a; }
     .confirm-card p  { color:#555; font-size:13.5px; line-height:1.5; margin:0 0 14px; }
     .confirm-card .modal-footer { justify-content:center; border-top:none; padding-top:0; }
+
+    /* ── Page Access list ── */
+    .fhint { font-size:12px; color:#7a8fad; margin:0 0 10px; }
+    .page-access-list { display:flex; flex-direction:column; gap:6px; }
+    .page-access-row {
+        display:flex; align-items:center; justify-content:space-between;
+        padding:10px 14px; border:1.5px solid #e4eaf4; border-radius:9px;
+        background:#f7fafd; cursor:pointer; transition:all .15s;
+        font-size:13.5px; color:#1a2d5a;
+    }
+    .page-access-row:hover { border-color:#1e90d6; background:#eef5ff; }
+    .page-access-row.pa-checked { border-color:#1e90d6; background:#e6f1fb; font-weight:600; }
+    .page-access-row .pa-label { flex:1; }
+    .page-access-row input[type="checkbox"] {
+        width:18px; height:18px; accent-color:#1e90d6; cursor:pointer; margin:0;
+    }
 </style>

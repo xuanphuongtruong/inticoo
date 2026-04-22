@@ -35,6 +35,7 @@ namespace InticooInspection.Domain.Entities
         public DateTime? LastLoginAt       { get; set; }
         public DateTime? LastLogoutAt      { get; set; }
         public bool      IsActive          { get; set; } = true;
+        public string? PageAccess          { get; set; } 
 
         public ICollection<Inspection> Inspections { get; set; } = new List<Inspection>();
     }
