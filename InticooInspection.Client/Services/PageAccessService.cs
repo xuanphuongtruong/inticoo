@@ -92,10 +92,10 @@ namespace InticooInspection.Client.Services
                 }
 
                 // Build request with explicit Authorization header
-                using var req = new HttpRequestMessage(HttpMethod.Get, "api/users/me/page-access");
+                using var req = new HttpRequestMessage(HttpMethod.Get, "api/me/page-access");
                 req.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
-                Console.WriteLine($"[PageAccess] Sending request to: {_http.BaseAddress}api/users/me/page-access");
+                Console.WriteLine($"[PageAccess] Sending request to: {_http.BaseAddress}api/me/page-access");
                 Console.WriteLine($"[PageAccess] Authorization header set: {req.Headers.Authorization}");
 
                 using var response = await _http.SendAsync(req);
