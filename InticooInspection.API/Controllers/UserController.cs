@@ -89,6 +89,29 @@ namespace InticooInspection.API.Controllers
             return Ok(new { total, page, pageSize, items });
         }
 
+        // GET api/users/me/page-access
+        // Returns the page-access CSV and roles of the currently authenticated user.
+        // IMPORTANT: must be declared BEFORE the {id} route so ASP.NET routing
+        // matches "me/page-access" as a literal, not as {id}="me/page-access".
+        [HttpGet("me/page-access")]
+        [Authorize]
+        public async Task<IActionResult> GetMyPageAccess()
+        {
+            var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
+                      ?? User.FindFirst(System.IdentityModel.Tokens.Jwt.JwtRegisteredClaimNames.Sub)?.Value;
+            if (string.IsNullOrEmpty(userId)) return Unauthorized();
+
+            var user = await _userManager.FindByIdAsync(userId);
+            if (user == null) return Unauthorized();
+
+            var roles = await _userManager.GetRolesAsync(user);
+            return Ok(new
+            {
+                pageAccess = user.PageAccess ?? "",
+                roles      = roles
+            });
+        }
+
         // GET api/users/{id}
         [HttpGet("{id}")]
         public async Task<IActionResult> GetById(string id)
@@ -274,28 +297,6 @@ namespace InticooInspection.API.Controllers
         {
             var roles = await _roleManager.Roles.Select(r => r.Name!).ToListAsync();
             return Ok(roles);
-        }
-
-        // GET api/users/me/page-access
-        // Returns the page-access CSV and roles of the currently authenticated user.
-        // Used by the Blazor PageAccessService to gate menu items and routes.
-        [HttpGet("me/page-access")]
-        [Microsoft.AspNetCore.Authorization.Authorize]
-        public async Task<IActionResult> GetMyPageAccess()
-        {
-            var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
-                      ?? User.FindFirst(System.IdentityModel.Tokens.Jwt.JwtRegisteredClaimNames.Sub)?.Value;
-            if (string.IsNullOrEmpty(userId)) return Unauthorized();
-
-            var user = await _userManager.FindByIdAsync(userId);
-            if (user == null) return Unauthorized();
-
-            var roles = await _userManager.GetRolesAsync(user);
-            return Ok(new
-            {
-                pageAccess = user.PageAccess ?? "",
-                roles      = roles
-            });
         }
 
         // ─────────────────────────────────────────────────────────────────
