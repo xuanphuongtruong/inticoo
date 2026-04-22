@@ -14,7 +14,7 @@
 <div class="top-bar">
     <div class="title-block">
         <h1 class="page-title">Login Account</h1>
-        <span class="page-sub">Manage Customer and Inticoo accounts</span>
+        <span class="page-sub">Manage Customer and Inspector accounts</span>
     </div>
     <div class="tb-divider"></div>
     <div class="search-wrap">
@@ -27,7 +27,7 @@
     <select class="filter-select" @bind="_filterRole" @bind:after="() => LoadPage(1)">
         <option value="">All Roles</option>
         <option value="Customer">Customer</option>
-        <option value="Inticoo">Inticoo</option>
+        <option value="Inspector">Inspector</option>
     </select>
     <span class="total-count">@_total accounts</span>
     <button class="btn-new" @onclick="async () => await OpenCreate()">
@@ -171,7 +171,7 @@ else
                     }
                     else
                     {
-                        <select class="form-input" @bind="_formCustomerId">
+                        <select class="form-input" value="@_formCustomerId" @onchange="OnCustomerChanged">
                             <option value="">-- Select Customer --</option>
                             @foreach (var c in _customers)
                             {
@@ -286,7 +286,7 @@ else
 
 @code {
     // Only roles managed on this page
-    private readonly List<string> _roleOptions = new() { "Customer", "Inticoo" };
+    private readonly List<string> _roleOptions = new() { "Customer", "Inspector" };
 
     private List<UserDto> _users = new();
     private bool   _loading   = true;
@@ -315,8 +315,8 @@ else
         new("PerformanceReview",   "Performance Review"),
     };
     private record PageAccessOption(string Key, string Label);
-    private static readonly string[] CUSTOMER_DEFAULT_ACCESS = new[] { "InspectionSchedule", "SummaryInspections" };
-    private static readonly string[] INTICOO_DEFAULT_ACCESS  = new[] { "JobRequest", "InspectionSchedule", "SummaryInspections", "PerformanceReview" };
+    private static readonly string[] CUSTOMER_DEFAULT_ACCESS  = new[] { "InspectionSchedule", "SummaryInspections" };
+    private static readonly string[] INSPECTOR_DEFAULT_ACCESS = new[] { "JobRequest", "InspectionSchedule", "SummaryInspections", "PerformanceReview" };
 
     // Dropdowns
     private List<CountryItem> _countries = new();
@@ -348,9 +348,9 @@ else
         _loading = true; _page = page;
         try
         {
-            // Default filter: only Customer + Inticoo (exclude Inspector, which is managed elsewhere)
+            // Default filter: hiển thị cả Customer và Inspector trong list
             var roleFilter = string.IsNullOrEmpty(_filterRole)
-                ? "Customer,Inticoo"
+                ? "Customer,Inspector"
                 : _filterRole;
 
             var url = $"api/users?page={page}&pageSize={_pageSize}" +
@@ -442,9 +442,9 @@ else
         {
             _formPageAccess = role switch
             {
-                "Customer" => CUSTOMER_DEFAULT_ACCESS.ToList(),
-                "Inticoo"  => INTICOO_DEFAULT_ACCESS.ToList(),
-                _          => new()
+                "Customer"  => CUSTOMER_DEFAULT_ACCESS.ToList(),
+                "Inspector" => INSPECTOR_DEFAULT_ACCESS.ToList(),
+                _           => new()
             };
         }
 
@@ -462,6 +462,26 @@ else
         {
             _formPageAccess.Remove(key);
         }
+    }
+
+    /// <summary>
+    /// Khi chọn Customer từ dropdown → auto fill Full Name (= CompanyName),
+    /// Mobile, Email, Country từ thông tin customer.
+    /// Chỉ ghi đè field nào có giá trị trong data customer; field trống thì giữ nguyên giá trị hiện tại.
+    /// </summary>
+    private void OnCustomerChanged(ChangeEventArgs e)
+    {
+        _formCustomerId = e.Value?.ToString() ?? "";
+        if (string.IsNullOrEmpty(_formCustomerId)) return;
+
+        var c = _customers.FirstOrDefault(x => x.CustomerId == _formCustomerId);
+        if (c == null) return;
+
+        // Full Name fill từ CompanyName theo yêu cầu
+        if (!string.IsNullOrWhiteSpace(c.CompanyName)) _formFullName = c.CompanyName;
+        if (!string.IsNullOrWhiteSpace(c.Mobile))      _formMobile   = c.Mobile!;
+        if (!string.IsNullOrWhiteSpace(c.Email))       _formEmail    = c.Email!;
+        if (!string.IsNullOrWhiteSpace(c.Country))     _formCountry  = c.Country!;
     }
 
     private async Task SaveUser()
@@ -563,8 +583,13 @@ else
 
     private class CustomerDropdownItem
     {
-        public string CustomerId  { get; set; } = "";
-        public string CompanyName { get; set; } = "";
+        public string  CustomerId  { get; set; } = "";
+        public string  CompanyName { get; set; } = "";
+        // Các field bổ sung để autofill form khi chọn customer (backend cần trả về trong /api/customers/dropdown)
+        public string? ContactName { get; set; }
+        public string? Mobile      { get; set; }
+        public string? Email       { get; set; }
+        public string? Country     { get; set; }
     }
 
     private class CountryItem
