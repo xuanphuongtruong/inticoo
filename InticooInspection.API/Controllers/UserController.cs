@@ -21,10 +21,46 @@ namespace InticooInspection.API.Controllers
         }
 
         // GET api/users
+        // Supports optional roles filter: ?roles=Customer,Inticoo  (comma-separated)
         [HttpGet]
-        public async Task<IActionResult> GetAll([FromQuery] string? search, [FromQuery] int page = 1, [FromQuery] int pageSize = 20)
+        public async Task<IActionResult> GetAll(
+            [FromQuery] string? search,
+            [FromQuery] string? roles,
+            [FromQuery] int page = 1,
+            [FromQuery] int pageSize = 20)
         {
             var query = _userManager.Users.AsQueryable();
+
+            // ── Filter by roles (comma-separated) ──
+            // Identity stores role assignments in AspNetUserRoles + AspNetRoles.
+            // We resolve users-in-role via UserManager (which handles the join)
+            // then narrow the main query by those Ids.
+            if (!string.IsNullOrWhiteSpace(roles))
+            {
+                var roleNames = roles
+                    .Split(',', StringSplitOptions.RemoveEmptyEntries)
+                    .Select(r => r.Trim())
+                    .Where(r => r.Length > 0)
+                    .ToList();
+
+                if (roleNames.Count > 0)
+                {
+                    var idSet = new HashSet<string>(StringComparer.Ordinal);
+                    foreach (var roleName in roleNames)
+                    {
+                        var usersInRole = await _userManager.GetUsersInRoleAsync(roleName);
+                        foreach (var u in usersInRole) idSet.Add(u.Id);
+                    }
+
+                    if (idSet.Count == 0)
+                    {
+                        // No users matched — return empty page rather than unfiltered data
+                        return Ok(new { total = 0, page, pageSize, items = Array.Empty<object>() });
+                    }
+
+                    query = query.Where(u => idSet.Contains(u.Id));
+                }
+            }
 
             if (!string.IsNullOrWhiteSpace(search))
                 query = query.Where(u =>
@@ -46,8 +82,8 @@ namespace InticooInspection.API.Controllers
             var items = new List<object>();
             foreach (var u in users)
             {
-                var roles = await _userManager.GetRolesAsync(u);
-                items.Add(MapToDto(u, roles));
+                var userRoles = await _userManager.GetRolesAsync(u);
+                items.Add(MapToDto(u, userRoles));
             }
 
             return Ok(new { total, page, pageSize, items });
