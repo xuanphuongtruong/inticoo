@@ -267,7 +267,7 @@
                     <!-- Remark row spanning full width -->
                     <div class="field-group" style="margin-top:4px;">
                         <label>Remark</label>
-                        <textarea @bind="Model.GeneralRemark" placeholder="Enter remark (e.g. Combine SKU number xxx, xxx &amp; xxxx)" rows="2"
+                        <textarea @bind="Model.GeneralRemark" placeholder="Enter remark (e.g. Combine SKU number xxx, xxx or Color xxxx)" rows="2"
                                   style="width:100%;resize:vertical;border:1px solid #d0daea;border-radius:8px;padding:9px 12px;font-size:13px;font-family:inherit;color:#1a2d5a;outline:none;transition:border-color .15s;box-sizing:border-box;"
                                   onfocus="this.style.borderColor='#1e90d6'" onblur="this.style.borderColor='#d0daea'"></textarea>
                     </div>
@@ -450,8 +450,11 @@
                 </div>
 
                 <div class="pkg-grid">
+                    <div class="field-group">
+                        <label>Carton Box</label>
+                    </div>
                     <div class="pkg2-row">
-                        <span class="pkg2-label">Type of Packaging</span>
+                        <span class="pkg2-label">FSC Carton Type</span>
                         <div class="pkg2-options">
                             <label class="radio-label"><input type="radio" name="pkgType" checked="@(Packaging.PackagingType == PkgFsc)" @onchange="() => Packaging.PackagingType = PkgFsc" /><span>FSC Carton</span></label>
                             <label class="radio-label"><input type="radio" name="pkgType" checked="@(Packaging.PackagingType == PkgNonFsc)" @onchange="() => Packaging.PackagingType = PkgNonFsc" /><span>Non-FSC Carton</span></label>
@@ -516,7 +519,7 @@
                         <div class="field-group"><label>W (mm/inch)</label><input type="number" @bind="Packaging.InnerW" placeholder="0" /></div>
                         <div class="field-group"><label>H (mm/inch)</label><input type="number" @bind="Packaging.InnerH" placeholder="0" /></div>
                         <div class="field-group"><label>Weight (Kgs)</label><input type="number" step="0.01" @bind="Packaging.InnerWeight" placeholder="0.00" /></div>
-                        <div class="field-group"><label>Remark</label><input @bind="Packaging.InnerPackingRemark" placeholder="Remark..." /></div>
+                        <div class="field-group" style="display: none;"><label>Remark</label><input @bind="Packaging.InnerPackingRemark" placeholder="Remark..." /></div>
                     </div>
                 </div>
 
