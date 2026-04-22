@@ -60,7 +60,7 @@
                     <div class="iss-field"><span class="iss-fl">Mobile</span><span class="iss-fv">@(string.IsNullOrEmpty(_selectedJob.VendorContactMobile) ? "—" : _selectedJob.VendorContactMobile)</span></div>
                 </div>
 
-                @* Vendor Contact Information — Address 1/2, City, State, Country *@
+                @* Vendor Information — Address 1/2, City, State, Country *@
                 @{
                     bool hasVendorAddr = !string.IsNullOrEmpty(_selectedJob.VendorAddress1)
                                       || !string.IsNullOrEmpty(_selectedJob.VendorAddress2)
@@ -71,7 +71,7 @@
                 @if (hasVendorAddr)
                 {
                     <div class="iss-vendor-section">
-                        <div class="iss-vendor-title">Vendor Contact Information</div>
+                        <div class="iss-vendor-title">Vendor Information</div>
                         @if (!string.IsNullOrEmpty(_selectedJob.VendorAddress1))
                         {
                             <div class="iss-vi-row">
@@ -110,6 +110,40 @@
                                 <span class="iss-vi-dot">•</span>
                                 <span class="iss-vi-label">Country</span>
                                 <span class="iss-vi-val">@_selectedJob.VendorCountry</span>
+                            </div>
+                        }
+                    </div>
+                }
+
+                @* Inspector Information *@
+                @if (!string.IsNullOrEmpty(_selectedJob.InspectorName)
+                     || !string.IsNullOrEmpty(_selectedJob.InspectorId)
+                     || !string.IsNullOrEmpty(_selectedJob.InspectorMobile))
+                {
+                    <div class="iss-vendor-section">
+                        <div class="iss-vendor-title">Inspector Information</div>
+                        @if (!string.IsNullOrEmpty(_selectedJob.InspectorName))
+                        {
+                            <div class="iss-vi-row">
+                                <span class="iss-vi-dot">•</span>
+                                <span class="iss-vi-label">Name</span>
+                                <span class="iss-vi-val">@_selectedJob.InspectorName</span>
+                            </div>
+                        }
+                        @if (!string.IsNullOrEmpty(_selectedJob.InspectorId))
+                        {
+                            <div class="iss-vi-row">
+                                <span class="iss-vi-dot">•</span>
+                                <span class="iss-vi-label">ID</span>
+                                <span class="iss-vi-val">@_selectedJob.InspectorId</span>
+                            </div>
+                        }
+                        @if (!string.IsNullOrEmpty(_selectedJob.InspectorMobile))
+                        {
+                            <div class="iss-vi-row">
+                                <span class="iss-vi-dot">•</span>
+                                <span class="iss-vi-label">Mobile</span>
+                                <span class="iss-vi-val">@_selectedJob.InspectorMobile</span>
                             </div>
                         }
                     </div>
@@ -160,10 +194,13 @@
                 }
             </div>
 
-            <button class="iss-start-btn" @onclick="() => StartInspection(_selectedJob)">
-                <svg width="18" height="18" viewBox="0 0 20 20" fill="currentColor"><path d="M6 4l12 6-12 6V4z"/></svg>
-                Start Inspection
-            </button>
+            @if (_canStartInspection)
+            {
+                <button class="iss-start-btn" @onclick="() => StartInspection(_selectedJob)">
+                    <svg width="18" height="18" viewBox="0 0 20 20" fill="currentColor"><path d="M6 4l12 6-12 6V4z"/></svg>
+                    Start Inspection
+                </button>
+            }
         </div>
     }
     else
@@ -433,11 +470,24 @@
                                     @if (!string.IsNullOrEmpty(job.VendorContactEmail))
                                     { <div class="iss-jf iss-jf-sub"><span class="iss-jl">• Email</span><span class="iss-jv">@job.VendorContactEmail</span></div> }
                                 }
+                                @if (!string.IsNullOrEmpty(job.InspectorName) || !string.IsNullOrEmpty(job.InspectorId) || !string.IsNullOrEmpty(job.InspectorMobile))
+                                {
+                                    <div class="iss-jf iss-jf-section"><span class="iss-jl iss-jl-section">Inspector Information</span></div>
+                                    @if (!string.IsNullOrEmpty(job.InspectorName))
+                                    { <div class="iss-jf iss-jf-sub"><span class="iss-jl">• Name</span><span class="iss-jv">@job.InspectorName</span></div> }
+                                    @if (!string.IsNullOrEmpty(job.InspectorId))
+                                    { <div class="iss-jf iss-jf-sub"><span class="iss-jl">• ID</span><span class="iss-jv">@job.InspectorId</span></div> }
+                                    @if (!string.IsNullOrEmpty(job.InspectorMobile))
+                                    { <div class="iss-jf iss-jf-sub"><span class="iss-jl">• Mobile</span><span class="iss-jv">@job.InspectorMobile</span></div> }
+                                }
                             </div>
                             <div class="iss-jc-foot">
                                 <span class="iss-st-pill @GetStatusClass(job.Status)">@job.Status</span>
-                                <button class="iss-start-sm" @onclick:stopPropagation="true"
-                                        @onclick="() => StartInspection(job)">Start</button>
+                                @if (_canStartInspection)
+                                {
+                                    <button class="iss-start-sm" @onclick:stopPropagation="true"
+                                            @onclick="() => StartInspection(job)">Start</button>
+                                }
                             </div>
                         </div>
                     }
@@ -592,6 +642,8 @@
 
     // Role-based filter
     private string _filterInspectorId = "";
+    // Only users in Inspector or Admin role can start/execute inspections
+    private bool   _canStartInspection = false;
     private string _filterCustomerId  = "";
 
     // Job detail state
@@ -631,6 +683,7 @@
         public string?  PoNumber         { get; set; }
         public string?  InspectorName   { get; set; }
         public string?  InspectorId     { get; set; }
+        public string?  InspectorMobile { get; set; }
         public string   Status          { get; set; } = "New";
         public DateTime InspectionDate  { get; set; }
         public DateTime CreatedAt       { get; set; }
@@ -722,6 +775,9 @@
     {
         var authState = await AuthStateProvider.GetAuthenticationStateAsync();
         var user      = authState.User;
+
+        // Only Inspector and Admin can start/execute an inspection
+        _canStartInspection = user.IsInRole("Inspector") || user.IsInRole("Admin");
 
         if (user.IsInRole("Inspector") || user.IsInRole("Customer"))
         {
@@ -853,6 +909,7 @@
         VendorContactEmail    = i.VendorContactEmail,
         InspectorName   = i.InspectorName,
         InspectorId     = i.InspectorId,
+        InspectorMobile = i.InspectorMobile,
         Status          = i.Status      ?? "New",
         InspectionDate  = i.InspectionDate ?? DateTime.MinValue,
         CreatedAt       = i.CreatedAt,
@@ -1037,6 +1094,7 @@
         public string?   InspectionType  { get; set; }
         public string?   InspectorName   { get; set; }
         public string?   InspectorId     { get; set; }
+        public string?   InspectorMobile { get; set; }
         public string?   PoNumber        { get; set; }
         public string?   FinalResult     { get; set; }
         public DateTime? InspectionDate  { get; set; }

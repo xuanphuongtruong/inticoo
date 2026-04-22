@@ -100,12 +100,18 @@ namespace InticooInspection.API.Controllers
                 // Inspector lookup — load tất cả users có InspectorId
                 var allInspectors = await _userManager.Users
                     .Where(u => u.InspectorId != null && u.InspectorId != "")
-                    .Select(u => new { u.InspectorId, u.FullName })
+                    .Select(u => new { u.InspectorId, u.FullName, u.Mobile })
                     .ToListAsync();
-                var inspectorByCode = new Dictionary<string, string>();
+                var inspectorByCode       = new Dictionary<string, string>();
+                var inspectorMobileByCode = new Dictionary<string, string>();
                 foreach (var u in allInspectors)
+                {
                     if (u.InspectorId != null && !inspectorByCode.ContainsKey(u.InspectorId))
-                        inspectorByCode[u.InspectorId] = u.FullName ?? "";
+                    {
+                        inspectorByCode[u.InspectorId]       = u.FullName ?? "";
+                        inspectorMobileByCode[u.InspectorId] = u.Mobile ?? "";
+                    }
+                }
 
                 // Vendor lookup — load tất cả vendors (bao gồm contact info)
                 var allVendors = await _db.Vendors
@@ -170,7 +176,8 @@ namespace InticooInspection.API.Controllers
                 var items = pageItems.Select(i =>
                 {
                     var iid = i.InspectorId ?? "";
-                    var inspName = inspectorByCode.TryGetValue(iid, out var n) ? n : i.InspectorName ?? "";
+                    var inspName   = inspectorByCode.TryGetValue(iid, out var n)   ? n   : i.InspectorName ?? "";
+                    var inspMobile = inspectorMobileByCode.TryGetValue(iid, out var m) ? m : "";
 
                     // Vendor lookup: try by Code first, then by VendorName stored in inspection
                     var vid = i.VendorId ?? "";
@@ -221,6 +228,7 @@ namespace InticooInspection.API.Controllers
                         inspectionType = MapInspType(i.InspectionTypeVal),
                         inspectorId = iid,
                         inspectorName = inspName,
+                        inspectorMobile = inspMobile,
                         poNumber = i.PoNumber ?? "",
                         finalResult = i.FinalResult
                     };

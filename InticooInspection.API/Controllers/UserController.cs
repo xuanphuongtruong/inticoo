@@ -135,6 +135,7 @@ namespace InticooInspection.API.Controllers
                 PostalCode          = request.PostalCode,
                 Mobile              = request.Mobile,
                 CustomerId          = request.CustomerId,
+                PageAccess          = request.PageAccess,
                 CreatedAt           = DateTime.UtcNow,
                 EmailConfirmed      = true,
                 LockoutEnabled      = true
@@ -187,6 +188,7 @@ namespace InticooInspection.API.Controllers
             user.PostalCode   = request.PostalCode;
             user.Mobile       = request.Mobile;
             user.CustomerId   = request.CustomerId;
+            user.PageAccess   = request.PageAccess;
 
             var result = await _userManager.UpdateAsync(user);
             if (!result.Succeeded)
@@ -272,6 +274,28 @@ namespace InticooInspection.API.Controllers
         {
             var roles = await _roleManager.Roles.Select(r => r.Name!).ToListAsync();
             return Ok(roles);
+        }
+
+        // GET api/users/me/page-access
+        // Returns the page-access CSV and roles of the currently authenticated user.
+        // Used by the Blazor PageAccessService to gate menu items and routes.
+        [HttpGet("me/page-access")]
+        [Microsoft.AspNetCore.Authorization.Authorize]
+        public async Task<IActionResult> GetMyPageAccess()
+        {
+            var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
+                      ?? User.FindFirst(System.IdentityModel.Tokens.Jwt.JwtRegisteredClaimNames.Sub)?.Value;
+            if (string.IsNullOrEmpty(userId)) return Unauthorized();
+
+            var user = await _userManager.FindByIdAsync(userId);
+            if (user == null) return Unauthorized();
+
+            var roles = await _userManager.GetRolesAsync(user);
+            return Ok(new
+            {
+                pageAccess = user.PageAccess ?? "",
+                roles      = roles
+            });
         }
 
         // ─────────────────────────────────────────────────────────────────
@@ -384,7 +408,8 @@ namespace InticooInspection.API.Controllers
             country             = u.Country,
             postalCode          = u.PostalCode,
             mobile              = u.Mobile,
-            customerId          = u.CustomerId
+            customerId          = u.CustomerId,
+            pageAccess          = u.PageAccess
         };
     }
 
@@ -420,6 +445,7 @@ namespace InticooInspection.API.Controllers
         public string?  PostalCode          { get; set; }
         public string?  Mobile              { get; set; }
         public string?  CustomerId          { get; set; }
+        public string?  PageAccess          { get; set; }
     }
 
     public class UpdateUserRequest
@@ -450,6 +476,7 @@ namespace InticooInspection.API.Controllers
         public string?  PostalCode          { get; set; }
         public string?  Mobile              { get; set; }
         public string?  CustomerId          { get; set; }
+        public string?  PageAccess          { get; set; }
     }
 
     public class ChangePasswordRequest
