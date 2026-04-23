@@ -156,61 +156,82 @@ namespace InticooInspection.API.Controllers
         // PUT api/users/{id}
         [HttpPut("{id}")]
         public async Task<IActionResult> Update(string id, [FromBody] UpdateUserRequest request)
-        {
-            var user = await _userManager.FindByIdAsync(id);
-            if (user == null) return NotFound();
+{
+    var user = await _userManager.FindByIdAsync(id);
+    if (user == null) return NotFound();
 
-            var existing = await _userManager.FindByNameAsync(request.Username);
-            if (existing != null && existing.Id != id)
-                return BadRequest(new { success = false, message = "Username already exists." });
+    // Check trùng username (nếu có đổi)
+    if (!string.IsNullOrWhiteSpace(request.Username))
+    {
+        var existing = await _userManager.FindByNameAsync(request.Username);
+        if (existing != null && existing.Id != id)
+            return BadRequest(new { success = false, message = "Username already exists." });
+    }
 
-            user.UserName            = request.Username;
-            user.Email               = request.Email;
-            user.FullName            = request.FullName;
-            user.ShortName           = request.ShortName;
-            user.DateOfBirth         = request.DateOfBirth;
-            user.Gender              = request.Gender;
-            user.Nationality         = request.Nationality;
-            user.IdType              = request.IdType;
-            user.IdNumber            = request.IdNumber;
-            user.Category            = request.Category;
-            user.InspectionStartYear = request.InspectionStartYear;
-            user.Language            = request.Language;
-            user.IsActive            = request.IsActive;
-            if (request.CvUrl != null) user.CvUrl = request.CvUrl;
-            user.InspectorId  = request.InspectorId;
-            user.Address      = request.Address;
-            user.Address1     = request.Address1;
-            user.Address2     = request.Address2;
-            user.City         = request.City;
-            user.State        = request.State;
-            user.Country      = request.Country;
-            user.PostalCode   = request.PostalCode;
-            user.Mobile       = request.Mobile;
-            user.CustomerId   = request.CustomerId;
-            user.PageAccess   = request.PageAccess;
+    // ── Các trường BẮT BUỘC có trên form Blazor (luôn ghi đè) ──
+    if (!string.IsNullOrWhiteSpace(request.Username)) user.UserName = request.Username;
+    if (!string.IsNullOrWhiteSpace(request.FullName)) user.FullName = request.FullName;
 
-            var result = await _userManager.UpdateAsync(user);
-            if (!result.Succeeded)
-                return BadRequest(new { success = false, message = string.Join(", ", result.Errors.Select(e => e.Description)) });
+    // IsActive là bool, luôn apply (form luôn có)
+    user.IsActive = request.IsActive;
 
-            if (!string.IsNullOrWhiteSpace(request.NewPassword))
-            {
-                var token    = await _userManager.GeneratePasswordResetTokenAsync(user);
-                var pwResult = await _userManager.ResetPasswordAsync(user, token, request.NewPassword);
-                if (!pwResult.Succeeded)
-                    return BadRequest(new { success = false, message = string.Join(", ", pwResult.Errors.Select(e => e.Description)) });
-            }
+    // ── Các trường OPTIONAL trên form Blazor ──
+    // Dùng "!= null" để cho phép client xoá (gửi chuỗi rỗng "")
+    // nhưng KHÔNG ghi đè nếu property không được gửi lên.
+    // Vì JSON default cho string? là null, ta chỉ update khi có giá trị.
+    if (request.Email      != null) user.Email      = request.Email;
+    if (request.Mobile     != null) user.Mobile     = request.Mobile;
+    if (request.Country    != null) user.Country    = request.Country;
+    if (request.CustomerId != null) user.CustomerId = request.CustomerId;
+    if (request.PageAccess != null) user.PageAccess = request.PageAccess;
 
-            var currentRoles = await _userManager.GetRolesAsync(user);
-            await _userManager.RemoveFromRolesAsync(user, currentRoles);
-            var allRoles = await _roleManager.Roles.Select(r => r.Name!).ToListAsync();
-            foreach (var role in allRoles)
-                if (request.Roles.Contains(role))
-                    await _userManager.AddToRoleAsync(user, role);
+    // ── Các trường KHÔNG có trên form Blazor — CHỈ update nếu client gửi ──
+    // Đây chính là nguồn gốc của bug: trước đây gán thẳng = null làm mất data.
+    if (request.ShortName           != null) user.ShortName           = request.ShortName;
+    if (request.DateOfBirth.HasValue)        user.DateOfBirth         = request.DateOfBirth;
+    if (request.Gender              != null) user.Gender              = request.Gender;
+    if (request.Nationality         != null) user.Nationality         = request.Nationality;
+    if (request.IdType              != null) user.IdType              = request.IdType;
+    if (request.IdNumber            != null) user.IdNumber            = request.IdNumber;
+    if (request.Category            != null) user.Category            = request.Category;
+    if (request.InspectionStartYear.HasValue) user.InspectionStartYear = request.InspectionStartYear;
+    if (request.Language            != null) user.Language            = request.Language;
+    if (request.CvUrl               != null) user.CvUrl               = request.CvUrl;
+    if (request.InspectorId         != null) user.InspectorId         = request.InspectorId;
+    if (request.Address             != null) user.Address             = request.Address;
+    if (request.Address1            != null) user.Address1            = request.Address1;
+    if (request.Address2            != null) user.Address2            = request.Address2;
+    if (request.City                != null) user.City                = request.City;
+    if (request.State               != null) user.State               = request.State;
+    if (request.PostalCode          != null) user.PostalCode          = request.PostalCode;
 
-            return Ok(new { success = true });
-        }
+    var result = await _userManager.UpdateAsync(user);
+    if (!result.Succeeded)
+        return BadRequest(new { success = false, message = string.Join(", ", result.Errors.Select(e => e.Description)) });
+
+    // ── Đổi password nếu có ──
+    if (!string.IsNullOrWhiteSpace(request.NewPassword))
+    {
+        var token    = await _userManager.GeneratePasswordResetTokenAsync(user);
+        var pwResult = await _userManager.ResetPasswordAsync(user, token, request.NewPassword);
+        if (!pwResult.Succeeded)
+            return BadRequest(new { success = false, message = string.Join(", ", pwResult.Errors.Select(e => e.Description)) });
+    }
+
+    // ── Cập nhật roles CHỈ khi client có gửi (Count > 0) ──
+    // Nếu client gửi mảng rỗng → không đụng tới roles hiện tại.
+    if (request.Roles != null && request.Roles.Count > 0)
+    {
+        var currentRoles = await _userManager.GetRolesAsync(user);
+        await _userManager.RemoveFromRolesAsync(user, currentRoles);
+        var allRoles = await _roleManager.Roles.Select(r => r.Name!).ToListAsync();
+        foreach (var role in allRoles)
+            if (request.Roles.Contains(role))
+                await _userManager.AddToRoleAsync(user, role);
+    }
+
+    return Ok(new { success = true });
+}
 
         // PUT api/users/{id}/toggle-active
         [HttpPut("{id}/toggle-active")]

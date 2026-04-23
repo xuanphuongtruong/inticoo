@@ -59,7 +59,6 @@ else
                     <th rowspan="2" class="tc">Actions</th>
                 </tr>
                 <tr class="thead-sub">
-                    <th class="tc">Address</th>
                     <th class="tc">City</th>
                     <th class="th-c th-country">Country</th>
                 </tr>
@@ -74,7 +73,6 @@ else
                         <td class="td-c td-no">@rowNo</td>
                         <td>
                             <div class="user-cell">
-                                <div class="user-avatar">@GetInitials(u.FullName ?? u.Username)</div>
                                 <span class="user-fullname">@(string.IsNullOrEmpty(u.FullName) ? u.Username : u.FullName)</span>
                             </div>
                         </td>
@@ -86,7 +84,6 @@ else
                             }
                             else { <span class="dim">—</span> }
                         </td>
-                        <td class="dim sm">@(string.IsNullOrEmpty(u.Address) ? "—" : u.Address)</td>
                         <td class="dim sm">@(string.IsNullOrEmpty(u.City)    ? "—" : u.City)</td>
                         <td class="dim sm td-country">@(string.IsNullOrEmpty(u.Country) ? "—" : u.Country)</td>
                         <td class="dim sm">@(string.IsNullOrEmpty(u.Mobile)  ? "—" : u.Mobile)</td>
