@@ -99,7 +99,7 @@
                                     else { <span class="muted">—</span> }
                                 </td>
                                 <td class="fw">@item.ProductName</td>
-                                <td class="mono">@(string.IsNullOrEmpty(item.ProductCode) ? "—" : item.ProductCode)</td>
+                                <td class="mono">@(string.IsNullOrEmpty(item.ItemNumber) ? "—" : item.ItemNumber)</td>
                                 <td class="tc muted">@(item.EstablishDate.HasValue ? item.EstablishDate.Value.ToString("dd MMM yyyy") : "—")</td>
                                 <td class="tc">
                                     <span class="status-badge @(item.IsActive ? "active" : "inactive")">
