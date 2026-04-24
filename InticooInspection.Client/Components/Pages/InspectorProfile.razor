@@ -524,7 +524,7 @@ else
                     <div class="detail-row"><span>Start Year</span><span>@(d.InspectionStartYear?.ToString() ?? "—")</span></div>
                     <div class="detail-row"><span>Language</span><span>@(string.IsNullOrEmpty(d.Language) ? "—" : d.Language)</span></div>
                     <div class="detail-row"><span>Status</span><span>@(d.IsActive ? "Active" : "Inactive")</span></div>
-                    <div class="detail-row"><span>Date Joined</span><span>@d.CreatedAt.ToString("dd/MMM/yyyy")</span></div>
+                    <div class="detail-row"><span>Date Joined</span><span>@d.CreatedAt.ToString("dd/MM/yyyy")</span></div>
                 </div>
 
                 <div class="detail-section">

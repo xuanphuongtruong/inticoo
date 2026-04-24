@@ -107,10 +107,10 @@ else
                             { <span class="cat-badge">@item.Category</span> }
                             else { <span class="muted">-</span> }
                         </td>
-                        <td class="muted small-td">@(string.IsNullOrEmpty(item.State)   ? "-" : item.State)</td>
-                        <td class="muted small-td">@(string.IsNullOrEmpty(item.Country) ? "-" : item.Country)</td>
-                        <td class="small-td">@(string.IsNullOrEmpty(item.ContactName)  ? "-" : item.ContactName)</td>
-                        <td class="muted small-td">@(string.IsNullOrEmpty(item.ContactTitle) ? "-" : item.ContactTitle)</td>
+                        <td class="tc muted small-td">@(string.IsNullOrEmpty(item.State)   ? "-" : item.State)</td>
+                        <td class="tc muted small-td">@(string.IsNullOrEmpty(item.Country) ? "-" : item.Country)</td>
+                        <td class="tc small-td">@(string.IsNullOrEmpty(item.ContactName)  ? "-" : item.ContactName)</td>
+                        <td class="tc muted small-td">@(string.IsNullOrEmpty(item.ContactTitle) ? "-" : item.ContactTitle)</td>
                         <td class="tc">
                             @if (item.FactoryEvalFileCount > 0)
                             {
