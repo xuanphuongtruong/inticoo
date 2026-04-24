@@ -181,6 +181,7 @@ namespace InticooInspection.Domain.Entities
 
         public int    Order    { get; set; }
         public string Material { get; set; } = "";
+        public string Remark   { get; set; } = "";
     }
 
     // ═══════════════════════════════════════════════════════

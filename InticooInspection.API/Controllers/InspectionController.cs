@@ -469,7 +469,7 @@ namespace InticooInspection.API.Controllers
                 },
 
                 // Colour Swatches
-                colourSwatches = inspection.ColourSwatches.Select(c => c.Material).ToList(),
+                colourSwatches = inspection.ColourSwatches.Select(c => new { material = c.Material, remark = c.Remark }).ToList(),
 
                 // Performance Tests
                 performanceTests = inspection.PerformanceTests.Select(t => new
@@ -679,8 +679,13 @@ namespace InticooInspection.API.Controllers
                 },
 
                 // C-iii. Colour Swatches
-                ColourSwatches = (request.ProductSpec?.ColourSwatches ?? Array.Empty<string>())
-                    .Select((m, i) => new InspectionColourSwatch { Order = i + 1, Material = m })
+                ColourSwatches = (request.ProductSpec?.ColourSwatches ?? Array.Empty<ColourSwatchRequest>())
+                    .Select((c, i) => new InspectionColourSwatch
+                    {
+                        Order    = i + 1,
+                        Material = c.Material ?? "",
+                        Remark   = c.Remark   ?? ""
+                    })
                     .ToList(),
 
                 // D. Performance Testing
@@ -1228,8 +1233,13 @@ namespace InticooInspection.API.Controllers
 
                 // ── Colour Swatches (replace) ──
                 _db.RemoveRange(inspection.ColourSwatches);
-                inspection.ColourSwatches = (request.ProductSpec?.ColourSwatches ?? Array.Empty<string>())
-                    .Select((m, i) => new InspectionColourSwatch { Order = i + 1, Material = m })
+                inspection.ColourSwatches = (request.ProductSpec?.ColourSwatches ?? Array.Empty<ColourSwatchRequest>())
+                    .Select((c, i) => new InspectionColourSwatch
+                    {
+                        Order    = i + 1,
+                        Material = c.Material ?? "",
+                        Remark   = c.Remark   ?? ""
+                    })
                     .ToList();
 
                 // ── Performance Tests (replace) ──
@@ -1538,7 +1548,13 @@ www.Inticoo.com";
         public double   SizeH               { get; set; }
         public double   Weight              { get; set; }
         public bool     CompareGoldenSample { get; set; }
-        public string[] ColourSwatches      { get; set; } = Array.Empty<string>();
+        public ColourSwatchRequest[] ColourSwatches { get; set; } = Array.Empty<ColourSwatchRequest>();
+    }
+
+    public class ColourSwatchRequest
+    {
+        public string? Material { get; set; }
+        public string? Remark   { get; set; }
     }
 
     public class PerformanceTestRequest

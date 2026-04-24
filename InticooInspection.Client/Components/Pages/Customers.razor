@@ -100,11 +100,11 @@ else
                             }
                             else { <span class="muted">-</span> }
                         </td>
-                        <td class="muted">@(string.IsNullOrEmpty(item.State)   ? "-" : item.State)</td>
-                        <td class="muted">@(string.IsNullOrEmpty(item.Country) ? "-" : item.Country)</td>
-                        <td class="muted">@(string.IsNullOrEmpty(item.ContactPerson) ? "-" : item.ContactPerson)</td>
-                        <td class="muted">@(string.IsNullOrEmpty(item.Position)      ? "-" : item.Position)</td>
-                        <td class="mono">@(string.IsNullOrEmpty(item.Mobile)         ? "-" : item.Mobile)</td>
+                        <td class="td-center muted">@(string.IsNullOrEmpty(item.State)   ? "-" : item.State)</td>
+                        <td class="td-center muted">@(string.IsNullOrEmpty(item.Country) ? "-" : item.Country)</td>
+                        <td class="td-center muted">@(string.IsNullOrEmpty(item.ContactPerson) ? "-" : item.ContactPerson)</td>
+                        <td class="td-center muted">@(string.IsNullOrEmpty(item.Position)      ? "-" : item.Position)</td>
+                        <td class="td-center mono">@(string.IsNullOrEmpty(item.Mobile)         ? "-" : item.Mobile)</td>
                         <td class="tc">
                             @if (item.FileCount > 0)
                             {
@@ -1086,6 +1086,9 @@ else
     .tr-alt td { background:#eef5fd; }
     .ptable tbody tr:hover td { background:#ddeeff; }
     .dash { color:#c0c9d8; }
+    .td-center {
+    text-align: center;
+}
 
     /* action icon buttons */
     .bico { display:inline-flex; align-items:center; justify-content:center; width:28px; height:28px; border:none; border-radius:6px; cursor:pointer; transition:all .15s; margin:0 6px; }

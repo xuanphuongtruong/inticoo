@@ -481,8 +481,11 @@
             <!-- Inner Packing -->
             <div class="pkg-sub-section">
                 <span class="pkg-sub-title">Inner Packing</span>
-                <div class="ni-grid-5">
-                    <div class="field-group"><label>Quantity</label><input type="number" @bind="Packaging.InnerPackingQty" placeholder="0" /></div>
+                <div class="field-group inner-qty-full">
+                    <label>Quantity</label>
+                    <input type="number" @bind="Packaging.InnerPackingQty" placeholder="0" />
+                </div>
+                <div class="ni-grid-4" style="margin-top:12px;">
                     <div class="field-group"><label>L (mm/inch)</label><input type="number" @bind="Packaging.InnerL" placeholder="0" /></div>
                     <div class="field-group"><label>W (mm/inch)</label><input type="number" @bind="Packaging.InnerW" placeholder="0" /></div>
                     <div class="field-group"><label>H (mm/inch)</label><input type="number" @bind="Packaging.InnerH" placeholder="0" /></div>
@@ -525,13 +528,15 @@
                 <div class="data-table-header">
                     <div class="col-no">No</div>
                     <div class="col-flex">Material</div>
+                    <div class="col-flex">Remark</div>
                 </div>
                 @for (int i = 0; i < ColourSwatches.Count; i++)
                 {
                     var idx = i;
                     <div class="data-table-row">
                         <div class="col-no">@(idx + 1)</div>
-                        <div class="col-flex"><input @bind="ColourSwatches[idx]" placeholder="Enter material..." class="table-input" /></div>
+                        <div class="col-flex"><input @bind="ColourSwatches[idx].Material" placeholder="Enter material..." class="table-input" /></div>
+                        <div class="col-flex"><input @bind="ColourSwatches[idx].Remark" placeholder="Remark..." class="table-input" /></div>
                     </div>
                 }
                 <button class="add-row-btn" @onclick="AddColourSwatch">+ Add Row</button>
@@ -558,6 +563,7 @@
                         <div class="col-flex">Test Protocol</div>
                         <div class="col-flex2">Test Requirement</div>
                         <div class="col-flex">Remark</div>
+                        <div class="col-view"></div>
                     </div>
                     @for (int i = 0; i < PerformanceTests.Count; i++)
                     {
@@ -570,6 +576,11 @@
                             <div class="col-flex"><input @bind="test.TestProtocol" placeholder="Protocol..." class="table-input" /></div>
                             <div class="col-flex2"><input @bind="test.TestRequirement" placeholder="Requirement..." class="table-input" /></div>
                             <div class="col-flex"><input @bind="test.Remark" placeholder="Remark..." class="table-input" /></div>
+                            <div class="col-view">
+                                <button class="btn-view-row" type="button" @onclick="() => OpenPerfDetail(idx)" title="View full details">
+                                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                                </button>
+                            </div>
                         </div>
                     }
                     <button class="add-row-btn" @onclick="AddPerformanceTest">+ Add Row</button>
@@ -585,6 +596,7 @@
                         <div class="col-flex">Test Protocol</div>
                         <div class="col-flex2">Test Requirement</div>
                         <div class="col-flex">Remark</div>
+                        <div class="col-view"></div>
                     </div>
                     @for (int i = 0; i < PerformanceTests.Count; i++)
                     {
@@ -637,6 +649,11 @@
                             </div>
                             <div class="col-flex">
                                 <input @bind="test.Remark" placeholder="Remark..." class="table-input" />
+                            </div>
+                            <div class="col-view">
+                                <button class="btn-view-row" type="button" @onclick="() => OpenPerfDetail(idx)" title="View full details">
+                                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                                </button>
                             </div>
                         </div>
                     }
@@ -813,6 +830,50 @@
     </div>
 </div>
 
+@* ── Performance Test: Full Detail Popup ── *@
+@if (_perfDetailIdx != null && _perfDetailIdx >= 0 && _perfDetailIdx < PerformanceTests.Count)
+{
+    var t = PerformanceTests[_perfDetailIdx.Value];
+    var rowNum = _perfDetailIdx.Value + 1;
+    <div class="perf-detail-backdrop" @onclick="ClosePerfDetail">
+        <div class="perf-detail-box" @onclick:stopPropagation="true">
+            <div class="perf-detail-header">
+                <h3>Performance Test — Row @rowNum Details</h3>
+                <button class="perf-detail-close" @onclick="ClosePerfDetail">✕</button>
+            </div>
+
+            <div class="perf-detail-field">
+                <label>Category</label>
+                <div class="value-box @(string.IsNullOrWhiteSpace(t.Category) ? "empty" : "")">@(string.IsNullOrWhiteSpace(t.Category) ? "—" : t.Category)</div>
+            </div>
+
+            <div class="perf-detail-field">
+                <label>Test Item</label>
+                <div class="value-box @(string.IsNullOrWhiteSpace(t.TestItem) ? "empty" : "")">@(string.IsNullOrWhiteSpace(t.TestItem) ? "—" : t.TestItem)</div>
+            </div>
+
+            <div class="perf-detail-field">
+                <label>Test Protocol</label>
+                <div class="value-box @(string.IsNullOrWhiteSpace(t.TestProtocol) ? "empty" : "")">@(string.IsNullOrWhiteSpace(t.TestProtocol) ? "—" : t.TestProtocol)</div>
+            </div>
+
+            <div class="perf-detail-field">
+                <label>Test Requirement</label>
+                <div class="value-box @(string.IsNullOrWhiteSpace(t.TestRequirement) ? "empty" : "")">@(string.IsNullOrWhiteSpace(t.TestRequirement) ? "—" : t.TestRequirement)</div>
+            </div>
+
+            <div class="perf-detail-field">
+                <label>Remark (editable)</label>
+                <textarea class="value-box" @bind="t.Remark" placeholder="Add remark..." rows="3"></textarea>
+            </div>
+
+            <div class="perf-detail-footer">
+                <button class="perf-detail-btn" @onclick="ClosePerfDetail">Close</button>
+            </div>
+        </div>
+    </div>
+}
+
 @code {
     // ── String constants — tránh inline string literals trong Razor attributes ──
     private const string PkgFsc       = "FSC Carton";
@@ -834,9 +895,12 @@
     private ProductSpecModel ProductSpec = new();
     private OfficeUseModel   OfficeUse   = new();
 
-    private List<string>             ColourSwatches   = new() { "", "", "" };
+    private List<ColourSwatchRow>    ColourSwatches   = new() { new(), new(), new() };
     private List<PerformanceTestRow> PerformanceTests = new() { new(), new(), new() };
     private List<ReferenceRow>       References       = new() { new(), new(), new(), new(), new() };
+
+    // Performance Test detail popup
+    private int? _perfDetailIdx = null;
 
     private List<OverallConclusionRow> OverallConclusions = new()
     {
@@ -1564,8 +1628,12 @@
     private void ToggleCompliance(OverallConclusionRow row, string value)
         => row.Compliance = row.Compliance == value ? "" : value;
 
-    private void AddColourSwatch()    => ColourSwatches.Add("");
+    private void AddColourSwatch()    => ColourSwatches.Add(new());
     private void AddPerformanceTest() => PerformanceTests.Add(new());
+
+    // ── Performance Test: View Full Detail Popup ─────────────────────────────
+    private void OpenPerfDetail(int idx) => _perfDetailIdx = idx;
+    private void ClosePerfDetail()       => _perfDetailIdx = null;
     private void AddReference()       => References.Add(new());
 
     // FIX: xử lý lỗi đầy đủ, không nuốt exception
@@ -1799,7 +1867,8 @@
                     weight              = ProductSpec.Weight,
                     compareGoldenSample = ProductSpec.CompareGoldenSample,
                     colourSwatches      = ColourSwatches
-                                            .Where(s => !string.IsNullOrWhiteSpace(s))
+                                            .Where(c => !string.IsNullOrWhiteSpace(c.Material) || !string.IsNullOrWhiteSpace(c.Remark))
+                                            .Select(c => new { material = c.Material, remark = c.Remark })
                                             .ToArray()
                 },
 
@@ -1923,6 +1992,12 @@
     {
         public string InspectorName { get; set; } = "";
         public string InspectorId   { get; set; } = "";
+    }
+
+    private class ColourSwatchRow
+    {
+        public string Material { get; set; } = "";
+        public string Remark   { get; set; } = "";
     }
 
     private class PerformanceTestRow
@@ -2072,6 +2147,32 @@
     .ni-grid-4 { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 14px; }
     .ni-grid-5 { display: grid; grid-template-columns: repeat(5, 1fr); gap: 14px; }
     .ni-grid-6 { display: grid; grid-template-columns: repeat(6, 1fr); gap: 14px; }
+
+    /* Inner Packing: Quantity full-width row */
+    .inner-qty-full { width: 100%; }
+    .inner-qty-full input { width: 100%; }
+
+    /* View-detail icon button inside data-table-row */
+    .col-view { width: 42px; flex-shrink: 0; text-align: center; }
+    .btn-view-row { background: #e6f1fb; border: 1px solid #b5d4f4; color: #1e90d6; width: 28px; height: 28px; border-radius: 6px; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; transition: all .15s; }
+    .btn-view-row:hover { background: #1e90d6; color: #fff; }
+
+    /* Detail popup for Performance Test row */
+    .perf-detail-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,.5); display: flex; align-items: center; justify-content: center; z-index: 1200; padding: 20px; }
+    .perf-detail-box { background: #fff; border-radius: 14px; padding: 26px 28px; max-width: 680px; width: 100%; max-height: 85vh; overflow-y: auto; box-shadow: 0 20px 60px rgba(0,0,0,.3); }
+    .perf-detail-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid #e4eaf4; }
+    .perf-detail-header h3 { font-family: "Sora", sans-serif; font-size: 16px; font-weight: 700; color: #1a2d5a; margin: 0; }
+    .perf-detail-close { background: none; border: none; font-size: 18px; cursor: pointer; color: #7a8fad; padding: 0 6px; }
+    .perf-detail-close:hover { color: #dc2626; }
+    .perf-detail-field { margin-bottom: 14px; }
+    .perf-detail-field label { display: block; font-size: 11px; font-weight: 600; color: #7a8fad; text-transform: uppercase; letter-spacing: .06em; margin-bottom: 5px; }
+    .perf-detail-field .value-box { background: #f7fafd; border: 1px solid #dde4ef; border-radius: 8px; padding: 10px 13px; font-size: 13.5px; color: #1a2d5a; line-height: 1.6; white-space: pre-wrap; word-break: break-word; min-height: 38px; }
+    .perf-detail-field .value-box.empty { color: #b0bdd4; font-style: italic; }
+    .perf-detail-field textarea.value-box { width: 100%; font-family: "DM Sans", sans-serif; outline: none; resize: vertical; min-height: 80px; box-sizing: border-box; }
+    .perf-detail-field textarea.value-box:focus { border-color: #1e90d6; box-shadow: 0 0 0 3px rgba(30,144,214,.1); }
+    .perf-detail-footer { display: flex; justify-content: flex-end; gap: 10px; padding-top: 14px; border-top: 1px solid #e4eaf4; margin-top: 8px; }
+    .perf-detail-btn { padding: 8px 18px; background: #1e90d6; color: #fff; border: none; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; font-family: "DM Sans", sans-serif; }
+    .perf-detail-btn:hover { background: #1565c0; }
 
     /* Field group */
     .field-group { display: flex; flex-direction: column; gap: 5px; }
