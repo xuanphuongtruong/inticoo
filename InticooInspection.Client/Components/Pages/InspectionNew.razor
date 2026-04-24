@@ -410,7 +410,7 @@
                 </div>
             </div>
 
-            <!-- CARTON BOX: 2-column layout; nhóm toggle chung dòng ngang -->
+            <!-- CARTON BOX: 2-column layout; mỗi item 1 row riêng để label + options thẳng cột -->
             <div class="pkg-sub-title">Carton Box</div>
             <div class="pkg-cartonbox-grid">
                 <!-- LEFT COLUMN -->
@@ -422,24 +422,27 @@
                             <label class="radio-label"><input type="radio" name="shippingMark" checked="@(Packaging.ShippingMark == SmPrinting)" @onchange="() => Packaging.ShippingMark = SmPrinting" /><span>Printing</span></label>
                         </div>
                     </div>
-                    <!-- 3 toggle cùng 1 dòng: Barcode / Assembly Instruction / Hardware -->
-                    <div class="pkg2-row pkg2-row-multi">
-                        <div class="pkg2-inline-item">
-                            <span class="pkg2-label pkg2-label-sm">Barcode / QR Code</span>
+                    <div class="pkg2-row">
+                        <span class="pkg2-label">Barcode / QR Code</span>
+                        <div class="pkg2-options">
                             <div class="toggle-group">
                                 <button class="@ToggleCss(Packaging.HasBarcode)" @onclick="() => Packaging.HasBarcode = true">Yes</button>
                                 <button class="@ToggleCss(!Packaging.HasBarcode)" @onclick="() => Packaging.HasBarcode = false">No</button>
                             </div>
                         </div>
-                        <div class="pkg2-inline-item">
-                            <span class="pkg2-label pkg2-label-sm">Assembly Instruction</span>
+                    </div>
+                    <div class="pkg2-row">
+                        <span class="pkg2-label">Assembly Instruction</span>
+                        <div class="pkg2-options">
                             <div class="toggle-group">
                                 <button class="@ToggleCss(Packaging.AssemblyInstruction)" @onclick="() => Packaging.AssemblyInstruction = true">Yes</button>
                                 <button class="@ToggleCss(!Packaging.AssemblyInstruction)" @onclick="() => Packaging.AssemblyInstruction = false">No</button>
                             </div>
                         </div>
-                        <div class="pkg2-inline-item">
-                            <span class="pkg2-label pkg2-label-sm">Hardware</span>
+                    </div>
+                    <div class="pkg2-row">
+                        <span class="pkg2-label">Hardware</span>
+                        <div class="pkg2-options">
                             <div class="toggle-group">
                                 <button class="@ToggleCss(Packaging.Hardware)" @onclick="() => Packaging.Hardware = true">Yes</button>
                                 <button class="@ToggleCss(!Packaging.Hardware)" @onclick="() => Packaging.Hardware = false">No</button>
@@ -450,21 +453,18 @@
 
                 <!-- RIGHT COLUMN -->
                 <div class="pkg-cartonbox-col">
-                    <!-- FSC Carton Type + Color of Carton cùng 1 dòng -->
-                    <div class="pkg2-row pkg2-row-multi">
-                        <div class="pkg2-inline-item">
-                            <span class="pkg2-label pkg2-label-sm">FSC Carton Type</span>
-                            <div class="pkg2-options">
-                                <label class="radio-label"><input type="radio" name="pkgType" checked="@(Packaging.PackagingType == PkgFsc)" @onchange="() => Packaging.PackagingType = PkgFsc" /><span>FSC Carton</span></label>
-                                <label class="radio-label"><input type="radio" name="pkgType" checked="@(Packaging.PackagingType == PkgNonFsc)" @onchange="() => Packaging.PackagingType = PkgNonFsc" /><span>Non-FSC Carton</span></label>
-                            </div>
+                    <div class="pkg2-row">
+                        <span class="pkg2-label">FSC Carton Type</span>
+                        <div class="pkg2-options">
+                            <label class="radio-label"><input type="radio" name="pkgType" checked="@(Packaging.PackagingType == PkgFsc)" @onchange="() => Packaging.PackagingType = PkgFsc" /><span>FSC Carton</span></label>
+                            <label class="radio-label"><input type="radio" name="pkgType" checked="@(Packaging.PackagingType == PkgNonFsc)" @onchange="() => Packaging.PackagingType = PkgNonFsc" /><span>Non-FSC Carton</span></label>
                         </div>
-                        <div class="pkg2-inline-item">
-                            <span class="pkg2-label pkg2-label-sm">Color of Carton</span>
-                            <div class="pkg2-options">
-                                <label class="radio-label"><input type="radio" name="cartonColor" checked="@(Packaging.CartonColor == ColWhite)" @onchange="() => Packaging.CartonColor = ColWhite" /><span>White</span></label>
-                                <label class="radio-label"><input type="radio" name="cartonColor" checked="@(Packaging.CartonColor == ColBrown)" @onchange="() => Packaging.CartonColor = ColBrown" /><span>Brown</span></label>
-                            </div>
+                    </div>
+                    <div class="pkg2-row">
+                        <span class="pkg2-label">Color of Carton</span>
+                        <div class="pkg2-options">
+                            <label class="radio-label"><input type="radio" name="cartonColor" checked="@(Packaging.CartonColor == ColWhite)" @onchange="() => Packaging.CartonColor = ColWhite" /><span>White</span></label>
+                            <label class="radio-label"><input type="radio" name="cartonColor" checked="@(Packaging.CartonColor == ColBrown)" @onchange="() => Packaging.CartonColor = ColBrown" /><span>Brown</span></label>
                         </div>
                     </div>
                     <div class="pkg2-row">

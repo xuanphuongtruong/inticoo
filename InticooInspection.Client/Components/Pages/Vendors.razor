@@ -69,20 +69,20 @@ else
                     <th rowspan="2" class="tc th-y">No</th>
                     <th rowspan="2" class="tc th-y">Vendor Name</th>
                     <th rowspan="2" class="tc th-y">Vendor ID</th>
-                    <th rowspan="2 class="tc th-y">Category</th>
-                    <th colspan="2" class="th-grp th-y">Vendor Address</th>
-                    <th colspan="2" class="th-grp th-y">Contact Information</th>
+                    <th rowspan="2" class="tc th-y">Category</th>
+                    <th colspan="2" class="tc th-y">Vendor Address</th>
+                    <th colspan="2" class="tc th-y">Contact Information</th>
                     <th rowspan="2" class="tc th-y">Factory Evaluetion</th>
                     <th rowspan="2" class="tc th-y">Files</th>
                     <th rowspan="2" class="tc th-y">Status</th>
                     <th rowspan="2" class="tc th-y">Full Detail</th>
                     <th rowspan="2" class="tc th-y">Action</th>
                 </tr>
-                <tr class="thead-sub">
-                    <th>States / Province</th>
-                    <th>Country</th>
-                    <th>Contact Name</th>
-                    <th>Position</th>
+                <tr >
+                    <th class="tc th-y">States / Province</th>
+                    <th class="tc th-y">Country</th>
+                    <th class="tc th-y">Contact Name</th>
+                    <th class="tc th-y">Position</th>
                 </tr>
             </thead>
             <tbody>
@@ -121,7 +121,21 @@ else
                                     @item.FactoryEvalFileCount
                                 </span>
                             }
-                            else { <span class="muted">—</span> }
+                            else
+                            {
+                                <AuthorizeView Roles="Admin">
+                                    <Authorized>
+                                        <label class="upload-inline-btn" title="Upload factory evaluation file">
+                                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                                            Upload
+                                            <InputFile OnChange="(e) => HandleInlineFactoryEvalUpload(e, item)" style="display:none" accept=".pdf,.jpg,.jpeg,.png,.xlsx,.docx" multiple />
+                                        </label>
+                                    </Authorized>
+                                    <NotAuthorized>
+                                        <span class="muted">—</span>
+                                    </NotAuthorized>
+                                </AuthorizeView>
+                            }
                         </td>
                         <td class="tc">
                             @if (item.Attachments.Count > 0)
@@ -1098,6 +1112,15 @@ else
         var files = e.GetMultipleFiles(10);
         if (files.Count == 0) return;
         await UploadFilesNow(vendor.Id, files);
+        // Refresh the vendor list so badge updates
+        await LoadPage(_page);
+    }
+
+    private async Task HandleInlineFactoryEvalUpload(InputFileChangeEventArgs e, VendorDto vendor)
+    {
+        var files = e.GetMultipleFiles(20);
+        if (files.Count == 0) return;
+        await UploadFactoryFilesNow(vendor.Id, files);
         // Refresh the vendor list so badge updates
         await LoadPage(_page);
     }
