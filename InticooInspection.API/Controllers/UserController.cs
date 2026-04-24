@@ -125,6 +125,7 @@ namespace InticooInspection.API.Controllers
                 Language            = request.Language,
                 IsActive            = request.IsActive,
                 CvUrl               = request.CvUrl,
+                AvatarUrl           = request.PhotoUrl,
                 InspectorId         = request.InspectorId,
                 Address             = request.Address,
                 Address1            = request.Address1,
@@ -197,6 +198,7 @@ namespace InticooInspection.API.Controllers
     if (request.InspectionStartYear.HasValue) user.InspectionStartYear = request.InspectionStartYear;
     if (request.Language            != null) user.Language            = request.Language;
     if (request.CvUrl               != null) user.CvUrl               = request.CvUrl;
+    if (request.PhotoUrl            != null) user.AvatarUrl           = request.PhotoUrl;
     if (request.InspectorId         != null) user.InspectorId         = request.InspectorId;
     if (request.Address             != null) user.Address             = request.Address;
     if (request.Address1            != null) user.Address1            = request.Address1;
@@ -398,6 +400,7 @@ namespace InticooInspection.API.Controllers
             roles               = roles,
             createdAt           = u.CreatedAt,
             cvUrl               = u.CvUrl,
+            photoUrl            = u.AvatarUrl,
             inspectorId         = u.InspectorId,
             address             = u.Address,
             address1            = u.Address1,
@@ -434,6 +437,7 @@ namespace InticooInspection.API.Controllers
         public bool     IsActive            { get; set; } = true;
         public List<string> Roles           { get; set; } = new();
         public string?  CvUrl               { get; set; }
+        public string?  PhotoUrl            { get; set; }
         public string?  InspectorId         { get; set; }
         public string?  Address             { get; set; }
         public string?  Address1            { get; set; }
@@ -465,6 +469,7 @@ namespace InticooInspection.API.Controllers
         public string?  NewPassword         { get; set; }
         public List<string> Roles           { get; set; } = new();
         public string?  CvUrl               { get; set; }
+        public string?  PhotoUrl            { get; set; }
         public string?  InspectorId         { get; set; }
         public string?  Address             { get; set; }
         public string?  Address1            { get; set; }

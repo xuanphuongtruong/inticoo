@@ -47,6 +47,7 @@ else
             <thead>
                 <tr class="thead-top">
                     <th rowspan="2" class="tc th-y th-no">No</th>
+                    <th rowspan="2" class="tc th-y">Profile Photo</th>
                     <th rowspan="2" class="tc th-y">Inspector Name</th>
                     <th rowspan="2" class="tc th-y">Inspector ID</th>
                     <th rowspan="2" class="tc th-y">Category</th>
@@ -71,6 +72,20 @@ else
                     rowNo++;
                     <tr class="table-row @(rowNo % 2 == 0 ? "tr-alt" : "")">
                         <td class="td-c td-no">@rowNo</td>
+                        <td class="tc">
+                            @if (!string.IsNullOrEmpty(u.PhotoUrl))
+                            {
+                                var fullPhotoUrl = u.PhotoUrl.StartsWith("http") ? u.PhotoUrl
+                                                 : (Http.BaseAddress?.ToString().TrimEnd('/') + "/" + u.PhotoUrl.TrimStart('/'));
+                                <img class="row-avatar" src="@fullPhotoUrl" alt="@u.FullName" />
+                            }
+                            else
+                            {
+                                <div class="row-avatar row-avatar-placeholder">
+                                    @GetInitials(string.IsNullOrEmpty(u.FullName) ? u.Username : u.FullName)
+                                </div>
+                            }
+                        </td>
                         <td class="tc">
                             <div class="user-cell" style="justify-content:center;">
                                 <span class="user-fullname">@(string.IsNullOrEmpty(u.FullName) ? u.Username : u.FullName)</span>
@@ -1042,6 +1057,10 @@ else
 
     .user-cell { display:flex; align-items:center; gap:10px; }
     .user-avatar { width:30px; height:30px; border-radius:50%; background:#1e90d6; color:#fff; font-size:11px; font-weight:600; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+
+    /* Row avatar in table (Profile Photo column) */
+    .row-avatar { width:40px; height:40px; border-radius:50%; object-fit:cover; border:2px solid #dde4ef; display:inline-block; vertical-align:middle; }
+    .row-avatar-placeholder { background:#1e90d6; color:#fff; font-size:13px; font-weight:700; display:inline-flex; align-items:center; justify-content:center; border:none; }
     .user-fullname { font-weight:500; color:#1a2d5a; }
 
     .cat-badge { display:inline-block; padding:2px 9px; border-radius:10px; background:#e0ecff; color:#1565c0; font-size:11px; font-weight:600; }
