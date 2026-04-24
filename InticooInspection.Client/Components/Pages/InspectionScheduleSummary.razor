@@ -8,6 +8,7 @@
 @inject NavigationManager Navigation
 @inject AuthenticationStateProvider AuthStateProvider
 @inject Blazored.SessionStorage.ISessionStorageService SessionStorage
+@inject IJSRuntime JS
 
 <div class="iss-page">
 
@@ -514,6 +515,7 @@
                                     <div class="iss-li-row"><span class="iss-ll">Category</span><span class="iss-lv">@(job.ProductCategory ?? "—")</span></div>
                                     @* <div class="iss-li-row"><span class="iss-ll">Product Type</span><span class="iss-lv">@(job.ProductType ?? "—")</span></div> *@
                                     <div class="iss-li-row"><span class="iss-ll">Inspection Type</span><span class="iss-lv">@job.InspectionType</span></div>
+                                    <div class="iss-li-row"><span class="iss-ll">PO Number</span><span class="iss-lv">@(string.IsNullOrEmpty(job.PoNumber) ? "—" : job.PoNumber)</span></div>
                                     <div class="iss-li-row"><span class="iss-ll">Vendor Name</span><span class="iss-lv">@job.VendorName</span></div>
                                     <div class="iss-li-row"><span class="iss-ll">Vendor Address</span><span class="iss-lv">@(string.IsNullOrEmpty(job.VendorCity) ? "—" : job.VendorCity)</span></div>
                                     @if (!string.IsNullOrEmpty(job.VendorContactName) || !string.IsNullOrEmpty(job.VendorContactMobile))
@@ -543,7 +545,19 @@
             else if (_timeFilter == "14days")
             {
                 var days14 = Enumerable.Range(0, 14).Select(i => DateTime.Today.AddDays(i)).ToList();
-                <div class="iss-section-title">Next 14 days</div>
+                <div class="iss-14days-header no-print">
+                    <div class="iss-section-title">Next 14 days</div>
+                    <button class="iss-export-btn" @onclick="ExportPdf14Days" title="Export to PDF">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                        Export PDF
+                    </button>
+                </div>
+
+                <div id="iss-print-area-14days" class="iss-print-area">
+                    <div class="iss-print-header print-only">
+                        <h2>Inspection Schedule — Next 14 Days</h2>
+                        <div class="iss-print-sub">@DateTime.Today.ToString("d MMM yyyy", EnUs) — @DateTime.Today.AddDays(13).ToString("d MMM yyyy", EnUs)</div>
+                    </div>
 
                 <div class="iss-cal-table-wrap">
                     <table class="iss-cal-table">
@@ -620,6 +634,7 @@
                             }
                         </div>
                     }
+                </div>
                 </div>
             }
         </div>
@@ -940,6 +955,17 @@
     //  ACTIONS
     // ────────────────────────────────────────────
     private void SetTimeFilter(string f) { _timeFilter = f; _view = View.Summary; }
+
+    private async Task ExportPdf14Days()
+    {
+        // Dùng window.print() — browser sẽ hiện dialog "Save as PDF"
+        // CSS @media print sẽ chỉ in riêng vùng 14 days (#iss-print-area-14days)
+        try
+        {
+            await JS.InvokeVoidAsync("window.print");
+        }
+        catch { /* ignore — user cancel or JS unavailable */ }
+    }
 
     private async Task OpenJobDetail(JobItem job)
     {
@@ -1670,4 +1696,76 @@
     .res-na   { background: #f5f5f5; color: #999; }
 
     .iss-comp-na { color: #bbb; }
+
+    /* ── 14 days: Export PDF button ── */
+    .iss-14days-header {
+        display: flex; align-items: center; justify-content: space-between;
+        gap: 12px; flex-wrap: wrap; margin-bottom: 10px;
+    }
+    .iss-14days-header .iss-section-title { margin: 0; }
+    .iss-export-btn {
+        display: inline-flex; align-items: center; gap: 6px;
+        padding: 8px 16px;
+        background: linear-gradient(135deg, #2d7dd2, #1565c0);
+        color: #fff; border: none; border-radius: 8px;
+        font-family: "DM Sans", sans-serif; font-size: 13px; font-weight: 600;
+        cursor: pointer; white-space: nowrap;
+        box-shadow: 0 3px 10px rgba(30,144,214,.3);
+        transition: background .2s, transform .1s, box-shadow .2s;
+    }
+    .iss-export-btn:hover { background: linear-gradient(135deg, #1a5fa8, #134d8f); box-shadow: 0 5px 16px rgba(30,144,214,.4); transform: translateY(-1px); }
+    .iss-export-btn:active { transform: translateY(0); }
+
+    /* Print-only header cho PDF */
+    .iss-print-header { margin-bottom: 14px; padding-bottom: 10px; border-bottom: 2px solid #1a2d5a; }
+    .iss-print-header h2 { font-family: "Sora", sans-serif; font-size: 18px; font-weight: 700; color: #1a2d5a; margin: 0 0 4px; }
+    .iss-print-sub { font-size: 12px; color: #6b7a90; }
+
+    /* Mặc định ẩn trên màn hình */
+    .print-only { display: none; }
+
+    /* ═════════ PRINT STYLES — chỉ in vùng 14 days ═════════ */
+    @@media print {
+        /* Ẩn toàn bộ trang */
+        body * { visibility: hidden !important; }
+
+        /* Chỉ hiện nội dung trong vùng print-area và con cháu của nó */
+        #iss-print-area-14days, #iss-print-area-14days * { visibility: visible !important; }
+
+        /* Đưa vùng print lên đầu trang in */
+        #iss-print-area-14days {
+            position: absolute !important;
+            left: 0; top: 0;
+            width: 100%;
+            padding: 10mm;
+            background: #fff !important;
+            color: #000 !important;
+        }
+
+        /* Hiện print-only header */
+        .print-only { display: block !important; }
+
+        /* Ẩn các element đánh dấu no-print (nút Export, tabs, v.v.) */
+        .no-print { display: none !important; }
+
+        /* Ẩn mobile view — in chỉ dạng bảng 2 cột */
+        .iss-cal-mobile { display: none !important; }
+        .iss-cal-table-wrap { display: block !important; }
+
+        /* Khung bảng dễ đọc khi in */
+        .iss-cal-table { border-collapse: collapse; width: 100%; font-size: 11px; }
+        .iss-cal-table td { border: 1px solid #444; padding: 6px; vertical-align: top; }
+        .iss-cal-cell { min-height: 80px; }
+        .iss-cal-date { font-weight: 700; font-size: 12px; margin-bottom: 4px; color: #000; }
+        .iss-cal-job { margin-bottom: 4px; padding: 4px 6px; border-left: 3px solid #1565c0; background: #f5f5f5 !important; page-break-inside: avoid; }
+        .iss-it-badge { display: inline-block; padding: 1px 6px; border: 1px solid #555; border-radius: 3px; font-size: 10px; font-weight: 700; background: #fff !important; color: #000 !important; margin-bottom: 2px; }
+        .iss-cj-cat { font-size: 11px; color: #000; }
+        .iss-cj-vendor { font-size: 10px; color: #555; }
+
+        /* Ẩn chevron / icon không cần thiết */
+        .iss-chevron { display: none !important; }
+
+        /* Trang giấy */
+        @@page { size: A4 landscape; margin: 10mm; }
+    }
 </style>
