@@ -46,21 +46,21 @@ else
         <table class="ptable">
             <thead>
                 <tr class="thead-top">
-                    <th rowspan="2" class="th-c th-no">No</th>
-                    <th rowspan="2" class="tc">Inspector Name</th>
-                    <th rowspan="2" class="tc">Inspector ID</th>
-                    <th rowspan="2" class="tc">Category</th>
-                    <th colspan="2" class="th-c th-group-header">Home Address</th>
-                    <th rowspan="2" class="tc">Mobile</th>
-                    <th rowspan="2" class="tc">Email</th>
-                    <th rowspan="2" class="tc">Date Joined</th>
-                    <th rowspan="2" class="tc">Status</th>
-                    <th rowspan="2" class="tc">Personal Profile</th>
-                    <th rowspan="2" class="tc">Actions</th>
+                    <th rowspan="2" class="tc th-y th-no">No</th>
+                    <th rowspan="2" class="tc th-y">Inspector Name</th>
+                    <th rowspan="2" class="tc th-y">Inspector ID</th>
+                    <th rowspan="2" class="tc th-y">Category</th>
+                    <th colspan="2" class="tc th-y">Home Address</th>
+                    <th rowspan="2" class="tc th-y">Mobile</th>
+                    <th rowspan="2" class="tc th-y">Date Joined</th>
+                    <th rowspan="2" class="tc th-y">Status</th>
+                    <th rowspan="2" class="tc th-y">Personal Profile</th>
+                    <th rowspan="2" class="tc th-y">Full Detail</th>
+                    <th rowspan="2" class="tc th-y">Actions</th>
                 </tr>
                 <tr class="thead-sub">
-                    <th class="tc">City</th>
-                    <th class="th-c th-country">Country</th>
+                    <th class="tc th-y">City</th>
+                    <th class="tc th-y th-country">Country</th>
                 </tr>
             </thead>
             <tbody>
@@ -71,8 +71,8 @@ else
                     rowNo++;
                     <tr class="table-row @(rowNo % 2 == 0 ? "tr-alt" : "")">
                         <td class="td-c td-no">@rowNo</td>
-                        <td>
-                            <div class="user-cell">
+                        <td class="tc">
+                            <div class="user-cell" style="justify-content:center;">
                                 <span class="user-fullname">@(string.IsNullOrEmpty(u.FullName) ? u.Username : u.FullName)</span>
                             </div>
                         </td>
@@ -84,10 +84,9 @@ else
                             }
                             else { <span class="dim">—</span> }
                         </td>
-                        <td class="dim sm">@(string.IsNullOrEmpty(u.City)    ? "—" : u.City)</td>
-                        <td class="dim sm td-country">@(string.IsNullOrEmpty(u.Country) ? "—" : u.Country)</td>
-                        <td class="dim sm">@(string.IsNullOrEmpty(u.Mobile)  ? "—" : u.Mobile)</td>
-                        <td class="dim sm">@(string.IsNullOrEmpty(u.Email)   ? "—" : u.Email)</td>
+                        <td class="tc dim sm">@(string.IsNullOrEmpty(u.City)    ? "—" : u.City)</td>
+                        <td class="tc dim sm td-country">@(string.IsNullOrEmpty(u.Country) ? "—" : u.Country)</td>
+                        <td class="tc dim sm">@(string.IsNullOrEmpty(u.Mobile)  ? "—" : u.Mobile)</td>
                         <td class="td-c dim sm">@u.CreatedAt.ToString("dd/MMM/yyyy")</td>
                         <td class="tc">
                             <button class="status-toggle @(u.IsActive ? "s-active" : "s-inactive")"
@@ -103,6 +102,12 @@ else
                                 <a class="cv-link" href="@fullCvUrl" target="_blank">&#128196; CV</a>
                             }
                             else { <span class="dim sm">—</span> }
+                        </td>
+                        <td class="tc">
+                            <button class="action-btn view" @onclick="() => OpenDetail(u)" title="View Full Detail">
+                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                                View
+                            </button>
                         </td>
                         <td class="tc">
                             <div class="action-btns">
@@ -475,6 +480,82 @@ else
     </div>
 }
 
+@* ── Full Detail Modal (read-only) ── *@
+@if (_detailUser != null)
+{
+    var d = _detailUser;
+    <div class="modal-overlay" @onclick="CloseDetail">
+        <div class="modal-card" @onclick:stopPropagation="true">
+            <div class="modal-header">
+                <h2>Inspector Full Detail</h2>
+                <button class="modal-close" @onclick="CloseDetail">&#x2715;</button>
+            </div>
+
+            <div class="detail-grid">
+                <div class="detail-section">
+                    <div class="detail-section-title">Identity</div>
+                    <div class="detail-row"><span>Inspector ID</span><span>@(string.IsNullOrEmpty(d.InspectorId) ? "—" : d.InspectorId)</span></div>
+                    <div class="detail-row"><span>Full Name</span><span>@(string.IsNullOrEmpty(d.FullName) ? d.Username : d.FullName)</span></div>
+                    <div class="detail-row"><span>Short Name</span><span>@(string.IsNullOrEmpty(d.ShortName) ? "—" : d.ShortName)</span></div>
+                    <div class="detail-row"><span>Date of Birth</span><span>@(d.DateOfBirth.HasValue ? d.DateOfBirth.Value.ToString("dd/MM/yyyy") : "—")</span></div>
+                    <div class="detail-row"><span>Gender</span><span>@(string.IsNullOrEmpty(d.Gender) ? "—" : d.Gender)</span></div>
+                    <div class="detail-row"><span>Nationality</span><span>@(string.IsNullOrEmpty(d.Nationality) ? "—" : d.Nationality)</span></div>
+                    <div class="detail-row"><span>@(string.IsNullOrEmpty(d.IdType) ? "ID" : d.IdType)</span><span>@(string.IsNullOrEmpty(d.IdNumber) ? "—" : d.IdNumber)</span></div>
+                </div>
+
+                <div class="detail-section">
+                    <div class="detail-section-title">Professional</div>
+                    <div class="detail-row"><span>Category</span><span>@(string.IsNullOrEmpty(d.Category) ? "—" : d.Category)</span></div>
+                    <div class="detail-row"><span>Start Year</span><span>@(d.InspectionStartYear?.ToString() ?? "—")</span></div>
+                    <div class="detail-row"><span>Language</span><span>@(string.IsNullOrEmpty(d.Language) ? "—" : d.Language)</span></div>
+                    <div class="detail-row"><span>Status</span><span>@(d.IsActive ? "Active" : "Inactive")</span></div>
+                    <div class="detail-row"><span>Date Joined</span><span>@d.CreatedAt.ToString("dd/MMM/yyyy")</span></div>
+                </div>
+
+                <div class="detail-section">
+                    <div class="detail-section-title">Contact</div>
+                    <div class="detail-row"><span>Mobile</span><span>@(string.IsNullOrEmpty(d.Mobile) ? "—" : d.Mobile)</span></div>
+                    <div class="detail-row"><span>Email</span><span>@(string.IsNullOrEmpty(d.Email) ? "—" : d.Email)</span></div>
+                </div>
+
+                <div class="detail-section">
+                    <div class="detail-section-title">Home Address</div>
+                    <div class="detail-row"><span>Address 1</span><span>@(string.IsNullOrEmpty(d.Address1) ? "—" : d.Address1)</span></div>
+                    <div class="detail-row"><span>Address 2</span><span>@(string.IsNullOrEmpty(d.Address2) ? "—" : d.Address2)</span></div>
+                    <div class="detail-row"><span>City</span><span>@(string.IsNullOrEmpty(d.City) ? "—" : d.City)</span></div>
+                    <div class="detail-row"><span>State / Province</span><span>@(string.IsNullOrEmpty(d.State) ? "—" : d.State)</span></div>
+                    <div class="detail-row"><span>Country</span><span>@(string.IsNullOrEmpty(d.Country) ? "—" : d.Country)</span></div>
+                    <div class="detail-row"><span>Postal Code</span><span>@(string.IsNullOrEmpty(d.PostalCode) ? "—" : d.PostalCode)</span></div>
+                </div>
+
+                @if (!string.IsNullOrEmpty(d.CvUrl) || !string.IsNullOrEmpty(d.PhotoUrl))
+                {
+                    <div class="detail-section col-2">
+                        <div class="detail-section-title">Attachments</div>
+                        @if (!string.IsNullOrEmpty(d.PhotoUrl))
+                        {
+                            var fullPhoto = d.PhotoUrl.StartsWith("http") ? d.PhotoUrl
+                                          : (Http.BaseAddress?.ToString().TrimEnd('/') + "/" + d.PhotoUrl.TrimStart('/'));
+                            <div class="detail-row"><span>Profile Photo</span><span><a class="detail-link" href="@fullPhoto" target="_blank">View photo &#8599;</a></span></div>
+                        }
+                        @if (!string.IsNullOrEmpty(d.CvUrl))
+                        {
+                            var fullCv = d.CvUrl.StartsWith("http") ? d.CvUrl
+                                       : (Http.BaseAddress?.ToString().TrimEnd('/') + "/" + d.CvUrl.TrimStart('/'));
+                            <div class="detail-row"><span>CV</span><span><a class="detail-link" href="@fullCv" target="_blank">Open CV &#8599;</a></span></div>
+                        }
+                    </div>
+                }
+            </div>
+
+            <div class="modal-footer">
+                <button class="btn-cancel" @onclick="CloseDetail">Close</button>
+                <button class="btn-submit" @onclick="async () => { var u = d; CloseDetail(); await OpenEdit(u); }">Edit</button>
+            </div>
+        </div>
+    </div>
+}
+
 @code {
     private const string INSPECTOR_ROLE = "Inspector";
     // Default login credentials when creating a new Inspector profile.
@@ -491,6 +572,9 @@ else
     // Modal state
     private bool    _showModal    = false;
     private string? _editId       = null;
+
+    // Detail view state (read-only full detail modal)
+    private UserDto? _detailUser = null;
     // Login (filled automatically, NOT shown in UI)
     private string  _formUsername = "";
     // Profile fields
@@ -641,6 +725,10 @@ else
     }
 
     private void CloseModal() => _showModal = false;
+
+    // ── Full Detail (read-only) ──────────────────────────────────────────────
+    private void OpenDetail(UserDto u) => _detailUser = u;
+    private void CloseDetail()          => _detailUser = null;
 
     /// <summary>
     /// When country changes, auto-update the dial-code prefix of Mobile.
@@ -939,6 +1027,7 @@ else
     .table-wrap { overflow-x:auto; border-radius:10px; box-shadow:0 4px 20px rgba(0,0,0,.25); }
     .ptable { width:100%; border-collapse:collapse; background:#fff; font-size:12.5px; }
     .ptable th { padding:8px 10px; border:1px solid #b8c4d8; text-align:center; font-weight:600; font-size:11px; color:#1a2d5a; white-space:nowrap; text-transform:uppercase; letter-spacing:.04em; background:#f5f8fd; }
+    .th-y   { background:#fffde7 !important; }
     .th-group-header { background:#e3f2fd; color:#1565c0 !important; }
     .th-no  { width:38px; }
     .th-country { width:90px; }
@@ -969,6 +1058,9 @@ else
     .bico { display:inline-flex; align-items:center; justify-content:center; width:28px; height:28px; border:none; border-radius:6px; cursor:pointer; transition:all .15s; }
     .bedit { background:#e8f0fe; color:#1565c0; } .bedit:hover { background:#1565c0; color:#fff; }
     .bdel  { background:#fef2f2; color:#dc2626; } .bdel:hover  { background:#dc2626; color:#fff; }
+
+    .action-btn { background:none; border:none; cursor:pointer; padding:5px 9px; border-radius:6px; font-size:13px; font-weight:500; transition:all .2s; color:#9baac8; display:inline-flex; align-items:center; gap:4px; }
+    .action-btn.view:hover { background:#f0f4fb; color:#4a6080; }
 
     /* Pagination */
     .pagination { display:flex; align-items:center; justify-content:center; gap:12px; margin-top:14px; }
@@ -1063,4 +1155,17 @@ else
     .confirm-card h2 { margin:0 0 10px; color:#1a2d5a; }
     .confirm-card p  { color:#555; font-size:13.5px; line-height:1.5; margin:0 0 14px; }
     .confirm-card .modal-footer { justify-content:center; border-top:none; padding-top:0; }
+
+    /* Full Detail modal */
+    .detail-grid          { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:8px; }
+    .detail-section       { background:#f7fafd; border:1px solid #dde4ef; border-radius:12px; padding:16px; }
+    .detail-section.col-2 { grid-column:span 2; }
+    .detail-section-title { font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.08em; color:#7a8fad; margin-bottom:12px; }
+    .detail-row           { display:flex; justify-content:space-between; align-items:center; padding:6px 0; border-bottom:1px solid #eef4fb; font-size:13px; gap:8px; }
+    .detail-row:last-child { border-bottom:none; }
+    .detail-row span:first-child { color:#9baac8; flex-shrink:0; }
+    .detail-row span:last-child  { color:#1a2d5a; text-align:right; word-break:break-word; }
+    .detail-link  { color:#1e90d6; font-size:13px; text-decoration:none; }
+    .detail-link:hover { text-decoration:underline; }
+    @@media (max-width:700px) { .detail-grid { grid-template-columns:1fr; } .detail-section.col-2 { grid-column:1; } }
 </style>

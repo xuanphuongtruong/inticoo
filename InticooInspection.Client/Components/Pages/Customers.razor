@@ -54,24 +54,23 @@ else
         <table class="ptable">
             <thead>
                 <tr class="thead-group">
-                    <th rowspan="2" class="tc th-no">No</th>
-                    <th rowspan="2">Customer Name</th>
-                    <th rowspan="2" class="tc">Customer ID</th>
-                    <th rowspan="2">Category</th>
-                    <th colspan="3" class="th-grp">Customer Address</th>
-                    <th colspan="3" class="th-grp">Contact Information</th>
-                    <th rowspan="2" class="tc">Files</th>
-                    <th rowspan="2" class="tc">Status</th>
-                    <th rowspan="2" class="tc">Full Detail</th>
-                    <th rowspan="2" class="tc">Action</th>
+                    <th rowspan="2" class="tc th-y">No</th>
+                    <th rowspan="2" class="tc th-y">Customer Name</th>
+                    <th rowspan="2" class="tc th-y">Customer ID</th>
+                    <th rowspan="2" class="tc th-y">Category</th>
+                    <th colspan="2" class="tc th-y">Customer Address</th>
+                    <th colspan="3" class="tc th-y">Contact Information</th>
+                    <th rowspan="2" class="tc th-y">Files</th>
+                    <th rowspan="2" class="tc th-y">Status</th>
+                    <th rowspan="2" class="tc th-y">Full Detail</th>
+                    <th rowspan="2" class="tc th-y">Action</th>
                 </tr>
                 <tr class="thead-sub">
-                    <th>City</th>
-                    <th>States / Province</th>
-                    <th>Country</th>
-                    <th>Contact Name</th>
-                    <th>Position</th>
-                    <th>Mobile</th>
+                    <th class="tc th-y">States / Province</th>
+                    <th class="tc th-y">Country</th>
+                    <th class="tc th-y">Contact Name</th>
+                    <th class="tc th-y">Position</th>
+                    <th class="tc th-y">Mobile</th>
                 </tr>
             </thead>
             <tbody>
@@ -101,7 +100,6 @@ else
                             }
                             else { <span class="muted">-</span> }
                         </td>
-                        <td class="muted">@(string.IsNullOrEmpty(item.City)    ? "-" : item.City)</td>
                         <td class="muted">@(string.IsNullOrEmpty(item.State)   ? "-" : item.State)</td>
                         <td class="muted">@(string.IsNullOrEmpty(item.Country) ? "-" : item.Country)</td>
                         <td class="muted">@(string.IsNullOrEmpty(item.ContactPerson) ? "-" : item.ContactPerson)</td>
@@ -115,7 +113,20 @@ else
                                     @item.FileCount
                                 </button>
                             }
-                            else { <span class="muted">—</span> }
+                            else
+                            {
+                                <AuthorizeView Roles="Admin">
+                                    <Authorized>
+                                        <button class="upload-inline-btn" @onclick="() => OpenEdit(item)" title="Upload files">
+                                            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                                            Upload
+                                        </button>
+                                    </Authorized>
+                                    <NotAuthorized>
+                                        <span class="muted">—</span>
+                                    </NotAuthorized>
+                                </AuthorizeView>
+                            }
                         </td>
                         <td class="tc">
                             <span class="status-badge @(item.IsActive ? "active" : "inactive")">

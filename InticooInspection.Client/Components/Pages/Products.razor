@@ -57,17 +57,17 @@
             <table class="ptable">
                 <thead>
                     <tr class="thead-group">
-                        <th class="th-no tc">No</th>
-                        <th>Product ID</th>
-                        <th>Vendor Name</th>
-                        <th>Vendor ID</th>
-                        <th>Category</th>
-                        <th>Product Name</th>
-                        <th>Product Code</th>
-                        <th>Establish Date</th>
-                        <th class="tc">Status</th>
-                        <th class="tc">Full Detail</th>
-                        <th class="tc">Action</th>
+                        <th class="th-y tc th-no">No</th>
+                        <th class="th-y tc">Product ID</th>
+                        <th class="th-y tc">Vendor Name</th>
+                        <th class="th-y tc">Vendor ID</th>
+                        <th class="th-y tc">Category</th>
+                        <th class="th-y tc">Product Name</th>
+                        <th class="th-y tc">Product Code</th>
+                        <th class="th-y tc">Establish Date</th>
+                        <th class="th-y tc">Status</th>
+                        <th class="th-y tc">Full Detail</th>
+                        <th class="th-y tc">Action</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -82,24 +82,24 @@
                             var item = _filtered[i];
                             <tr class="@(i % 2 == 1 ? "tr-alt" : "")">
                                 <td class="tc muted">@(i + 1)</td>
-                                <td class="mono">@(string.IsNullOrEmpty(item.ProductCode) ? "—" : item.ProductCode)</td>
-                                <td>
+                                <td class="tc mono">@(string.IsNullOrEmpty(item.ProductCode) ? "—" : item.ProductCode)</td>
+                                <td class="tc">
                                     @if (!string.IsNullOrEmpty(item.VendorName))
                                     {
-                                        <div class="company-cell">
+                                        <div class="company-cell" style="justify-content:center;">
                                             <span class="company-name">@item.VendorName</span>
                                         </div>
                                     }
                                     else { <span class="muted">—</span> }
                                 </td>
                                 <td class="mono tc">@(string.IsNullOrEmpty(item.VendorId) ? "—" : item.VendorId)</td>
-                                <td>
+                                <td class="tc">
                                     @if (!string.IsNullOrEmpty(item.Category))
                                     { <span class="cat-badge">@item.Category</span> }
                                     else { <span class="muted">—</span> }
                                 </td>
-                                <td class="fw">@item.ProductName</td>
-                                <td class="mono">@(string.IsNullOrEmpty(item.ItemNumber) ? "—" : item.ItemNumber)</td>
+                                <td class="tc fw">@item.ProductName</td>
+                                <td class="tc mono">@(string.IsNullOrEmpty(item.ItemNumber) ? "—" : item.ItemNumber)</td>
                                 <td class="tc muted">@(item.EstablishDate.HasValue ? item.EstablishDate.Value.ToString("dd MMM yyyy") : "—")</td>
                                 <td class="tc">
                                     <span class="status-badge @(item.IsActive ? "active" : "inactive")">
@@ -145,8 +145,8 @@
             @if (!string.IsNullOrEmpty(_mErr))
             { <div class="error-alert">@_mErr</div> }
 
-            <!-- Product ID + Status -->
-            <div class="form-grid">
+            <!-- Product ID + Establish Date + Status -->
+            <div class="form-grid form-grid-3">
                 <div class="form-group">
                     <label>Product ID</label>
                     @if (_isEdit)
@@ -157,6 +157,13 @@
                     {
                         <div class="form-input form-input-disabled" style="background:#e6f1fb;color:#1e90d6;font-weight:700;font-family:monospace;border-color:#b5d4f4;">@_f.ProductCode</div>
                     }
+                </div>
+                <div class="form-group">
+                    <label>Establish Date</label>
+                    <input class="form-input"
+                           type="date"
+                           value="@(_f.EstablishDate?.ToString("yyyy-MM-dd"))"
+                           @onchange="e => _f.EstablishDate = DateTime.TryParse(e.Value?.ToString(), out var d) ? d : null" />
                 </div>
                 <div class="form-group">
                     <label>Status</label>
@@ -977,7 +984,7 @@
     .table-wrap { overflow-x:auto; border-radius:10px; box-shadow:0 4px 20px rgba(0,0,0,.25); }
     .ptable { width:100%; border-collapse:collapse; background:#fff; font-size:12.5px; min-width:1000px; }
     .ptable th { padding:7px 9px; border:1px solid #b8c4d8; text-align:center; font-weight:600; font-size:11px; color:#1a2d5a; white-space:nowrap; text-transform:uppercase; letter-spacing:.04em; background:#fff; }
-    .thead-group th { background:#fff; color:#1a2d5a !important; vertical-align:middle; }
+    .thead-group th { background:#fffde7; color:#1a2d5a !important; vertical-align:middle; }
     .status-badge         { padding:3px 9px; border-radius:20px; font-size:11px; font-weight:600; white-space:nowrap; }
     .status-badge.active  { background:#eaf3de; color:#3b6d11; border:1px solid #c0dd97; }
     .status-badge.inactive{ background:#fef2f2; color:#dc2626; border:1px solid #fecaca; }
@@ -992,9 +999,9 @@
     .company-avatar{ width:30px; height:30px; border-radius:8px; background:#1e90d6; display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:700; flex-shrink:0; color:#fff; }
     .company-name  { font-weight:600; font-size:13px; color:#1a2d5a; }
     .cat-badge { padding:3px 9px; border-radius:20px; font-size:11px; font-weight:600; background:#e6f1fb; color:#1565c0; white-space:nowrap; border:1px solid #b5d4f4; }
-    .th-y   { background:#fffde7; }
+    .th-y   { background:#fffde7 !important; }
     .th-grp { background:#e3f2fd; }
-    .th-no  { background:#f5f5f5; width:40px; }
+    .th-no  { background:#fffde7 !important; width:40px; }
     .th-act { background:#f5f5f5; width:70px; }
     .ptable td { padding:7px 9px; border:1px solid #dde4ef; color:#1a2d5a; vertical-align:middle; }
     .tc   { text-align:center; }
@@ -1027,6 +1034,7 @@
     .error-alert { background: #fff1f1; border: 1px solid #fecaca; border-radius: 10px; padding: 12px 14px; font-size: 13px; color: #b42318; margin-bottom: 16px; }
     .form-section-title { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .08em; color: #1e90d6; margin: 20px 0 12px; padding-bottom: 7px; border-bottom: 1.5px solid #c7e3f8; }
     .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px 28px; }
+    .form-grid.form-grid-3 { grid-template-columns: 1fr 1fr 1fr; }
     .form-group { margin-bottom: 2px; }
     .form-group.full-width { grid-column: 1 / -1; }
     .form-group label { display: block; font-size: 11px; font-weight: 600; color: #7a8fad; margin-bottom: 6px; text-transform: uppercase; letter-spacing: .06em; }
@@ -1094,7 +1102,7 @@
 
     @@media (max-width: 900px) {
         .modal-card { width: 92vw; padding: 20px 18px; }
-        .form-grid { grid-template-columns: 1fr; gap: 12px; }
+        .form-grid, .form-grid.form-grid-3 { grid-template-columns: 1fr; gap: 12px; }
         .form-group.full-width { grid-column: 1; }
         .title-block { width: 100%; }
         .search-wrap { min-width: 160px; }

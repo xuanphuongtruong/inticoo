@@ -10,14 +10,14 @@
 @using InticooInspection.Client.Services
 @inject WaitingService Waiting
 
-<PageTitle>Inspection Plan Schedule - Inticoo</PageTitle>
+<PageTitle>Summary Inspections - Inticoo</PageTitle>
 
 <div class="page-container">
 
     <!-- Top bar -->
     <div class="top-bar">
         <div class="title-block">
-            <h1 class="page-title">Inspection Plan Schedule</h1>
+            <h1 class="page-title">Summary Inspections</h1>
             <span class="page-sub">Manage and track all inspections</span>
         </div>
         <div class="sep"></div>
@@ -75,29 +75,26 @@
             <table class="ptable">
                 <thead>
                     <tr>
-                        <th rowspan="2" class="th-no">No</th>
-                        <th rowspan="2" class="th-y">Receive Date</th>
-                        <th rowspan="2" class="th-y">Job No</th>
-                        <th rowspan="2" class="th-y">Inspection Date</th>
-                        <th rowspan="2" class="th-y">Customer Name</th>
-                        <th rowspan="2" class="th-y">Category</th>
-                        <th rowspan="2" class="th-y">Inspection Type</th>
-                        <th rowspan="2" class="th-y">Vendor Name</th>
-                        <th colspan="2" class="th-grp">Vendor Address</th>
-                        <th rowspan="2" class="th-y">Inspector Name</th>
-                        <th rowspan="2" class="th-y">Inspector ID</th>
-                        <th rowspan="2" class="th-y">Status</th>
-                        @if (!_isCustomer) { <th rowspan="2" class="th-act">Action</th> }
-                    </tr>
-                    <tr>
-                        <th class="th-y">Address</th>
-                        <th class="th-y">Country</th>
+                        <th class="th-y th-no">No</th>
+                        <th class="th-y">Receive Date</th>
+                        <th class="th-y">Job No</th>
+                        <th class="th-y">P.O. Number</th>
+                        <th class="th-y">Inspection Date</th>
+                        <th class="th-y">Customer Name</th>
+                        <th class="th-y">Category</th>
+                        <th class="th-y">Inspection Type</th>
+                        <th class="th-y">Vendor Name</th>
+                        <th class="th-y">Vendor Country</th>
+                        <th class="th-y">Inspector Name</th>
+                        <th class="th-y">Inspector ID</th>
+                        <th class="th-y">Status</th>
+                        @if (!_isCustomer) { <th class="th-y th-act">Action</th> }
                     </tr>
                 </thead>
                 <tbody>
                     @if (_inspections.Count == 0)
                     {
-                        <tr><td colspan="15" class="td-empty">No inspections found.</td></tr>
+                        <tr><td colspan="14" class="td-empty">No inspections found.</td></tr>
                     }
                     else
                     {
@@ -110,6 +107,7 @@
                                 <td class="tc td-no">@rowNo</td>
                                 <td class="tc">@it.CreatedAt.ToString("dd/MM/yyyy")</td>
                                 <td class="tc mono">@(string.IsNullOrEmpty(it.JobNumber) ? "—" : it.JobNumber)</td>
+                                <td class="tc mono">@(string.IsNullOrEmpty(it.PoNumber) ? "—" : it.PoNumber)</td>
                                 <td class="tc">@(it.InspectionDate.HasValue ? it.InspectionDate.Value.ToString("dd/MM/yyyy") : "—")</td>
                                 <td class="fw">@(string.IsNullOrEmpty(it.CustomerName) ? "—" : it.CustomerName)</td>
                                 <td>@(string.IsNullOrEmpty(it.ProductCategory) ? "—" : it.ProductCategory)</td>
@@ -121,7 +119,6 @@
                                     else { <span class="dash">—</span> }
                                 </td>
                                 <td>@(string.IsNullOrEmpty(it.VendorName) ? "—" : it.VendorName)</td>
-                                <td class="addr-cell">@(string.IsNullOrEmpty(it.VendorCity) ? "—" : it.VendorCity)</td>
                                 <td class="tc">@(string.IsNullOrEmpty(it.VendorCountry) ? "—" : it.VendorCountry)</td>
                                 <td>@(string.IsNullOrEmpty(it.InspectorName) ? "—" : it.InspectorName)</td>
                                 <td class="tc mono">@(string.IsNullOrEmpty(it.InspectorId) ? "—" : it.InspectorId)</td>
@@ -536,6 +533,7 @@
         public DateTime  CreatedAt       { get; set; }
         public string?   CreatedByName   { get; set; }
         public string?   JobNumber       { get; set; }
+        public string?   PoNumber        { get; set; }
         public DateTime? InspectionDate  { get; set; }
         public string?   CustomerName    { get; set; }
         public string?   CustomerId      { get; set; }
