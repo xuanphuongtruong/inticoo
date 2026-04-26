@@ -481,6 +481,39 @@
                                     @if (!string.IsNullOrEmpty(job.InspectorMobile))
                                     { <div class="iss-jf iss-jf-sub"><span class="iss-jl">• Mobile</span><span class="iss-jv">@job.InspectorMobile</span></div> }
                                 }
+                                @if (job.References.Count > 0)
+                                {
+                                    <div class="iss-jf iss-jf-section"><span class="iss-jl iss-jl-section">Product References</span></div>
+                                    @foreach (var ref_ in job.References)
+                                    {
+                                        <div class="iss-jf iss-jf-sub iss-jf-ref">
+                                            <span class="iss-jl">• @ref_.ReferenceName</span>
+                                            <span class="iss-jv">
+                                                @if (!string.IsNullOrEmpty(ref_.FileUrl))
+                                                {
+                                                    <a href="@ref_.FileUrl" target="_blank" class="iss-ref-mini-btn"
+                                                       @onclick:stopPropagation="true" title="View">
+                                                        <svg width="11" height="11" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2">
+                                                            <path d="M1 10s3.5-7 9-7 9 7 9 7-3.5 7-9 7-9-7-9-7z"/><circle cx="10" cy="10" r="3"/>
+                                                        </svg>
+                                                        View
+                                                    </a>
+                                                    <a href="@ref_.FileUrl" download="@ref_.FileName" class="iss-ref-mini-btn iss-ref-mini-dl"
+                                                       @onclick:stopPropagation="true" title="Download">
+                                                        <svg width="11" height="11" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2">
+                                                            <path d="M10 3v10M6 9l4 4 4-4" stroke-linecap="round" stroke-linejoin="round"/>
+                                                            <path d="M3 17h14" stroke-linecap="round"/>
+                                                        </svg>
+                                                    </a>
+                                                }
+                                                else
+                                                {
+                                                    <span style="color:#bbb;font-size:11px;">No file</span>
+                                                }
+                                            </span>
+                                        </div>
+                                    }
+                                }
                             </div>
                             <div class="iss-jc-foot">
                                 <span class="iss-st-pill @GetStatusClass(job.Status)">@job.Status</span>
@@ -531,6 +564,39 @@
                                         { <div class="iss-li-row iss-li-sub"><span class="iss-ll">• Office</span><span class="iss-lv">@job.VendorContactOffice</span></div> }
                                         @if (!string.IsNullOrEmpty(job.VendorContactEmail))
                                         { <div class="iss-li-row iss-li-sub"><span class="iss-ll">• Email</span><span class="iss-lv">@job.VendorContactEmail</span></div> }
+                                    }
+                                    @if (job.References.Count > 0)
+                                    {
+                                        <div class="iss-li-row"><span class="iss-ll iss-jl-section">Product References</span></div>
+                                        @foreach (var ref_ in job.References)
+                                        {
+                                            <div class="iss-li-row iss-li-sub iss-li-ref">
+                                                <span class="iss-ll">• @ref_.ReferenceName</span>
+                                                <span class="iss-lv">
+                                                    @if (!string.IsNullOrEmpty(ref_.FileUrl))
+                                                    {
+                                                        <a href="@ref_.FileUrl" target="_blank" class="iss-ref-mini-btn"
+                                                           @onclick:stopPropagation="true" title="View">
+                                                            <svg width="11" height="11" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2">
+                                                                <path d="M1 10s3.5-7 9-7 9 7 9 7-3.5 7-9 7-9-7-9-7z"/><circle cx="10" cy="10" r="3"/>
+                                                            </svg>
+                                                            View
+                                                        </a>
+                                                        <a href="@ref_.FileUrl" download="@ref_.FileName" class="iss-ref-mini-btn iss-ref-mini-dl"
+                                                           @onclick:stopPropagation="true" title="Download">
+                                                            <svg width="11" height="11" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2">
+                                                                <path d="M10 3v10M6 9l4 4 4-4" stroke-linecap="round" stroke-linejoin="round"/>
+                                                                <path d="M3 17h14" stroke-linecap="round"/>
+                                                            </svg>
+                                                        </a>
+                                                    }
+                                                    else
+                                                    {
+                                                        <span style="color:#bbb;font-size:11px;">No file</span>
+                                                    }
+                                                </span>
+                                            </div>
+                                        }
                                     }
                                 </div>
                                 <svg class="iss-chevron" width="16" height="16" viewBox="0 0 20 20"
@@ -706,6 +772,7 @@
         public string?   OverallResult  { get; set; }
         public string?   FinalResult    { get; set; }
         public string?   ReportUrl      { get; set; }
+        public List<JobReference> References { get; set; } = new();
     }
 
     public class JobReference
@@ -900,40 +967,63 @@
         }
     }
 
-    private static JobItem MapToJobItem(ApiItem i) => new()
+    private JobItem MapToJobItem(ApiItem i)
     {
-        Id              = i.Id,
-        JobNumber       = i.JobNumber ?? i.Title,
-        Title           = i.Title      ?? "",
-        CustomerName    = i.CustomerName ?? "",
-        CustomerId      = i.CustomerId,
-        ProductCategory = string.IsNullOrEmpty(i.ProductCategory) ? null : i.ProductCategory,
-        ProductType     = string.IsNullOrEmpty(i.ProductType)     ? null : i.ProductType,
-        InspectionType  = i.InspectionType ?? "DPI",
-        VendorName      = i.VendorName  ?? "",
-        VendorAddress   = string.IsNullOrEmpty(i.VendorAddress)   ? null : i.VendorAddress,
-        VendorAddress1  = string.IsNullOrEmpty(i.VendorAddress1)  ? null : i.VendorAddress1,
-        VendorAddress2  = string.IsNullOrEmpty(i.VendorAddress2)  ? null : i.VendorAddress2,
-        VendorCity      = string.IsNullOrEmpty(i.VendorCity)      ? null : i.VendorCity,
-        VendorState     = string.IsNullOrEmpty(i.VendorState)     ? null : i.VendorState,
-        VendorCountry   = string.IsNullOrEmpty(i.VendorCountry)   ? null : i.VendorCountry,
-        VendorContactName     = i.VendorContactName,
-        VendorContactPosition = i.VendorContactPosition,
-        VendorContactMobile   = i.VendorContactMobile,
-        VendorContactOffice   = i.VendorContactOffice,
-        VendorContactEmail    = i.VendorContactEmail,
-        InspectorName   = i.InspectorName,
-        InspectorId     = i.InspectorId,
-        InspectorMobile = i.InspectorMobile,
-        Status          = i.Status      ?? "New",
-        InspectionDate  = i.InspectionDate ?? DateTime.MinValue,
-        CreatedAt       = i.CreatedAt,
-        CompletedAt     = i.CompletedAt,
-        OverallResult   = null,
-        FinalResult     = i.FinalResult,
-        ReportUrl       = null,
-        PoNumber        = i.PoNumber,
-    };
+        var baseUrl = Http.BaseAddress?.ToString().TrimEnd('/') ?? "";
+
+        var refs = (i.References ?? new())
+            .Select((r, idx) =>
+            {
+                var rawUrl  = r.FileUrl ?? "";
+                var fullUrl = (!string.IsNullOrEmpty(rawUrl) && !rawUrl.StartsWith("http"))
+                              ? $"{baseUrl}{(rawUrl.StartsWith('/') ? rawUrl : "/" + rawUrl)}"
+                              : rawUrl;
+                return new JobReference
+                {
+                    No            = idx + 1,
+                    ReferenceName = r.ReferenceName ?? "",
+                    FileName      = r.FileName,
+                    FileUrl       = string.IsNullOrEmpty(fullUrl) ? null : fullUrl,
+                };
+            })
+            .ToList();
+
+        return new JobItem
+        {
+            Id              = i.Id,
+            JobNumber       = i.JobNumber ?? i.Title,
+            Title           = i.Title      ?? "",
+            CustomerName    = i.CustomerName ?? "",
+            CustomerId      = i.CustomerId,
+            ProductCategory = string.IsNullOrEmpty(i.ProductCategory) ? null : i.ProductCategory,
+            ProductType     = string.IsNullOrEmpty(i.ProductType)     ? null : i.ProductType,
+            InspectionType  = i.InspectionType ?? "DPI",
+            VendorName      = i.VendorName  ?? "",
+            VendorAddress   = string.IsNullOrEmpty(i.VendorAddress)   ? null : i.VendorAddress,
+            VendorAddress1  = string.IsNullOrEmpty(i.VendorAddress1)  ? null : i.VendorAddress1,
+            VendorAddress2  = string.IsNullOrEmpty(i.VendorAddress2)  ? null : i.VendorAddress2,
+            VendorCity      = string.IsNullOrEmpty(i.VendorCity)      ? null : i.VendorCity,
+            VendorState     = string.IsNullOrEmpty(i.VendorState)     ? null : i.VendorState,
+            VendorCountry   = string.IsNullOrEmpty(i.VendorCountry)   ? null : i.VendorCountry,
+            VendorContactName     = i.VendorContactName,
+            VendorContactPosition = i.VendorContactPosition,
+            VendorContactMobile   = i.VendorContactMobile,
+            VendorContactOffice   = i.VendorContactOffice,
+            VendorContactEmail    = i.VendorContactEmail,
+            InspectorName   = i.InspectorName,
+            InspectorId     = i.InspectorId,
+            InspectorMobile = i.InspectorMobile,
+            Status          = i.Status      ?? "New",
+            InspectionDate  = i.InspectionDate ?? DateTime.MinValue,
+            CreatedAt       = i.CreatedAt,
+            CompletedAt     = i.CompletedAt,
+            OverallResult   = null,
+            FinalResult     = i.FinalResult,
+            ReportUrl       = null,
+            PoNumber        = i.PoNumber,
+            References      = refs,
+        };
+    }
 
     private void BuildMonthSummary()
     {
@@ -1126,6 +1216,15 @@
         public DateTime? InspectionDate  { get; set; }
         public DateTime  CreatedAt       { get; set; }
         public DateTime? CompletedAt     { get; set; }
+        public List<ApiReferenceItem>? References { get; set; }
+    }
+
+    private class ApiReferenceItem
+    {
+        public string? ReferenceName { get; set; }
+        public string? FileName      { get; set; }
+        public string? FileUrl       { get; set; }
+        public string? Remark        { get; set; }
     }
 }
 
@@ -1151,6 +1250,25 @@
     .iss-ref-view-btn:hover { background: #cce4f8; }
     .iss-ref-dl-btn { display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; border-radius: 6px; background: #eaf3de; color: #3b6d11; border: 1px solid #c0dd97; font-size: 12px; font-weight: 500; text-decoration: none; transition: background .15s; }
     .iss-ref-dl-btn:hover { background: #d4ebb8; }
+
+    /* Mini ref buttons inside Today/7-day cards */
+    .iss-jf-ref, .iss-li-ref { align-items: center; }
+    .iss-ref-mini-btn {
+        display: inline-flex; align-items: center; gap: 3px;
+        padding: 2px 7px; margin-left: 4px;
+        border-radius: 5px;
+        background: #e6f1fb; color: #1e90d6;
+        border: 1px solid #b5d4f4;
+        font-size: 11px; font-weight: 500;
+        text-decoration: none;
+        transition: background .15s;
+        vertical-align: middle;
+    }
+    .iss-ref-mini-btn:hover { background: #cce4f8; }
+    .iss-ref-mini-btn.iss-ref-mini-dl {
+        background: #eaf3de; color: #3b6d11; border-color: #c0dd97;
+    }
+    .iss-ref-mini-btn.iss-ref-mini-dl:hover { background: #d4ebb8; }
 
     /* ══════════ LOADING ══════════ */
     .iss-loading {

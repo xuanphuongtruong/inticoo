@@ -155,6 +155,26 @@ namespace InticooInspection.API.Controllers
                     if (p.ProductName != null && !productTypeDict.ContainsKey(p.ProductName))
                         productTypeDict[p.ProductName] = p.ProductType ?? "";
 
+                // References lookup — load 1 lần cho các inspection ở trang hiện tại
+                var pageIds = pageItems.Select(p => p.Id).ToList();
+                var refsByInspection = await _db.Set<InspectionReference>()
+                    .AsNoTracking()
+                    .Where(r => pageIds.Contains(r.InspectionId))
+                    .OrderBy(r => r.InspectionId).ThenBy(r => r.Order)
+                    .Select(r => new
+                    {
+                        r.InspectionId,
+                        r.ReferenceName,
+                        r.FileName,
+                        r.FileUrl,
+                        r.Remark,
+                        r.Order
+                    })
+                    .ToListAsync();
+                var referencesDict = refsByInspection
+                    .GroupBy(r => r.InspectionId)
+                    .ToDictionary(g => g.Key, g => g.ToList());
+
                 // ── Map enums → strings in-memory ──
                 // 0=New | 1=OnGoing | 2=Completed | 3=Pending | 4=Cancel
                 static string MapStatus(InspectionStatus st) => st switch
@@ -199,6 +219,17 @@ namespace InticooInspection.API.Controllers
 
                     productTypeDict.TryGetValue(i.ProductName ?? "", out var ptype);
 
+                    // References của inspection này
+                    var refList = referencesDict.TryGetValue(i.Id, out var rs)
+                        ? rs.Select(r => (object)new
+                        {
+                            referenceName = r.ReferenceName,
+                            fileName      = r.FileName,
+                            fileUrl       = r.FileUrl,
+                            remark        = r.Remark
+                        }).ToList()
+                        : new List<object>();
+
                     return (object)new
                     {
                         id = i.Id,
@@ -230,7 +261,8 @@ namespace InticooInspection.API.Controllers
                         inspectorName = inspName,
                         inspectorMobile = inspMobile,
                         poNumber = i.PoNumber ?? "",
-                        finalResult = i.FinalResult
+                        finalResult = i.FinalResult,
+                        references = refList
                     };
                 }).ToList();
 
