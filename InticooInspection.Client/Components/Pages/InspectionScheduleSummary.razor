@@ -944,7 +944,94 @@
         }
 
         BuildMonthSummary();
+
+        // Fallback: nếu backend chưa trả về references trong list endpoint,
+        // tự động fetch chi tiết cho các job hiển thị trong Today + 7 days
+        // (gọi GET api/inspections/{id} đã có sẵn references)
+        await EnsureReferencesForUpcomingJobs();
+
         _loading = false;
+    }
+
+    /// <summary>
+    /// Đảm bảo các job trong khoảng Today → +7 ngày có References.
+    /// Nếu backend (GetAll) đã trả references thì không làm gì.
+    /// Ngược lại sẽ gọi GET /api/inspections/{id} song song để lấy references.
+    /// </summary>
+    private async Task EnsureReferencesForUpcomingJobs()
+    {
+        try
+        {
+            var today = DateTime.Today;
+            var horizon = today.AddDays(7);
+
+            // Chỉ load cho các job trong tab "Today" + "7 days" để tránh tốn request
+            var targets = _allJobs
+                .Where(j => IsTodo(j) &&
+                            j.InspectionDate != DateTime.MinValue &&
+                            j.InspectionDate.Date <= horizon &&
+                            (j.InspectionDate.Date <= today || j.InspectionDate.Date >= today)) // overdue + today + next 7
+                .Where(j => j.References.Count == 0) // chỉ fetch nếu chưa có
+                .Take(50) // safety cap
+                .ToList();
+
+            if (targets.Count == 0)
+            {
+                Console.WriteLine("[Schedule] EnsureReferences: nothing to load (refs already present or no upcoming jobs)");
+                return;
+            }
+
+            Console.WriteLine($"[Schedule] EnsureReferences: fetching details for {targets.Count} jobs");
+
+            var baseUrl = Http.BaseAddress?.ToString().TrimEnd('/') ?? "";
+            var opts = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+
+            // Gọi song song để nhanh hơn
+            var tasks = targets.Select(async job =>
+            {
+                try
+                {
+                    var json = await Http.GetStringAsync($"api/inspections/{job.Id}");
+                    using var doc = JsonDocument.Parse(json);
+                    var root = doc.RootElement;
+                    if (root.TryGetProperty("references", out var refs) &&
+                        refs.ValueKind == JsonValueKind.Array)
+                    {
+                        int no = 1;
+                        var list = new List<JobReference>();
+                        foreach (var r in refs.EnumerateArray())
+                        {
+                            var rawUrl = r.TryGetProperty("fileUrl", out var fu) ? fu.GetString() ?? "" : "";
+                            var fullUrl = (!string.IsNullOrEmpty(rawUrl) && !rawUrl.StartsWith("http"))
+                                          ? $"{baseUrl}{(rawUrl.StartsWith('/') ? rawUrl : "/" + rawUrl)}"
+                                          : rawUrl;
+                            list.Add(new JobReference
+                            {
+                                No            = no++,
+                                ReferenceName = r.TryGetProperty("referenceName", out var rn) ? rn.GetString() ?? "" : "",
+                                FileName      = r.TryGetProperty("fileName",      out var fn) ? fn.GetString() : null,
+                                FileUrl       = string.IsNullOrEmpty(fullUrl) ? null : fullUrl,
+                            });
+                        }
+                        job.References = list;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"[Schedule] EnsureReferences error for job {job.Id}: {ex.Message}");
+                }
+            });
+
+            await Task.WhenAll(tasks);
+
+            var withRefs = targets.Count(j => j.References.Count > 0);
+            Console.WriteLine($"[Schedule] EnsureReferences: {withRefs}/{targets.Count} jobs got references");
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[Schedule] EnsureReferences fatal: {ex.Message}");
+        }
     }
 
     private async Task LoadAllJobs()
@@ -960,11 +1047,21 @@
 
             var opts = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
 
-            var r1 = await Http.GetFromJsonAsync<ApiPageResponse>(
-                $"api/inspections?page=1&pageSize=200{filterSuffix}", opts);
+            // DEBUG: lấy raw JSON để xem chính xác API trả về cái gì
+            var rawJson = await Http.GetStringAsync($"api/inspections?page=1&pageSize=200{filterSuffix}");
+            Console.WriteLine($"[Schedule] Raw API response (first 2000 chars): {rawJson.Substring(0, Math.Min(2000, rawJson.Length))}");
+
+            var r1 = JsonSerializer.Deserialize<ApiPageResponse>(rawJson, opts);
 
             if (r1?.Items == null) return;
             _allJobs = r1.Items.Select(MapToJobItem).ToList();
+
+            // DEBUG: in chi tiết item đầu tiên xem References có không
+            if (r1.Items.Count > 0)
+            {
+                var first = r1.Items[0];
+                Console.WriteLine($"[Schedule] First item: id={first.Id}, jobNumber={first.JobNumber}, References={(first.References == null ? "NULL" : first.References.Count.ToString())}");
+            }
 
             int totalPages = (int)Math.Ceiling((double)r1.Total / 200);
             for (int p = 2; p <= totalPages; p++)
