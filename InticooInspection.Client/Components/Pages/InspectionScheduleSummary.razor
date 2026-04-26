@@ -484,35 +484,42 @@
                                 @if (job.References.Count > 0)
                                 {
                                     <div class="iss-jf iss-jf-section"><span class="iss-jl iss-jl-section">Product References</span></div>
-                                    @foreach (var ref_ in job.References)
-                                    {
-                                        <div class="iss-jf iss-jf-sub iss-jf-ref">
-                                            <span class="iss-jl">• @ref_.ReferenceName</span>
-                                            <span class="iss-jv">
-                                                @if (!string.IsNullOrEmpty(ref_.FileUrl))
-                                                {
-                                                    <a href="@ref_.FileUrl" target="_blank" class="iss-ref-mini-btn"
-                                                       @onclick:stopPropagation="true" title="View">
-                                                        <svg width="11" height="11" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2">
-                                                            <path d="M1 10s3.5-7 9-7 9 7 9 7-3.5 7-9 7-9-7-9-7z"/><circle cx="10" cy="10" r="3"/>
-                                                        </svg>
-                                                        View
-                                                    </a>
-                                                    <a href="@ref_.FileUrl" download="@ref_.FileName" class="iss-ref-mini-btn iss-ref-mini-dl"
-                                                       @onclick:stopPropagation="true" title="Download">
-                                                        <svg width="11" height="11" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2">
-                                                            <path d="M10 3v10M6 9l4 4 4-4" stroke-linecap="round" stroke-linejoin="round"/>
-                                                            <path d="M3 17h14" stroke-linecap="round"/>
-                                                        </svg>
-                                                    </a>
-                                                }
-                                                else
-                                                {
-                                                    <span style="color:#bbb;font-size:11px;">No file</span>
-                                                }
-                                            </span>
+                                    <div class="iss-ref-table iss-ref-compact" @onclick:stopPropagation="true">
+                                        <div class="iss-ref-header">
+                                            <span class="iss-ref-no">No</span>
+                                            <span class="iss-ref-name">Reference</span>
+                                            <span class="iss-ref-file">File</span>
                                         </div>
-                                    }
+                                        @foreach (var ref_ in job.References)
+                                        {
+                                            <div class="iss-ref-row">
+                                                <span class="iss-ref-no">@ref_.No</span>
+                                                <span class="iss-ref-name">@ref_.ReferenceName</span>
+                                                <span class="iss-ref-file">
+                                                    @if (!string.IsNullOrEmpty(ref_.FileUrl))
+                                                    {
+                                                        <a href="@ref_.FileUrl" target="_blank" class="iss-ref-view-btn" title="View">
+                                                            <svg width="13" height="13" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2">
+                                                                <path d="M1 10s3.5-7 9-7 9 7 9 7-3.5 7-9 7-9-7-9-7z"/><circle cx="10" cy="10" r="3"/>
+                                                            </svg>
+                                                            View
+                                                        </a>
+                                                        <a href="@ref_.FileUrl" download="@ref_.FileName" class="iss-ref-dl-btn" title="Download">
+                                                            <svg width="13" height="13" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2">
+                                                                <path d="M10 3v10M6 9l4 4 4-4" stroke-linecap="round" stroke-linejoin="round"/>
+                                                                <path d="M3 17h14" stroke-linecap="round"/>
+                                                            </svg>
+                                                            Download
+                                                        </a>
+                                                    }
+                                                    else
+                                                    {
+                                                        <span style="color:#bbb;font-size:12px;">No file</span>
+                                                    }
+                                                </span>
+                                            </div>
+                                        }
+                                    </div>
                                 }
                             </div>
                             <div class="iss-jc-foot">
@@ -568,35 +575,42 @@
                                     @if (job.References.Count > 0)
                                     {
                                         <div class="iss-li-row"><span class="iss-ll iss-jl-section">Product References</span></div>
-                                        @foreach (var ref_ in job.References)
-                                        {
-                                            <div class="iss-li-row iss-li-sub iss-li-ref">
-                                                <span class="iss-ll">• @ref_.ReferenceName</span>
-                                                <span class="iss-lv">
-                                                    @if (!string.IsNullOrEmpty(ref_.FileUrl))
-                                                    {
-                                                        <a href="@ref_.FileUrl" target="_blank" class="iss-ref-mini-btn"
-                                                           @onclick:stopPropagation="true" title="View">
-                                                            <svg width="11" height="11" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2">
-                                                                <path d="M1 10s3.5-7 9-7 9 7 9 7-3.5 7-9 7-9-7-9-7z"/><circle cx="10" cy="10" r="3"/>
-                                                            </svg>
-                                                            View
-                                                        </a>
-                                                        <a href="@ref_.FileUrl" download="@ref_.FileName" class="iss-ref-mini-btn iss-ref-mini-dl"
-                                                           @onclick:stopPropagation="true" title="Download">
-                                                            <svg width="11" height="11" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2">
-                                                                <path d="M10 3v10M6 9l4 4 4-4" stroke-linecap="round" stroke-linejoin="round"/>
-                                                                <path d="M3 17h14" stroke-linecap="round"/>
-                                                            </svg>
-                                                        </a>
-                                                    }
-                                                    else
-                                                    {
-                                                        <span style="color:#bbb;font-size:11px;">No file</span>
-                                                    }
-                                                </span>
+                                        <div class="iss-ref-table iss-ref-compact" @onclick:stopPropagation="true">
+                                            <div class="iss-ref-header">
+                                                <span class="iss-ref-no">No</span>
+                                                <span class="iss-ref-name">Reference</span>
+                                                <span class="iss-ref-file">File</span>
                                             </div>
-                                        }
+                                            @foreach (var ref_ in job.References)
+                                            {
+                                                <div class="iss-ref-row">
+                                                    <span class="iss-ref-no">@ref_.No</span>
+                                                    <span class="iss-ref-name">@ref_.ReferenceName</span>
+                                                    <span class="iss-ref-file">
+                                                        @if (!string.IsNullOrEmpty(ref_.FileUrl))
+                                                        {
+                                                            <a href="@ref_.FileUrl" target="_blank" class="iss-ref-view-btn" title="View">
+                                                                <svg width="13" height="13" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2">
+                                                                    <path d="M1 10s3.5-7 9-7 9 7 9 7-3.5 7-9 7-9-7-9-7z"/><circle cx="10" cy="10" r="3"/>
+                                                                </svg>
+                                                                View
+                                                            </a>
+                                                            <a href="@ref_.FileUrl" download="@ref_.FileName" class="iss-ref-dl-btn" title="Download">
+                                                                <svg width="13" height="13" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2">
+                                                                    <path d="M10 3v10M6 9l4 4 4-4" stroke-linecap="round" stroke-linejoin="round"/>
+                                                                    <path d="M3 17h14" stroke-linecap="round"/>
+                                                                </svg>
+                                                                Download
+                                                            </a>
+                                                        }
+                                                        else
+                                                        {
+                                                            <span style="color:#bbb;font-size:12px;">No file</span>
+                                                        }
+                                                    </span>
+                                                </div>
+                                            }
+                                        </div>
                                     }
                                 </div>
                                 <svg class="iss-chevron" width="16" height="16" viewBox="0 0 20 20"
@@ -960,6 +974,10 @@
                 if (rp?.Items != null)
                     _allJobs.AddRange(rp.Items.Select(MapToJobItem));
             }
+
+            // Debug: kiểm tra references có được API trả về không
+            var jobsWithRefs = _allJobs.Count(j => j.References.Count > 0);
+            Console.WriteLine($"[Schedule] Loaded {_allJobs.Count} jobs, {jobsWithRefs} have references");
         }
         catch (Exception ex)
         {
@@ -1251,24 +1269,23 @@
     .iss-ref-dl-btn { display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; border-radius: 6px; background: #eaf3de; color: #3b6d11; border: 1px solid #c0dd97; font-size: 12px; font-weight: 500; text-decoration: none; transition: background .15s; }
     .iss-ref-dl-btn:hover { background: #d4ebb8; }
 
-    /* Mini ref buttons inside Today/7-day cards */
-    .iss-jf-ref, .iss-li-ref { align-items: center; }
-    .iss-ref-mini-btn {
-        display: inline-flex; align-items: center; gap: 3px;
-        padding: 2px 7px; margin-left: 4px;
-        border-radius: 5px;
-        background: #e6f1fb; color: #1e90d6;
-        border: 1px solid #b5d4f4;
-        font-size: 11px; font-weight: 500;
-        text-decoration: none;
-        transition: background .15s;
-        vertical-align: middle;
+    /* Compact ref-table — used inside Today/7-day cards (smaller fonts/paddings) */
+    .iss-ref-compact { margin-top: 6px; }
+    .iss-ref-compact .iss-ref-header { padding: 6px 10px; font-size: 10px; }
+    .iss-ref-compact .iss-ref-row    { padding: 7px 10px; font-size: 12px; }
+    .iss-ref-compact .iss-ref-no     { width: 28px; font-size: 11px; }
+    .iss-ref-compact .iss-ref-name   { font-size: 12px; padding-right: 8px; }
+    .iss-ref-compact .iss-ref-view-btn,
+    .iss-ref-compact .iss-ref-dl-btn { padding: 3px 8px; font-size: 11px; }
+    .iss-ref-compact .iss-ref-view-btn svg,
+    .iss-ref-compact .iss-ref-dl-btn  svg { width: 11px; height: 11px; }
+
+    /* Mobile: collapse buttons label, keep icons only */
+    @@media (max-width: 480px) {
+        .iss-ref-compact .iss-ref-row    { flex-wrap: wrap; }
+        .iss-ref-compact .iss-ref-name   { flex-basis: 100%; padding-right: 0; margin-bottom: 4px; }
+        .iss-ref-compact .iss-ref-no     { order: -1; }
     }
-    .iss-ref-mini-btn:hover { background: #cce4f8; }
-    .iss-ref-mini-btn.iss-ref-mini-dl {
-        background: #eaf3de; color: #3b6d11; border-color: #c0dd97;
-    }
-    .iss-ref-mini-btn.iss-ref-mini-dl:hover { background: #d4ebb8; }
 
     /* ══════════ LOADING ══════════ */
     .iss-loading {
