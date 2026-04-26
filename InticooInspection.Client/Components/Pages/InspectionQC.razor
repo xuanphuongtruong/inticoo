@@ -110,9 +110,27 @@ else
                     <div class="qc-info-row"><span class="qc-info-lbl">Total Carton Boxes</span><span class="qc-info-val">@_inspection.TotalCartonBoxes</span></div>
                     @if (!string.IsNullOrWhiteSpace(_inspection.GeneralRemark))
                     {
-                        <div class="qc-info-row" style="border:1.5px solid #e53935;border-radius:8px;padding:8px 12px;margin-top:4px;background:#fff5f5;">
-                            <span class="qc-info-lbl" style="color:#e53935;font-weight:700;">Remark</span>
-                            <span class="qc-info-val" style="color:#e53935;font-weight:500;">@_inspection.GeneralRemark</span>
+                        var remarkText = _inspection.GeneralRemark!;
+                        const int previewLen = 80;
+                        var isLong = remarkText.Length > previewLen;
+                        var preview = isLong ? remarkText.Substring(0, previewLen).TrimEnd() + "…" : remarkText;
+                        <div class="qc-info-row qc-remark-row">
+                            <span class="qc-info-lbl qc-remark-lbl">Remark</span>
+                            <span class="qc-info-val qc-remark-val">
+                                <span class="qc-remark-preview">@preview</span>
+                                @if (isLong)
+                                {
+                                    <button type="button" class="qc-remark-view-btn"
+                                            @onclick="() => ShowRemarkPopup(remarkText)">
+                                        <svg width="13" height="13" viewBox="0 0 20 20" fill="none"
+                                             stroke="currentColor" stroke-width="2">
+                                            <path d="M1 10s3.5-7 9-7 9 7 9 7-3.5 7-9 7-9-7-9-7z"/>
+                                            <circle cx="10" cy="10" r="3"/>
+                                        </svg>
+                                        View
+                                    </button>
+                                }
+                            </span>
                         </div>
                     }
                 </div>
@@ -1210,6 +1228,25 @@ else
             </div>
         </div>
     }
+
+    <!-- REMARK POPUP -->
+    @if (_showRemarkPopup)
+    {
+        <div class="proto-backdrop" @onclick="CloseRemarkPopup">
+            <div class="proto-modal qc-remark-modal" @onclick:stopPropagation="true">
+                <div class="proto-modal-header qc-remark-modal-header">
+                    <span class="proto-modal-title">Remark</span>
+                    <button class="proto-close-btn" @onclick="CloseRemarkPopup">✕</button>
+                </div>
+                <div class="proto-modal-body qc-remark-modal-body">
+                    @_remarkPopupText
+                </div>
+                <div class="proto-modal-footer">
+                    <button class="proto-ok-btn" @onclick="CloseRemarkPopup">Close</button>
+                </div>
+            </div>
+        </div>
+    }
 }
 
 <!-- ═══════════════════════ CODE-BEHIND ═══════════════════════ -->
@@ -1232,6 +1269,12 @@ else
     string _protocolPopupText  = "";
     void ShowProtocolPopup(string text) { _protocolPopupText = text; _showProtocolPopup = true; }
     void CloseProtocolPopup()           { _showProtocolPopup = false; }
+
+    // Remark popup (hiển thị toàn bộ nội dung GeneralRemark khi quá dài)
+    bool   _showRemarkPopup = false;
+    string _remarkPopupText = "";
+    void ShowRemarkPopup(string text) { _remarkPopupText = text; _showRemarkPopup = true; }
+    void CloseRemarkPopup()           { _showRemarkPopup = false; }
 
     // ── Step definitions ──
     record StepDef(string StepLabel, string Title, bool CanSkip = false);
@@ -3043,6 +3086,48 @@ else
         transition: background .15s;
     }
     .proto-ok-btn:hover { background: #1565c0; }
+
+    /* ── Remark row (preview + View button) ── */
+    .qc-remark-row {
+        border: 1.5px solid #e53935;
+        border-radius: 8px;
+        padding: 8px 12px;
+        margin-top: 4px;
+        background: #fff5f5;
+        align-items: flex-start;
+    }
+    .qc-remark-lbl { color: #e53935; font-weight: 700; }
+    .qc-remark-val {
+        color: #e53935; font-weight: 500;
+        display: inline-flex; align-items: center; gap: 8px;
+        flex-wrap: wrap; line-height: 1.5;
+    }
+    .qc-remark-preview { word-break: break-word; }
+    .qc-remark-view-btn {
+        display: inline-flex; align-items: center; gap: 4px;
+        background: #fff;
+        color: #e53935;
+        border: 1px solid #e53935;
+        border-radius: 7px;
+        padding: 3px 10px;
+        font-size: 12px; font-weight: 600;
+        cursor: pointer; white-space: nowrap; flex-shrink: 0;
+        transition: all .15s;
+    }
+    .qc-remark-view-btn:hover {
+        background: #e53935; color: #fff;
+    }
+
+    /* Remark popup tone đỏ để nhất quán với badge */
+    .qc-remark-modal-header {
+        background: #fff5f5;
+        border-bottom-color: #fbd5d5;
+    }
+    .qc-remark-modal .proto-modal-title { color: #c62828; }
+    .qc-remark-modal-body {
+        color: #c62828;
+        font-weight: 500;
+    }
 </style>
 
 
