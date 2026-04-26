@@ -938,17 +938,24 @@ else
                     }
                 </div>
                 <div class="qc-section-title" style="margin-top:18px">RESULT</div>
+                <div class="qc-aql-auto-hint">
+                    <svg width="13" height="13" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="10" cy="10" r="8"/>
+                        <path d="M10 6v5M10 14h.01" stroke-linecap="round"/>
+                    </svg>
+                    Số lỗi được đếm tự động theo số ảnh ở mục <b>F. Details of Defect Found</b> (1 ảnh = 1 lỗi).
+                </div>
                 <table class="qc-table">
                     <thead><tr><th>Details of Defect Found</th><th>Critical</th><th>Major</th><th>Minor</th></tr></thead>
                     <tbody>
                         <tr>
                             <td>Total Found</td>
-                            <td><input class="qc-cell-input num" type="number" @bind="_data.Aql.CriticalFound"
-                                       @bind:event="oninput" @bind:after="StateHasChanged"/></td>
-                            <td><input class="qc-cell-input num" type="number" @bind="_data.Aql.MajorFound"
-                                       @bind:event="oninput" @bind:after="StateHasChanged"/></td>
-                            <td><input class="qc-cell-input num" type="number" @bind="_data.Aql.MinorFound"
-                                       @bind:event="oninput" @bind:after="StateHasChanged"/></td>
+                            <td><input class="qc-cell-input num qc-cell-auto" type="number"
+                                       value="@_data.Aql.CriticalFound" readonly tabindex="-1" /></td>
+                            <td><input class="qc-cell-input num qc-cell-auto" type="number"
+                                       value="@_data.Aql.MajorFound"    readonly tabindex="-1" /></td>
+                            <td><input class="qc-cell-input num qc-cell-auto" type="number"
+                                       value="@_data.Aql.MinorFound"    readonly tabindex="-1" /></td>
                         </tr>
                         <tr>
                             <td>Status</td>
@@ -1006,7 +1013,7 @@ else
                                             <button style="position:absolute;top:4px;right:4px;background:rgba(0,0,0,.55);color:#fff;
                                                            border:none;border-radius:50%;width:22px;height:22px;font-size:11px;cursor:pointer;line-height:1"
                                                     @onclick:stopPropagation="true"
-                                                    @onclick="() => { var dr2=dRef2; int pi2=pIdx; if(pi2<dr2.Photos.Count) dr2.Photos[pi2]=string.Empty; var i2=_data.Defects.IndexOf(dr2); if(i2>=0) _data.Defects[i2]=dr2; StateHasChanged(); }">✕</button>
+                                                    @onclick="() => { var dr2=dRef2; int pi2=pIdx; if(pi2<dr2.Photos.Count) dr2.Photos[pi2]=string.Empty; var i2=_data.Defects.IndexOf(dr2); if(i2>=0) _data.Defects[i2]=dr2; RecalcDefectCounts(); StateHasChanged(); }">✕</button>
                                         }
                                         else { <span style="font-size:28px;color:#c0cce0">📷</span> }
                                         <InputFile OnChange="@(async e => await UploadDefectPhotoWithSpinner(e, dRef2, pIdx))"
@@ -1033,7 +1040,7 @@ else
                         @if (defItems.Count > 1)
                         {
                             <div style="display:flex;justify-content:flex-end;margin-top:6px">
-                                <button class="qc-del-btn-sm" @onclick="() => { _data.Defects.Remove(dRef); StateHasChanged(); }">✕ Remove</button>
+                                <button class="qc-del-btn-sm" @onclick="() => { _data.Defects.Remove(dRef); RecalcDefectCounts(); StateHasChanged(); }">✕ Remove</button>
                             </div>
                         }
                     </div>
@@ -1410,6 +1417,7 @@ else
         _data.Aql.MajorAql        = NormalizeAql(_inspection.AqlMajor) is "Not Allowed" ? "2.5" : NormalizeAql(_inspection.AqlMajor);
         _data.Aql.MinorAql        = NormalizeAql(_inspection.AqlMinor) is "Not Allowed" ? "4.0" : NormalizeAql(_inspection.AqlMinor);
         RecalcAql();
+        RecalcDefectCounts(); // đếm tự động dựa trên ảnh defect đã load (nếu có)
 
         if (_inspection.PerformanceTests?.Any() == true)
         {
@@ -1772,6 +1780,21 @@ else
         StateHasChanged();
     }
 
+    /// <summary>
+    /// Đếm tự động số lỗi Critical/Major/Minor dựa trên số ảnh đã upload trong _data.Defects.
+    /// 1 ảnh non-empty = 1 lỗi. Gọi sau mỗi lần upload, xoá ảnh, hoặc remove defect group.
+    /// </summary>
+    void RecalcDefectCounts()
+    {
+        int CountPhotosOf(string type) => _data.Defects
+            .Where(d => string.Equals(d.Type, type, StringComparison.OrdinalIgnoreCase))
+            .Sum(d => d.Photos.Count(p => !string.IsNullOrEmpty(p)));
+
+        _data.Aql.CriticalFound = CountPhotosOf("Critical");
+        _data.Aql.MajorFound    = CountPhotosOf("Major");
+        _data.Aql.MinorFound    = CountPhotosOf("Minor");
+    }
+
     void SetAql(string defectType, string value)
     {
         if (defectType == "Critical") _data.Aql.CriticalAql = value;
@@ -2056,6 +2079,7 @@ else
         {
             var url = await UploadPhoto(e);
             if (!string.IsNullOrEmpty(url)) d.Photos.Add(url);
+            RecalcDefectCounts();
             StateHasChanged();
         }
         catch (Exception ex) { _saveMsg = $"Photo error: {ex.Message}"; _saveError = true; }
@@ -2078,6 +2102,7 @@ else
             // Force update reference in _data.Defects list
             var idx = _data.Defects.IndexOf(defect);
             if (idx >= 0) _data.Defects[idx] = defect;
+            RecalcDefectCounts();
             StateHasChanged();
         }
         catch (Exception ex) { _saveMsg = $"Photo error: {ex.Message}"; _saveError = true; }
@@ -2801,6 +2826,26 @@ else
     }
     .qc-cell-input.num { max-width: 70px; }
     .qc-cell-input:focus { border-color: #2D7DD2; }
+
+    /* Ô auto-counted - chỉ đọc, hiển thị nhạt hơn để người dùng biết là tự tính */
+    .qc-cell-input.qc-cell-auto {
+        background: #eef4ff;
+        color: #1565c0;
+        font-weight: 700;
+        cursor: default;
+    }
+    .qc-cell-input.qc-cell-auto:focus { border-color: #e0e8f8; }
+    /* Hint phía trên bảng RESULT */
+    .qc-aql-auto-hint {
+        display: flex; align-items: center; gap: 6px;
+        font-size: 12px; color: #1565c0;
+        background: #eef4ff;
+        border: 1px solid #cfe1fa;
+        border-radius: 8px;
+        padding: 8px 12px;
+        margin-bottom: 8px;
+    }
+    .qc-aql-auto-hint b { font-weight: 700; }
     .qc-cell-photo {
         width: 44px; height: 44px; background: #eef4ff;
         border: 1px dashed #b0c8f0; border-radius: 6px;
