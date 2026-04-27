@@ -100,18 +100,15 @@ else
                     <div class="qc-info-row"><span class="qc-info-lbl">Inspection Date &amp; Time</span>
                         <span class="qc-info-val qc-auto">@DateTime.Now.ToString("dd MMM yyyy HH:mm")</span></div>
                     <div class="qc-info-row"><span class="qc-info-lbl">Inspection Type</span><span class="qc-info-val">@_inspection.InspectionType</span></div>
-                    <div class="qc-info-row"><span class="qc-info-lbl">Inspection Reference</span>
-                        <input class="qc-info-input" @bind="_data.InspectionReference" placeholder="Reference no."/></div>
                     @if (_inspection.References != null && _inspection.References.Count > 0)
                     {
                         <div class="qc-info-row qc-refs-row">
-                            <span class="qc-info-lbl">Product References</span>
+                            <span class="qc-info-lbl">Inspection Reference</span>
                             <div class="qc-refs-list">
                                 @foreach (var refItem in _inspection.References)
                                 {
                                     <div class="qc-ref-item">
                                         <div class="qc-ref-info">
-                                            <span class="qc-ref-no">@refItem.No</span>
                                             <div class="qc-ref-text">
                                                 <span class="qc-ref-name">@refItem.ReferenceName</span>
                                                 @if (!string.IsNullOrEmpty(refItem.FileName))
@@ -152,6 +149,11 @@ else
                                 }
                             </div>
                         </div>
+                    }
+                    else
+                    {
+                        <div class="qc-info-row"><span class="qc-info-lbl">Inspection Reference</span>
+                            <input class="qc-info-input" @bind="_data.InspectionReference" placeholder="Reference no."/></div>
                     }
                     <div class="qc-info-row"><span class="qc-info-lbl">Product Category</span><span class="qc-info-val">@(_inspection.ProductCategory ?? "—")</span></div>
                     <div class="qc-info-row"><span class="qc-info-lbl">P.O. Number</span><span class="qc-info-val">@(_inspection.PoNumber ?? "—")</span></div>
@@ -3237,6 +3239,11 @@ else
         flex-direction: column;
         align-items: stretch;
         gap: 6px;
+        /* Bỏ khung viền và nền — chỉ giữ kiểu chữ đỏ */
+        border: none;
+        background: transparent;
+        padding: 7px 0;
+        margin-top: 0;
     }
     .qc-remark-row-full .qc-remark-lbl {
         min-width: 0;
