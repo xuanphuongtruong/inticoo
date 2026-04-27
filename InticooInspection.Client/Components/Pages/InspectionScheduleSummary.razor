@@ -455,6 +455,7 @@
                                 <div class="iss-jf"><span class="iss-jl">Category</span><span class="iss-jv">@(job.ProductCategory ?? "—")</span></div>
                                 @* <div class="iss-jf"><span class="iss-jl">Product Type</span><span class="iss-jv">@(job.ProductType ?? "—")</span></div> *@
                                 <div class="iss-jf"><span class="iss-jl">Inspection Type</span><span class="iss-jv">@job.InspectionType</span></div>
+                                <div class="iss-jf"><span class="iss-jl">PO Number</span><span class="iss-jv">@(string.IsNullOrEmpty(job.PoNumber) ? "—" : job.PoNumber)</span></div>
                                 <div class="iss-jf"><span class="iss-jl">Vendor Name</span><span class="iss-jv">@job.VendorName</span></div>
                                 <div class="iss-jf"><span class="iss-jl">Vendor Address</span><span class="iss-jv">@(string.IsNullOrEmpty(job.VendorCity) ? "—" : job.VendorCity)</span></div>
                                 @if (!string.IsNullOrEmpty(job.VendorContactName) || !string.IsNullOrEmpty(job.VendorContactMobile))
