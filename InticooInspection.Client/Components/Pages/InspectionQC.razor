@@ -133,7 +133,7 @@ else
                                                     <span>View</span>
                                                 </a>
                                                 <button type="button" class="qc-ref-btn qc-ref-dl"
-                                                        @onclick="() => DownloadReferenceAsync(refItem)" title="Download">
+                                                        @onclick="async () => await DownloadReferenceAsync(refItem)" title="Download">
                                                     <svg width="13" height="13" viewBox="0 0 20 20" fill="none"
                                                          stroke="currentColor" stroke-width="2"
                                                          stroke-linecap="round" stroke-linejoin="round">
@@ -1322,11 +1322,7 @@ else
         return $"{baseUrl}/{url.TrimStart('/')}";
     }
 
-    /// <summary>
-    /// Download reference file. iOS Safari & macOS Safari có một số quirks với
-    /// thuộc tính `download` (đặc biệt là file cross-origin), nên dùng JS interop
-    /// để fetch blob rồi trigger download — chạy ổn định trên iOS / macOS / Android / Desktop.
-    /// </summary>
+    // Download reference file qua JS interop (tương thích iOS/macOS Safari)
     async Task DownloadReferenceAsync(JobReferenceDto refItem)
     {
         if (string.IsNullOrEmpty(refItem.FileUrl)) return;
@@ -1337,37 +1333,31 @@ else
 
         try
         {
-            await JS.InvokeVoidAsync("eval", $@"
-                (async function() {{
-                    try {{
-                        const url = {System.Text.Json.JsonSerializer.Serialize(fullUrl)};
-                        const fname = {System.Text.Json.JsonSerializer.Serialize(fileName)};
-                        const resp = await fetch(url, {{ credentials: 'include' }});
-                        if (!resp.ok) throw new Error('HTTP ' + resp.status);
-                        const blob = await resp.blob();
-                        const blobUrl = URL.createObjectURL(blob);
-                        const a = document.createElement('a');
-                        a.href = blobUrl;
-                        a.download = fname;
-                        // iOS Safari yêu cầu element phải nằm trong DOM mới click được
-                        a.style.display = 'none';
-                        document.body.appendChild(a);
-                        a.click();
-                        // delay nhỏ trước khi cleanup để Safari kịp xử lý
-                        setTimeout(() => {{
-                            document.body.removeChild(a);
-                            URL.revokeObjectURL(blobUrl);
-                        }}, 200);
-                    }} catch (err) {{
-                        // Fallback: mở tab mới (iOS sẽ hiển thị file để user nhấn Share → Save)
-                        window.open({System.Text.Json.JsonSerializer.Serialize(fullUrl)}, '_blank');
-                    }}
-                }})();
-            ");
+            // Encode 2 tham số bằng JSON để escape an toàn rồi nhúng vào eval
+            var urlJson  = System.Text.Json.JsonSerializer.Serialize(fullUrl);
+            var nameJson = System.Text.Json.JsonSerializer.Serialize(fileName);
+
+            var script =
+                "(async function(){" +
+                "var url=" + urlJson + ";" +
+                "var fname=" + nameJson + ";" +
+                "try{" +
+                "var resp=await fetch(url,{credentials:'include'});" +
+                "if(!resp.ok)throw new Error('HTTP '+resp.status);" +
+                "var blob=await resp.blob();" +
+                "var blobUrl=URL.createObjectURL(blob);" +
+                "var a=document.createElement('a');" +
+                "a.href=blobUrl;a.download=fname;a.style.display='none';" +
+                "document.body.appendChild(a);a.click();" +
+                "setTimeout(function(){document.body.removeChild(a);URL.revokeObjectURL(blobUrl);},200);" +
+                "}catch(e){window.open(url,'_blank');}" +
+                "})();";
+
+            await JS.InvokeVoidAsync("eval", script);
         }
         catch
         {
-            // Im lặng — đã có fallback trong JS
+            // im lặng — fallback đã nằm trong JS
         }
     }
 
