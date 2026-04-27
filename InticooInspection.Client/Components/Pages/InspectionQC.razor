@@ -111,25 +111,18 @@ else
                     @if (!string.IsNullOrWhiteSpace(_inspection.GeneralRemark))
                     {
                         var remarkText = _inspection.GeneralRemark!;
-                        const int previewLen = 80;
-                        var isLong = remarkText.Length > previewLen;
-                        var preview = isLong ? remarkText.Substring(0, previewLen).TrimEnd() + "…" : remarkText;
                         <div class="qc-info-row qc-remark-row">
                             <span class="qc-info-lbl qc-remark-lbl">Remark</span>
                             <span class="qc-info-val qc-remark-val">
-                                <span class="qc-remark-preview">@preview</span>
-                                @if (isLong)
-                                {
-                                    <button type="button" class="qc-remark-view-btn"
-                                            @onclick="() => ShowRemarkPopup(remarkText)">
-                                        <svg width="13" height="13" viewBox="0 0 20 20" fill="none"
-                                             stroke="currentColor" stroke-width="2">
-                                            <path d="M1 10s3.5-7 9-7 9 7 9 7-3.5 7-9 7-9-7-9-7z"/>
-                                            <circle cx="10" cy="10" r="3"/>
-                                        </svg>
-                                        View
-                                    </button>
-                                }
+                                <button type="button" class="qc-remark-view-btn"
+                                        @onclick="() => ShowRemarkPopup(remarkText)">
+                                    <svg width="13" height="13" viewBox="0 0 20 20" fill="none"
+                                         stroke="currentColor" stroke-width="2">
+                                        <path d="M1 10s3.5-7 9-7 9 7 9 7-3.5 7-9 7-9-7-9-7z"/>
+                                        <circle cx="10" cy="10" r="3"/>
+                                    </svg>
+                                    View
+                                </button>
                             </span>
                         </div>
                     }
@@ -785,17 +778,11 @@ else
                                     <td class="qc-info-lbl" style="vertical-align:middle;padding:8px 6px">Test Protocol</td>
                                     <td style="padding:6px 6px">
                                         <div style="display:flex;align-items:center;gap:10px">
-                                            <span style="font-size:13px;color:#333;line-height:1.4;flex:1">
-                                                @if (string.IsNullOrEmpty(pt.TestProtocol))
-                                                {
-                                                    <span style="color:#bbb">—</span>
-                                                }
-                                                else
-                                                {
-                                                    @(pt.TestProtocol.Length > 60 ? pt.TestProtocol[..60] + "…" : pt.TestProtocol)
-                                                }
-                                            </span>
-                                            @if (!string.IsNullOrEmpty(pt.TestProtocol))
+                                            @if (string.IsNullOrEmpty(pt.TestProtocol))
+                                            {
+                                                <span style="color:#bbb;font-size:13px">—</span>
+                                            }
+                                            else
                                             {
                                                 <button class="proto-view-btn" @onclick="() => ShowProtocolPopup(pt.TestProtocol)">
                                                     <svg width="13" height="13" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
@@ -938,13 +925,6 @@ else
                     }
                 </div>
                 <div class="qc-section-title" style="margin-top:18px">RESULT</div>
-                <div class="qc-aql-auto-hint">
-                    <svg width="13" height="13" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2">
-                        <circle cx="10" cy="10" r="8"/>
-                        <path d="M10 6v5M10 14h.01" stroke-linecap="round"/>
-                    </svg>
-                    Defect counts are auto-calculated from photos in <b>F. Details of Defect Found</b> (1 photo = 1 defect).
-                </div>
                 <table class="qc-table">
                     <thead><tr><th>Details of Defect Found</th><th>Critical</th><th>Major</th><th>Minor</th></tr></thead>
                     <tbody>
