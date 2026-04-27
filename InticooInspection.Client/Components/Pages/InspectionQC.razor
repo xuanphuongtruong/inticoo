@@ -102,6 +102,57 @@ else
                     <div class="qc-info-row"><span class="qc-info-lbl">Inspection Type</span><span class="qc-info-val">@_inspection.InspectionType</span></div>
                     <div class="qc-info-row"><span class="qc-info-lbl">Inspection Reference</span>
                         <input class="qc-info-input" @bind="_data.InspectionReference" placeholder="Reference no."/></div>
+                    @if (_inspection.References != null && _inspection.References.Count > 0)
+                    {
+                        <div class="qc-info-row qc-refs-row">
+                            <span class="qc-info-lbl">Product References</span>
+                            <div class="qc-refs-list">
+                                @foreach (var refItem in _inspection.References)
+                                {
+                                    <div class="qc-ref-item">
+                                        <div class="qc-ref-info">
+                                            <span class="qc-ref-no">@refItem.No</span>
+                                            <div class="qc-ref-text">
+                                                <span class="qc-ref-name">@refItem.ReferenceName</span>
+                                                @if (!string.IsNullOrEmpty(refItem.FileName))
+                                                {
+                                                    <span class="qc-ref-fname">@refItem.FileName</span>
+                                                }
+                                            </div>
+                                        </div>
+                                        <div class="qc-ref-actions">
+                                            @if (!string.IsNullOrEmpty(refItem.FileUrl))
+                                            {
+                                                <a href="@GetImageUrl(refItem.FileUrl)" target="_blank" rel="noopener"
+                                                   class="qc-ref-btn qc-ref-view" title="View">
+                                                    <svg width="13" height="13" viewBox="0 0 20 20" fill="none"
+                                                         stroke="currentColor" stroke-width="2">
+                                                        <path d="M1 10s3.5-7 9-7 9 7 9 7-3.5 7-9 7-9-7-9-7z"/>
+                                                        <circle cx="10" cy="10" r="3"/>
+                                                    </svg>
+                                                    <span>View</span>
+                                                </a>
+                                                <button type="button" class="qc-ref-btn qc-ref-dl"
+                                                        @onclick="() => DownloadReferenceAsync(refItem)" title="Download">
+                                                    <svg width="13" height="13" viewBox="0 0 20 20" fill="none"
+                                                         stroke="currentColor" stroke-width="2"
+                                                         stroke-linecap="round" stroke-linejoin="round">
+                                                        <path d="M10 3v10M6 9l4 4 4-4"/>
+                                                        <path d="M3 17h14"/>
+                                                    </svg>
+                                                    <span>Download</span>
+                                                </button>
+                                            }
+                                            else
+                                            {
+                                                <span class="qc-ref-nofile">No file</span>
+                                            }
+                                        </div>
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                    }
                     <div class="qc-info-row"><span class="qc-info-lbl">Product Category</span><span class="qc-info-val">@(_inspection.ProductCategory ?? "—")</span></div>
                     <div class="qc-info-row"><span class="qc-info-lbl">P.O. Number</span><span class="qc-info-val">@(_inspection.PoNumber ?? "—")</span></div>
                     <div class="qc-info-row"><span class="qc-info-lbl">Item Number</span><span class="qc-info-val">@(_inspection.ItemNumber ?? "—")</span></div>
@@ -110,20 +161,9 @@ else
                     <div class="qc-info-row"><span class="qc-info-lbl">Total Carton Boxes</span><span class="qc-info-val">@_inspection.TotalCartonBoxes</span></div>
                     @if (!string.IsNullOrWhiteSpace(_inspection.GeneralRemark))
                     {
-                        var remarkText = _inspection.GeneralRemark!;
-                        <div class="qc-info-row qc-remark-row">
+                        <div class="qc-info-row qc-remark-row qc-remark-row-full">
                             <span class="qc-info-lbl qc-remark-lbl">Remark</span>
-                            <span class="qc-info-val qc-remark-val">
-                                <button type="button" class="qc-remark-view-btn"
-                                        @onclick="() => ShowRemarkPopup(remarkText)">
-                                    <svg width="13" height="13" viewBox="0 0 20 20" fill="none"
-                                         stroke="currentColor" stroke-width="2">
-                                        <path d="M1 10s3.5-7 9-7 9 7 9 7-3.5 7-9 7-9-7-9-7z"/>
-                                        <circle cx="10" cy="10" r="3"/>
-                                    </svg>
-                                    View
-                                </button>
-                            </span>
+                            <span class="qc-info-val qc-remark-val qc-remark-val-full">@_inspection.GeneralRemark</span>
                         </div>
                     }
                 </div>
@@ -1282,6 +1322,55 @@ else
         return $"{baseUrl}/{url.TrimStart('/')}";
     }
 
+    /// <summary>
+    /// Download reference file. iOS Safari & macOS Safari có một số quirks với
+    /// thuộc tính `download` (đặc biệt là file cross-origin), nên dùng JS interop
+    /// để fetch blob rồi trigger download — chạy ổn định trên iOS / macOS / Android / Desktop.
+    /// </summary>
+    async Task DownloadReferenceAsync(JobReferenceDto refItem)
+    {
+        if (string.IsNullOrEmpty(refItem.FileUrl)) return;
+        var fullUrl  = GetImageUrl(refItem.FileUrl);
+        var fileName = !string.IsNullOrEmpty(refItem.FileName)
+            ? refItem.FileName!
+            : (string.IsNullOrEmpty(refItem.ReferenceName) ? "reference" : refItem.ReferenceName);
+
+        try
+        {
+            await JS.InvokeVoidAsync("eval", $@"
+                (async function() {{
+                    try {{
+                        const url = {System.Text.Json.JsonSerializer.Serialize(fullUrl)};
+                        const fname = {System.Text.Json.JsonSerializer.Serialize(fileName)};
+                        const resp = await fetch(url, {{ credentials: 'include' }});
+                        if (!resp.ok) throw new Error('HTTP ' + resp.status);
+                        const blob = await resp.blob();
+                        const blobUrl = URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = blobUrl;
+                        a.download = fname;
+                        // iOS Safari yêu cầu element phải nằm trong DOM mới click được
+                        a.style.display = 'none';
+                        document.body.appendChild(a);
+                        a.click();
+                        // delay nhỏ trước khi cleanup để Safari kịp xử lý
+                        setTimeout(() => {{
+                            document.body.removeChild(a);
+                            URL.revokeObjectURL(blobUrl);
+                        }}, 200);
+                    }} catch (err) {{
+                        // Fallback: mở tab mới (iOS sẽ hiển thị file để user nhấn Share → Save)
+                        window.open({System.Text.Json.JsonSerializer.Serialize(fullUrl)}, '_blank');
+                    }}
+                }})();
+            ");
+        }
+        catch
+        {
+            // Im lặng — đã có fallback trong JS
+        }
+    }
+
     bool _jsReady = false;
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -2393,6 +2482,15 @@ else
         [JsonPropertyName("overallConclusions")]  public List<OcDto>?    OverallConclusions  { get; set; }
         [JsonPropertyName("packaging")]           public PackagingDto?   Packaging           { get; set; }
         [JsonPropertyName("productSpec")]         public ProductSpecDto? ProductSpec         { get; set; }
+        [JsonPropertyName("references")]          public List<JobReferenceDto>? References  { get; set; }
+    }
+
+    class JobReferenceDto
+    {
+        [JsonPropertyName("no")]            public int     No            { get; set; }
+        [JsonPropertyName("referenceName")] public string  ReferenceName { get; set; } = "";
+        [JsonPropertyName("fileName")]      public string? FileName      { get; set; }
+        [JsonPropertyName("fileUrl")]       public string? FileUrl       { get; set; }
     }
 
     class PackagingDto
@@ -3138,9 +3236,32 @@ else
         font-size: 12px; font-weight: 600;
         cursor: pointer; white-space: nowrap; flex-shrink: 0;
         transition: all .15s;
+        -webkit-tap-highlight-color: transparent;
     }
     .qc-remark-view-btn:hover {
         background: #e53935; color: #fff;
+    }
+
+    /* ── Remark full-width (label trên, nội dung xuống dòng, hiển thị toàn bộ) ── */
+    .qc-remark-row-full {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 6px;
+    }
+    .qc-remark-row-full .qc-remark-lbl {
+        min-width: 0;
+        padding-top: 0;
+    }
+    .qc-remark-val-full {
+        display: block;
+        width: 100%;
+        white-space: pre-wrap;          /* giữ \n và xuống dòng tự động */
+        overflow-wrap: anywhere;        /* break từ siêu dài (Safari OK) */
+        word-break: break-word;         /* fallback cho Safari cũ */
+        -webkit-hyphens: auto;
+        hyphens: auto;
+        line-height: 1.6;
+        padding-top: 0;
     }
 
     /* Remark popup tone đỏ để nhất quán với badge */
@@ -3152,6 +3273,131 @@ else
     .qc-remark-modal-body {
         color: #c62828;
         font-weight: 500;
+    }
+
+    /* ══════════ Product References list ══════════ */
+    .qc-refs-row {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 8px;
+    }
+    .qc-refs-row .qc-info-lbl {
+        min-width: 0;
+        padding-top: 0;
+    }
+    .qc-refs-list {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        width: 100%;
+    }
+    .qc-ref-item {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        padding: 8px 10px;
+        background: #f8faff;
+        border: 1px solid #e3ecf8;
+        border-radius: 8px;
+        /* Cho phép wrap khi viewport nhỏ (iPhone SE…) */
+        flex-wrap: wrap;
+    }
+    .qc-ref-info {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        /* min-width:0 — bắt buộc trên Safari để text-overflow trong flex chạy đúng */
+        min-width: 0;
+        flex: 1 1 200px;
+    }
+    .qc-ref-no {
+        flex-shrink: 0;
+        width: 22px; height: 22px;
+        display: inline-flex;
+        align-items: center; justify-content: center;
+        background: #2D7DD2; color: #fff;
+        border-radius: 50%;
+        font-size: 11px; font-weight: 700;
+        font-variant-numeric: tabular-nums;
+    }
+    .qc-ref-text {
+        display: flex; flex-direction: column;
+        min-width: 0;        /* Safari fix: cho ellipsis trong flex */
+        flex: 1 1 auto;
+    }
+    .qc-ref-name {
+        font-size: 13px; font-weight: 600; color: #1a1a2e;
+        line-height: 1.35;
+        overflow-wrap: anywhere;
+        word-break: break-word;
+    }
+    .qc-ref-fname {
+        font-size: 11px; color: #7a8aa0;
+        margin-top: 2px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+    .qc-ref-actions {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        flex-shrink: 0;
+    }
+    .qc-ref-btn {
+        display: inline-flex;
+        align-items: center; justify-content: center;
+        gap: 4px;
+        padding: 5px 10px;
+        font-size: 12px; font-weight: 600;
+        border-radius: 7px;
+        border: 1px solid transparent;
+        cursor: pointer;
+        white-space: nowrap;
+        text-decoration: none;
+        line-height: 1;
+        transition: background .15s, color .15s, border-color .15s, box-shadow .15s;
+        /* iOS Safari: tắt highlight xanh khi tap, tắt callout menu */
+        -webkit-tap-highlight-color: transparent;
+        -webkit-touch-callout: none;
+        /* Reset default button styling cho Safari */
+        -webkit-appearance: none;
+        appearance: none;
+        font-family: inherit;
+    }
+    .qc-ref-view {
+        background: #fff;
+        color: #2D7DD2;
+        border-color: #2D7DD2;
+    }
+    .qc-ref-view:hover,
+    .qc-ref-view:active {
+        background: #2D7DD2; color: #fff;
+    }
+    .qc-ref-dl {
+        background: #2D7DD2;
+        color: #fff;
+        border-color: #2D7DD2;
+    }
+    .qc-ref-dl:hover,
+    .qc-ref-dl:active {
+        background: #1a5fa8; border-color: #1a5fa8;
+    }
+    .qc-ref-nofile {
+        font-size: 11px; color: #bbb; font-style: italic;
+    }
+
+    /* Mobile (iPhone) — gọn nút */
+    @@media (max-width: 480px) {
+        .qc-ref-item { padding: 8px; gap: 8px; }
+        .qc-ref-actions { width: 100%; justify-content: flex-end; }
+        .qc-ref-btn { padding: 6px 10px; font-size: 12px; }
+    }
+    /* Trên màn hẹp (<360px): icon-only để khỏi tràn */
+    @@media (max-width: 360px) {
+        .qc-ref-btn span { display: none; }
+        .qc-ref-btn { padding: 6px 8px; }
     }
 </style>
 
