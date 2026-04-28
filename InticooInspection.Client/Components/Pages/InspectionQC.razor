@@ -100,10 +100,29 @@ else
                     <div class="qc-info-row"><span class="qc-info-lbl">Inspection Date &amp; Time</span>
                         <span class="qc-info-val qc-auto">@DateTime.Now.ToString("dd MMM yyyy HH:mm")</span></div>
                     <div class="qc-info-row"><span class="qc-info-lbl">Inspection Type</span><span class="qc-info-val">@_inspection.InspectionType</span></div>
+                    <div class="qc-info-row qc-yn-row">
+                        <span class="qc-info-lbl">Inspection Reference</span>
+                        <div class="qc-yn-group" role="radiogroup" aria-label="Inspection Reference">
+                            <label class="qc-yn-opt @(_data.InspectionReference == "Yes" ? "qc-yn-active" : "")">
+                                <input type="radio" name="qc-inspection-ref"
+                                       value="Yes"
+                                       checked="@(_data.InspectionReference == "Yes")"
+                                       @onchange='() => _data.InspectionReference = "Yes"' />
+                                <span>Yes</span>
+                            </label>
+                            <label class="qc-yn-opt @(_data.InspectionReference == "No" ? "qc-yn-active" : "")">
+                                <input type="radio" name="qc-inspection-ref"
+                                       value="No"
+                                       checked="@(_data.InspectionReference == "No")"
+                                       @onchange='() => _data.InspectionReference = "No"' />
+                                <span>No</span>
+                            </label>
+                        </div>
+                    </div>
                     @if (_inspection.References != null && _inspection.References.Count > 0)
                     {
                         <div class="qc-info-row qc-refs-row">
-                            <span class="qc-info-lbl">Inspection Reference</span>
+                            <span class="qc-info-lbl">Reference Files</span>
                             <div class="qc-refs-list">
                                 @foreach (var refItem in _inspection.References)
                                 {
@@ -149,11 +168,6 @@ else
                                 }
                             </div>
                         </div>
-                    }
-                    else
-                    {
-                        <div class="qc-info-row"><span class="qc-info-lbl">Inspection Reference</span>
-                            <input class="qc-info-input" @bind="_data.InspectionReference" placeholder="Reference no."/></div>
                     }
                     <div class="qc-info-row"><span class="qc-info-lbl">Product Category</span><span class="qc-info-val">@(_inspection.ProductCategory ?? "—")</span></div>
                     <div class="qc-info-row"><span class="qc-info-lbl">P.O. Number</span><span class="qc-info-val">@(_inspection.PoNumber ?? "—")</span></div>
@@ -1415,6 +1429,7 @@ else
         _data.Photo1Url = _inspection.Photo1Url ?? "";
         _data.Photo2Url = _inspection.Photo2Url ?? "";
         _data.InspectionLocation = _inspection.InspectionLocation ?? "";
+        _data.InspectionReference = _inspection.InspectionReference ?? "";
 
         _data.OverallConclusions = _inspection.OverallConclusions?.Any() == true
             ? _inspection.OverallConclusions.Select(o => new QcOverallConclusion
@@ -2462,6 +2477,7 @@ else
         [JsonPropertyName("inspectorName")]    public string  InspectorName    { get; set; } = "";
         [JsonPropertyName("inspectorId")]      public string? InspectorId      { get; set; }
         [JsonPropertyName("inspectionLocation")] public string? InspectionLocation { get; set; }
+        [JsonPropertyName("inspectionReference")] public string? InspectionReference { get; set; }
         [JsonPropertyName("aqlQuantity")]      public int     AqlQuantity      { get; set; }
         [JsonPropertyName("aqlLevel")]         public string? AqlLevel         { get; set; }
         [JsonPropertyName("aqlCritical")]      public string? AqlCritical      { get; set; }
@@ -2850,6 +2866,65 @@ else
     .qc-info-input.sm { max-width: 80px; }
     .qc-info-input.input-error { border-color: #e74c3c !important; background: #fff5f5; }
     .qc-info-input.input-error:focus { box-shadow: 0 0 0 3px rgba(231,76,60,.12); }
+
+    /* ── Yes / No radio group ── */
+    .qc-yn-row { align-items: center; }
+    .qc-yn-row .qc-info-lbl { padding-top: 0; }
+    .qc-yn-group {
+        display: inline-flex;
+        gap: 8px;
+        align-items: center;
+        flex-wrap: wrap;
+    }
+    .qc-yn-opt {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 5px 14px;
+        border: 1px solid #dce6f8;
+        border-radius: 18px;
+        background: #f8faff;
+        font-size: 13px;
+        font-weight: 500;
+        color: #44546a;
+        cursor: pointer;
+        transition: background .15s, color .15s, border-color .15s, box-shadow .15s;
+        -webkit-tap-highlight-color: transparent;
+        -webkit-user-select: none;
+        user-select: none;
+    }
+    .qc-yn-opt:hover {
+        border-color: #2D7DD2;
+        color: #2D7DD2;
+    }
+    .qc-yn-opt input[type="radio"] {
+        /* Ẩn radio gốc — vẫn focusable cho keyboard / accessibility */
+        appearance: none;
+        -webkit-appearance: none;
+        width: 14px; height: 14px;
+        border: 1.5px solid #b0c0d8;
+        border-radius: 50%;
+        margin: 0;
+        outline: none;
+        cursor: pointer;
+        position: relative;
+        background: #fff;
+        transition: border-color .15s;
+        flex-shrink: 0;
+    }
+    .qc-yn-opt input[type="radio"]:checked {
+        border-color: #2D7DD2;
+        border-width: 4px;
+    }
+    .qc-yn-opt input[type="radio"]:focus-visible {
+        box-shadow: 0 0 0 3px rgba(45,125,210,.18);
+    }
+    .qc-yn-opt.qc-yn-active {
+        background: #e8f1fb;
+        border-color: #2D7DD2;
+        color: #2D7DD2;
+        font-weight: 700;
+    }
     .qc-photo-box3.photo-required { border-color: #e74c3c; background: #fff5f5; }
     .qc-info-textarea {
         flex: 1; border: 1px solid #dce6f8; border-radius: 7px;
