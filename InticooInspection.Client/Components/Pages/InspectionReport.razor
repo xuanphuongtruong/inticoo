@@ -283,7 +283,7 @@ else if (_data != null)
 
                 // ── Trang B: Header + Info table + i. Carton Size ──
                 <div class="rpt-section page-break-after">
-                    <div class="rpt-section-title rpt-section-title-lg">B. Packaging &amp; Identification@cartonSuffix</div>
+                    <div class="rpt-section-title rpt-section-title-lg">B. Packaging &amp; Identification@(cartonSuffix)</div>
 
                     @if (_data.Packaging != null)
                     {
@@ -363,7 +363,7 @@ else if (_data != null)
 
                 <!-- ── Trang ii+iii. Shipping Mark + Carton Weight (gộp chung 1 trang) ── -->
                 <div class="rpt-section page-break-after">
-                    <div class="rpt-section-title rpt-section-title-lg">B. Packaging &amp; Identification@cartonSuffix</div>
+                    <div class="rpt-section-title rpt-section-title-lg">B. Packaging &amp; Identification@(cartonSuffix)</div>
 
                     <div class="rpt-sub-title">ii. Shipping Mark / Labeling / Barcode</div>
                     @{
@@ -429,7 +429,7 @@ else if (_data != null)
 
                 <!-- ── Trang iv+v. Packaging & Labeling + Assembly Instruction (gộp chung 1 trang) ── -->
                 <div class="rpt-section page-break-after">
-                    <div class="rpt-section-title rpt-section-title-lg">B. Packaging &amp; Identification@cartonSuffix</div>
+                    <div class="rpt-section-title rpt-section-title-lg">B. Packaging &amp; Identification@(cartonSuffix)</div>
 
                     <div class="rpt-sub-title">iv. Packaging &amp; Labeling Specifications</div>
                     @{
@@ -490,7 +490,7 @@ else if (_data != null)
 
                 <!-- ── Trang vi. Hardware ── -->
                 <div class="rpt-section page-break-after">
-                    <div class="rpt-section-title rpt-section-title-lg">B. Packaging &amp; Identification@cartonSuffix</div>
+                    <div class="rpt-section-title rpt-section-title-lg">B. Packaging &amp; Identification@(cartonSuffix)</div>
                     <div class="rpt-sub-title">vi. Hardware Specifications</div>
                     @{
                         var _pHardware = (cd?.HardwarePhotos ?? pr?.HardwarePhotos ?? new List<string>())
@@ -813,24 +813,24 @@ else if (_data != null)
                     <div class="rpt-aql-grid">
                         <div class="rpt-aql-box aql-critical">
                             <div class="rpt-aql-box-title">Critical Defects</div>
-                            <div class="rpt-aql-box-row"><span>Select AQL</span><span>@aqlCritAql</span></div>
-                            <div class="rpt-aql-box-row"><span>Sample Size</span><span>@critSample</span></div>
-                            <div class="rpt-aql-box-row"><span>Accept Point</span><span>@critAccept</span></div>
-                            <div class="rpt-aql-box-row"><span>Reject Point</span><span>@critReject</span></div>
+                            <div class="rpt-aql-box-row"><span>Select AQL</span><span>@(string.IsNullOrEmpty(aqlCritAql) ? "—" : aqlCritAql)</span></div>
+                            <div class="rpt-aql-box-row"><span>Sample Size</span><span>@(critSample > 0 ? critSample.ToString() : "—")</span></div>
+                            <div class="rpt-aql-box-row"><span>Accept Point</span><span>@(critAccept >= 0 && critSample > 0 ? critAccept.ToString() : "—")</span></div>
+                            <div class="rpt-aql-box-row"><span>Reject Point</span><span>@(critReject > 0 ? critReject.ToString() : "—")</span></div>
                         </div>
                         <div class="rpt-aql-box aql-major">
                             <div class="rpt-aql-box-title">Major Defects</div>
-                            <div class="rpt-aql-box-row"><span>Select AQL</span><span>@aqlMajAql</span></div>
-                            <div class="rpt-aql-box-row"><span>Sample Size</span><span>@majSample</span></div>
-                            <div class="rpt-aql-box-row"><span>Accept Point</span><span>@majAccept</span></div>
-                            <div class="rpt-aql-box-row"><span>Reject Point</span><span>@majReject</span></div>
+                            <div class="rpt-aql-box-row"><span>Select AQL</span><span>@(string.IsNullOrEmpty(aqlMajAql) ? "—" : aqlMajAql)</span></div>
+                            <div class="rpt-aql-box-row"><span>Sample Size</span><span>@(majSample > 0 ? majSample.ToString() : "—")</span></div>
+                            <div class="rpt-aql-box-row"><span>Accept Point</span><span>@(majAccept >= 0 && majSample > 0 ? majAccept.ToString() : "—")</span></div>
+                            <div class="rpt-aql-box-row"><span>Reject Point</span><span>@(majReject > 0 ? majReject.ToString() : "—")</span></div>
                         </div>
                         <div class="rpt-aql-box aql-minor">
                             <div class="rpt-aql-box-title">Minor Defects</div>
-                            <div class="rpt-aql-box-row"><span>Select AQL</span><span>@aqlMinAql</span></div>
-                            <div class="rpt-aql-box-row"><span>Sample Size</span><span>@minSample</span></div>
-                            <div class="rpt-aql-box-row"><span>Accept Point</span><span>@minAccept</span></div>
-                            <div class="rpt-aql-box-row"><span>Reject Point</span><span>@minReject</span></div>
+                            <div class="rpt-aql-box-row"><span>Select AQL</span><span>@(string.IsNullOrEmpty(aqlMinAql) ? "—" : aqlMinAql)</span></div>
+                            <div class="rpt-aql-box-row"><span>Sample Size</span><span>@(minSample > 0 ? minSample.ToString() : "—")</span></div>
+                            <div class="rpt-aql-box-row"><span>Accept Point</span><span>@(minAccept >= 0 && minSample > 0 ? minAccept.ToString() : "—")</span></div>
+                            <div class="rpt-aql-box-row"><span>Reject Point</span><span>@(minReject > 0 ? minReject.ToString() : "—")</span></div>
                         </div>
                     </div>
                     <div class="rpt-aql-label" style="margin-top:16px;">RESULT</div>
@@ -866,7 +866,10 @@ else if (_data != null)
                                    ?? (def.PhotoUrl != null ? new List<string> { def.PhotoUrl } : new List<string>());
                         return urls.Select((url, i) => new { Url = url, Remark = def.Remarks?.ElementAtOrDefault(i) ?? def.Remark ?? "" });
                     }).ToList();
-                    int _critMin = Math.Max(4, _critItems.Count % 2 == 0 ? _critItems.Count : _critItems.Count + 1);
+                    // Nếu có defect thì làm tròn lên số chẵn để grid 2 cột không vỡ; nếu không có thì để 0 (hiển thị empty state)
+                    int _critMin = _critItems.Count == 0
+                        ? 0
+                        : (_critItems.Count % 2 == 0 ? _critItems.Count : _critItems.Count + 1);
                     var _critSlots = _critItems.Select(p => (string?)p.Url)
                         .Concat(Enumerable.Repeat<string?>(null, _critMin - _critItems.Count))
                         .Zip(_critItems.Select(p => p.Remark).Concat(Enumerable.Repeat("", _critMin - _critItems.Count)),
@@ -874,20 +877,27 @@ else if (_data != null)
                 }
                 <div class="rpt-section-title rpt-section-title-lg" style="margin-top:20px;">F. Details of Defect Found</div>
                 <div class="rpt-defect-type-title defect-critical">Critical</div>
-                <div class="rpt-photo-grid-2">
-                    @foreach (var slot in _critSlots)
-                    {
-                        <div class="rpt-defect-cell">
-                            <div class="rpt-defect-photo-wrap">
-                                @if (!string.IsNullOrEmpty(slot.Url))
-                                { <img src="@NormalizeUrl(slot.Url)" class="rpt-defect-photo" alt="Critical defect photo" loading="eager"/> }
-                                else
-                                { <div class="rpt-defect-no-photo">No Photo</div> }
+                @if (_critSlots.Count == 0)
+                {
+                    <div class="rpt-defect-empty">No critical defects found.</div>
+                }
+                else
+                {
+                    <div class="rpt-photo-grid-2">
+                        @foreach (var slot in _critSlots)
+                        {
+                            <div class="rpt-defect-cell">
+                                <div class="rpt-defect-photo-wrap">
+                                    @if (!string.IsNullOrEmpty(slot.Url))
+                                    { <img src="@NormalizeUrl(slot.Url)" class="rpt-defect-photo" alt="Critical defect photo" loading="eager"/> }
+                                    else
+                                    { <div class="rpt-defect-no-photo">No Photo</div> }
+                                </div>
+                                <div class="rpt-defect-remark">Remark: @(string.IsNullOrEmpty(slot.Remark) ? "—" : slot.Remark)</div>
                             </div>
-                            <div class="rpt-defect-remark">Remark: @(string.IsNullOrEmpty(slot.Remark) ? "—" : slot.Remark)</div>
-                        </div>
-                    }
-                </div>
+                        }
+                    </div>
+                }
 
                 <div class="rpt-footer">
                     <div class="rpt-footer-inner">
@@ -919,7 +929,10 @@ else if (_data != null)
                         })
                         .ToList();
 
-                    int minSlots = Math.Max(4, photoItems.Count % 2 == 0 ? photoItems.Count : photoItems.Count + 1);
+                    // Có defect → làm tròn chẵn cho grid 2 cột; không có → 0 (empty state)
+                    int minSlots = photoItems.Count == 0
+                        ? 0
+                        : (photoItems.Count % 2 == 0 ? photoItems.Count : photoItems.Count + 1);
                     var slots = photoItems
                         .Select(p => (string?)p.Url)
                         .Concat(Enumerable.Repeat<string?>(null, minSlots - photoItems.Count))
@@ -931,20 +944,27 @@ else if (_data != null)
                         .ToList();
 
                     <div class="rpt-defect-type-title defect-@defType.ToLower()">@defType</div>
-                    <div class="rpt-photo-grid-2">
-                        @foreach (var slot in slots)
-                        {
-                            <div class="rpt-defect-cell">
-                                <div class="rpt-defect-photo-wrap">
-                                    @if (!string.IsNullOrEmpty(slot.Url))
-                                    { <img src="@NormalizeUrl(slot.Url)" class="rpt-defect-photo" alt="@defType defect photo" loading="eager"/> }
-                                    else
-                                    { <div class="rpt-defect-no-photo">No Photo</div> }
+                    @if (slots.Count == 0)
+                    {
+                        <div class="rpt-defect-empty">No @defType.ToLower() defects found.</div>
+                    }
+                    else
+                    {
+                        <div class="rpt-photo-grid-2">
+                            @foreach (var slot in slots)
+                            {
+                                <div class="rpt-defect-cell">
+                                    <div class="rpt-defect-photo-wrap">
+                                        @if (!string.IsNullOrEmpty(slot.Url))
+                                        { <img src="@NormalizeUrl(slot.Url)" class="rpt-defect-photo" alt="@defType defect photo" loading="eager"/> }
+                                        else
+                                        { <div class="rpt-defect-no-photo">No Photo</div> }
+                                    </div>
+                                    <div class="rpt-defect-remark">Remark: @(string.IsNullOrEmpty(slot.Remark) ? "—" : slot.Remark)</div>
                                 </div>
-                                <div class="rpt-defect-remark">Remark: @(string.IsNullOrEmpty(slot.Remark) ? "—" : slot.Remark)</div>
-                            </div>
-                        }
-                    </div>
+                            }
+                        </div>
+                    }
                 }
 
                 <div class="rpt-footer">
@@ -968,7 +988,7 @@ else if (_data != null)
                         <tr>
                             <td class="rpt-sign-label">Inspector Comments</td>
                             <td class="rpt-sign-val rpt-comments-cell">
-                                @(_data.InspectorComments ?? "")
+                                @(string.IsNullOrWhiteSpace(_data.InspectorComments) ? "—" : _data.InspectorComments)
                             </td>
                         </tr>
                     </tbody>
@@ -1863,11 +1883,20 @@ else if (_data != null)
     .aql-minor    .rpt-aql-box-title { color: #27ae60; }
 
     .rpt-aql-box-row {
-        display: flex; justify-content: space-between;
+        display: grid;
+        grid-template-columns: 1fr auto;
+        align-items: baseline;
+        gap: 8px;
         padding: 3px 0;
         border-bottom: 1px solid rgba(0,0,0,.06);
         font-size: 11px;
         color: #333;
+    }
+    .rpt-aql-box-row > span:last-child {
+        font-weight: 700;
+        color: #1a1a2e;
+        text-align: right;
+        white-space: nowrap;
     }
     .rpt-aql-box-row:last-child { border-bottom: none; }
 
@@ -1918,6 +1947,17 @@ else if (_data != null)
         border: 1px dashed #ddd;
         border-radius: 4px;
     }
+    .rpt-defect-empty {
+        padding: 14px 16px;
+        margin-bottom: 10px;
+        background: #f5f7fb;
+        border: 1px dashed #d0d7e2;
+        border-radius: 6px;
+        font-size: 12px;
+        color: #6b7c93;
+        font-style: italic;
+        text-align: center;
+    }
     .rpt-defect-remark {
         padding: 5px 10px;
         font-size: 11px;
@@ -1964,6 +2004,10 @@ else if (_data != null)
         font-size: 14px; font-weight: 800;
         padding: 6px 22px; border-radius: 8px;
         letter-spacing: .06em; text-transform: uppercase;
+        /* Bắt buộc browser giữ background-color khi in PDF */
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+        color-adjust: exact !important;
     }
     .final-pass { background: #e8f5e9; color: #2e7d32; border: 2px solid #a5d6a7; }
     .final-fail { background: #fce4ec; color: #c62828; border: 2px solid #ef9a9a; }
@@ -2065,6 +2109,22 @@ else if (_data != null)
             print-color-adjust: exact;
             margin: 0 !important;
             padding: 0 !important;
+        }
+
+        /* Bắt buộc giữ background-color trên các badge và box quan trọng khi in */
+        .rpt-final-badge,
+        .rpt-aql-box,
+        .rpt-aql-box-title,
+        .rpt-defect-type-title,
+        .rpt-section-title,
+        .rpt-result-pass,
+        .rpt-result-fail,
+        .final-pass, .final-fail, .final-na,
+        .aql-critical, .aql-major, .aql-minor,
+        .defect-critical, .defect-major, .defect-minor {
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+            color-adjust: exact !important;
         }
 
         .no-print { display: none !important; }
