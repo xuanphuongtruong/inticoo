@@ -476,6 +476,8 @@
                                 @* <div class="iss-jf"><span class="iss-jl">Product Type</span><span class="iss-jv">@(job.ProductType ?? "—")</span></div> *@
                                 <div class="iss-jf"><span class="iss-jl">Inspection Type</span><span class="iss-jv">@job.InspectionType</span></div>
                                 <div class="iss-jf"><span class="iss-jl">PO Number</span><span class="iss-jv">@(string.IsNullOrEmpty(job.PoNumber) ? "—" : job.PoNumber)</span></div>
+                                <div class="iss-jf"><span class="iss-jl">Product Code</span><span class="iss-jv">@(string.IsNullOrEmpty(job.ItemNumber) ? "—" : job.ItemNumber)</span></div>
+                                <div class="iss-jf"><span class="iss-jl">Product Name</span><span class="iss-jv">@(string.IsNullOrEmpty(job.ProductName) ? "—" : job.ProductName)</span></div>
                                 <div class="iss-jf"><span class="iss-jl">Vendor Name</span><span class="iss-jv">@job.VendorName</span></div>
                                 <div class="iss-jf"><span class="iss-jl">Vendor Address</span><span class="iss-jv">@(string.IsNullOrEmpty(job.VendorCity) ? "—" : job.VendorCity)</span></div>
                                 @if (!string.IsNullOrEmpty(job.VendorContactName) || !string.IsNullOrEmpty(job.VendorContactMobile))
@@ -504,42 +506,15 @@
                                 }
                                 @if (job.References.Count > 0)
                                 {
-                                    <div class="iss-jf iss-jf-section"><span class="iss-jl iss-jl-section">Product References</span></div>
-                                    <div class="iss-ref-table iss-ref-compact" @onclick:stopPropagation="true">
-                                        <div class="iss-ref-header">
-                                            <span class="iss-ref-no">No</span>
-                                            <span class="iss-ref-name">Reference</span>
-                                            <span class="iss-ref-file">File</span>
-                                        </div>
-                                        @foreach (var ref_ in job.References)
-                                        {
-                                            <div class="iss-ref-row">
-                                                <span class="iss-ref-no">@ref_.No</span>
-                                                <span class="iss-ref-name">@ref_.ReferenceName</span>
-                                                <span class="iss-ref-file">
-                                                    @if (!string.IsNullOrEmpty(ref_.FileUrl))
-                                                    {
-                                                        <a href="@ref_.FileUrl" target="_blank" class="iss-ref-view-btn" title="View">
-                                                            <svg width="13" height="13" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2">
-                                                                <path d="M1 10s3.5-7 9-7 9 7 9 7-3.5 7-9 7-9-7-9-7z"/><circle cx="10" cy="10" r="3"/>
-                                                            </svg>
-                                                            View
-                                                        </a>
-                                                        <a href="@ref_.FileUrl" download="@ref_.FileName" class="iss-ref-dl-btn" title="Download">
-                                                            <svg width="13" height="13" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2">
-                                                                <path d="M10 3v10M6 9l4 4 4-4" stroke-linecap="round" stroke-linejoin="round"/>
-                                                                <path d="M3 17h14" stroke-linecap="round"/>
-                                                            </svg>
-                                                            Download
-                                                        </a>
-                                                    }
-                                                    else
-                                                    {
-                                                        <span style="color:#bbb;font-size:12px;">No file</span>
-                                                    }
-                                                </span>
-                                            </div>
-                                        }
+                                    <div class="iss-jf iss-jf-inline" @onclick:stopPropagation="true">
+                                        <span class="iss-jl">Product Reference</span>
+                                        <button type="button" class="iss-refs-view-all-btn iss-refs-view-inline"
+                                                @onclick="() => OpenJobRefsPopup(job)">
+                                            <svg width="13" height="13" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2">
+                                                <path d="M1 10s3.5-7 9-7 9 7 9 7-3.5 7-9 7-9-7-9-7z"/><circle cx="10" cy="10" r="3"/>
+                                            </svg>
+                                            View
+                                        </button>
                                     </div>
                                 }
                             </div>
@@ -701,6 +676,60 @@
             }
         </div>
     }
+
+    @* Popup hiển thị toàn bộ Product References (dùng chung cho tab Today) *@
+    @if (_showJobRefsPopup && _popupJob != null)
+    {
+        <div class="iss-refs-backdrop" @onclick="() => _showJobRefsPopup = false">
+            <div class="iss-refs-modal" @onclick:stopPropagation="true">
+                <div class="iss-refs-modal-header">
+                    <div class="iss-refs-modal-title">Product References</div>
+                    <button type="button" class="iss-refs-modal-close" @onclick="() => _showJobRefsPopup = false" aria-label="Close">✕</button>
+                </div>
+                <div class="iss-refs-modal-body">
+                    <div class="iss-ref-table">
+                        <div class="iss-ref-header">
+                            <span class="iss-ref-no">No</span>
+                            <span class="iss-ref-name">Reference</span>
+                            <span class="iss-ref-file">File</span>
+                        </div>
+                        @foreach (var ref_ in _popupJob.References)
+                        {
+                            <div class="iss-ref-row">
+                                <span class="iss-ref-no">@ref_.No</span>
+                                <span class="iss-ref-name">@ref_.ReferenceName</span>
+                                <span class="iss-ref-file">
+                                    @if (!string.IsNullOrEmpty(ref_.FileUrl))
+                                    {
+                                        <a href="@ref_.FileUrl" target="_blank" rel="noopener" class="iss-ref-view-btn" title="View">
+                                            <svg width="13" height="13" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2">
+                                                <path d="M1 10s3.5-7 9-7 9 7 9 7-3.5 7-9 7-9-7-9-7z"/><circle cx="10" cy="10" r="3"/>
+                                            </svg>
+                                            View
+                                        </a>
+                                        <a href="@ref_.FileUrl" download="@ref_.FileName" class="iss-ref-dl-btn" title="Download">
+                                            <svg width="13" height="13" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2">
+                                                <path d="M10 3v10M6 9l4 4 4-4" stroke-linecap="round" stroke-linejoin="round"/>
+                                                <path d="M3 17h14" stroke-linecap="round"/>
+                                            </svg>
+                                            Download
+                                        </a>
+                                    }
+                                    else
+                                    {
+                                        <span style="color:#bbb;font-size:12px;">No file</span>
+                                    }
+                                </span>
+                            </div>
+                        }
+                    </div>
+                </div>
+                <div class="iss-refs-modal-footer">
+                    <button type="button" class="iss-refs-modal-ok" @onclick="() => _showJobRefsPopup = false">Close</button>
+                </div>
+            </div>
+        </div>
+    }
 </div>
 
 @code {
@@ -727,6 +756,16 @@
     private bool               _detailLoading = false;
     private List<JobReference> _selectedJobRefs = new();
     private bool               _showRefsPopup = false;
+
+    // Popup references cho danh sách (tab Today / 7days)
+    private bool     _showJobRefsPopup = false;
+    private JobItem? _popupJob         = null;
+
+    private void OpenJobRefsPopup(JobItem job)
+    {
+        _popupJob = job;
+        _showJobRefsPopup = true;
+    }
 
     // Culture dùng cho toàn bộ format ngày tháng — ép tiếng Anh để không bị dịch theo OS
     private static readonly System.Globalization.CultureInfo EnUs =
@@ -1619,7 +1658,24 @@
     .iss-jl-section  { color:#555; font-weight:700; font-size:11px; }
     .iss-jf-sub .iss-jl { color:#888; font-weight:500; padding-left:4px; }
     .iss-li-sub .iss-ll { color:#888; font-weight:500; padding-left:4px; }
-    .iss-jv { font-size: 12px; color: #333; word-break: break-word; }
+    .iss-jv {
+        font-size: 12px; color: #333;
+        flex: 1 1 auto;
+        min-width: 0;
+        overflow-wrap: anywhere;
+        word-break: break-word;
+    }
+
+    /* Row "Product Reference" với nút View inline trong card Today */
+    .iss-jf-inline {
+        margin-top: 6px; padding-top: 6px;
+        border-top: 1px dashed #e0e8f5;
+        align-items: center;
+    }
+    .iss-refs-view-inline {
+        padding: 4px 12px;
+        font-size: 12px;
+    }
 
     .iss-jc-foot {
         display: flex; align-items: center; justify-content: space-between;
