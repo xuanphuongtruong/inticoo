@@ -29,16 +29,22 @@ namespace InticooInspection.API.Controllers
             return Ok(result);
         }
 
-        // POST api/mail/send-vendor/{vendorId}
-        // Gửi mail cho 1 vendor cụ thể
-        [HttpPost("send-vendor/{vendorId:int}")]
-        public async Task<IActionResult> SendVendor(int vendorId, CancellationToken ct)
+        // POST api/mail/send-vendor/{vendorCode}
+        // Gửi mail cho 1 vendor cụ thể (vendorCode = Vendor.Code)
+        [HttpPost("send-vendor/{vendorCode}")]
+        public async Task<IActionResult> SendVendor(string vendorCode, CancellationToken ct)
         {
-            var (ok, error, count) = await _mail.SendForVendorAsync(vendorId, ct);
+            var (ok, error, count) = await _mail.SendForVendorAsync(vendorCode, ct);
             if (!ok) return BadRequest(new { success = false, error, inspectionCount = count });
             return Ok(new { success = true, inspectionCount = count });
         }
 
+        // ─────────────────────────────────────────────────────────────────────
+        // TODO: Bật lại các endpoint dưới khi entity MailLog + bảng MailLogs
+        // đã được tạo và DbSet<MailLog> MailLogs đã add vào AppDbContext.
+        // ─────────────────────────────────────────────────────────────────────
+
+        /*
         // GET api/mail/logs?take=100&vendorId=
         [HttpGet("logs")]
         [AllowAnonymous]
@@ -92,5 +98,6 @@ namespace InticooInspection.API.Controllers
                                        .Select(l => (DateTime?)l.SentAt).FirstOrDefault()
             });
         }
+        */
     }
 }

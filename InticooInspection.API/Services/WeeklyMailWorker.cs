@@ -3,13 +3,17 @@ namespace InticooInspection.API.Services
     /// <summary>
     /// Background worker chạy mỗi 30 phút. Nếu đang là thứ Hai, giờ >= 8:00 (giờ VN)
     /// và TUẦN NÀY CHƯA GỬI thì sẽ kích hoạt SendWeeklyVendorMailsAsync().
-    /// Trạng thái "đã gửi tuần này" được kiểm tra qua bảng MailLogs.
+    /// (Tạm thời) Trạng thái "đã gửi tuần này" được giữ trong memory — sẽ reset
+    /// khi app restart. Khi entity MailLog được tạo, mở lại block check DB ở dưới.
     /// </summary>
     public class WeeklyMailWorker : BackgroundService
     {
         private readonly IServiceProvider _sp;
         private readonly ILogger<WeeklyMailWorker> _logger;
         private readonly IConfiguration _config;
+
+        // In-memory: lưu mốc đầu tuần (UTC) đã gửi thành công gần nhất
+        private DateTime? _lastSentWeekStartUtc;
 
         // Giờ VN
         private static readonly TimeZoneInfo VnTz =
@@ -65,21 +69,27 @@ namespace InticooInspection.API.Services
             if (nowVn.DayOfWeek != sendDayOfWeek || nowVn.Hour < sendHour)
                 return;
 
-            // Mốc đầu tuần (00:00 thứ Hai theo giờ VN, đổi sang UTC để so với MailLogs)
+            // Mốc đầu tuần (00:00 thứ Hai theo giờ VN, đổi sang UTC để so với log)
             var startOfWeekVn  = nowVn.Date;
             var startOfWeekUtc = TimeZoneInfo.ConvertTimeToUtc(startOfWeekVn, VnTz);
 
             await using var scope = _sp.CreateAsyncScope();
-            var db   = scope.ServiceProvider.GetRequiredService<Infrastructure.Data.AppDbContext>();
+            // var db   = scope.ServiceProvider.GetRequiredService<Infrastructure.Data.AppDbContext>();
             var mail = scope.ServiceProvider.GetRequiredService<IInspectionMailService>();
 
-            // Đã gửi trong tuần này chưa? (kiểm tra MailLogs)
-            var alreadySent = await Microsoft.EntityFrameworkCore.EntityFrameworkQueryableExtensions
-                .AnyAsync(db.MailLogs, l => l.SentAt >= startOfWeekUtc && l.IsSuccess, ct);
+            // ── Đã gửi tuần này chưa? ──
+            // TODO: Khi MailLog đã có, đổi sang check DB:
+            // var alreadySent = await Microsoft.EntityFrameworkCore.EntityFrameworkQueryableExtensions
+            //     .AnyAsync(db.MailLogs, l => l.SentAt >= startOfWeekUtc && l.IsSuccess, ct);
+            //
+            // Tạm thời dùng in-memory flag — reset khi app restart (chấp nhận được vì
+            // worker chạy 30 phút/lần, ít khi restart đúng giờ gửi).
+            var alreadySent = _lastSentWeekStartUtc.HasValue
+                              && _lastSentWeekStartUtc.Value >= startOfWeekUtc;
 
             if (alreadySent)
             {
-                _logger.LogDebug("Tuần này đã gửi mail vendor, bỏ qua");
+                _logger.LogDebug("Tuần này đã gửi mail vendor (in-memory flag), bỏ qua");
                 return;
             }
 
@@ -89,6 +99,10 @@ namespace InticooInspection.API.Services
                 "Hoàn tất tuần. Vendors: {sent}/{total}, Skipped: {skip}, Failed: {fail}, Inspections: {ins}",
                 result.VendorsSent, result.VendorsTotal,
                 result.VendorsSkipped, result.VendorsFailed, result.InspectionsTotal);
+
+            // Đánh dấu tuần này đã gửi (chỉ khi có ít nhất 1 vendor được gửi thành công)
+            if (result.VendorsSent > 0)
+                _lastSentWeekStartUtc = startOfWeekUtc;
         }
     }
 }

@@ -17,9 +17,10 @@ namespace InticooInspection.API.Services
 
         /// <summary>
         /// Gửi mail cho 1 vendor cụ thể (dùng để test hoặc gửi tay).
+        /// `vendorCode` chính là Inspection.VendorId (Vendor.Code).
         /// </summary>
         Task<(bool ok, string? error, int inspectionCount)> SendForVendorAsync(
-            int vendorId, CancellationToken ct = default);
+            string vendorCode, CancellationToken ct = default);
     }
 
     public class MailRunResult
@@ -79,17 +80,18 @@ namespace InticooInspection.API.Services
                 return result;
             }
 
-            // ── Group theo VendorId ──
+            // ── Group theo VendorId (kiểu string = Vendor.Code) ──
             var byVendor = upcoming
-                .Where(i => i.VendorId.HasValue)
-                .GroupBy(i => i.VendorId!.Value)
-                .ToDictionary(g => g.Key, g => g.ToList());
+                .Where(i => !string.IsNullOrEmpty(i.VendorId))
+                .GroupBy(i => i.VendorId!)
+                .ToDictionary(g => g.Key, g => g.ToList(), StringComparer.OrdinalIgnoreCase);
 
             // ── Lấy vendor info cho các vendor có inspection ──
-            var vendorIds = byVendor.Keys.ToList();
+            // Inspection.VendorId chính là Vendor.Code → lookup theo Code
+            var vendorCodes = byVendor.Keys.ToList();
             var vendors = await _db.Vendors
                 .AsNoTracking()
-                .Where(v => vendorIds.Contains(v.Id) && v.Status == VendorStatus.Active)
+                .Where(v => vendorCodes.Contains(v.Code) && v.Status == VendorStatus.Active)
                 .ToListAsync(ct);
 
             result.VendorsTotal = vendors.Count;
@@ -106,7 +108,7 @@ namespace InticooInspection.API.Services
                     continue;
                 }
 
-                if (!byVendor.TryGetValue(vendor.Id, out var vendorInspections) || vendorInspections.Count == 0)
+                if (!byVendor.TryGetValue(vendor.Code, out var vendorInspections) || vendorInspections.Count == 0)
                 {
                     result.VendorsSkipped++;
                     continue;
@@ -120,18 +122,18 @@ namespace InticooInspection.API.Services
                     vendor.ContactName ?? vendor.Name,
                     subject, html, ct);
 
-                // Lưu log
-                _db.MailLogs.Add(new MailLog
-                {
-                    VendorId         = vendor.Id,
-                    VendorCode       = vendor.Code,
-                    ToEmail          = vendor.ContactEmail,
-                    Subject          = subject,
-                    SentAt           = DateTime.UtcNow,
-                    IsSuccess        = ok,
-                    ErrorMessage     = error,
-                    InspectionCount  = vendorInspections.Count
-                });
+                // TODO: Lưu MailLog khi entity MailLog đã được tạo + add DbSet vào AppDbContext + chạy migration
+                // _db.MailLogs.Add(new MailLog
+                // {
+                //     VendorId         = vendor.Id,
+                //     VendorCode       = vendor.Code,
+                //     ToEmail          = vendor.ContactEmail,
+                //     Subject          = subject,
+                //     SentAt           = DateTime.UtcNow,
+                //     IsSuccess        = ok,
+                //     ErrorMessage     = error,
+                //     InspectionCount  = vendorInspections.Count
+                // });
 
                 if (ok)
                 {
@@ -149,15 +151,18 @@ namespace InticooInspection.API.Services
                 await Task.Delay(500, ct);
             }
 
-            await _db.SaveChangesAsync(ct);
+            // await _db.SaveChangesAsync(ct);  // bật lại khi đã có MailLog
             return result;
         }
 
         public async Task<(bool ok, string? error, int inspectionCount)> SendForVendorAsync(
-            int vendorId, CancellationToken ct = default)
+            string vendorCode, CancellationToken ct = default)
         {
+            if (string.IsNullOrWhiteSpace(vendorCode))
+                return (false, "Vendor code không hợp lệ", 0);
+
             var vendor = await _db.Vendors.AsNoTracking()
-                .FirstOrDefaultAsync(v => v.Id == vendorId, ct);
+                .FirstOrDefaultAsync(v => v.Code == vendorCode, ct);
 
             if (vendor == null)
                 return (false, "Không tìm thấy vendor", 0);
@@ -170,7 +175,7 @@ namespace InticooInspection.API.Services
             var toDate   = fromDate.AddDays(lookAheadDays);
 
             var inspections = await _db.Inspections.AsNoTracking()
-                .Where(i => i.VendorId == vendorId
+                .Where(i => i.VendorId == vendorCode
                          && i.InspectionDate >= fromDate
                          && i.InspectionDate <  toDate
                          && (i.Status == InspectionStatus.Pending
@@ -189,18 +194,19 @@ namespace InticooInspection.API.Services
                 vendor.ContactName ?? vendor.Name,
                 subject, html, ct);
 
-            _db.MailLogs.Add(new MailLog
-            {
-                VendorId        = vendor.Id,
-                VendorCode      = vendor.Code,
-                ToEmail         = vendor.ContactEmail,
-                Subject         = subject,
-                SentAt          = DateTime.UtcNow,
-                IsSuccess       = ok,
-                ErrorMessage    = error,
-                InspectionCount = inspections.Count
-            });
-            await _db.SaveChangesAsync(ct);
+            // TODO: Lưu MailLog khi entity MailLog đã được tạo + add DbSet vào AppDbContext + chạy migration
+            // _db.MailLogs.Add(new MailLog
+            // {
+            //     VendorId        = vendor.Id,
+            //     VendorCode      = vendor.Code,
+            //     ToEmail         = vendor.ContactEmail,
+            //     Subject         = subject,
+            //     SentAt          = DateTime.UtcNow,
+            //     IsSuccess       = ok,
+            //     ErrorMessage    = error,
+            //     InspectionCount = inspections.Count
+            // });
+            // await _db.SaveChangesAsync(ct);
 
             return (ok, error, inspections.Count);
         }
