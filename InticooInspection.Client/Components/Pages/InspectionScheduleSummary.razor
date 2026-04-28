@@ -50,6 +50,8 @@
                     @* <div class="iss-field"><span class="iss-fl">Product Type</span><span class="iss-fv">@(_selectedJob.ProductType ?? "—")</span></div> *@
                     <div class="iss-field"><span class="iss-fl">Inspection Type</span><span class="iss-fv">@_selectedJob.InspectionType</span></div>
                     <div class="iss-field"><span class="iss-fl">PO Number</span><span class="iss-fv">@(string.IsNullOrEmpty(_selectedJob.PoNumber) ? "—" : _selectedJob.PoNumber)</span></div>
+                    <div class="iss-field"><span class="iss-fl">Product Code</span><span class="iss-fv">@(string.IsNullOrEmpty(_selectedJob.ItemNumber) ? "—" : _selectedJob.ItemNumber)</span></div>
+                    <div class="iss-field"><span class="iss-fl">Product Name</span><span class="iss-fv">@(string.IsNullOrEmpty(_selectedJob.ProductName) ? "—" : _selectedJob.ProductName)</span></div>
                     <div class="iss-field"><span class="iss-fl">Vendor Name</span><span class="iss-fv">@_selectedJob.VendorName</span></div>
                     <div class="iss-field"><span class="iss-fl">Vendor Address</span><span class="iss-fv">@(string.IsNullOrEmpty(_selectedJob.VendorCity) ? "—" : _selectedJob.VendorCity)</span></div>
                     @if (!string.IsNullOrEmpty(_selectedJob.VendorCountry))
@@ -66,7 +68,6 @@
                     bool hasVendorAddr = !string.IsNullOrEmpty(_selectedJob.VendorAddress1)
                                       || !string.IsNullOrEmpty(_selectedJob.VendorAddress2)
                                       || !string.IsNullOrEmpty(_selectedJob.VendorCity)
-                                      || !string.IsNullOrEmpty(_selectedJob.VendorState)
                                       || !string.IsNullOrEmpty(_selectedJob.VendorCountry);
                 }
                 @if (hasVendorAddr)
@@ -95,14 +96,6 @@
                                 <span class="iss-vi-dot">•</span>
                                 <span class="iss-vi-label">City</span>
                                 <span class="iss-vi-val">@_selectedJob.VendorCity</span>
-                            </div>
-                        }
-                        @if (!string.IsNullOrEmpty(_selectedJob.VendorState))
-                        {
-                            <div class="iss-vi-row">
-                                <span class="iss-vi-dot">•</span>
-                                <span class="iss-vi-label">State/Province</span>
-                                <span class="iss-vi-val">@_selectedJob.VendorState</span>
                             </div>
                         }
                         @if (!string.IsNullOrEmpty(_selectedJob.VendorCountry))
@@ -150,46 +143,19 @@
                     </div>
                 }
 
-                @* Reference List *@
+                @* Reference List — gộp thành 1 nút View, popup hiển thị toàn bộ *@
                 @if (_selectedJobRefs.Count > 0)
                 {
-                    <div class="iss-vendor-section">
-                        <div class="iss-vendor-title">Product References</div>
-                        <div class="iss-ref-table">
-                            <div class="iss-ref-header">
-                                <span class="iss-ref-no">No</span>
-                                <span class="iss-ref-name">Reference</span>
-                                <span class="iss-ref-file">File</span>
-                            </div>
-                            @foreach (var ref_ in _selectedJobRefs)
-                            {
-                                <div class="iss-ref-row">
-                                    <span class="iss-ref-no">@ref_.No</span>
-                                    <span class="iss-ref-name">@ref_.ReferenceName</span>
-                                    <span class="iss-ref-file">
-                                        @if (!string.IsNullOrEmpty(ref_.FileUrl))
-                                        {
-                                            <a href="@ref_.FileUrl" target="_blank" class="iss-ref-view-btn" title="View">
-                                                <svg width="13" height="13" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2">
-                                                    <path d="M1 10s3.5-7 9-7 9 7 9 7-3.5 7-9 7-9-7-9-7z"/><circle cx="10" cy="10" r="3"/>
-                                                </svg>
-                                                View
-                                            </a>
-                                            <a href="@ref_.FileUrl" download="@ref_.FileName" class="iss-ref-dl-btn" title="Download">
-                                                <svg width="13" height="13" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2">
-                                                    <path d="M10 3v10M6 9l4 4 4-4" stroke-linecap="round" stroke-linejoin="round"/>
-                                                    <path d="M3 17h14" stroke-linecap="round"/>
-                                                </svg>
-                                                Download
-                                            </a>
-                                        }
-                                        else
-                                        {
-                                            <span style="color:#bbb;font-size:12px;">No file</span>
-                                        }
-                                    </span>
-                                </div>
-                            }
+                    <div class="iss-vendor-section iss-refs-collapsed">
+                        <div class="iss-refs-header">
+                            <span class="iss-vendor-title" style="margin:0">Product References</span>
+                            <span class="iss-refs-count">@_selectedJobRefs.Count file@(_selectedJobRefs.Count > 1 ? "s" : "")</span>
+                            <button type="button" class="iss-refs-view-all-btn" @onclick="() => _showRefsPopup = true">
+                                <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M1 10s3.5-7 9-7 9 7 9 7-3.5 7-9 7-9-7-9-7z"/><circle cx="10" cy="10" r="3"/>
+                                </svg>
+                                View
+                            </button>
                         </div>
                     </div>
                 }
@@ -201,6 +167,60 @@
                     <svg width="18" height="18" viewBox="0 0 20 20" fill="currentColor"><path d="M6 4l12 6-12 6V4z"/></svg>
                     Start Inspection
                 </button>
+            }
+
+            @* Popup hiển thị toàn bộ Product References *@
+            @if (_showRefsPopup && _selectedJobRefs.Count > 0)
+            {
+                <div class="iss-refs-backdrop" @onclick="() => _showRefsPopup = false">
+                    <div class="iss-refs-modal" @onclick:stopPropagation="true">
+                        <div class="iss-refs-modal-header">
+                            <div class="iss-refs-modal-title">Product References</div>
+                            <button type="button" class="iss-refs-modal-close" @onclick="() => _showRefsPopup = false" aria-label="Close">✕</button>
+                        </div>
+                        <div class="iss-refs-modal-body">
+                            <div class="iss-ref-table">
+                                <div class="iss-ref-header">
+                                    <span class="iss-ref-no">No</span>
+                                    <span class="iss-ref-name">Reference</span>
+                                    <span class="iss-ref-file">File</span>
+                                </div>
+                                @foreach (var ref_ in _selectedJobRefs)
+                                {
+                                    <div class="iss-ref-row">
+                                        <span class="iss-ref-no">@ref_.No</span>
+                                        <span class="iss-ref-name">@ref_.ReferenceName</span>
+                                        <span class="iss-ref-file">
+                                            @if (!string.IsNullOrEmpty(ref_.FileUrl))
+                                            {
+                                                <a href="@ref_.FileUrl" target="_blank" rel="noopener" class="iss-ref-view-btn" title="View">
+                                                    <svg width="13" height="13" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2">
+                                                        <path d="M1 10s3.5-7 9-7 9 7 9 7-3.5 7-9 7-9-7-9-7z"/><circle cx="10" cy="10" r="3"/>
+                                                    </svg>
+                                                    View
+                                                </a>
+                                                <a href="@ref_.FileUrl" download="@ref_.FileName" class="iss-ref-dl-btn" title="Download">
+                                                    <svg width="13" height="13" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2">
+                                                        <path d="M10 3v10M6 9l4 4 4-4" stroke-linecap="round" stroke-linejoin="round"/>
+                                                        <path d="M3 17h14" stroke-linecap="round"/>
+                                                    </svg>
+                                                    Download
+                                                </a>
+                                            }
+                                            else
+                                            {
+                                                <span style="color:#bbb;font-size:12px;">No file</span>
+                                            }
+                                        </span>
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                        <div class="iss-refs-modal-footer">
+                            <button type="button" class="iss-refs-modal-ok" @onclick="() => _showRefsPopup = false">Close</button>
+                        </div>
+                    </div>
+                </div>
             }
         </div>
     }
@@ -552,6 +572,7 @@
                         {
                             <div class="iss-list-item" @onclick="async () => await OpenJobDetail(job)">
                                 <div class="iss-li-body">
+                                    <div class="iss-li-row"><span class="iss-ll">Job Number</span><span class="iss-lv">@(string.IsNullOrEmpty(job.JobNumber) ? "—" : job.JobNumber)</span></div>
                                     <div class="iss-li-row"><span class="iss-ll">Date</span><span class="iss-lv">@job.InspectionDate.ToString("d MMM yyyy", EnUs)</span></div>
                                     <div class="iss-li-row"><span class="iss-ll">Category</span><span class="iss-lv">@(job.ProductCategory ?? "—")</span></div>
                                     @* <div class="iss-li-row"><span class="iss-ll">Product Type</span><span class="iss-lv">@(job.ProductType ?? "—")</span></div> *@
@@ -572,46 +593,6 @@
                                         { <div class="iss-li-row iss-li-sub"><span class="iss-ll">• Office</span><span class="iss-lv">@job.VendorContactOffice</span></div> }
                                         @if (!string.IsNullOrEmpty(job.VendorContactEmail))
                                         { <div class="iss-li-row iss-li-sub"><span class="iss-ll">• Email</span><span class="iss-lv">@job.VendorContactEmail</span></div> }
-                                    }
-                                    @if (job.References.Count > 0)
-                                    {
-                                        <div class="iss-li-row"><span class="iss-ll iss-jl-section">Product References</span></div>
-                                        <div class="iss-ref-table iss-ref-compact" @onclick:stopPropagation="true">
-                                            <div class="iss-ref-header">
-                                                <span class="iss-ref-no">No</span>
-                                                <span class="iss-ref-name">Reference</span>
-                                                <span class="iss-ref-file">File</span>
-                                            </div>
-                                            @foreach (var ref_ in job.References)
-                                            {
-                                                <div class="iss-ref-row">
-                                                    <span class="iss-ref-no">@ref_.No</span>
-                                                    <span class="iss-ref-name">@ref_.ReferenceName</span>
-                                                    <span class="iss-ref-file">
-                                                        @if (!string.IsNullOrEmpty(ref_.FileUrl))
-                                                        {
-                                                            <a href="@ref_.FileUrl" target="_blank" class="iss-ref-view-btn" title="View">
-                                                                <svg width="13" height="13" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2">
-                                                                    <path d="M1 10s3.5-7 9-7 9 7 9 7-3.5 7-9 7-9-7-9-7z"/><circle cx="10" cy="10" r="3"/>
-                                                                </svg>
-                                                                View
-                                                            </a>
-                                                            <a href="@ref_.FileUrl" download="@ref_.FileName" class="iss-ref-dl-btn" title="Download">
-                                                                <svg width="13" height="13" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2">
-                                                                    <path d="M10 3v10M6 9l4 4 4-4" stroke-linecap="round" stroke-linejoin="round"/>
-                                                                    <path d="M3 17h14" stroke-linecap="round"/>
-                                                                </svg>
-                                                                Download
-                                                            </a>
-                                                        }
-                                                        else
-                                                        {
-                                                            <span style="color:#bbb;font-size:12px;">No file</span>
-                                                        }
-                                                    </span>
-                                                </div>
-                                            }
-                                        </div>
                                     }
                                 </div>
                                 <svg class="iss-chevron" width="16" height="16" viewBox="0 0 20 20"
@@ -745,6 +726,7 @@
     // Job detail state
     private bool               _detailLoading = false;
     private List<JobReference> _selectedJobRefs = new();
+    private bool               _showRefsPopup = false;
 
     // Culture dùng cho toàn bộ format ngày tháng — ép tiếng Anh để không bị dịch theo OS
     private static readonly System.Globalization.CultureInfo EnUs =
@@ -777,6 +759,8 @@
         public string?  VendorContactOffice   { get; set; }
         public string?  VendorContactEmail    { get; set; }
         public string?  PoNumber         { get; set; }
+        public string?  ItemNumber       { get; set; }
+        public string?  ProductName      { get; set; }
         public string?  InspectorName   { get; set; }
         public string?  InspectorId     { get; set; }
         public string?  InspectorMobile { get; set; }
@@ -1137,6 +1121,8 @@
             FinalResult     = i.FinalResult,
             ReportUrl       = null,
             PoNumber        = i.PoNumber,
+            ItemNumber      = i.ItemNumber,
+            ProductName     = i.ProductName,
             References      = refs,
         };
     }
@@ -1178,6 +1164,7 @@
         _selectedJob     = job;
         _prevTimeFilter  = _timeFilter;
         _selectedJobRefs = new();
+        _showRefsPopup   = false;
         _view            = View.JobDetail;
         _detailLoading   = true;
         StateHasChanged();
@@ -1328,6 +1315,8 @@
         public string?   InspectorId     { get; set; }
         public string?   InspectorMobile { get; set; }
         public string?   PoNumber        { get; set; }
+        public string?   ItemNumber      { get; set; }
+        public string?   ProductName     { get; set; }
         public string?   FinalResult     { get; set; }
         public DateTime? InspectionDate  { get; set; }
         public DateTime  CreatedAt       { get; set; }
@@ -1678,10 +1667,16 @@
     }
     .iss-list-item:last-child { border-bottom: none; }
     .iss-list-item:hover { background: #f0f8ff; }
-    .iss-li-body { flex: 1; }
+    .iss-li-body { flex: 1 1 auto; min-width: 0; }   /* min-width:0 — Safari fix cho child wrap đúng */
     .iss-li-row { display: flex; gap: 6px; margin-bottom: 4px; align-items: baseline; }
     .iss-ll { font-size: 11px; color: #2D7DD2; font-weight: 600; min-width: 108px; flex-shrink: 0; }
-    .iss-lv { font-size: 12px; color: #333; }
+    .iss-lv {
+        font-size: 12px; color: #333;
+        flex: 1 1 auto;
+        min-width: 0;
+        overflow-wrap: anywhere;   /* break các từ siêu dài như email/url */
+        word-break: break-word;    /* fallback cho Safari cũ */
+    }
     .iss-chevron { flex-shrink: 0; margin-left: 6px; }
 
     @@media (min-width: 768px) {
@@ -2000,5 +1995,135 @@
 
         /* Trang giấy */
         @@page { size: A4 landscape; margin: 10mm; }
+    }
+
+    /* ══════════ Product References — collapsed header + popup ══════════ */
+    .iss-refs-collapsed .iss-refs-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        flex-wrap: wrap;
+    }
+    .iss-refs-count {
+        font-size: 12px;
+        color: #6b7c93;
+        font-weight: 500;
+        margin-right: auto;
+        margin-left: 8px;
+    }
+    .iss-refs-view-all-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        padding: 5px 12px;
+        background: #fff;
+        color: #2D7DD2;
+        border: 1px solid #2D7DD2;
+        border-radius: 7px;
+        font-size: 12px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: background .15s, color .15s;
+        -webkit-tap-highlight-color: transparent;
+        -webkit-appearance: none;
+        appearance: none;
+        font-family: inherit;
+        white-space: nowrap;
+    }
+    .iss-refs-view-all-btn:hover,
+    .iss-refs-view-all-btn:active {
+        background: #2D7DD2;
+        color: #fff;
+    }
+
+    /* Popup modal */
+    .iss-refs-backdrop {
+        position: fixed;
+        inset: 0;
+        background: rgba(15, 25, 50, .55);
+        z-index: 9999;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 16px;
+        -webkit-backdrop-filter: blur(2px);
+        backdrop-filter: blur(2px);
+    }
+    .iss-refs-modal {
+        background: #fff;
+        border-radius: 12px;
+        width: 100%;
+        max-width: 640px;
+        max-height: 85vh;
+        display: flex;
+        flex-direction: column;
+        box-shadow: 0 20px 60px rgba(0,0,0,.3);
+        overflow: hidden;
+    }
+    .iss-refs-modal-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 14px 18px;
+        border-bottom: 1px solid #e8eef5;
+        background: #f8faff;
+    }
+    .iss-refs-modal-title {
+        font-size: 15px;
+        font-weight: 700;
+        color: #2D7DD2;
+    }
+    .iss-refs-modal-close {
+        background: transparent;
+        border: none;
+        font-size: 20px;
+        line-height: 1;
+        color: #6b7c93;
+        cursor: pointer;
+        padding: 4px 8px;
+        border-radius: 6px;
+        -webkit-tap-highlight-color: transparent;
+        -webkit-appearance: none;
+        appearance: none;
+    }
+    .iss-refs-modal-close:hover {
+        background: #e8eef5;
+        color: #1a1a2e;
+    }
+    .iss-refs-modal-body {
+        padding: 14px 18px;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+        flex: 1 1 auto;
+    }
+    .iss-refs-modal-footer {
+        padding: 12px 18px;
+        border-top: 1px solid #e8eef5;
+        text-align: right;
+        background: #fafbfd;
+    }
+    .iss-refs-modal-ok {
+        background: #2D7DD2;
+        color: #fff;
+        border: none;
+        border-radius: 7px;
+        padding: 7px 18px;
+        font-size: 13px;
+        font-weight: 600;
+        cursor: pointer;
+        -webkit-tap-highlight-color: transparent;
+        -webkit-appearance: none;
+        appearance: none;
+        font-family: inherit;
+    }
+    .iss-refs-modal-ok:hover {
+        background: #1a5fa8;
+    }
+
+    @@media (max-width: 480px) {
+        .iss-refs-collapsed .iss-refs-header { gap: 8px; }
+        .iss-refs-count { width: 100%; margin: 0; order: 3; }
+        .iss-refs-view-all-btn { padding: 6px 14px; }
     }
 </style>
