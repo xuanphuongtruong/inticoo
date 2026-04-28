@@ -1112,7 +1112,45 @@ else if (_data != null)
 
     private async Task PrintReport()
     {
-        await JS.InvokeVoidAsync("waitImagesAndPrint", "rpt-root");
+        // Đặt tên file PDF = "{JobNumber}_{ddMMyyyy}". Browser dùng document.title
+        // làm tên file mặc định khi user chọn "Save as PDF" trong dialog print.
+        var jobNumber = !string.IsNullOrWhiteSpace(_data?.JobNumber)
+            ? _data!.JobNumber!
+            : $"Inspection-{InspectionId}";
+
+        // Lấy ngày inspection (ưu tiên _data.InspectionDate, fallback hôm nay)
+        var inspDate = _data?.InspectionDate ?? DateTime.Today;
+        var dateStr  = inspDate.ToString("ddMMyyyy",
+            System.Globalization.CultureInfo.InvariantCulture);
+
+        // Ghép: "PST-JN100002-26_28042026"
+        var rawFileName = $"{jobNumber}_{dateStr}";
+
+        // Sanitize: bỏ ký tự không hợp lệ trong filename (Windows/macOS/Linux)
+        var safeFileName = System.Text.RegularExpressions.Regex.Replace(
+            rawFileName, @"[\\/:*?""<>|]", "_").Trim();
+
+        try
+        {
+            // Lưu title hiện tại để restore sau khi in xong
+            var originalTitle = await JS.InvokeAsync<string>("eval", "document.title");
+
+            // Set title = file name → tên file PDF mặc định
+            await JS.InvokeVoidAsync("eval",
+                $"document.title = {System.Text.Json.JsonSerializer.Serialize(safeFileName)};");
+
+            // Trigger print (chờ ảnh load xong rồi in)
+            await JS.InvokeVoidAsync("waitImagesAndPrint", "rpt-root");
+
+            // Restore title — delay nhỏ để dialog print đã hiện hoàn toàn
+            await JS.InvokeVoidAsync("eval",
+                $"setTimeout(function(){{ document.title = {System.Text.Json.JsonSerializer.Serialize(originalTitle ?? "Inspection Report")}; }}, 1000);");
+        }
+        catch
+        {
+            // Fallback: gọi print không đổi title
+            await JS.InvokeVoidAsync("waitImagesAndPrint", "rpt-root");
+        }
     }
 
     private static string GetFinalBadgeClass(string? result) => result?.ToUpper() switch
