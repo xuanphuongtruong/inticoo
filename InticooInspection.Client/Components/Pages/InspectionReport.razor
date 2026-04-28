@@ -866,10 +866,8 @@ else if (_data != null)
                                    ?? (def.PhotoUrl != null ? new List<string> { def.PhotoUrl } : new List<string>());
                         return urls.Select((url, i) => new { Url = url, Remark = def.Remarks?.ElementAtOrDefault(i) ?? def.Remark ?? "" });
                     }).ToList();
-                    // Nếu có defect thì làm tròn lên số chẵn để grid 2 cột không vỡ; nếu không có thì để 0 (hiển thị empty state)
-                    int _critMin = _critItems.Count == 0
-                        ? 0
-                        : (_critItems.Count % 2 == 0 ? _critItems.Count : _critItems.Count + 1);
+                    // Tối thiểu 2 ô (1 dòng 2 hình); nếu nhiều hơn thì làm tròn chẵn cho grid 2 cột
+                    int _critMin = Math.Max(2, _critItems.Count % 2 == 0 ? _critItems.Count : _critItems.Count + 1);
                     var _critSlots = _critItems.Select(p => (string?)p.Url)
                         .Concat(Enumerable.Repeat<string?>(null, _critMin - _critItems.Count))
                         .Zip(_critItems.Select(p => p.Remark).Concat(Enumerable.Repeat("", _critMin - _critItems.Count)),
@@ -877,27 +875,20 @@ else if (_data != null)
                 }
                 <div class="rpt-section-title rpt-section-title-lg" style="margin-top:20px;">F. Details of Defect Found</div>
                 <div class="rpt-defect-type-title defect-critical">Critical</div>
-                @if (_critSlots.Count == 0)
-                {
-                    <div class="rpt-defect-empty">No critical defects found.</div>
-                }
-                else
-                {
-                    <div class="rpt-photo-grid-2">
-                        @foreach (var slot in _critSlots)
-                        {
-                            <div class="rpt-defect-cell">
-                                <div class="rpt-defect-photo-wrap">
-                                    @if (!string.IsNullOrEmpty(slot.Url))
-                                    { <img src="@NormalizeUrl(slot.Url)" class="rpt-defect-photo" alt="Critical defect photo" loading="eager"/> }
-                                    else
-                                    { <div class="rpt-defect-no-photo">No Photo</div> }
-                                </div>
-                                <div class="rpt-defect-remark">Remark: @(string.IsNullOrEmpty(slot.Remark) ? "—" : slot.Remark)</div>
+                <div class="rpt-photo-grid-2">
+                    @foreach (var slot in _critSlots)
+                    {
+                        <div class="rpt-defect-cell">
+                            <div class="rpt-defect-photo-wrap">
+                                @if (!string.IsNullOrEmpty(slot.Url))
+                                { <img src="@NormalizeUrl(slot.Url)" class="rpt-defect-photo" alt="Critical defect photo" loading="eager"/> }
+                                else
+                                { <div class="rpt-defect-no-photo">No Photo</div> }
                             </div>
-                        }
-                    </div>
-                }
+                            <div class="rpt-defect-remark">Remark: @(string.IsNullOrEmpty(slot.Remark) ? "—" : slot.Remark)</div>
+                        </div>
+                    }
+                </div>
 
                 <div class="rpt-footer">
                     <div class="rpt-footer-inner">
@@ -929,10 +920,8 @@ else if (_data != null)
                         })
                         .ToList();
 
-                    // Có defect → làm tròn chẵn cho grid 2 cột; không có → 0 (empty state)
-                    int minSlots = photoItems.Count == 0
-                        ? 0
-                        : (photoItems.Count % 2 == 0 ? photoItems.Count : photoItems.Count + 1);
+                    // Tối thiểu 2 ô (1 dòng 2 hình); pad chẵn cho grid 2 cột
+                    int minSlots = Math.Max(2, photoItems.Count % 2 == 0 ? photoItems.Count : photoItems.Count + 1);
                     var slots = photoItems
                         .Select(p => (string?)p.Url)
                         .Concat(Enumerable.Repeat<string?>(null, minSlots - photoItems.Count))
@@ -944,27 +933,20 @@ else if (_data != null)
                         .ToList();
 
                     <div class="rpt-defect-type-title defect-@defType.ToLower()">@defType</div>
-                    @if (slots.Count == 0)
-                    {
-                        <div class="rpt-defect-empty">No @defType.ToLower() defects found.</div>
-                    }
-                    else
-                    {
-                        <div class="rpt-photo-grid-2">
-                            @foreach (var slot in slots)
-                            {
-                                <div class="rpt-defect-cell">
-                                    <div class="rpt-defect-photo-wrap">
-                                        @if (!string.IsNullOrEmpty(slot.Url))
-                                        { <img src="@NormalizeUrl(slot.Url)" class="rpt-defect-photo" alt="@defType defect photo" loading="eager"/> }
-                                        else
-                                        { <div class="rpt-defect-no-photo">No Photo</div> }
-                                    </div>
-                                    <div class="rpt-defect-remark">Remark: @(string.IsNullOrEmpty(slot.Remark) ? "—" : slot.Remark)</div>
+                    <div class="rpt-photo-grid-2">
+                        @foreach (var slot in slots)
+                        {
+                            <div class="rpt-defect-cell">
+                                <div class="rpt-defect-photo-wrap">
+                                    @if (!string.IsNullOrEmpty(slot.Url))
+                                    { <img src="@NormalizeUrl(slot.Url)" class="rpt-defect-photo" alt="@defType defect photo" loading="eager"/> }
+                                    else
+                                    { <div class="rpt-defect-no-photo">No Photo</div> }
                                 </div>
-                            }
-                        </div>
-                    }
+                                <div class="rpt-defect-remark">Remark: @(string.IsNullOrEmpty(slot.Remark) ? "—" : slot.Remark)</div>
+                            </div>
+                        }
+                    </div>
                 }
 
                 <div class="rpt-footer">
@@ -2219,7 +2201,22 @@ else if (_data != null)
         .rpt-sig-row,
         .rpt-aql-grid    { break-inside: avoid; page-break-inside: avoid; }
 
-        .rpt-aql-grid    { grid-template-columns: 1fr 1fr 1fr; }
+        /* Ép lại layout grid khi in PDF — override mobile media (max-width:860px)
+           kích hoạt nhầm khi Safari macOS/iOS dùng viewport hẹp để xuất PDF */
+        .rpt-photo-grid-2 {
+            display: grid !important;
+            grid-template-columns: 1fr 1fr !important;
+            gap: 10px !important;
+        }
+        .rpt-aql-grid {
+            display: grid !important;
+            grid-template-columns: 1fr 1fr 1fr !important;
+            gap: 10px !important;
+        }
+
+        /* Toàn bộ block AQL (3 box + RESULT table) không break giữa trang */
+        .rpt-aql-wrap,
+        .rpt-aql-section { break-inside: avoid; page-break-inside: avoid; }
 
         /* Footer cố định đáy trang */
         .rpt-footer {
@@ -2364,5 +2361,48 @@ else if (_data != null)
         .rpt-main-title { font-size: 16px; letter-spacing: .02em; }
         .rpt-section-title-lg { font-size: 14px; }
         .rpt-info-table tr { grid-template-columns: 45% 55%; }
+    }
+
+    /* ══════════════════════════════════════════
+       PRINT OVERRIDES — đặt CUỐI CÙNG để thắng
+       các @@media (max-width:...) phía trên do CSS cascade.
+       Safari macOS/iOS khi xuất PDF có thể giữ nguyên viewport hẹp
+       → mobile media match → ảnh xuống 1 cột. Block này ép lại 2 cột.
+    ══════════════════════════════════════════ */
+    @@media print {
+        .rpt-photo-grid-2 {
+            display: grid !important;
+            grid-template-columns: 1fr 1fr !important;
+            gap: 10px !important;
+        }
+        .rpt-aql-grid {
+            display: grid !important;
+            grid-template-columns: 1fr 1fr 1fr !important;
+            gap: 10px !important;
+        }
+        /* Ép Safari iOS/macOS giữ ảnh đúng kích thước, không co về 1 cột */
+        .rpt-photo-cell,
+        .rpt-defect-cell,
+        .rpt-overview-photo-cell {
+            width: auto !important;
+            max-width: 100% !important;
+        }
+        .rpt-photo-cell img,
+        .rpt-defect-cell img,
+        .rpt-defect-photo-wrap img,
+        .rpt-overview-photo-cell img {
+            max-height: none !important;
+            height: 100% !important;
+            width: 100% !important;
+            object-fit: cover !important;
+        }
+        /* Cover photo có chiều cao cố định 330px như desktop, không giới hạn 260px */
+        .rpt-photo-cell { height: 330px !important; }
+        .rpt-defect-photo-wrap { min-height: 200px !important; }
+
+        /* AQL block + RESULT table giữ nguyên 1 trang */
+        .rpt-aql-wrap,
+        .rpt-aql-section,
+        .rpt-result-table { break-inside: avoid !important; page-break-inside: avoid !important; }
     }
 </style>
