@@ -207,12 +207,19 @@ else
                                 </td>
                                 <td class="td-center">
                                     @{
-                                        var (bgColor, label) = oc.Compliance switch {
-                                            "Pass" => ("#27ae60", "Yes"),
-                                            "Fail" => ("#e74c3c", "No"),
-                                            "N/A" => ("#888888", "N/A"),
-                                            _      => ("", "")
-                                        };
+                                        // Chuẩn hoá: nhận cả "Pass"/"Yes", "Fail"/"No", "NA"/"N/A" (case-insensitive)
+                                        var cv = (oc.Compliance ?? "").Trim();
+                                        var (bgColor, label) =
+                                            (string.Equals(cv, "Pass", StringComparison.OrdinalIgnoreCase) ||
+                                             string.Equals(cv, "Yes",  StringComparison.OrdinalIgnoreCase))
+                                                ? ("#27ae60", "Yes")
+                                          : (string.Equals(cv, "Fail", StringComparison.OrdinalIgnoreCase) ||
+                                             string.Equals(cv, "No",   StringComparison.OrdinalIgnoreCase))
+                                                ? ("#e74c3c", "No")
+                                          : (string.Equals(cv, "N/A", StringComparison.OrdinalIgnoreCase) ||
+                                             string.Equals(cv, "NA",  StringComparison.OrdinalIgnoreCase))
+                                                ? ("#888888", "N/A")
+                                          : ("", "");
                                     }
                                     @if (!string.IsNullOrEmpty(bgColor))
                                     {
@@ -1645,8 +1652,18 @@ else
 
     void HandleNext()
     {
+        // Nếu step hiện tại sẽ bị skip do Overall Conclusion = No/NA → bỏ qua mọi validation
+        // (user không cần nhập gì cho step bị skip)
+        bool currentStepIsSkipped = IsStepSkippedByCompliance(_currentStepIdx);
+        if (currentStepIsSkipped)
+        {
+            // Clear thông báo lỗi cũ (nếu có) để banner không kẹt khi nhảy qua step skip
+            _saveMsg = "";
+            _saveError = false;
+        }
+
         // Validate Step 2 — A. Quantity Conformity
-        if (_currentStepIdx == 2)
+        if (_currentStepIdx == 2 && !currentStepIsSkipped)
         {
             _qtyValidated = true;
             var qc = _data.QuantityConformity;
@@ -1670,7 +1687,7 @@ else
         }
         // Validate D — Performance Testing: bắt buộc tối thiểu 2 hình
         int dBase = 7 + _cartonCount * B_STEPS_PER_CARTON;
-        if (_currentStepIdx >= dBase && _currentStepIdx < dBase + Math.Max(1, _data.PerformanceTests.Count))
+        if (_currentStepIdx >= dBase && _currentStepIdx < dBase + Math.Max(1, _data.PerformanceTests.Count) && !currentStepIsSkipped)
         {
             int dIdx = _currentStepIdx - dBase;
             if (dIdx < _data.PerformanceTests.Count)
@@ -1688,7 +1705,7 @@ else
             }
         }
         // Validate C-ii — Golden Sample: bắt buộc tối thiểu 2 hình
-        if (_currentStepIdx == 5 + _cartonCount * B_STEPS_PER_CARTON)
+        if (_currentStepIdx == 5 + _cartonCount * B_STEPS_PER_CARTON && !currentStepIsSkipped)
         {
             _goldenValidated = true;
             int goldenCount = _data.ProductSpec.GoldenPhotos.Count(p => !string.IsNullOrEmpty(p));
@@ -1702,7 +1719,7 @@ else
             _saveMsg = ""; _saveError = false;
         }
         // Validate C-iii — Colour Swatch: bắt buộc tối thiểu 2 hình
-        if (_currentStepIdx == 6 + _cartonCount * B_STEPS_PER_CARTON)
+        if (_currentStepIdx == 6 + _cartonCount * B_STEPS_PER_CARTON && !currentStepIsSkipped)
         {
             _swatchValidated = true;
             int swatchCount = _data.ProductSpec.SwatchPhotos.Count(p => !string.IsNullOrEmpty(p));
@@ -1716,7 +1733,7 @@ else
             _saveMsg = ""; _saveError = false;
         }
         // Validate C-i — Product Size: bắt buộc tối thiểu 2 hình
-        if (_currentStepIdx == 4 + _cartonCount * B_STEPS_PER_CARTON)
+        if (_currentStepIdx == 4 + _cartonCount * B_STEPS_PER_CARTON && !currentStepIsSkipped)
         {
             _sizeValidated = true;
             int sizeCount = _data.ProductSpec.SizePhotos.Count(p => !string.IsNullOrEmpty(p));
@@ -1782,7 +1799,14 @@ else
         string GetCompliance(string letter) =>
             _data.OverallConclusions.FirstOrDefault(o => o.Letter == letter)?.Compliance ?? "";
 
-        bool isPass(string letter) => GetCompliance(letter) == "Pass";
+        // "Pass" hoặc "Yes" (case-insensitive) đều coi là PASS — không skip
+        // Bất kỳ giá trị nào khác (Fail / No / NA / N/A / "" / null) đều SKIP
+        bool isPass(string letter)
+        {
+            var v = GetCompliance(letter)?.Trim() ?? "";
+            return string.Equals(v, "Pass", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(v, "Yes",  StringComparison.OrdinalIgnoreCase);
+        }
 
         // A — Quantity Conformity (step 2)
         if (stepIdx == STEP_QTY && !isPass("A")) return true;
