@@ -1,0 +1,512 @@
+@page "/mail-test"
+@using System.Net.Http.Json
+@inject HttpClient Http
+@inject IJSRuntime JS
+
+<PageTitle>Mail Test - Inspection Notification</PageTitle>
+
+<div class="container py-4">
+    <div class="d-flex align-items-center mb-4">
+        <h3 class="mb-0">📧 Test Mail Notification</h3>
+        <span class="badge bg-info ms-3">Vendor Weekly Mail</span>
+    </div>
+
+    @* ════════════════════════════════════════════════════════════ *@
+    @* Section 1: Cấu hình SMTP hiện tại *@
+    @* ════════════════════════════════════════════════════════════ *@
+    <div class="card mb-4">
+        <div class="card-header bg-light">
+            <strong>1. Cấu hình SMTP hiện tại</strong>
+            <button class="btn btn-sm btn-outline-secondary float-end" @onclick="LoadSettingsAsync">
+                Refresh
+            </button>
+        </div>
+        <div class="card-body">
+            @if (settings is null)
+            {
+                <p class="text-muted mb-0">Đang tải...</p>
+            }
+            else
+            {
+                <div class="row g-2">
+                    <div class="col-md-6">
+                        <strong>SMTP Host:</strong> @settings.SmtpHost:@settings.SmtpPort
+                    </div>
+                    <div class="col-md-6">
+                        <strong>Sender:</strong> @settings.SenderName &lt;@settings.SenderEmail&gt;
+                    </div>
+                    <div class="col-md-6">
+                        <strong>SSL:</strong> @(settings.UseSsl ? "✅" : "❌")
+                    </div>
+                    <div class="col-md-6">
+                        <strong>Password:</strong> @(settings.HasPassword ? "✅ Đã cấu hình" : "❌ CHƯA có password")
+                    </div>
+                    <div class="col-md-6">
+                        <strong>Lịch gửi:</strong>
+                        @GetDayName(settings.SendDayOfWeek) lúc @settings.SendHour:00 (giờ VN)
+                    </div>
+                    <div class="col-md-6">
+                        <strong>Job:</strong>
+                        @if (settings.WeeklyJobEnabled)
+                        {
+                            <span class="badge bg-success">Đang BẬT</span>
+                        }
+                        else
+                        {
+                            <span class="badge bg-secondary">Đang TẮT</span>
+                        }
+                    </div>
+                    <div class="col-12">
+                        <strong>Thông báo trước:</strong> @settings.LookAheadDays ngày
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+
+    @* ════════════════════════════════════════════════════════════ *@
+    @* Section 2: Test gửi 1 email bất kỳ (kiểm tra SMTP) *@
+    @* ════════════════════════════════════════════════════════════ *@
+    <div class="card mb-4">
+        <div class="card-header bg-light">
+            <strong>2. Gửi 1 email test (kiểm tra cấu hình SMTP)</strong>
+        </div>
+        <div class="card-body">
+            <div class="row g-2 align-items-end">
+                <div class="col-md-6">
+                    <label class="form-label">Email nhận</label>
+                    <input class="form-control" @bind="testEmail" placeholder="your-email@example.com" />
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Tiêu đề (tuỳ chọn)</label>
+                    <input class="form-control" @bind="testSubject" placeholder="Để trống dùng mặc định" />
+                </div>
+                <div class="col-md-2">
+                    <button class="btn btn-primary w-100" @onclick="SendTestAsync" disabled="@busy1">
+                        @(busy1 ? "Đang gửi..." : "Gửi test")
+                    </button>
+                </div>
+            </div>
+            @if (!string.IsNullOrEmpty(test1Result))
+            {
+                <div class="alert @(test1Success ? "alert-success" : "alert-danger") mt-3 mb-0">
+                    @test1Result
+                </div>
+            }
+        </div>
+    </div>
+
+    @* ════════════════════════════════════════════════════════════ *@
+    @* Section 3: Preview - vendor sẽ nhận mail kỳ tới *@
+    @* ════════════════════════════════════════════════════════════ *@
+    <div class="card mb-4">
+        <div class="card-header bg-light">
+            <strong>3. Preview: Danh sách Vendor sẽ nhận mail kỳ tới</strong>
+            <button class="btn btn-sm btn-outline-secondary float-end" @onclick="LoadPreviewAsync">
+                Refresh
+            </button>
+        </div>
+        <div class="card-body">
+            @if (preview is null)
+            {
+                <p class="text-muted mb-0">Đang tải...</p>
+            }
+            else if (preview.Vendors is null || preview.Vendors.Count == 0)
+            {
+                <div class="alert alert-warning mb-0">
+                    Không có inspection nào trong @preview.LookAhead ngày tới (từ @preview.FromDate.ToString("dd/MM/yyyy")
+                    đến @preview.ToDate.ToString("dd/MM/yyyy")).
+                </div>
+            }
+            else
+            {
+                <p class="text-muted">
+                    Tổng <strong>@preview.TotalInspections</strong> inspection
+                    của <strong>@preview.Vendors.Count</strong> vendor trong @preview.LookAhead ngày tới
+                    (@preview.FromDate.ToString("dd/MM") - @preview.ToDate.ToString("dd/MM")).
+                </p>
+                <div class="table-responsive">
+                    <table class="table table-sm table-striped">
+                        <thead>
+                            <tr>
+                                <th>Vendor Code</th>
+                                <th>Vendor Name</th>
+                                <th>Email</th>
+                                <th class="text-center"># Inspection</th>
+                                <th class="text-center">Trạng thái</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var v in preview.Vendors)
+                            {
+                                <tr>
+                                    <td><code>@v.VendorCode</code></td>
+                                    <td>@v.VendorName</td>
+                                    <td>
+                                        @if (!string.IsNullOrEmpty(v.ContactEmail))
+                                        {
+                                            <span>@v.ContactEmail</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-danger">⚠️ Chưa có email</span>
+                                        }
+                                    </td>
+                                    <td class="text-center">@v.InspectionCount</td>
+                                    <td class="text-center">
+                                        @if (v.CanSend)
+                                        {
+                                            <span class="badge bg-success">Sẽ gửi</span>
+                                        }
+                                        else if (!v.IsActive)
+                                        {
+                                            <span class="badge bg-secondary">Inactive</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge bg-danger">Thiếu email</span>
+                                        }
+                                    </td>
+                                    <td>
+                                        <button class="btn btn-sm btn-outline-primary"
+                                                disabled="@(!v.CanSend || busy2)"
+                                                @onclick="() => SendForVendorAsync(v.VendorCode)">
+                                            Gửi
+                                        </button>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </div>
+    </div>
+
+    @* ════════════════════════════════════════════════════════════ *@
+    @* Section 4: Trigger thủ công job hàng tuần *@
+    @* ════════════════════════════════════════════════════════════ *@
+    <div class="card mb-4 border-warning">
+        <div class="card-header bg-warning text-dark">
+            <strong>4. ⚡ Trigger thủ công - Gửi mail HÀNG LOẠT cho TẤT CẢ vendor</strong>
+        </div>
+        <div class="card-body">
+            <p class="text-muted">
+                Chức năng này sẽ gửi mail cho TẤT CẢ vendor active có inspection sắp tới.
+                Dùng khi cần gửi bù hoặc test job. Lịch gửi tự động sẽ chạy
+                <strong>@GetDayName(settings?.SendDayOfWeek ?? 5) lúc @(settings?.SendHour ?? 18):00</strong> hàng tuần.
+            </p>
+            <button class="btn btn-warning" @onclick="RunWeeklyAsync" disabled="@busy3">
+                @if (busy3)
+                {
+                    <span><span class="spinner-border spinner-border-sm me-2"></span>Đang gửi...</span>
+                }
+                else
+                {
+                    <span>🚀 Chạy job NGAY</span>
+                }
+            </button>
+
+            @if (lastRunResult is not null)
+            {
+                <div class="alert alert-info mt-3 mb-0">
+                    <strong>Kết quả:</strong>
+                    Tổng vendor: <strong>@lastRunResult.VendorsTotal</strong>,
+                    Đã gửi: <strong class="text-success">@lastRunResult.VendorsSent</strong>,
+                    Bỏ qua: <strong class="text-warning">@lastRunResult.VendorsSkipped</strong>,
+                    Lỗi: <strong class="text-danger">@lastRunResult.VendorsFailed</strong>,
+                    Inspection: <strong>@lastRunResult.InspectionsTotal</strong>
+                    @if (lastRunResult.Errors is not null && lastRunResult.Errors.Count > 0)
+                    {
+                        <div class="mt-2">
+                            <strong>Errors:</strong>
+                            <ul class="mb-0">
+                                @foreach (var err in lastRunResult.Errors)
+                                {
+                                    <li>@err</li>
+                                }
+                            </ul>
+                        </div>
+                    }
+                </div>
+            }
+        </div>
+    </div>
+
+    @* ════════════════════════════════════════════════════════════ *@
+    @* Section 5: Lịch sử gửi mail *@
+    @* ════════════════════════════════════════════════════════════ *@
+    <div class="card mb-4">
+        <div class="card-header bg-light">
+            <strong>5. Lịch sử gửi mail (50 mail gần nhất)</strong>
+            <button class="btn btn-sm btn-outline-secondary float-end" @onclick="LoadLogsAsync">
+                Refresh
+            </button>
+        </div>
+        <div class="card-body">
+            @if (logs is null)
+            {
+                <p class="text-muted mb-0">Đang tải...</p>
+            }
+            else if (logs.Count == 0)
+            {
+                <p class="text-muted mb-0">Chưa có log gửi mail nào.</p>
+            }
+            else
+            {
+                <div class="table-responsive">
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th>Thời gian</th>
+                                <th>Vendor</th>
+                                <th>Email nhận</th>
+                                <th>Tiêu đề</th>
+                                <th class="text-center"># Insp</th>
+                                <th class="text-center">Trạng thái</th>
+                                <th>Lỗi</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var l in logs)
+                            {
+                                <tr class="@(l.IsSuccess ? "" : "table-danger")">
+                                    <td>@l.SentAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</td>
+                                    <td><code>@l.VendorCode</code></td>
+                                    <td>@l.ToEmail</td>
+                                    <td><small>@l.Subject</small></td>
+                                    <td class="text-center">@l.InspectionCount</td>
+                                    <td class="text-center">
+                                        @if (l.IsSuccess)
+                                        {
+                                            <span class="badge bg-success">✅ OK</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge bg-danger">❌ FAIL</span>
+                                        }
+                                    </td>
+                                    <td>
+                                        @if (!string.IsNullOrEmpty(l.ErrorMessage))
+                                        {
+                                            <small class="text-danger">@l.ErrorMessage</small>
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+
+@code {
+    // Settings
+    private MailSettings? settings;
+
+    // Test 1: Send test email
+    private string testEmail = "";
+    private string testSubject = "";
+    private bool busy1 = false;
+    private bool test1Success = false;
+    private string? test1Result;
+
+    // Section 3: Preview
+    private UpcomingPreview? preview;
+    private bool busy2 = false;
+
+    // Section 4: Run weekly
+    private bool busy3 = false;
+    private MailRunResult? lastRunResult;
+
+    // Section 5: Logs
+    private List<MailLogDto>? logs;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await Task.WhenAll(
+            LoadSettingsAsync(),
+            LoadPreviewAsync(),
+            LoadLogsAsync()
+        );
+    }
+
+    // ─────────────────────────────────────────────────────────
+    private async Task LoadSettingsAsync()
+    {
+        try { settings = await Http.GetFromJsonAsync<MailSettings>("api/mail/settings"); }
+        catch (Exception ex) { await JS.InvokeVoidAsync("console.error", ex.Message); }
+    }
+
+    private async Task LoadPreviewAsync()
+    {
+        try { preview = await Http.GetFromJsonAsync<UpcomingPreview>("api/mail/upcoming-vendors"); }
+        catch (Exception ex) { await JS.InvokeVoidAsync("console.error", ex.Message); }
+    }
+
+    private async Task LoadLogsAsync()
+    {
+        try { logs = await Http.GetFromJsonAsync<List<MailLogDto>>("api/mail/logs?take=50"); }
+        catch (Exception ex) { await JS.InvokeVoidAsync("console.error", ex.Message); }
+    }
+
+    // ─────────────────────────────────────────────────────────
+    private async Task SendTestAsync()
+    {
+        if (string.IsNullOrWhiteSpace(testEmail))
+        {
+            test1Result = "❌ Vui lòng nhập email nhận";
+            test1Success = false;
+            return;
+        }
+
+        busy1 = true;
+        test1Result = null;
+        try
+        {
+            var res = await Http.PostAsJsonAsync("api/mail/send-test", new
+            {
+                ToEmail = testEmail,
+                Subject = string.IsNullOrWhiteSpace(testSubject) ? null : testSubject
+            });
+
+            if (res.IsSuccessStatusCode)
+            {
+                test1Success = true;
+                test1Result = $"✅ Đã gửi mail test tới {testEmail}. Vui lòng kiểm tra hộp thư (cả Spam).";
+            }
+            else
+            {
+                test1Success = false;
+                var body = await res.Content.ReadAsStringAsync();
+                test1Result = $"❌ Lỗi: {body}";
+            }
+            await LoadLogsAsync();
+        }
+        catch (Exception ex)
+        {
+            test1Success = false;
+            test1Result = $"❌ Exception: {ex.Message}";
+        }
+        finally { busy1 = false; }
+    }
+
+    // ─────────────────────────────────────────────────────────
+    private async Task SendForVendorAsync(string vendorCode)
+    {
+        if (!await JS.InvokeAsync<bool>("confirm", $"Gửi mail cho vendor {vendorCode}?")) return;
+
+        busy2 = true;
+        try
+        {
+            var res = await Http.PostAsync($"api/mail/send-vendor/{vendorCode}", null);
+            var json = await res.Content.ReadAsStringAsync();
+            await JS.InvokeVoidAsync("alert",
+                res.IsSuccessStatusCode ? $"✅ Đã gửi cho vendor {vendorCode}" : $"❌ Lỗi: {json}");
+            await LoadLogsAsync();
+        }
+        catch (Exception ex)
+        {
+            await JS.InvokeVoidAsync("alert", "❌ " + ex.Message);
+        }
+        finally { busy2 = false; }
+    }
+
+    // ─────────────────────────────────────────────────────────
+    private async Task RunWeeklyAsync()
+    {
+        if (!await JS.InvokeAsync<bool>("confirm",
+            "Bạn chắc chắn muốn gửi mail cho TẤT CẢ vendor có inspection sắp tới?")) return;
+
+        busy3 = true;
+        lastRunResult = null;
+        try
+        {
+            lastRunResult = await Http.PostAsJsonAsync("api/mail/run-weekly", new { })
+                                       .Result.Content.ReadFromJsonAsync<MailRunResult>();
+            await LoadLogsAsync();
+        }
+        catch (Exception ex)
+        {
+            await JS.InvokeVoidAsync("alert", "❌ " + ex.Message);
+        }
+        finally { busy3 = false; }
+    }
+
+    // ─────────────────────────────────────────────────────────
+    private static string GetDayName(int? dayOfWeek) => dayOfWeek switch
+    {
+        0 => "Chủ Nhật",
+        1 => "Thứ Hai",
+        2 => "Thứ Ba",
+        3 => "Thứ Tư",
+        4 => "Thứ Năm",
+        5 => "Thứ Sáu",
+        6 => "Thứ Bảy",
+        _ => "?"
+    };
+
+    // ─────────────────────────────────────────────────────────
+    // DTOs khớp với response từ API
+    // ─────────────────────────────────────────────────────────
+    public class MailSettings
+    {
+        public string? SmtpHost         { get; set; }
+        public int     SmtpPort         { get; set; }
+        public string? SenderEmail      { get; set; }
+        public string? SenderName       { get; set; }
+        public bool    UseSsl           { get; set; }
+        public int     LookAheadDays    { get; set; }
+        public int     SendDayOfWeek    { get; set; }
+        public int     SendHour         { get; set; }
+        public bool    WeeklyJobEnabled { get; set; }
+        public bool    HasPassword      { get; set; }
+    }
+
+    public class UpcomingPreview
+    {
+        public DateTime FromDate         { get; set; }
+        public DateTime ToDate           { get; set; }
+        public int      LookAhead        { get; set; }
+        public int      TotalInspections { get; set; }
+        public List<UpcomingVendor>? Vendors { get; set; }
+    }
+
+    public class UpcomingVendor
+    {
+        public string  VendorCode      { get; set; } = "";
+        public string? VendorName      { get; set; }
+        public string? ContactEmail    { get; set; }
+        public string? ContactName     { get; set; }
+        public bool    IsActive        { get; set; }
+        public bool    CanSend         { get; set; }
+        public int     InspectionCount { get; set; }
+    }
+
+    public class MailRunResult
+    {
+        public int VendorsTotal     { get; set; }
+        public int VendorsSent      { get; set; }
+        public int VendorsSkipped   { get; set; }
+        public int VendorsFailed    { get; set; }
+        public int InspectionsTotal { get; set; }
+        public List<string>? Errors { get; set; }
+    }
+
+    public class MailLogDto
+    {
+        public int       Id              { get; set; }
+        public int?      VendorId        { get; set; }
+        public string?   VendorCode      { get; set; }
+        public string    ToEmail         { get; set; } = "";
+        public string    Subject         { get; set; } = "";
+        public DateTime  SentAt          { get; set; }
+        public bool      IsSuccess       { get; set; }
+        public string?   ErrorMessage    { get; set; }
+        public int       InspectionCount { get; set; }
+    }
+}

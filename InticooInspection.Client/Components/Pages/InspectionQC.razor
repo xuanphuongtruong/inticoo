@@ -2,6 +2,8 @@
 @using System.Net.Http.Json
 @using System.Text.Json
 @using System.Text.Json.Serialization
+@using Microsoft.JSInterop
+@implements IDisposable
 @inject HttpClient Http
 @inject NavigationManager Navigation
 @inject IJSRuntime JS
@@ -1052,7 +1054,7 @@ else
                                         { <div class="qc-photo-spinner"><div class="qc-spinner-ring"></div><span style="font-size:11px;color:#2D7DD2">Uploading…</span></div> }
                                         else if (hasPhoto)
                                         {
-                                            <img src="@GetImageUrl(dRef2.Photos[pIdx])" style="width:100%;height:100%;object-fit:cover"/>
+                                            <img src="@GetImageUrl(dRef2.Photos[pIdx])" class="qc-photo-img" style="width:100%;height:100%;object-fit:cover"/>
                                             <button style="position:absolute;top:4px;right:4px;background:rgba(0,0,0,.55);color:#fff;
                                                            border:none;border-radius:50%;width:22px;height:22px;font-size:11px;cursor:pointer;line-height:1"
                                                     @onclick:stopPropagation="true"
@@ -1297,6 +1299,17 @@ else
             </div>
         </div>
     }
+
+    <!-- IMAGE VIEWER POPUP (xem hình vừa chụp / đã upload) -->
+    @if (_showImagePopup)
+    {
+        <div class="qc-img-backdrop" @onclick="CloseImagePopup">
+            <button class="qc-img-close-btn" @onclick="CloseImagePopup"
+                    @onclick:stopPropagation="true" aria-label="Close">✕</button>
+            <img src="@_imagePopupUrl" class="qc-img-preview"
+                 @onclick:stopPropagation="true" alt="Preview" />
+        </div>
+    }
 }
 
 <!-- ═══════════════════════ CODE-BEHIND ═══════════════════════ -->
@@ -1325,6 +1338,29 @@ else
     string _remarkPopupText = "";
     void ShowRemarkPopup(string text) { _remarkPopupText = text; _showRemarkPopup = true; }
     void CloseRemarkPopup()           { _showRemarkPopup = false; }
+
+    // ── Image viewer popup ──
+    // Click vào bất kỳ ảnh .qc-photo-img nào sẽ mở popup xem ảnh phóng to.
+    // Sự kiện click được bắt bằng event delegation trên document (xem signature.js
+    // hoặc OnAfterRenderAsync) và gọi tới method OpenImagePopup qua JSInvokable.
+    bool   _showImagePopup = false;
+    string _imagePopupUrl  = "";
+    DotNetObjectReference<InspectionQC>? _dotNetRef;
+
+    [JSInvokable]
+    public void OpenImagePopup(string url)
+    {
+        if (string.IsNullOrEmpty(url)) return;
+        _imagePopupUrl  = url;
+        _showImagePopup = true;
+        StateHasChanged();
+    }
+
+    void CloseImagePopup()
+    {
+        _showImagePopup = false;
+        _imagePopupUrl  = "";
+    }
 
     // ── Step definitions ──
     record StepDef(string StepLabel, string Title, bool CanSkip = false);
@@ -1388,6 +1424,44 @@ else
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
+        // Init image viewer 1 lần ở firstRender — gắn click delegation lên document
+        // để mọi <img class="qc-photo-img"> đều mở popup khi click.
+        if (firstRender)
+        {
+            try
+            {
+                _dotNetRef ??= DotNetObjectReference.Create(this);
+
+                // 1) Setup listener (idempotent — chỉ chạy 1 lần / page load)
+                await JS.InvokeVoidAsync("eval", @"
+                    (function(){
+                        if (window.__qcImgViewerInited) return;
+                        window.__qcSetImgViewerRef = function(ref){ window.__qcImgViewerRef = ref; };
+                        document.addEventListener('click', function(ev){
+                            var t = ev.target;
+                            if (!t || t.tagName !== 'IMG') return;
+                            if (!t.classList || !t.classList.contains('qc-photo-img')) return;
+                            var src = t.getAttribute('src');
+                            if (!src) return;
+                            // Chặn label phía trên trigger file picker
+                            ev.preventDefault();
+                            ev.stopPropagation();
+                            try {
+                                if (window.__qcImgViewerRef) {
+                                    window.__qcImgViewerRef.invokeMethodAsync('OpenImagePopup', src);
+                                }
+                            } catch(e) { /* ignore */ }
+                        }, true); // capture phase — chạy trước handler của label
+                        window.__qcImgViewerInited = true;
+                    })();
+                ");
+
+                // 2) Đăng ký dotNetRef hiện tại (mỗi lần component init lại)
+                await JS.InvokeVoidAsync("__qcSetImgViewerRef", _dotNetRef);
+            }
+            catch { /* ignore */ }
+        }
+
         try
         {
             // Sync canvas width với CSS, fill nền trắng, sau đó init signature
@@ -1406,6 +1480,11 @@ else
             await JS.InvokeVoidAsync("initSignatureCanvas", "sig-canvas");
         }
         catch { /* canvas chưa có trong DOM — bỏ qua */ }
+    }
+
+    public void Dispose()
+    {
+        try { _dotNetRef?.Dispose(); } catch { }
     }
 
     protected override async Task OnInitializedAsync()
@@ -1795,36 +1874,53 @@ else
         int eStep = dEnd + 1;                                               // E
         int fBase = eStep + 1;                                              // F (Critical/Major/Minor)
 
-        // Lấy compliance theo Letter
-        string GetCompliance(string letter) =>
-            _data.OverallConclusions.FirstOrDefault(o => o.Letter == letter)?.Compliance ?? "";
-
-        // "Pass" hoặc "Yes" (case-insensitive) đều coi là PASS — không skip
-        // Bất kỳ giá trị nào khác (Fail / No / NA / N/A / "" / null) đều SKIP
-        bool isPass(string letter)
+        // Lấy compliance theo Letter — chuẩn hoá Letter (trim + uppercase, bỏ ký tự thừa)
+        // để khớp dù DB lưu "d", "D.", "D - ..." v.v.
+        string GetCompliance(string letter)
         {
-            var v = GetCompliance(letter)?.Trim() ?? "";
-            return string.Equals(v, "Pass", StringComparison.OrdinalIgnoreCase)
-                || string.Equals(v, "Yes",  StringComparison.OrdinalIgnoreCase);
+            var target = (letter ?? "").Trim().ToUpperInvariant();
+            var oc = _data.OverallConclusions.FirstOrDefault(o =>
+            {
+                var l = (o.Letter ?? "").Trim().ToUpperInvariant();
+                if (l == target) return true;
+                // Khớp cả "D." hoặc "D - Performance" → bắt đầu bằng "D" rồi non-letter
+                if (l.StartsWith(target) && (l.Length == target.Length
+                    || !char.IsLetter(l[target.Length]))) return true;
+                return false;
+            });
+            return oc?.Compliance ?? "";
+        }
+
+        // SKIP nếu Compliance rõ ràng là "No" / "Fail" / "NA" / "N/A" (case-insensitive).
+        // Chuỗi rỗng / null / giá trị lạ → KHÔNG skip (an toàn: vẫn hiển thị để user thấy).
+        bool isSkip(string letter)
+        {
+            var v = (GetCompliance(letter) ?? "").Trim();
+            if (string.IsNullOrEmpty(v)) return false;
+            return string.Equals(v, "No",   StringComparison.OrdinalIgnoreCase)
+                || string.Equals(v, "Fail", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(v, "NA",   StringComparison.OrdinalIgnoreCase)
+                || string.Equals(v, "N/A",  StringComparison.OrdinalIgnoreCase)
+                || string.Equals(v, "None", StringComparison.OrdinalIgnoreCase);
         }
 
         // A — Quantity Conformity (step 2)
-        if (stepIdx == STEP_QTY && !isPass("A")) return true;
+        if (stepIdx == STEP_QTY && isSkip("A")) return true;
 
         // B — Packaging steps (STEP_PKG_ID và các B sub-steps)
-        if ((stepIdx == STEP_PKG_ID || (stepIdx > STEP_PKG_ID && stepIdx <= bEnd)) && !isPass("B")) return true;
+        if ((stepIdx == STEP_PKG_ID || (stepIdx > STEP_PKG_ID && stepIdx <= bEnd)) && isSkip("B")) return true;
 
         // C — Product Specification (C-i, C-ii, C-iii)
-        if (stepIdx >= cBase && stepIdx <= cBase + 2 && !isPass("C")) return true;
+        if (stepIdx >= cBase && stepIdx <= cBase + 2 && isSkip("C")) return true;
 
         // D — Performance Testing
-        if (stepIdx >= dBase && stepIdx <= dEnd && !isPass("D")) return true;
+        if (stepIdx >= dBase && stepIdx <= dEnd && isSkip("D")) return true;
 
         // E — Appearance & Craftsmanship
-        if (stepIdx == eStep && !isPass("E")) return true;
+        if (stepIdx == eStep && isSkip("E")) return true;
 
         // F — Details of Defect Found (F Critical/Major/Minor = 3 steps)
-        if (stepIdx >= fBase && stepIdx <= fBase + 2 && !isPass("F")) return true;
+        if (stepIdx >= fBase && stepIdx <= fBase + 2 && isSkip("F")) return true;
 
         return false;
     }
@@ -3494,6 +3590,74 @@ else
     @@media (max-width: 360px) {
         .qc-ref-btn span { display: none; }
         .qc-ref-btn { padding: 6px 8px; }
+    }
+
+    /* ══════════ Image Viewer Popup ══════════ */
+    /* Click vào ảnh đã chụp/upload để xem phóng to. */
+    .qc-photo-img {
+        cursor: zoom-in;
+        -webkit-tap-highlight-color: transparent;
+    }
+    .qc-img-backdrop {
+        position: fixed; inset: 0;
+        background: rgba(0,0,0,.88);
+        z-index: 3000;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+        /* fade-in nhẹ */
+        animation: qcImgFade .15s ease-out;
+        -webkit-tap-highlight-color: transparent;
+    }
+    @@keyframes qcImgFade {
+        from { opacity: 0; }
+        to   { opacity: 1; }
+    }
+    .qc-img-preview {
+        max-width: 100%;
+        max-height: 100%;
+        width: auto;
+        height: auto;
+        object-fit: contain;
+        border-radius: 8px;
+        box-shadow: 0 10px 40px rgba(0,0,0,.5);
+        cursor: zoom-out;
+        /* iOS Safari: tránh chọn / kéo ảnh */
+        -webkit-user-select: none;
+        user-select: none;
+        -webkit-touch-callout: none;
+    }
+    .qc-img-close-btn {
+        position: fixed;
+        top: 16px; right: 16px;
+        width: 40px; height: 40px;
+        border-radius: 50%;
+        background: rgba(255,255,255,.15);
+        color: #fff;
+        border: 1px solid rgba(255,255,255,.3);
+        font-size: 20px;
+        font-weight: 600;
+        line-height: 1;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: background .15s, transform .15s;
+        -webkit-tap-highlight-color: transparent;
+        -webkit-appearance: none;
+        appearance: none;
+        z-index: 3001;
+    }
+    .qc-img-close-btn:hover,
+    .qc-img-close-btn:active {
+        background: rgba(255,255,255,.28);
+        transform: scale(1.05);
+    }
+    /* Mobile: nút gần mép trên hơn */
+    @@media (max-width: 480px) {
+        .qc-img-close-btn { top: 12px; right: 12px; width: 36px; height: 36px; font-size: 18px; }
+        .qc-img-backdrop  { padding: 12px; }
     }
 </style>
 

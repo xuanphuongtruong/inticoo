@@ -109,8 +109,8 @@
                                 <td class="tc mono">@(string.IsNullOrEmpty(it.JobNumber) ? "—" : it.JobNumber)</td>
                                 <td class="tc mono">@(string.IsNullOrEmpty(it.PoNumber) ? "—" : it.PoNumber)</td>
                                 <td class="tc">@(it.InspectionDate.HasValue ? it.InspectionDate.Value.ToString("dd/MM/yyyy") : "—")</td>
-                                <td class="fw">@(string.IsNullOrEmpty(it.CustomerName) ? "—" : it.CustomerName)</td>
-                                <td>@(string.IsNullOrEmpty(it.ProductCategory) ? "—" : it.ProductCategory)</td>
+                                <td class="tc fw">@(string.IsNullOrEmpty(it.CustomerName) ? "—" : it.CustomerName)</td>
+                                <td class="tc">@(string.IsNullOrEmpty(it.ProductCategory) ? "—" : it.ProductCategory)</td>
                                 <td class="tc">
                                     @if (!string.IsNullOrEmpty(it.InspectionType))
                                     {
@@ -118,9 +118,9 @@
                                     }
                                     else { <span class="dash">—</span> }
                                 </td>
-                                <td>@(string.IsNullOrEmpty(it.VendorName) ? "—" : it.VendorName)</td>
+                                <td class="tc">@(string.IsNullOrEmpty(it.VendorName) ? "—" : it.VendorName)</td>
                                 <td class="tc">@(string.IsNullOrEmpty(it.VendorCountry) ? "—" : it.VendorCountry)</td>
-                                <td>@(string.IsNullOrEmpty(it.InspectorName) ? "—" : it.InspectorName)</td>
+                                <td class="tc">@(string.IsNullOrEmpty(it.InspectorName) ? "—" : it.InspectorName)</td>
                                 <td class="tc mono">@(string.IsNullOrEmpty(it.InspectorId) ? "—" : it.InspectorId)</td>
                                 <td class="tc">
                                     <span class="@GetBadgeClass(it.Status)">@GetStatusLabel(it.Status)</span>

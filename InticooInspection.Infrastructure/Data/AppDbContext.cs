@@ -29,6 +29,7 @@ namespace InticooInspection.Infrastructure.Data
         public DbSet<Country>                       Countries                       => Set<Country>();
         public DbSet<City>                          Cities                          => Set<City>();
         public DbSet<PerformanceTestMaster>         PerformanceTestMasters          => Set<PerformanceTestMaster>();
+        public DbSet<MailLog>                       MailLogs                        => Set<MailLog>();
 
         protected override void OnModelCreating(ModelBuilder builder)
         {
@@ -311,6 +312,18 @@ namespace InticooInspection.Infrastructure.Data
                 e.Property(x => x.StoredName).IsRequired().HasMaxLength(200);
                 e.Property(x => x.OriginalName).IsRequired().HasMaxLength(300);
                 e.Property(x => x.ContentType).HasMaxLength(100);
+            });
+
+            // ── MailLog (lưu lịch sử gửi mail vendor hàng tuần) ──
+            builder.Entity<MailLog>(e =>
+            {
+                e.HasKey(x => x.Id);
+                e.Property(x => x.VendorCode).HasMaxLength(50);
+                e.Property(x => x.ToEmail).IsRequired().HasMaxLength(200);
+                e.Property(x => x.Subject).IsRequired().HasMaxLength(300);
+                e.Property(x => x.ErrorMessage).HasMaxLength(2000);
+                e.HasIndex(x => x.SentAt);
+                e.HasIndex(x => x.VendorId);
             });
         }
     }

@@ -122,18 +122,18 @@ namespace InticooInspection.API.Services
                     vendor.ContactName ?? vendor.Name,
                     subject, html, ct);
 
-                // TODO: Lưu MailLog khi entity MailLog đã được tạo + add DbSet vào AppDbContext + chạy migration
-                // _db.MailLogs.Add(new MailLog
-                // {
-                //     VendorId         = vendor.Id,
-                //     VendorCode       = vendor.Code,
-                //     ToEmail          = vendor.ContactEmail,
-                //     Subject          = subject,
-                //     SentAt           = DateTime.UtcNow,
-                //     IsSuccess        = ok,
-                //     ErrorMessage     = error,
-                //     InspectionCount  = vendorInspections.Count
-                // });
+                // Lưu MailLog để truy vết và chống gửi trùng tuần
+                _db.MailLogs.Add(new MailLog
+                {
+                    VendorId         = vendor.Id,
+                    VendorCode       = vendor.Code,
+                    ToEmail          = vendor.ContactEmail,
+                    Subject          = subject,
+                    SentAt           = DateTime.UtcNow,
+                    IsSuccess        = ok,
+                    ErrorMessage     = error,
+                    InspectionCount  = vendorInspections.Count
+                });
 
                 if (ok)
                 {
@@ -151,7 +151,7 @@ namespace InticooInspection.API.Services
                 await Task.Delay(500, ct);
             }
 
-            // await _db.SaveChangesAsync(ct);  // bật lại khi đã có MailLog
+            await _db.SaveChangesAsync(ct);
             return result;
         }
 
@@ -195,18 +195,18 @@ namespace InticooInspection.API.Services
                 subject, html, ct);
 
             // TODO: Lưu MailLog khi entity MailLog đã được tạo + add DbSet vào AppDbContext + chạy migration
-            // _db.MailLogs.Add(new MailLog
-            // {
-            //     VendorId        = vendor.Id,
-            //     VendorCode      = vendor.Code,
-            //     ToEmail         = vendor.ContactEmail,
-            //     Subject         = subject,
-            //     SentAt          = DateTime.UtcNow,
-            //     IsSuccess       = ok,
-            //     ErrorMessage    = error,
-            //     InspectionCount = inspections.Count
-            // });
-            // await _db.SaveChangesAsync(ct);
+            _db.MailLogs.Add(new MailLog
+            {
+                VendorId        = vendor.Id,
+                VendorCode      = vendor.Code,
+                ToEmail         = vendor.ContactEmail,
+                Subject         = subject,
+                SentAt          = DateTime.UtcNow,
+                IsSuccess       = ok,
+                ErrorMessage    = error,
+                InspectionCount = inspections.Count
+            });
+            await _db.SaveChangesAsync(ct);
 
             return (ok, error, inspections.Count);
         }
