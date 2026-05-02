@@ -200,6 +200,12 @@ else if (_data != null)
 
                 @{
                     var qc = _qcData?.QuantityConformity;
+                    // AQL Sample Size — 3 sample (Critical/Major/Minor) thường cùng giá trị,
+                    // lấy giá trị đầu tiên có > 0 (ưu tiên Major).
+                    int aqlSampleSize = _data.AqlMajorSampleSize > 0 ? _data.AqlMajorSampleSize
+                                      : _data.AqlCriticalSampleSize > 0 ? _data.AqlCriticalSampleSize
+                                      : _data.AqlMinorSampleSize > 0 ? _data.AqlMinorSampleSize
+                                      : (_qcData?.Aql?.MajorSampleSize ?? 0);
                 }
 
                 <!-- Bảng luôn hiển thị theo mẫu PDF -->
@@ -210,6 +216,7 @@ else if (_data != null)
                             <th rowspan="2">Item Number</th>
                             <th rowspan="2">Item per Carton</th>
                             <th rowspan="2">Shipment Qty</th>
+                            <th rowspan="2">AQL Sampling</th>
                             <th colspan="2">Presented Qty for Inspection</th>
                             <th colspan="2">Number of Cartons</th>
                             <th rowspan="2">Qty Not Finished</th>
@@ -225,6 +232,7 @@ else if (_data != null)
                             <td>@(_data.ItemNumber ?? "")</td>
                             <td>@(qc?.ItemPerCarton > 0 ? qc.ItemPerCarton.ToString() : "")</td>
                             <td>@(_data.TotalShipmentQty > 0 ? _data.TotalShipmentQty.ToString() : "")</td>
+                            <td>@(aqlSampleSize > 0 ? aqlSampleSize.ToString() : "")</td>
                             <td>@(qc?.PresentedPacked > 0 ? qc.PresentedPacked.ToString() : "")</td>
                             <td>@(qc?.PresentedNotPacked > 0 ? qc.PresentedNotPacked.ToString() : "")</td>
                             <td>@(qc?.CartonsPacked > 0 ? qc.CartonsPacked.ToString() : "")</td>
@@ -234,6 +242,7 @@ else if (_data != null)
                         <tr class="rpt-total-row">
                             <td colspan="3" class="rpt-total-label">Total</td>
                             <td>@(_data.TotalShipmentQty > 0 ? _data.TotalShipmentQty.ToString() : "")</td>
+                            <td>@(aqlSampleSize > 0 ? aqlSampleSize.ToString() : "")</td>
                             <td>@(qc?.PresentedPacked > 0 ? qc.PresentedPacked.ToString() : "")</td>
                             <td>@(qc?.PresentedNotPacked > 0 ? qc.PresentedNotPacked.ToString() : "")</td>
                             <td>@(qc?.CartonsPacked > 0 ? qc.CartonsPacked.ToString() : "")</td>
@@ -1600,7 +1609,7 @@ else if (_data != null)
         flex-wrap: nowrap;
     }
 
-    .rpt-page .rpt-logo-img {
+    .rpt-logo-img {
         height: 48px;
         width: auto;
         object-fit: contain;
