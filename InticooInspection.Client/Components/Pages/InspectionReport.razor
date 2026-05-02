@@ -368,7 +368,7 @@ else if (_data != null)
                     <div class="rpt-footer">
                         <div class="rpt-footer-inner">
                             <span class="rpt-footer-text">www.inticoo.com<br/>The results presented herein reflect our findings at the time and place of inspection. This report does not release the seller or manufacturer from their contractual obligations, nor does it prejudice the buyer's right to seek compensation for any apparent or latent defects not identified during our random inspection or arising thereafter. This document does not constitute evidence of shipment. Final approval from the client is required prior to the release of the goods.</span>
-                            <span class="rpt-footer-page">@(3 + cIdx * 4) / @TotalPages</span>
+                            <span class="rpt-footer-page">@(3 + cIdx * 5) / @TotalPages</span>
                         </div>
                     </div>
                 </div>
@@ -434,12 +434,12 @@ else if (_data != null)
                     <div class="rpt-footer">
                         <div class="rpt-footer-inner">
                             <span class="rpt-footer-text">www.inticoo.com<br/>The results presented herein reflect our findings at the time and place of inspection. This report does not release the seller or manufacturer from their contractual obligations, nor does it prejudice the buyer's right to seek compensation for any apparent or latent defects not identified during our random inspection or arising thereafter. This document does not constitute evidence of shipment. Final approval from the client is required prior to the release of the goods.</span>
-                            <span class="rpt-footer-page">@(3 + cIdx * 4 + 1) / @TotalPages</span>
+                            <span class="rpt-footer-page">@(3 + cIdx * 5 + 1) / @TotalPages</span>
                         </div>
                     </div>
                 </div>
 
-                <!-- ── Trang iv+v. Packaging & Labeling + Assembly Instruction (gộp chung 1 trang) ── -->
+                <!-- ── Trang iv. Packaging & Labeling Specifications ── -->
                 <div class="rpt-section page-break-after">
                     <div class="rpt-section-title rpt-section-title-lg">B. Packaging &amp; Identification@(cartonSuffix)</div>
 
@@ -467,8 +467,19 @@ else if (_data != null)
                             <span class="rpt-compliance-badge comp-@(_plResult.ToLower())">@_plResult</span>
                         </div>
                     }
+                    <div class="rpt-footer">
+                        <div class="rpt-footer-inner">
+                            <span class="rpt-footer-text">www.inticoo.com<br/>The results presented herein reflect our findings at the time and place of inspection. This report does not release the seller or manufacturer from their contractual obligations, nor does it prejudice the buyer's right to seek compensation for any apparent or latent defects not identified during our random inspection or arising thereafter. This document does not constitute evidence of shipment. Final approval from the client is required prior to the release of the goods.</span>
+                            <span class="rpt-footer-page">@(3 + cIdx * 5 + 2) / @TotalPages</span>
+                        </div>
+                    </div>
+                </div>
 
-                    <div class="rpt-sub-title" style="margin-top:16px;">v. Assembly Instruction Specifications</div>
+                <!-- ── Trang v. Assembly Instruction Specifications ── -->
+                <div class="rpt-section page-break-after">
+                    <div class="rpt-section-title rpt-section-title-lg">B. Packaging &amp; Identification@(cartonSuffix)</div>
+
+                    <div class="rpt-sub-title">v. Assembly Instruction Specifications</div>
                     @{
                         var _pAssembly = (cd?.AssemblyPhotos ?? pr?.AssemblyPhotos ?? new List<string>())
                             .Where(p => !string.IsNullOrWhiteSpace(p)).ToList();
@@ -495,7 +506,7 @@ else if (_data != null)
                     <div class="rpt-footer">
                         <div class="rpt-footer-inner">
                             <span class="rpt-footer-text">www.inticoo.com<br/>The results presented herein reflect our findings at the time and place of inspection. This report does not release the seller or manufacturer from their contractual obligations, nor does it prejudice the buyer's right to seek compensation for any apparent or latent defects not identified during our random inspection or arising thereafter. This document does not constitute evidence of shipment. Final approval from the client is required prior to the release of the goods.</span>
-                            <span class="rpt-footer-page">@(3 + cIdx * 4 + 2) / @TotalPages</span>
+                            <span class="rpt-footer-page">@(3 + cIdx * 5 + 3) / @TotalPages</span>
                         </div>
                     </div>
                 </div>
@@ -530,7 +541,7 @@ else if (_data != null)
                     <div class="rpt-footer">
                         <div class="rpt-footer-inner">
                             <span class="rpt-footer-text">www.inticoo.com<br/>The results presented herein reflect our findings at the time and place of inspection. This report does not release the seller or manufacturer from their contractual obligations, nor does it prejudice the buyer's right to seek compensation for any apparent or latent defects not identified during our random inspection or arising thereafter. This document does not constitute evidence of shipment. Final approval from the client is required prior to the release of the goods.</span>
-                            <span class="rpt-footer-page">@(3 + cIdx * 4 + 3) / @TotalPages</span>
+                            <span class="rpt-footer-page">@(3 + cIdx * 5 + 4) / @TotalPages</span>
                         </div>
                     </div>
                 </div>
@@ -625,9 +636,13 @@ else if (_data != null)
                         <tbody>
                             @foreach (var sw in _qcData.ProductSpec.ColourSwatches)
                             {
+                                // Material có thể không được lưu trong QcResultJson — fallback từ master data
+                                var _swMat = !string.IsNullOrWhiteSpace(sw.Material)
+                                    ? sw.Material
+                                    : (_data?.ColourSwatches?.ElementAtOrDefault(sw.No - 1)?.Material ?? "");
                                 <tr>
                                     <td>@sw.No</td>
-                                    <td>@(sw.Material ?? "—")</td>
+                                    <td>@(string.IsNullOrWhiteSpace(_swMat) ? "—" : _swMat)</td>
                                     <td>
                                         @if (!string.IsNullOrEmpty(sw.Result))
                                         {
@@ -1206,9 +1221,9 @@ else if (_data != null)
     }
 
     // ── Computed page count properties ──
-    // Layout: 1(Cover) + 1(A) + cartonCount×4(B) + 2(C1+C2) + perfCount(D) + 3(E,F,Final)
+    // Layout: 1(Cover) + 1(A) + cartonCount×5(B: i, ii+iii, iv, v, vi) + 2(C1+C2) + perfCount(D) + 3(E,F,Final)
     int CartonPageCount => (_qcData?.Packaging?.CartonDataList?.Count > 0
-        ? _qcData.Packaging.CartonDataList.Count : 1) * 4;
+        ? _qcData.Packaging.CartonDataList.Count : 1) * 5;
     int PerfPageCount   => _qcData?.PerformanceTests?.Count > 0
         ? _qcData.PerformanceTests.Count
         : (_data?.PerformanceTests?.Count > 0 ? _data.PerformanceTests.Count : 1);
@@ -1247,6 +1262,7 @@ else if (_data != null)
 
         public PackagingDto?            Packaging           { get; set; }
         public ProductSpecDto?          ProductSpec         { get; set; }
+        public List<MasterColourSwatchDto> ColourSwatches   { get; set; } = new();
         public List<OverallConclusionDto> OverallConclusions { get; set; } = new();
         public List<PerfTestDto>        PerformanceTests    { get; set; } = new();
         public string?                  QcResultJson        { get; set; }
@@ -1273,6 +1289,13 @@ else if (_data != null)
         public string  Label      { get; set; } = "";
         public string  Compliance { get; set; } = "";
         public string? Remark     { get; set; }
+    }
+
+    // Server (master) trả về: [{ "material": "...", "remark": "..." }, ...]
+    public class MasterColourSwatchDto
+    {
+        public string? Material { get; set; }
+        public string? Remark   { get; set; }
     }
 
     public class PackagingDto
@@ -2222,19 +2245,21 @@ else if (_data != null)
         }
 
         /*
-         * Mỗi .rpt-section = 1 trang A4 (297mm x 210mm).
-         * height cố định thay min-height — tránh tràn sang trang kế.
-         * padding-bottom: 16mm nhường chỗ cho footer absolute.
+         * Mỗi .rpt-section có min-height = 1 trang A4 để layout sạch sẽ.
+         * Bỏ height/overflow:hidden cố định — nếu nội dung dài hơn, browser TỰ ĐỘNG break
+         * sang trang mới thay vì cắt mất (Windows Chrome dễ bị cắt với height cố định).
+         * page-break-after vẫn bắt buộc xuống trang sau mỗi section.
          */
         .rpt-section {
             border-radius: 0 !important;
             box-shadow: none !important;
             margin: 0 !important;
             width: 210mm !important;
-            height: 297mm !important;
-            min-height: unset !important;
+            min-height: 297mm !important;   /* không dùng height cố định */
+            height: auto !important;
+            max-height: none !important;
+            overflow: visible !important;    /* không cắt */
             padding: 10mm 12mm 16mm !important;
-            overflow: hidden !important;
             counter-increment: page-counter;
             position: relative !important;
             box-sizing: border-box !important;
@@ -2256,6 +2281,28 @@ else if (_data != null)
 
         table { break-inside: avoid; page-break-inside: avoid; }
         tr    { break-inside: avoid; page-break-inside: avoid; }
+
+        /* Các block quan trọng KHÔNG ĐƯỢC bị cắt giữa chừng */
+        .rpt-info-table,
+        .rpt-result-table,
+        .rpt-perf-table,
+        .rpt-aql-grid,
+        .rpt-photo-grid-2,
+        .rpt-overview-photo-wrap,
+        .rpt-photo-cell,
+        .rpt-defect-cell,
+        .rpt-sign-table,
+        .rpt-aql-section,
+        .rpt-aql-wrap {
+            break-inside: avoid !important;
+            page-break-inside: avoid !important;
+        }
+        /* img phải fit trong page — không vượt height */
+        img {
+            max-width: 100% !important;
+            break-inside: avoid !important;
+            page-break-inside: avoid !important;
+        }
 
         /* Overview photo */
         .rpt-overview-photo-cell,
