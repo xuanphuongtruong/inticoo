@@ -685,42 +685,46 @@ else if (_data != null)
                         : (_data?.PerformanceTests?.ElementAtOrDefault(dIdx)?.TestProtocol ?? null);
                     <div class="rpt-section page-break-after">
                         <div class="rpt-section-title rpt-section-title-lg">D. Performance Testing@(dSuffix)</div>
-                        <table class="rpt-perf-table">
+                        <table class="rpt-perf-table rpt-perf-table-h">
+                            <thead>
+                                <tr>
+                                    <th style="width:48px">NO</th>
+                                    <th>TEST ITEM</th>
+                                    <th>TEST REQUIREMENT</th>
+                                    <th style="width:90px">TEST QUANTITY</th>
+                                    <th>REMARK</th>
+                                    <th style="width:90px">RESULT</th>
+                                </tr>
+                            </thead>
                             <tbody>
                                 <tr>
-                                    <td class="rpt-info-label">Test Item</td>
-                                    <td class="rpt-info-val" colspan="3">@(test.TestItem ?? "—")</td>
-                                </tr>
-                                @if (!string.IsNullOrWhiteSpace(dTestProto))
-                                {
-                                    <tr>
-                                        <td class="rpt-info-label" style="vertical-align:top">Test Protocol</td>
-                                        <td class="rpt-info-val" colspan="3" style="white-space:pre-wrap;line-height:1.6">@dTestProto</td>
-                                    </tr>
-                                }
-                                <tr>
-                                    <td class="rpt-info-label">Test Requirement</td>
-                                    <td class="rpt-info-val" colspan="3">@(dTestReq ?? "—")</td>
-                                </tr>
-                                <tr>
-                                    <td class="rpt-info-label">Test Quantity</td>
-                                    <td class="rpt-info-val" colspan="3">@test.TestQuantity</td>
-                                </tr>
-                                <tr>
-                                    <td class="rpt-info-label">Remark</td>
-                                    <td class="rpt-info-val" colspan="3">@(test.Remark ?? "—")</td>
-                                </tr>
-                                @if (!string.IsNullOrEmpty(test.Result))
-                                {
-                                    <tr>
-                                        <td class="rpt-info-label">Result</td>
-                                        <td class="rpt-info-val" colspan="3">
+                                    <td class="tc">@(dIdx + 1)</td>
+                                    <td>@(test.TestItem ?? "—")</td>
+                                    <td>@(dTestReq ?? "—")</td>
+                                    <td class="tc">@test.TestQuantity</td>
+                                    <td>@(string.IsNullOrWhiteSpace(test.Remark) ? "—" : test.Remark)</td>
+                                    <td class="tc">
+                                        @if (!string.IsNullOrEmpty(test.Result))
+                                        {
                                             <span class="rpt-compliance-badge comp-@(test.Result.ToLower())">@test.Result</span>
-                                        </td>
-                                    </tr>
-                                }
+                                        }
+                                        else
+                                        { <span>—</span> }
+                                    </td>
+                                </tr>
                             </tbody>
                         </table>
+                        @if (!string.IsNullOrWhiteSpace(dTestProto))
+                        {
+                            <table class="rpt-perf-table" style="margin-top:6px">
+                                <tbody>
+                                    <tr>
+                                        <td class="rpt-info-label" style="vertical-align:top;width:140px">Test Protocol</td>
+                                        <td class="rpt-info-val" style="white-space:pre-wrap;line-height:1.6">@dTestProto</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        }
                         @{
                             var _dSlots = dPhotos.Cast<string?>().Concat(Enumerable.Repeat<string?>(null, Math.Max(0, 4 - dPhotos.Count))).Take(4).ToList();
                         }
@@ -751,20 +755,39 @@ else if (_data != null)
                     var dSuffix = _legacyPerf.Count > 1 ? $" ({dIdx + 1}/{_legacyPerf.Count})" : "";
                     <div class="rpt-section page-break-after">
                         <div class="rpt-section-title rpt-section-title-lg">D. Performance Testing@(dSuffix)</div>
-                        <table class="rpt-perf-table">
+                        <table class="rpt-perf-table rpt-perf-table-h">
+                            <thead>
+                                <tr>
+                                    <th style="width:48px">NO</th>
+                                    <th>TEST ITEM</th>
+                                    <th>TEST REQUIREMENT</th>
+                                    <th style="width:90px">TEST QUANTITY</th>
+                                    <th>REMARK</th>
+                                    <th style="width:90px">RESULT</th>
+                                </tr>
+                            </thead>
                             <tbody>
-                                <tr><td class="rpt-info-label">Test Item</td><td class="rpt-info-val">@(t.TestItem ?? "—")</td></tr>
-                                @if (!string.IsNullOrWhiteSpace(t.TestProtocol))
-                                {
-                                    <tr>
-                                        <td class="rpt-info-label" style="vertical-align:top">Test Protocol</td>
-                                        <td class="rpt-info-val" style="white-space:pre-wrap;line-height:1.6">@t.TestProtocol</td>
-                                    </tr>
-                                }
-                                <tr><td class="rpt-info-label">Test Requirement</td><td class="rpt-info-val">@(t.TestRequirement ?? "—")</td></tr>
-                                <tr><td class="rpt-info-label">Remark</td><td class="rpt-info-val">@(t.Remark ?? "—")</td></tr>
+                                <tr>
+                                    <td class="tc">@(dIdx + 1)</td>
+                                    <td>@(t.TestItem ?? "—")</td>
+                                    <td>@(t.TestRequirement ?? "—")</td>
+                                    <td class="tc">—</td>
+                                    <td>@(string.IsNullOrWhiteSpace(t.Remark) ? "—" : t.Remark)</td>
+                                    <td class="tc">—</td>
+                                </tr>
                             </tbody>
                         </table>
+                        @if (!string.IsNullOrWhiteSpace(t.TestProtocol))
+                        {
+                            <table class="rpt-perf-table" style="margin-top:6px">
+                                <tbody>
+                                    <tr>
+                                        <td class="rpt-info-label" style="vertical-align:top;width:140px">Test Protocol</td>
+                                        <td class="rpt-info-val" style="white-space:pre-wrap;line-height:1.6">@t.TestProtocol</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        }
                         <div class="rpt-footer">
                             <div class="rpt-footer-inner">
                                 <span class="rpt-footer-text">www.inticoo.com<br/>The results presented herein reflect our findings at the time and place of inspection. This report does not release the seller or manufacturer from their contractual obligations, nor does it prejudice the buyer's right to seek compensation for any apparent or latent defects not identified during our random inspection or arising thereafter. This document does not constitute evidence of shipment. Final approval from the client is required prior to the release of the goods.</span>
@@ -1870,6 +1893,22 @@ else if (_data != null)
         border: 1px solid var(--border); padding: 7px 10px;
         color: #1a1a2e; background: white;
     }
+    /* Bảng performance dạng ngang (NO | TEST ITEM | REQUIREMENT | QTY | REMARK | RESULT) */
+    .rpt-perf-table-h th {
+        border: 1px solid var(--border);
+        padding: 8px 10px;
+        font-size: 11px;
+        font-weight: 700;
+        color: var(--text);
+        background: #f3f6fb;
+        text-align: center;
+        text-transform: uppercase;
+        letter-spacing: .3px;
+    }
+    .rpt-perf-table-h td {
+        vertical-align: middle;
+    }
+    .rpt-perf-table .tc { text-align: center; }
 
     /* ══════════════════════════════════════════
        AQL SECTION
@@ -1953,11 +1992,14 @@ else if (_data != null)
         background: #fafbfc;
         display: flex;
         flex-direction: column;
+        height: 330px;          /* khung cố định để các cell trong cùng grid bằng nhau */
     }
     .rpt-defect-photo-wrap {
-        flex: 1;
+        flex: 1 1 auto;          /* chiếm hết phần trống còn lại sau khi trừ remark */
+        min-height: 0;           /* cho phép co lại trong flex column */
         overflow: hidden;
-        min-height: 200px;
+        background: #f5f7fb;
+        position: relative;
     }
     .rpt-defect-photo {
         width: 100%;
@@ -1965,11 +2007,10 @@ else if (_data != null)
         object-fit: cover;
         display: block;
         vertical-align: top;
-        min-height: 200px;
     }
     .rpt-defect-no-photo {
         width: 100%;
-        min-height: 200px;
+        height: 100%;
         display: flex;
         align-items: center;
         justify-content: center;
@@ -1978,6 +2019,7 @@ else if (_data != null)
         background: #f5f7fb;
         border: 1px dashed #ddd;
         border-radius: 4px;
+        box-sizing: border-box;
     }
     .rpt-defect-empty {
         padding: 14px 16px;
@@ -1996,10 +2038,13 @@ else if (_data != null)
         color: #555;
         background: #f9f9f9;
         border-top: 1px solid var(--border);
-        min-height: 28px;
-        max-height: 48px;
+        height: 36px;            /* chiều cao cố định — cell đồng đều dù remark dài/ngắn */
+        flex: 0 0 36px;
+        line-height: 26px;
         overflow: hidden;
         text-overflow: ellipsis;
+        white-space: nowrap;
+        box-sizing: border-box;
     }
 
     /* ══════════════════════════════════════════
@@ -2232,10 +2277,12 @@ else if (_data != null)
             height: 220px !important;
         }
 
-        /* Defect photos (Section F) */
-        .rpt-defect-photo-wrap { height: 220px !important; min-height: unset !important; }
-        .rpt-defect-photo      { height: 220px !important; min-height: unset !important; }
-        .rpt-defect-no-photo   { height: 220px !important; min-height: unset !important; }
+        /* Defect photos (Section F) — print mode: cell cố định 256px (220 ảnh + 36 remark) */
+        .rpt-defect-cell       { height: 256px !important; }
+        .rpt-defect-photo-wrap { flex: 1 1 auto !important; min-height: 0 !important; height: auto !important; }
+        .rpt-defect-photo      { height: 100% !important; min-height: unset !important; object-fit: cover !important; }
+        .rpt-defect-no-photo   { height: 100% !important; min-height: unset !important; }
+        .rpt-defect-remark     { height: 36px !important; flex: 0 0 36px !important; }
 
         /* Generic .rpt-photo */
         .rpt-photo { height: 220px !important; max-width: 100%; object-fit: cover; }
@@ -2448,7 +2495,9 @@ else if (_data != null)
         }
         /* Cover photo có chiều cao cố định 330px như desktop, không giới hạn 260px */
         .rpt-photo-cell { height: 330px !important; }
-        .rpt-defect-photo-wrap { min-height: 200px !important; }
+        .rpt-defect-cell       { height: 256px !important; }
+        .rpt-defect-photo-wrap { flex: 1 1 auto !important; min-height: 0 !important; }
+        .rpt-defect-remark     { height: 36px !important; flex: 0 0 36px !important; }
 
         /* AQL block + RESULT table giữ nguyên 1 trang */
         .rpt-aql-wrap,
