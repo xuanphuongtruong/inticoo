@@ -1974,6 +1974,19 @@ else
                 || string.Equals(v, "None", StringComparison.OrdinalIgnoreCase);
         }
 
+        // DEBUG (chỉ log lần đầu cho mỗi step): hiển thị vì sao skip / không skip
+        if (!_skipDebugLogged.Contains(stepIdx))
+        {
+            _skipDebugLogged.Add(stepIdx);
+            try
+            {
+                var cs = string.Join(", ",
+                    _data.OverallConclusions.Select(o => $"{o.Letter}={o.Compliance ?? "null"}"));
+                Console.WriteLine($"[QC-Skip] step={stepIdx} bEnd={bEnd} cBase={cBase} dBase={dBase} dEnd={dEnd} eStep={eStep} fBase={fBase} OC=[{cs}]");
+            }
+            catch { }
+        }
+
         // A — Quantity Conformity (step 2)
         if (stepIdx == STEP_QTY && isSkip("A")) return true;
 
@@ -1994,6 +2007,7 @@ else
 
         return false;
     }
+    HashSet<int> _skipDebugLogged = new();
 
     void EnsureDefaultDefects()
     {
@@ -2012,7 +2026,14 @@ else
                 });
         }
     }
-    void SkipStep()   { if (_currentStepIdx < _steps.Count - 1) _currentStepIdx++; }
+    void SkipStep()
+    {
+        if (_currentStepIdx < _steps.Count - 1) _currentStepIdx++;
+        // Tiếp tục bỏ qua các step có Compliance = No/Fail/NA
+        while (_currentStepIdx < _steps.Count - 1 && IsStepSkippedByCompliance(_currentStepIdx))
+            _currentStepIdx++;
+        EnsureDefaultDefects();
+    }
     void GoBack()     => Navigation.NavigateTo("/inspection-schedule");
 
     // ── AQL calculation ──
