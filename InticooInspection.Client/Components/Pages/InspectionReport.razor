@@ -2585,6 +2585,45 @@ else if (_data != null)
             grid-template-columns: 1fr 1fr 1fr !important;
             gap: 10px !important;
         }
+
+        /* ════════════════════════════════════════════
+           Bảng General Information & B. Packaging — BẮT BUỘC giữ table 4 cột
+           ════════════════════════════════════════════
+           Mobile rule (max-width: 860px) đổi sang display:block + grid 2 cột.
+           Khi in PDF trên Windows Chrome, viewport print preview ≈ 794px → khớp
+           mobile media → bảng bị bóp về 2 cột. Override ở đây để giữ đúng layout
+           4 cột (label-value-label-value).
+        */
+        .rpt-info-table {
+            display: table !important;
+            width: 100% !important;
+            border-collapse: collapse !important;
+        }
+        .rpt-info-table tbody { display: table-row-group !important; }
+        .rpt-info-table tr {
+            display: table-row !important;
+            grid-template-columns: unset !important;   /* huỷ grid mobile */
+        }
+        .rpt-info-table td {
+            display: table-cell !important;
+            width: auto !important;
+            border: 1px solid var(--border) !important;
+            padding: 7px 10px !important;
+            white-space: normal !important;
+            word-break: break-word;
+            font-size: 11pt !important;
+            box-sizing: border-box !important;
+        }
+        /* Cột label: width cố định, value: auto */
+        .rpt-info-label {
+            background: #f7f9fc !important;
+            font-weight: 600 !important;
+            color: var(--brand) !important;
+            width: 22% !important;
+            min-width: 22% !important;
+            white-space: nowrap !important;
+        }
+
         /* Ép Safari iOS/macOS giữ ảnh đúng kích thước, không co về 1 cột */
         .rpt-photo-cell,
         .rpt-defect-cell,
