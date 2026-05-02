@@ -1675,7 +1675,11 @@ else
         if (_inspection.ColourSwatches?.Any() == true)
         {
             _data.ProductSpec.ColourSwatches = _inspection.ColourSwatches
-                .Select((m, i) => new QcColourSwatch { No = i + 1, Material = m }).ToList();
+                .Select((cs, i) => new QcColourSwatch
+                {
+                    No       = i + 1,
+                    Material = cs?.Material ?? ""
+                }).ToList();
         }
         else
         {
@@ -2670,7 +2674,7 @@ else
         [JsonPropertyName("aqlMajor")]         public string? AqlMajor         { get; set; }
         [JsonPropertyName("aqlMinor")]         public string? AqlMinor         { get; set; }
         [JsonPropertyName("performanceTests")]    public List<PtDto>?    PerformanceTests    { get; set; }
-        [JsonPropertyName("colourSwatches")]      public List<string>?   ColourSwatches      { get; set; }
+        [JsonPropertyName("colourSwatches")]      public List<ColourSwatchDto>? ColourSwatches { get; set; }
         [JsonPropertyName("photo1Url")]           public string? Photo1Url                   { get; set; }
         [JsonPropertyName("photo2Url")]           public string? Photo2Url                   { get; set; }
         [JsonPropertyName("overallConclusions")]  public List<OcDto>?    OverallConclusions  { get; set; }
@@ -2712,6 +2716,13 @@ else
         [JsonPropertyName("sizeW")]   public double? SizeW  { get; set; }
         [JsonPropertyName("sizeH")]   public double? SizeH  { get; set; }
         [JsonPropertyName("weight")]  public double? Weight { get; set; }
+    }
+
+    // Server trả: [{ "material": "...", "remark": "..." }, ...]
+    class ColourSwatchDto
+    {
+        [JsonPropertyName("material")] public string? Material { get; set; }
+        [JsonPropertyName("remark")]   public string? Remark   { get; set; }
     }
 
     class OcDto
