@@ -128,58 +128,60 @@ else if (_data != null)
                 </table>
 
                 <!-- Inspection Results Summary -->
-                <div class="rpt-section-title">Inspection Results</div>
-                <table class="rpt-result-table">
-                    <thead>
-                        <tr>
-                            <th class="rpt-th-label">OVERALL CONCLUSION</th>
-                            <th class="rpt-th-comp">COMPLIANCE</th>
-                            <th class="rpt-th-remark">REMARK</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @if (_qcData?.OverallConclusions?.Any() == true)
-                        {
-                            @foreach (var oc in _qcData!.OverallConclusions)
+                <div class="rpt-keep-together">
+                    <div class="rpt-section-title">Inspection Results</div>
+                    <table class="rpt-result-table">
+                        <thead>
+                            <tr>
+                                <th class="rpt-th-label">OVERALL CONCLUSION</th>
+                                <th class="rpt-th-comp">COMPLIANCE</th>
+                                <th class="rpt-th-remark">REMARK</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @if (_qcData?.OverallConclusions?.Any() == true)
                             {
-                                <tr>
-                                    <td>@oc.Letter. @oc.Label</td>
-                                    <td class="rpt-td-center">
-                                        <span class="rpt-compliance-badge comp-@(oc.Compliance?.ToLower() ?? "na")">
-                                            @(oc.Compliance switch { "Pass" => "Yes", "Fail" => "No", _ => oc.Compliance ?? "NA" })
-                                        </span>
-                                    </td>
-                                    <td>@(oc.Remark ?? "")</td>
-                                </tr>
+                                @foreach (var oc in _qcData!.OverallConclusions)
+                                {
+                                    <tr>
+                                        <td>@oc.Letter. @oc.Label</td>
+                                        <td class="rpt-td-center">
+                                            <span class="rpt-compliance-badge comp-@(oc.Compliance?.ToLower() ?? "na")">
+                                                @(oc.Compliance switch { "Pass" => "Yes", "Fail" => "No", _ => oc.Compliance ?? "NA" })
+                                            </span>
+                                        </td>
+                                        <td>@(oc.Remark ?? "")</td>
+                                    </tr>
+                                }
                             }
-                        }
-                        else if (_data.OverallConclusions?.Any() == true)
-                        {
-                            @foreach (var oc in _data.OverallConclusions)
+                            else if (_data.OverallConclusions?.Any() == true)
                             {
-                                <tr>
-                                    <td>@oc.Letter. @oc.Label</td>
-                                    <td class="rpt-td-center">
-                                        <span class="rpt-compliance-badge comp-@(oc.Compliance?.ToLower() ?? "na")">
-                                            @(oc.Compliance switch { "Pass" => "Yes", "Fail" => "No", _ => oc.Compliance ?? "NA" })
-                                        </span>
-                                    </td>
-                                    <td>@(oc.Remark ?? "")</td>
-                                </tr>
+                                @foreach (var oc in _data.OverallConclusions)
+                                {
+                                    <tr>
+                                        <td>@oc.Letter. @oc.Label</td>
+                                        <td class="rpt-td-center">
+                                            <span class="rpt-compliance-badge comp-@(oc.Compliance?.ToLower() ?? "na")">
+                                                @(oc.Compliance switch { "Pass" => "Yes", "Fail" => "No", _ => oc.Compliance ?? "NA" })
+                                            </span>
+                                        </td>
+                                        <td>@(oc.Remark ?? "")</td>
+                                    </tr>
+                                }
                             }
-                        }
-                        else
-                        {
-                            string[] defaultRows = { "A. Quantity Conformity", "B. Packaging & Identification",
-                                "C. Product Specification Compliance", "D. Performance Testing",
-                                "E. Appearance & Craftsmanship", "F. Details of Defect Found" };
-                            @foreach (var row in defaultRows)
+                            else
                             {
-                                <tr><td>@row</td><td class="rpt-td-center">—</td><td></td></tr>
+                                string[] defaultRows = { "A. Quantity Conformity", "B. Packaging & Identification",
+                                    "C. Product Specification Compliance", "D. Performance Testing",
+                                    "E. Appearance & Craftsmanship", "F. Details of Defect Found" };
+                                @foreach (var row in defaultRows)
+                                {
+                                    <tr><td>@row</td><td class="rpt-td-center">—</td><td></td></tr>
+                                }
                             }
-                        }
-                    </tbody>
-                </table>
+                        </tbody>
+                    </table>
+                </div>
 
                 <!-- Footer -->
                 <div class="rpt-footer">
@@ -373,63 +375,67 @@ else if (_data != null)
                     </div>
                 </div>
 
-                <!-- ── Trang ii+iii. Shipping Mark + Carton Weight (gộp chung 1 trang) ── -->
+                <!-- ── Trang ii+iii. Shipping Mark + Carton Weight (gộp chung 1 trang nếu vừa, không thì iii sang trang mới) ── -->
                 <div class="rpt-section page-break-after">
                     <div class="rpt-section-title rpt-section-title-lg">B. Packaging &amp; Identification@(cartonSuffix)</div>
 
-                    <div class="rpt-sub-title">ii. Shipping Mark / Labeling / Barcode</div>
-                    @{
-                        var _pShipping = (cd?.ShippingMarkPhotos ?? pr?.ShippingMarkPhotos ?? new List<string>())
-                            .Where(p => !string.IsNullOrWhiteSpace(p)).ToList();
-                        var _sShipping = _pShipping.Cast<string?>()
-                            .Concat(Enumerable.Repeat<string?>(null, Math.Max(0, 4 - _pShipping.Count)))
-                            .Take(4).ToList();
-                    }
-                    <div class="rpt-photo-grid-2">
-                        @foreach (var _u in _sShipping)
+                    <div class="rpt-keep-together">
+                        <div class="rpt-sub-title">ii. Shipping Mark / Labeling / Barcode</div>
+                        @{
+                            var _pShipping = (cd?.ShippingMarkPhotos ?? pr?.ShippingMarkPhotos ?? new List<string>())
+                                .Where(p => !string.IsNullOrWhiteSpace(p)).ToList();
+                            var _sShipping = _pShipping.Cast<string?>()
+                                .Concat(Enumerable.Repeat<string?>(null, Math.Max(0, 4 - _pShipping.Count)))
+                                .Take(4).ToList();
+                        }
+                        <div class="rpt-photo-grid-2">
+                            @foreach (var _u in _sShipping)
+                            {
+                                <div class="rpt-photo-cell">
+                                    @if (!string.IsNullOrEmpty(_u))
+                                    { <img src="@NormalizeUrl(_u)" class="rpt-photo" alt="Shipping mark" loading="eager"/> }
+                                </div>
+                            }
+                        </div>
+                        @{ var _smResult = cd?.ShippingMarkResult ?? pr?.ShippingMarkResult; }
+                        @if (!string.IsNullOrEmpty(_smResult))
                         {
-                            <div class="rpt-photo-cell">
-                                @if (!string.IsNullOrEmpty(_u))
-                                { <img src="@NormalizeUrl(_u)" class="rpt-photo" alt="Shipping mark" loading="eager"/> }
+                            <div style="text-align:right;margin-top:4px">
+                                <span class="rpt-compliance-badge comp-@(_smResult.ToLower())">@_smResult</span>
                             </div>
                         }
                     </div>
-                    @{ var _smResult = cd?.ShippingMarkResult ?? pr?.ShippingMarkResult; }
-                    @if (!string.IsNullOrEmpty(_smResult))
-                    {
-                        <div style="text-align:right;margin-top:4px">
-                            <span class="rpt-compliance-badge comp-@(_smResult.ToLower())">@_smResult</span>
-                        </div>
-                    }
 
-                    <div class="rpt-sub-title" style="margin-top:16px;">iii. Carton Weight</div>
-                    @if (cd != null && cd.Weight > 0)
-                    {
-                        <div style="font-size:12px;color:#555;margin-bottom:8px">Actual Weight: <strong>@cd.Weight kg</strong></div>
-                    }
-                    @{
-                        var _pWeight = (cd?.SizePhotos ?? pr?.WeightPhotos ?? new List<string>())
-                            .Where(p => !string.IsNullOrWhiteSpace(p)).ToList();
-                        var _sWeight = _pWeight.Cast<string?>()
-                            .Concat(Enumerable.Repeat<string?>(null, Math.Max(0, 4 - _pWeight.Count)))
-                            .Take(4).ToList();
-                    }
-                    <div class="rpt-photo-grid-2">
-                        @foreach (var _u in _sWeight)
+                    <div class="rpt-keep-together" style="margin-top:16px;">
+                        <div class="rpt-sub-title">iii. Carton Weight</div>
+                        @if (cd != null && cd.Weight > 0)
                         {
-                            <div class="rpt-photo-cell">
-                                @if (!string.IsNullOrEmpty(_u))
-                                { <img src="@NormalizeUrl(_u)" class="rpt-photo" alt="Carton weight" loading="eager"/> }
+                            <div style="font-size:12px;color:#555;margin-bottom:8px">Actual Weight: <strong>@cd.Weight kg</strong></div>
+                        }
+                        @{
+                            var _pWeight = (cd?.SizePhotos ?? pr?.WeightPhotos ?? new List<string>())
+                                .Where(p => !string.IsNullOrWhiteSpace(p)).ToList();
+                            var _sWeight = _pWeight.Cast<string?>()
+                                .Concat(Enumerable.Repeat<string?>(null, Math.Max(0, 4 - _pWeight.Count)))
+                                .Take(4).ToList();
+                        }
+                        <div class="rpt-photo-grid-2">
+                            @foreach (var _u in _sWeight)
+                            {
+                                <div class="rpt-photo-cell">
+                                    @if (!string.IsNullOrEmpty(_u))
+                                    { <img src="@NormalizeUrl(_u)" class="rpt-photo" alt="Carton weight" loading="eager"/> }
+                                </div>
+                            }
+                        </div>
+                        @{ var _cwResult = cd?.CartonWeightResult ?? pr?.CartonWeightResult; }
+                        @if (!string.IsNullOrEmpty(_cwResult))
+                        {
+                            <div style="text-align:right;margin-top:4px">
+                                <span class="rpt-compliance-badge comp-@(_cwResult.ToLower())">@_cwResult</span>
                             </div>
                         }
                     </div>
-                    @{ var _cwResult = cd?.CartonWeightResult ?? pr?.CartonWeightResult; }
-                    @if (!string.IsNullOrEmpty(_cwResult))
-                    {
-                        <div style="text-align:right;margin-top:4px">
-                            <span class="rpt-compliance-badge comp-@(_cwResult.ToLower())">@_cwResult</span>
-                        </div>
-                    }
 
                     <div class="rpt-footer">
                         <div class="rpt-footer-inner">
@@ -1498,7 +1504,7 @@ else if (_data != null)
     .rpt-page .rpt-overview-photo-cell img,
     .rpt-page .rpt-overview-photo-cell .rpt-overview-img {
         width: 100% !important;
-        height: 330px !important;
+        height: 380px !important;
         object-fit: cover !important;
         object-position: center !important;
         display: block !important;
@@ -1585,15 +1591,17 @@ else if (_data != null)
     ══════════════════════════════════════════ */
     .rpt-cover-header {
         display: flex;
-        align-items: flex-start;
+        align-items: center;
         justify-content: space-between;
         margin-bottom: 24px;
         padding-bottom: 20px;
         border-bottom: 2px solid var(--border);
+        gap: 20px;
+        flex-wrap: nowrap;
     }
 
     .rpt-logo-img {
-        height: 40px;
+        height: 48px;
         width: auto;
         object-fit: contain;
         display: block;
@@ -1603,7 +1611,7 @@ else if (_data != null)
         display: flex; 
         align-items: center; 
         gap: 10px;
-        width: 120px;
+        flex: 0 0 auto;       /* không co lại */
     }
     .rpt-logo-text {
         font-size: 22px; font-weight: 800;
@@ -1611,15 +1619,20 @@ else if (_data != null)
         letter-spacing: -0.5px;
     }
 
-    .rpt-title-block { text-align: right; }
+    .rpt-title-block {
+        text-align: right;
+        flex: 1 1 auto;
+        min-width: 0;
+    }
     .rpt-main-title {
-        font-size: 22px; font-weight: 800;
+        font-size: 26px; font-weight: 800;
         color: var(--text);
         letter-spacing: .04em;
+        line-height: 1.1;
     }
     .rpt-job-no {
-        font-size: 13px; font-weight: 600;
-        color: var(--brand); margin-top: 4px;
+        font-size: 14px; font-weight: 600;
+        color: var(--brand); margin-top: 6px;
     }
 
     /* ══════════════════════════════════════════
@@ -1772,14 +1785,14 @@ else if (_data != null)
     }
     .rpt-overview-img {
         width: 100%;
-        height: 330px;
+        height: 380px;
         object-fit: cover;
         object-position: center;
         display: block;
         vertical-align: top;
     }
     .rpt-photo-empty-lg {
-        height: 330px;
+        height: 380px;
         display: flex; align-items: center; justify-content: center;
         font-size: 13px; color: #bbb;
         background: #fafbfc;
@@ -2282,6 +2295,37 @@ else if (_data != null)
         table { break-inside: avoid; page-break-inside: avoid; }
         tr    { break-inside: avoid; page-break-inside: avoid; }
 
+        /* Header ở trang cover: BẮT BUỘC ngang, logo trái — INSPECTION REPORT + Job No phải */
+        .rpt-cover-header {
+            display: flex !important;
+            flex-direction: row !important;
+            align-items: center !important;
+            justify-content: space-between !important;
+            gap: 20px !important;
+            flex-wrap: nowrap !important;
+        }
+        .rpt-logo-wrap  { flex: 0 0 auto !important; width: auto !important; }
+        .rpt-title-block { text-align: right !important; flex: 1 1 auto !important; }
+        .rpt-main-title  { font-size: 22pt !important; }
+        .rpt-job-no      { font-size: 11pt !important; }
+        .rpt-logo-img    { height: 14mm !important; }
+
+        /* Product Overview photo — KHÔNG ĐƯỢC bị co nhỏ khi in (Windows Chrome) */
+        .rpt-overview-photo-wrap,
+        .rpt-overview-photo-cell { width: 100% !important; }
+        .rpt-overview-photo-cell .rpt-overview-img,
+        .rpt-overview-photo-cell img.rpt-overview-img,
+        .rpt-page .rpt-overview-photo-cell img,
+        .rpt-page .rpt-overview-photo-cell .rpt-overview-img {
+            width: 100% !important;
+            height: 95mm !important;            /* ≈ 380px @ 96dpi */
+            max-height: 95mm !important;
+            min-height: 95mm !important;
+            object-fit: cover !important;
+            object-position: center !important;
+        }
+        .rpt-photo-empty-lg { height: 95mm !important; min-height: 95mm !important; }
+
         /* Các block quan trọng KHÔNG ĐƯỢC bị cắt giữa chừng */
         .rpt-info-table,
         .rpt-result-table,
@@ -2293,9 +2337,17 @@ else if (_data != null)
         .rpt-defect-cell,
         .rpt-sign-table,
         .rpt-aql-section,
-        .rpt-aql-wrap {
+        .rpt-aql-wrap,
+        .rpt-keep-together {
             break-inside: avoid !important;
             page-break-inside: avoid !important;
+        }
+        /* Section-title (vd: "INSPECTION RESULTS") không được rớt ở cuối trang một mình
+           — buộc dính với nội dung sau nó */
+        .rpt-section-title,
+        .rpt-sub-title {
+            break-after: avoid !important;
+            page-break-after: avoid !important;
         }
         /* img phải fit trong page — không vượt height */
         img {
@@ -2545,6 +2597,35 @@ else if (_data != null)
         .rpt-defect-cell       { height: 256px !important; }
         .rpt-defect-photo-wrap { flex: 1 1 auto !important; min-height: 0 !important; }
         .rpt-defect-remark     { height: 36px !important; flex: 0 0 36px !important; }
+
+        /* Product Overview photo: ép kích thước lớn (≈ 380px = 95mm) — thắng mọi rule mobile */
+        .rpt-overview-photo-cell .rpt-overview-img,
+        .rpt-overview-photo-cell img.rpt-overview-img,
+        .rpt-page .rpt-overview-photo-cell img,
+        .rpt-page .rpt-overview-photo-cell .rpt-overview-img {
+            height: 95mm !important;
+            min-height: 95mm !important;
+            max-height: 95mm !important;
+            width: 100% !important;
+            object-fit: cover !important;
+            object-position: center !important;
+        }
+        .rpt-photo-empty-lg { height: 95mm !important; min-height: 95mm !important; }
+
+        /* Header cover trang 1: BẮT BUỘC ngang */
+        .rpt-cover-header {
+            display: flex !important;
+            flex-direction: row !important;
+            align-items: center !important;
+            justify-content: space-between !important;
+            gap: 20px !important;
+            flex-wrap: nowrap !important;
+        }
+        .rpt-logo-wrap   { flex: 0 0 auto !important; width: auto !important; }
+        .rpt-title-block { text-align: right !important; flex: 1 1 auto !important; }
+        .rpt-main-title  { font-size: 22pt !important; }
+        .rpt-job-no      { font-size: 11pt !important; }
+        .rpt-logo-img    { height: 14mm !important; }
 
         /* AQL block + RESULT table giữ nguyên 1 trang */
         .rpt-aql-wrap,
