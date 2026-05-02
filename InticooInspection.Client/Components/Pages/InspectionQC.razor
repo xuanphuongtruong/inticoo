@@ -23,7 +23,11 @@
 else if (_inspection == null)
 {
     <div class="qc-error">
-        <p>Inspection not found.</p>
+        <p>@(string.IsNullOrEmpty(_saveMsg) ? "Inspection not found." : _saveMsg)</p>
+        <p style="font-size:12px;opacity:.75;margin-top:6px">
+            ID: @InspectionId &nbsp;·&nbsp; Endpoint: api/inspections/@InspectionId
+        </p>
+        <button @onclick="LoadInspection">↻ Retry</button>
         <button @onclick="GoBack">← Back</button>
     </div>
 }
@@ -1494,19 +1498,81 @@ else
 
     async Task LoadInspection()
     {
+        _loading  = true;
+        _saveMsg  = "";
+        _saveError = false;
+        _inspection = null;
+        StateHasChanged();
+
+        var url = $"api/inspections/{InspectionId}";
         try
         {
-            _inspection = await Http.GetFromJsonAsync<InspectionDetailDto>($"api/inspections/{InspectionId}");
-            if (_inspection != null) InitFormData();
-            else { _saveMsg = $"Inspection #{InspectionId} not found."; _saveError = true; }
+            // Dùng GetAsync để đọc được status code & response body khi lỗi
+            var resp = await Http.GetAsync(url);
+
+            if (resp.IsSuccessStatusCode)
+            {
+                try
+                {
+                    _inspection = await resp.Content.ReadFromJsonAsync<InspectionDetailDto>();
+                    if (_inspection == null)
+                    {
+                        _saveMsg   = $"Server returned empty body for inspection #{InspectionId}.";
+                        _saveError = true;
+                    }
+                    else
+                    {
+                        InitFormData();
+                    }
+                }
+                catch (Exception jx)
+                {
+                    var raw = "";
+                    try { raw = await resp.Content.ReadAsStringAsync(); } catch { }
+                    _saveMsg   = $"JSON parse error: {jx.Message}. Body: {Truncate(raw, 200)}";
+                    _saveError = true;
+                    Console.Error.WriteLine($"[InspectionQC] JSON parse error for {url}: {jx}");
+                    Console.Error.WriteLine($"[InspectionQC] Response body: {raw}");
+                }
+            }
+            else
+            {
+                // Đọc body để hiểu lỗi server-side
+                string body = "";
+                try { body = await resp.Content.ReadAsStringAsync(); } catch { }
+                _saveMsg   = $"HTTP {(int)resp.StatusCode} {resp.StatusCode} for #{InspectionId}."
+                           + (string.IsNullOrWhiteSpace(body) ? "" : $" {Truncate(body, 200)}");
+                _saveError = true;
+                Console.Error.WriteLine($"[InspectionQC] {url} → {(int)resp.StatusCode} {resp.StatusCode}. Body: {body}");
+            }
+        }
+        catch (HttpRequestException hx)
+        {
+            _saveMsg   = $"Network error: {hx.Message}";
+            _saveError = true;
+            Console.Error.WriteLine($"[InspectionQC] HttpRequestException for {url}: {hx}");
+        }
+        catch (TaskCanceledException tx)
+        {
+            _saveMsg   = "Request timed out.";
+            _saveError = true;
+            Console.Error.WriteLine($"[InspectionQC] Timeout for {url}: {tx}");
         }
         catch (Exception ex)
         {
-            _saveMsg = $"Load error: {ex.Message}";
+            _saveMsg   = $"Load error: {ex.Message}";
             _saveError = true;
+            Console.Error.WriteLine($"[InspectionQC] Unexpected error for {url}: {ex}");
         }
-        _loading = false;
+        finally
+        {
+            _loading = false;
+            StateHasChanged();
+        }
     }
+
+    static string Truncate(string s, int max)
+        => string.IsNullOrEmpty(s) ? "" : (s.Length <= max ? s : s.Substring(0, max) + "…");
 
     void InitFormData()
     {
