@@ -52,7 +52,7 @@ else
                 <tr class="thead-top">
                     <th class="th-c th-no">No</th>
                     <th class="tc">Name</th>
-                    <th class="tc">ID</th>
+                    <!-- <th class="tc">ID</th> -->
                     <th class="tc">Mobile</th>
                     <th class="tc">Email</th>
                     <th class="tc">Country</th>
@@ -72,15 +72,14 @@ else
                         <td class="td-c td-no">@rowNo</td>
                         <td>
                             <div class="user-cell">
-                                <div class="user-avatar">@GetInitials(u.FullName ?? u.Username)</div>
                                 <span class="user-fullname">@(string.IsNullOrEmpty(u.FullName) ? u.Username : u.FullName)</span>
                             </div>
                         </td>
-                        <td class="td-c mono-sm">@(string.IsNullOrEmpty(u.CustomerId) ? "—" : u.CustomerId)</td>
+                        <!-- <td class="td-c mono-sm">@(string.IsNullOrEmpty(u.CustomerId) ? "—" : u.CustomerId)</td> -->
                         <td class="dim sm">@(string.IsNullOrEmpty(u.Mobile) ? "—" : u.Mobile)</td>
                         <td class="dim sm">@(string.IsNullOrEmpty(u.Email)  ? "—" : u.Email)</td>
-                        <td class="dim sm">@(string.IsNullOrEmpty(u.Country) ? "—" : u.Country)</td>
-                        <td class="mono-sm">@u.Username</td>
+                        <td class="dim sm tc">@(string.IsNullOrEmpty(u.Country) ? "—" : u.Country)</td>
+                        <td class="mono-sm tc">@u.Username</td>
                         <td class="tc">
                             @foreach (var r in u.Roles)
                             {
@@ -640,7 +639,7 @@ else
     .ptable th { padding:10px 12px; border:1px solid #b8c4d8; text-align:center; font-weight:600; font-size:11px; color:#1a2d5a; white-space:nowrap; text-transform:uppercase; letter-spacing:.04em; background:#f5f8fd; }
     .th-no  { width:38px; }
     .th-act { width:90px; }
-    .ptable td { padding:9px 11px; border:1px solid #dde4ef; color:#1a2d5a; vertical-align:middle; font-size:13px; }
+    .ptable td { padding:9px 11px; border:1px solid #dde4ef; color:#1a2d5a; vertical-align:middle; font-size:13px;}
     .tc { text-align:center; }
     .td-c { text-align:center; }
     .td-no { color:#9baac8; }
@@ -649,6 +648,7 @@ else
     .sm  { font-size:12.5px; }
     .tr-alt td { background:#f7fafd; }
     .ptable tbody tr:hover td { background:#eef5ff; }
+    
 
     .user-cell { display:flex; align-items:center; gap:10px; }
     .user-avatar { width:30px; height:30px; border-radius:50%; background:#1e90d6; color:#fff; font-size:11px; font-weight:600; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
