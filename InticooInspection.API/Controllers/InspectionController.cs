@@ -156,24 +156,44 @@ namespace InticooInspection.API.Controllers
                     if (p.ProductName != null && !productTypeDict.ContainsKey(p.ProductName))
                         productTypeDict[p.ProductName] = p.ProductType ?? "";
 
-                // References lookup — load 1 lần cho các inspection ở trang hiện tại
-                var pageIds = pageItems.Select(p => p.Id).ToList();
-                var refsByInspection = await _db.Set<InspectionReference>()
-                    .AsNoTracking()
-                    .Where(r => pageIds.Contains(r.InspectionId))
-                    .OrderBy(r => r.InspectionId).ThenBy(r => r.Order)
-                    .Select(r => new
-                    {
-                        r.InspectionId,
-                        r.ReferenceName,
-                        r.FileName,
-                        r.FileUrl,
-                        r.Remark,
-                        r.Order
-                    })
-                    .ToListAsync();
-                var referencesDict = refsByInspection
-                    .GroupBy(r => r.InspectionId)
+                // References lookup — load qua ProductReferences (link theo ItemNumber → Product.Id)
+                // KHÔNG dùng InspectionReferences nữa: references thuộc về SẢN PHẨM, không thuộc inspection.
+                // 1. Lấy danh sách ItemNumber unique của các inspection trên trang
+                var pageItemNumbers = pageItems
+                    .Where(i => !string.IsNullOrEmpty(i.ItemNumber))
+                    .Select(i => i.ItemNumber!)
+                    .Distinct()
+                    .ToList();
+
+                // 2. Map ItemNumber → ProductId
+                var productIdByItemNumber = pageItemNumbers.Count > 0
+                    ? await _db.Products
+                        .AsNoTracking()
+                        .Where(p => p.ItemNumber != null && pageItemNumbers.Contains(p.ItemNumber))
+                        .Select(p => new { p.Id, p.ItemNumber })
+                        .ToDictionaryAsync(p => p.ItemNumber!, p => p.Id, StringComparer.OrdinalIgnoreCase)
+                    : new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+
+                // 3. Load ProductReferences cho các ProductId đã tìm được
+                var productIds = productIdByItemNumber.Values.Distinct().ToList();
+                var productRefs = productIds.Count > 0
+                    ? await _db.ProductReferences
+                        .AsNoTracking()
+                        .Where(r => productIds.Contains(r.ProductId))
+                        .OrderBy(r => r.ProductId).ThenBy(r => r.SortOrder)
+                        .Select(r => new
+                        {
+                            r.ProductId,
+                            ReferenceName = r.Name,
+                            r.FileName,
+                            r.FileUrl
+                        })
+                        .ToListAsync()
+                    : new();
+
+                // 4. Group references theo ProductId → list
+                var refsByProductId = productRefs
+                    .GroupBy(r => r.ProductId)
                     .ToDictionary(g => g.Key, g => g.ToList());
 
                 // ── Map enums → strings in-memory ──
@@ -220,16 +240,20 @@ namespace InticooInspection.API.Controllers
 
                     productTypeDict.TryGetValue(i.ProductName ?? "", out var ptype);
 
-                    // References của inspection này
-                    var refList = referencesDict.TryGetValue(i.Id, out var rs)
-                        ? rs.Select(r => (object)new
+                    // References của SẢN PHẨM (link qua ItemNumber → Product.Id → ProductReferences)
+                    var refList = new List<object>();
+                    if (!string.IsNullOrEmpty(i.ItemNumber)
+                        && productIdByItemNumber.TryGetValue(i.ItemNumber, out var prodId)
+                        && refsByProductId.TryGetValue(prodId, out var prs))
+                    {
+                        refList = prs.Select(r => (object)new
                         {
                             referenceName = r.ReferenceName,
                             fileName      = r.FileName,
                             fileUrl       = r.FileUrl,
-                            remark        = r.Remark
-                        }).ToList()
-                        : new List<object>();
+                            remark        = (string?)null   // ProductReferences không có Remark; giữ field cho FE compat
+                        }).ToList();
+                    }
 
                     return (object)new
                     {
@@ -304,6 +328,31 @@ namespace InticooInspection.API.Controllers
                     .Where(p => p.ProductName == inspection.ProductName)
                     .Select(p => new { p.ProductCode })
                     .FirstOrDefaultAsync())?.ProductCode ?? "";
+
+            // Load ProductReferences theo Inspection.ItemNumber → Product.Id
+            // (References thuộc về SẢN PHẨM, không thuộc inspection)
+            var productReferencesList = new List<object>();
+            if (!string.IsNullOrEmpty(inspection.ItemNumber))
+            {
+                var prodId = await _db.Products.AsNoTracking()
+                    .Where(p => p.ItemNumber == inspection.ItemNumber)
+                    .Select(p => (int?)p.Id)
+                    .FirstOrDefaultAsync();
+                if (prodId.HasValue)
+                {
+                    productReferencesList = await _db.ProductReferences.AsNoTracking()
+                        .Where(r => r.ProductId == prodId.Value)
+                        .OrderBy(r => r.SortOrder)
+                        .Select(r => (object)new
+                        {
+                            referenceName = r.Name,
+                            fileName      = r.FileName,
+                            fileUrl       = r.FileUrl,
+                            remark        = (string?)null
+                        })
+                        .ToListAsync();
+                }
+            }
 
             // Lookup Country của Inspector từ AspNetUsers (dùng làm Inspection Location)
             var inspectorCountry = "";
@@ -517,14 +566,8 @@ namespace InticooInspection.API.Controllers
                     remark = t.Remark
                 }),
 
-                // References
-                references = inspection.References.Select(r => new
-                {
-                    referenceName = r.ReferenceName,
-                    fileName = r.FileName,
-                    fileUrl = r.FileUrl,
-                    remark = r.Remark
-                }),
+                // References — lấy từ ProductReferences (link qua ItemNumber → Product.Id)
+                references = productReferencesList,
 
                 // Steps & Overall Conclusions
                 steps = inspection.Steps.Select(s => new
