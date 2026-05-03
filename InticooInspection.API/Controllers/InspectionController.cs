@@ -1788,6 +1788,7 @@ www.Inticoo.com";
         public List<string> ShippingMarkPhotos { get; set; } = new();
         public string?      CartonWeightResult { get; set; }
         public double       Weight             { get; set; }
+        public List<string> WeightPhotos       { get; set; } = new();   // B-iii Carton Weight photos
         public string?      PkgLabelResult     { get; set; }
         public List<string> PkgLabelPhotos     { get; set; } = new();
         public string?      AssemblyResult     { get; set; }
