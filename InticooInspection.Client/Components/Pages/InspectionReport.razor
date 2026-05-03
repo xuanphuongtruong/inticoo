@@ -422,7 +422,9 @@ else if (_data != null)
                             <div style="font-size:12px;color:#555;margin-bottom:8px">Actual Weight: <strong>@cd.Weight kg</strong></div>
                         }
                         @{
-                            var _pWeight = (cd?.SizePhotos ?? pr?.WeightPhotos ?? new List<string>())
+                            // FIX: trước đây dùng nhầm cd?.SizePhotos (ảnh Carton Size)
+                            // → đã sửa thành cd?.WeightPhotos (đúng ảnh Carton Weight)
+                            var _pWeight = (cd?.WeightPhotos ?? pr?.WeightPhotos ?? new List<string>())
                                 .Where(p => !string.IsNullOrWhiteSpace(p)).ToList();
                             var _sWeight = _pWeight.Cast<string?>()
                                 .Concat(Enumerable.Repeat<string?>(null, Math.Max(0, 4 - _pWeight.Count)))
@@ -1468,6 +1470,7 @@ else if (_data != null)
         public List<string> ShippingMarkPhotos { get; set; } = new();
         public string?      CartonWeightResult { get; set; }
         public double       Weight             { get; set; }
+        public List<string> WeightPhotos       { get; set; } = new();   // B-iii Carton Weight photos
         public string?      PkgLabelResult     { get; set; }
         public List<string> PkgLabelPhotos     { get; set; } = new();
         public string?      AssemblyResult     { get; set; }
