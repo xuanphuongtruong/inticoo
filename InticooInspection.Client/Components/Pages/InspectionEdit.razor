@@ -596,10 +596,10 @@
                             <div class="col-no">No</div>
                             <div class="col-flex">Category</div>
                             <div class="col-flex">Test Item</div>
-                            <div class="col-flex">Test Protocol</div>
-                            <div class="col-flex2">Test Requirement</div>
+                            <divstyle="display:none;" class="col-flex">Test Protocol</div>
+                            <divstyle="display:none;" class="col-flex2">Test Requirement</div>
                             <div class="col-flex">Remark</div>
-                            <div class="col-view"></div>
+                            <div class="col-view">All details</div>
                         </div>
                         @for (int i = 0; i < PerformanceTests.Count; i++)
                         {
@@ -609,7 +609,7 @@
                                 <div class="col-no">@(idx + 1)</div>
                                 <div class="col-flex"><input @bind="test.Category" placeholder="Category..." class="table-input" /></div>
                                 <div class="col-flex"><input @bind="test.TestItem" placeholder="Test item..." class="table-input" /></div>
-                                <div class="col-flex"><input @bind="test.TestProtocol" placeholder="Protocol..." class="table-input" /></div>
+                                <div style="display:none;" class="col-flex"><input @bind="test.TestProtocol" placeholder="Protocol..." class="table-input" /></div>
                                 <div class="col-flex2"><input @bind="test.TestRequirement" placeholder="Requirement..." class="table-input" /></div>
                                 <div class="col-flex"><input @bind="test.Remark" placeholder="Remark..." class="table-input" /></div>
                                 <div class="col-view">
@@ -629,10 +629,10 @@
                             <div class="col-no">No</div>
                             <div class="col-flex">Category</div>
                             <div class="col-flex">Test Item</div>
-                            <div class="col-flex">Test Protocol</div>
-                            <div class="col-flex2">Test Requirement</div>
+                            <divstyle="display:none;" class="col-flex">Test Protocol</div>
+                            <div style="display:none;" class="col-flex2">Test Requirement</div>
                             <div class="col-flex">Remark</div>
-                            <div class="col-view"></div>
+                            <div class="col-view">All details</div>
                         </div>
                         @for (int i = 0; i < PerformanceTests.Count; i++)
                         {
@@ -672,12 +672,12 @@
                                         </select>
                                     }
                                 </div>
-                                <div class="col-flex">
+                                <div style="display:none;" class="col-flex">
                                     <input @bind="test.TestProtocol"
                                            placeholder="Protocol auto-filled..."
                                            class="table-input" readonly />
                                 </div>
-                                <div class="col-flex2">
+                                <div style="display:none;" class="col-flex2">
                                     <textarea @bind="test.TestRequirement"
                                               placeholder="Requirement auto-filled..."
                                               class="table-textarea"

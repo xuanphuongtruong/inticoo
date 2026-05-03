@@ -1411,6 +1411,52 @@
         .iss-ref-compact .iss-ref-row    { flex-wrap: wrap; }
         .iss-ref-compact .iss-ref-name   { flex-basis: 100%; padding-right: 0; margin-bottom: 4px; }
         .iss-ref-compact .iss-ref-no     { order: -1; }
+
+        /* ── Product References popup: stacked layout giống hình mẫu ──
+           Hàng 1:  "1. Assembly Instruction"   (số gộp với tên, full width)
+           Hàng 2:   View    Download           (2 buttons bên dưới, căn giữa) */
+        .iss-refs-modal .iss-ref-header { display: none; }            /* ẩn header table trên mobile */
+        .iss-refs-modal .iss-ref-row {
+            display: block;
+            padding: 12px 14px;
+            border-bottom: 1px solid #eef2f8;
+        }
+        .iss-refs-modal .iss-ref-row:last-child { border-bottom: none; }
+        .iss-refs-modal .iss-ref-no {
+            display: inline;
+            width: auto;
+            text-align: left;
+            color: #1a2d5a;
+            font-size: 14px;
+            font-weight: 600;
+            padding-right: 4px;
+        }
+        .iss-refs-modal .iss-ref-no::after { content: "."; }          /* "1" → "1." */
+        .iss-refs-modal .iss-ref-name {
+            display: inline;
+            padding-right: 0;
+            font-size: 14px;
+            font-weight: 600;
+            color: #1a2d5a;
+            white-space: normal;
+            word-break: break-word;
+        }
+        .iss-refs-modal .iss-ref-file {
+            display: flex;
+            gap: 14px;
+            justify-content: center;
+            margin-top: 8px;
+        }
+        .iss-refs-modal .iss-ref-view-btn,
+        .iss-refs-modal .iss-ref-dl-btn {
+            background: transparent;
+            border: none;
+            padding: 4px 8px;
+            font-size: 13px;
+            font-weight: 500;
+        }
+        .iss-refs-modal .iss-ref-view-btn:hover,
+        .iss-refs-modal .iss-ref-dl-btn:hover { background: transparent; text-decoration: underline; }
     }
 
     /* ══════════ LOADING ══════════ */

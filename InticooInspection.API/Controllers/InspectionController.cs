@@ -1434,6 +1434,82 @@ namespace InticooInspection.API.Controllers
             }
         }
 
+        // ═══════════════════════════════════════════════════════════════
+        // PUT api/inspections/{id}/qc-result/draft
+        // Lưu DRAFT QC data — dùng cho chức năng "Review" (xem trước báo cáo
+        // trước khi bấm Done). KHÔNG đổi status, KHÔNG set CompletedAt,
+        // KHÔNG gửi email. Inspector có thể review nhiều lần mà không gây
+        // side effect.
+        // ═══════════════════════════════════════════════════════════════
+        [HttpPut("{id}/qc-result/draft")]
+        [AllowAnonymous]
+        public async Task<IActionResult> SaveQcResultDraft(int id, [FromBody] QcResultRequest request)
+        {
+            try
+            {
+                var inspection = await _db.Inspections
+                    .Include(i => i.OverallConclusions)
+                    .FirstOrDefaultAsync(i => i.Id == id);
+
+                if (inspection == null) return NotFound(new { error = "Inspection not found" });
+
+                // Cập nhật các field thường lưu (không đổi Status/CompletedAt)
+                inspection.FinalResult       = request.FinalResult;
+                inspection.SignatureUrl      = request.SignatureUrl;
+                inspection.InspectorComments = request.InspectorComments;
+                inspection.QcInspectionRef   = request.InspectionReference;
+                inspection.InspectionLocation = request.InspectionLocation ?? inspection.InspectionLocation;
+                inspection.InspectionDate    = request.InspectionDate ?? inspection.InspectionDate;
+                if (!string.IsNullOrEmpty(request.Photo1Url)) inspection.Photo1Url = request.Photo1Url;
+                if (!string.IsNullOrEmpty(request.Photo2Url)) inspection.Photo2Url = request.Photo2Url;
+                // KHÔNG set Status = Completed, KHÔNG set CompletedAt — đây là draft
+
+                // Serialize QcResultJson — giống endpoint chính
+                var qcData = new
+                {
+                    schemaVersion      = request.SchemaVersion,
+                    overallConclusions = request.OverallConclusions,
+                    quantityConformity = request.QuantityConformity,
+                    packaging          = request.Packaging,
+                    productSpec        = request.ProductSpec,
+                    aql                = request.Aql,
+                    performanceTests   = request.PerformanceTests,
+                    defects            = request.Defects,
+                };
+                inspection.QcResultJson = System.Text.Json.JsonSerializer.Serialize(qcData,
+                    new System.Text.Json.JsonSerializerOptions { WriteIndented = false });
+
+                // Overall Conclusions — cập nhật để Report đọc đúng dữ liệu khi preview
+                if (request.OverallConclusions?.Any() == true)
+                {
+                    _db.RemoveRange(inspection.OverallConclusions);
+                    inspection.OverallConclusions = request.OverallConclusions
+                        .Select((o, i) => new InspectionOverallConclusion
+                        {
+                            InspectionId = id,
+                            Order        = i + 1,
+                            Letter       = o.Letter,
+                            Label        = o.Label,
+                            Compliance   = Enum.TryParse<OverallCompliance>(o.Compliance, true, out var cp)
+                                              ? cp : OverallCompliance.None,
+                            Remark       = o.Remark
+                        }).ToList();
+                }
+
+                await _db.SaveChangesAsync();
+
+                return Ok(new { success = true, draft = true, id = inspection.Id });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new
+                {
+                    error = ex.Message,
+                    inner = ex.InnerException?.Message
+                });
+            }
+        }
+
         // ════════════════════════════════════════════════════════
         // Helper: Gửi email hoàn thành inspection cho Customer
         // ════════════════════════════════════════════════════════

@@ -106,24 +106,11 @@ else
                     <div class="qc-info-row"><span class="qc-info-lbl">Inspection Date &amp; Time</span>
                         <span class="qc-info-val qc-auto">@DateTime.Now.ToString("dd MMM yyyy HH:mm")</span></div>
                     <div class="qc-info-row"><span class="qc-info-lbl">Inspection Type</span><span class="qc-info-val">@_inspection.InspectionType</span></div>
-                    <div class="qc-info-row qc-yn-row">
-                        <span class="qc-info-lbl">Inspection Reference</span>
-                        <div class="qc-yn-group" role="radiogroup" aria-label="Inspection Reference">
-                            <label class="qc-yn-opt @(_data.InspectionReference == "Yes" ? "qc-yn-active" : "")">
-                                <input type="radio" name="qc-inspection-ref"
-                                       value="Yes"
-                                       checked="@(_data.InspectionReference == "Yes")"
-                                       @onchange='() => _data.InspectionReference = "Yes"' />
-                                <span>Yes</span>
-                            </label>
-                            <label class="qc-yn-opt @(_data.InspectionReference == "No" ? "qc-yn-active" : "")">
-                                <input type="radio" name="qc-inspection-ref"
-                                       value="No"
-                                       checked="@(_data.InspectionReference == "No")"
-                                       @onchange='() => _data.InspectionReference = "No"' />
-                                <span>No</span>
-                            </label>
-                        </div>
+                    <div class="qc-info-row">
+                        <span class="qc-info-lbl">AQL Sampling Simulator</span>
+                        <span class="qc-info-val qc-auto">
+                            Inspection Level @(_data.Aql.InspectionLevel ?? "II") @(_data.Aql.MajorAql ?? "2.5")/@(_data.Aql.MinorAql ?? "4.0")
+                        </span>
                     </div>
                     @if (_inspection.References != null && _inspection.References.Count > 0)
                     {
@@ -1020,90 +1007,122 @@ else
             </div>
         }
 
-        @* ── F. Details of Defect Found ── *@
-        else if (_currentStepIdx == 8 + _cartonCount * B_STEPS_PER_CARTON + Math.Max(1, _data.PerformanceTests.Count) ||
-                 _currentStepIdx == 9 + _cartonCount * B_STEPS_PER_CARTON + Math.Max(1, _data.PerformanceTests.Count) ||
-                 _currentStepIdx == 10 + _cartonCount * B_STEPS_PER_CARTON + Math.Max(1, _data.PerformanceTests.Count))
+        @* ── F. Details of Defect Found (1 step gộp cả Critical/Major/Minor) ── *@
+        else if (_currentStepIdx == 8 + _cartonCount * B_STEPS_PER_CARTON + Math.Max(1, _data.PerformanceTests.Count))
         {
-            int fBase    = 8 + _cartonCount * B_STEPS_PER_CARTON + Math.Max(1, _data.PerformanceTests.Count);
-            var defType  = _currentStepIdx == fBase ? "Critical" : _currentStepIdx == fBase+1 ? "Major" : "Minor";
-            var defColor = defType == "Critical" ? "#e74c3c" : defType == "Major" ? "#e67e22" : "#3498db";
-
-            var defItems = _data.Defects.Where(d => d.Type == defType).ToList();
-
             <div class="qc-card">
                 <div class="qc-section-title">F. Details of Defect Found</div>
-                <div style="font-size:15px;font-weight:800;color:@defColor;margin-bottom:12px">@defType</div>
 
-                @foreach (var d in defItems)
-                {
-                    var dRef = d;
-                    <div style="border:1px solid #e8eef8;border-radius:10px;padding:10px;margin-bottom:10px;background:#fafcff">
-                        <!-- Grid ảnh 2 cột — mỗi ô có ảnh + remark riêng -->
-                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:8px">
-                            @for (int pi = 0; pi < dRef.Photos.Count; pi++)
-                            {
-                                var pIdx = pi; var dRef2 = dRef;
-                                var hasPhoto = !string.IsNullOrEmpty(dRef2.Photos[pIdx]);
-                                // Ensure Remarks slot
-                                while (dRef2.Remarks.Count <= pIdx) dRef2.Remarks.Add(string.Empty);
-                                <div style="display:flex;flex-direction:column;gap:0">
-                                    <!-- Ô ảnh -->
-                                    <label style="aspect-ratio:1;background:#f0f5ff;border:2px dashed #b0c8f0;
-                                                  border-bottom:none;border-radius:8px 8px 0 0;
-                                                  display:flex;align-items:center;justify-content:center;cursor:pointer;
-                                                  overflow:hidden;position:relative;min-height:120px;width:100px">
-                                        @{ var defUKey = $"Def:{_data.Defects.IndexOf(dRef2)}:{pIdx}"; }
-                                        @if (_uploadingKey == defUKey)
-                                        { <div class="qc-photo-spinner"><div class="qc-spinner-ring"></div><span style="font-size:11px;color:#2D7DD2">Uploading…</span></div> }
-                                        else if (hasPhoto)
-                                        {
-                                            <img src="@GetImageUrl(dRef2.Photos[pIdx])" class="qc-photo-img" style="width:100%;height:100%;object-fit:cover"/>
-                                            <button style="position:absolute;top:4px;right:4px;background:rgba(0,0,0,.55);color:#fff;
-                                                           border:none;border-radius:50%;width:22px;height:22px;font-size:11px;cursor:pointer;line-height:1"
-                                                    @onclick:stopPropagation="true"
-                                                    @onclick="() => { var dr2=dRef2; int pi2=pIdx; if(pi2<dr2.Photos.Count) dr2.Photos[pi2]=string.Empty; var i2=_data.Defects.IndexOf(dr2); if(i2>=0) _data.Defects[i2]=dr2; RecalcDefectCounts(); StateHasChanged(); }">✕</button>
-                                        }
-                                        else { <span style="font-size:28px;color:#c0cce0">📷</span> }
-                                        <InputFile OnChange="@(async e => await UploadDefectPhotoWithSpinner(e, dRef2, pIdx))"
-                                                   accept="image/*" capture="environment" style="display:none;position:absolute;inset:0"/>
-                                    </label>
-                                    <!-- Remark của ảnh này -->
-                                    <input type="text"
-                                           style="width:100px;border:1px solid #dce6f8;border-top:1px solid #eef1f8;
-                                                  border-radius:0 0 8px 8px;padding:6px 8px;font-size:11px;
-                                                  background:#f8faff;outline:none;box-sizing:border-box;color:#555"
-                                           placeholder="Remark…"
-                                           value="@dRef2.Remarks[pIdx]"
-                                           @onchange="e => { dRef2.Remarks[pIdx] = e.Value?.ToString() ?? string.Empty; var i2=_data.Defects.IndexOf(dRef2); if(i2>=0) _data.Defects[i2]=dRef2; }" />
-                                </div>
-                            }
-                            <!-- Nút + thêm ô ảnh -->
-                            <button style="aspect-ratio:1;min-height:120px;background:#eef4ff;border:2px dashed #2D7DD2;border-radius:8px;
-                                           display:flex;flex-direction:column;align-items:center;justify-content:center;
-                                           cursor:pointer;color:#2D7DD2;font-size:30px;gap:4px;font-weight:300"
-                                    @onclick="() => { var dr = dRef; dr.Photos.Add(string.Empty); dr.Remarks.Add(string.Empty); var i2=_data.Defects.IndexOf(dr); if(i2>=0) _data.Defects[i2]=dr; StateHasChanged(); }">
-                                <span>+</span>
+                <!-- ── FORM TRÊN: dropdown type + capture + remark + Add ── -->
+                <div class="qc-defect-form">
+                    <div class="qc-defect-form-row">
+                        <div class="qc-defect-field" style="flex:0 0 140px">
+                            <label class="qc-defect-lbl">Type</label>
+                            <select class="qc-select" @bind="_newDefectType">
+                                <option value="Critical">Critical</option>
+                                <option value="Major">Major</option>
+                                <option value="Minor">Minor</option>
+                            </select>
+                        </div>
+                        <div class="qc-defect-field" style="flex:0 0 110px">
+                            <label class="qc-defect-lbl">Capture</label>
+                            <label class="qc-defect-capture-box">
+                                @if (!string.IsNullOrEmpty(_uploadingKey) && _uploadingKey == "NewDefect")
+                                {
+                                    <div class="qc-photo-spinner"><div class="qc-spinner-ring"></div></div>
+                                }
+                                else if (!string.IsNullOrEmpty(_newDefectPhoto))
+                                {
+                                    <img src="@GetImageUrl(_newDefectPhoto)" class="qc-photo-img"
+                                         style="width:100%;height:100%;object-fit:cover"/>
+                                    <button class="qc-defect-capture-clear"
+                                            @onclick:stopPropagation="true"
+                                            @onclick="() => { _newDefectPhoto = string.Empty; StateHasChanged(); }">✕</button>
+                                }
+                                else
+                                {
+                                    <span style="font-size:24px;color:#c0cce0">📷</span>
+                                }
+                                <InputFile OnChange="HandleNewDefectPhoto"
+                                           accept="image/*" capture="environment"
+                                           style="display:none;position:absolute;inset:0"/>
+                            </label>
+                        </div>
+                        <div class="qc-defect-field" style="flex:1 1 auto;min-width:160px">
+                            <label class="qc-defect-lbl">Remark</label>
+                            <input type="text" class="qc-input" placeholder="Defect remark…"
+                                   @bind="_newDefectRemark" @bind:event="oninput"/>
+                        </div>
+                        <div class="qc-defect-field" style="flex:0 0 auto;align-self:flex-end">
+                            <button class="qc-defect-add-btn" @onclick="AddDefectRow"
+                                    disabled="@(string.IsNullOrEmpty(_newDefectPhoto))">
+                                + Add
                             </button>
                         </div>
-                        @if (defItems.Count > 1)
-                        {
-                            <div style="display:flex;justify-content:flex-end;margin-top:6px">
-                                <button class="qc-del-btn-sm" @onclick="() => { _data.Defects.Remove(dRef); RecalcDefectCounts(); StateHasChanged(); }">✕ Remove</button>
-                            </div>
-                        }
                     </div>
-                }
+                </div>
 
-                <!-- Add thêm defect cùng loại -->
-                <button class="qc-add-row-btn" @onclick='() => { _data.Defects.Add(new QcDefect { Type = defType, Photos = new List<string>{"",""}, Remarks = new List<string>{"",""} }); StateHasChanged(); }'>
-                    + Add @defType Defect
-                </button>
+                <!-- ── BẢNG defects đã thêm ── -->
+                @{
+                    var allDefects = _data.Defects
+                        .Where(d => !string.IsNullOrEmpty(d.Photos.FirstOrDefault()))
+                        .ToList();
+                }
+                @if (allDefects.Any())
+                {
+                    <table class="qc-defect-table">
+                        <thead>
+                            <tr>
+                                <th style="width:40px">No</th>
+                                <th style="width:110px">AQL Sampling</th>
+                                <th>Photos</th>
+                                <th>Remark</th>
+                                <th style="width:60px">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @for (int idx = 0; idx < allDefects.Count; idx++)
+                            {
+                                var dRow = allDefects[idx];
+                                var rowNo = idx + 1;
+                                var typeColor = dRow.Type == "Critical" ? "#e74c3c"
+                                              : dRow.Type == "Major"    ? "#e67e22"
+                                              : "#3498db";
+                                var photoUrl = dRow.Photos.FirstOrDefault() ?? "";
+                                var remarkTxt = dRow.Remarks.FirstOrDefault() ?? "";
+                                <tr>
+                                    <td class="tc">@rowNo</td>
+                                    <td>
+                                        <span class="qc-defect-type-badge" style="background:@typeColor">
+                                            @dRow.Type
+                                        </span>
+                                    </td>
+                                    <td>
+                                        @if (!string.IsNullOrEmpty(photoUrl))
+                                        {
+                                            <img src="@GetImageUrl(photoUrl)" class="qc-photo-img qc-defect-row-img"
+                                                 alt="Defect photo"/>
+                                        }
+                                    </td>
+                                    <td class="qc-defect-row-remark">@remarkTxt</td>
+                                    <td class="tc">
+                                        <button class="qc-defect-row-del" title="Remove"
+                                                @onclick="() => RemoveDefectRow(dRow)">✕</button>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                }
+                else
+                {
+                    <div class="qc-defect-empty">No defects added yet. Use the form above to add one.</div>
+                }
             </div>
         }
 
         @* ── Step: Inspector Comments & Final Result ── *@
-        else if (_currentStepIdx == 11 + _cartonCount * B_STEPS_PER_CARTON + Math.Max(1, _data.PerformanceTests.Count))
+        else if (_currentStepIdx == 9 + _cartonCount * B_STEPS_PER_CARTON + Math.Max(1, _data.PerformanceTests.Count))
         {
             <div class="qc-card">
                 <!-- Logo inticoo -->
@@ -1156,7 +1175,7 @@ else
         }
 
         @* ── Step: Compliance & Signature ── *@
-        else if (_currentStepIdx == 12 + _cartonCount * B_STEPS_PER_CARTON + Math.Max(1, _data.PerformanceTests.Count))
+        else if (_currentStepIdx == 10 + _cartonCount * B_STEPS_PER_CARTON + Math.Max(1, _data.PerformanceTests.Count))
         {
             <div class="qc-card">
                 <!-- Logo -->
@@ -1232,24 +1251,16 @@ else
     <!-- BOTTOM NAV BUTTONS -->
     <div class="qc-nav-bar">
         <button class="qc-nav-btn btn-back" @onclick="HandleBack">Back</button>
-        @{
-            int _fBase2 = 8 + _cartonCount * B_STEPS_PER_CARTON + Math.Max(1, _data.PerformanceTests.Count);
-            bool _isFStep = _currentStepIdx == _fBase2 || _currentStepIdx == _fBase2+1 || _currentStepIdx == _fBase2+2;
-        }
-        @if (_isFStep)
-        {
-            var _fDefType = _currentStepIdx == _fBase2 ? "Critical" : _currentStepIdx == _fBase2+1 ? "Major" : "Minor";
-            <button class="qc-nav-btn btn-skip" style="background:#eef4ff;color:#2D7DD2;flex:0 0 auto;padding:13px 16px"
-                    @onclick='() => { _data.Defects.Add(new QcDefect { Type = _fDefType, Photos = new List<string>{"",""}, Remarks = new List<string>{"",""} }); StateHasChanged(); }'>
-                Add
-            </button>
-        }
-        else if (CurrentStep.CanSkip)
+        @if (CurrentStep.CanSkip)
         {
             <button class="qc-nav-btn btn-skip" @onclick="SkipStep">Skip</button>
         }
         @if (_currentStepIdx == _steps.Count - 1)
         {
+            <button class="qc-nav-btn btn-review @(_loadingReview ? "saving" : "")"
+                    @onclick="OpenReview" disabled="@(_saving || _loadingReview)">
+                @(_loadingReview ? "Loading…" : "Review")
+            </button>
             <button class="qc-nav-btn btn-done @(_saving ? "saving" : "")" @onclick="SaveAndDone" disabled="@_saving">
                 @(_saving ? "Saving…" : "Done")
             </button>
@@ -1314,6 +1325,20 @@ else
                  @onclick:stopPropagation="true" alt="Preview" />
         </div>
     }
+
+    <!-- REVIEW REPORT MODAL — full-screen iframe trỏ đến /inspection-report/{id} -->
+    @if (_showReviewModal)
+    {
+        <div class="qc-review-backdrop">
+            <div class="qc-review-toolbar">
+                <span class="qc-review-title">Preview Report (Draft)</span>
+                <button class="qc-review-close-btn" @onclick="CloseReview" aria-label="Close">✕ Close</button>
+            </div>
+            <div class="qc-review-frame-wrap">
+                <iframe src="@_reviewUrl" class="qc-review-frame" title="Inspection Report Preview"></iframe>
+            </div>
+        </div>
+    }
 }
 
 <!-- ═══════════════════════ CODE-BEHIND ═══════════════════════ -->
@@ -1364,6 +1389,69 @@ else
     {
         _showImagePopup = false;
         _imagePopupUrl  = "";
+    }
+
+    // ── Review modal ──
+    bool   _showReviewModal = false;
+    bool   _loadingReview   = false;
+    string _reviewUrl       = "";
+
+    async Task OpenReview()
+    {
+        // 1) Validate Final Result + Signature như Done (báo trước nếu thiếu)
+        _finalValidated = true;
+        if (string.IsNullOrEmpty(_data.FinalResult))
+        {
+            _saveMsg = "Please select a Final Result before reviewing.";
+            _saveError = true;
+            StateHasChanged();
+            return;
+        }
+        _sigValidated = true;
+        if (string.IsNullOrEmpty(_data.SignatureUrl))
+        {
+            _saveMsg = "Please add a signature before reviewing.";
+            _saveError = true;
+            StateHasChanged();
+            return;
+        }
+
+        _loadingReview = true;
+        _saveMsg = "";
+        _saveError = false;
+        StateHasChanged();
+
+        try
+        {
+            // 2) Save DRAFT (không set Completed, không gửi email) để Report load đúng dữ liệu mới nhất
+            var payload = BuildSavePayload();
+            var resp = await Http.PutAsJsonAsync($"api/inspections/{InspectionId}/qc-result/draft", payload);
+            if (!resp.IsSuccessStatusCode)
+            {
+                _saveMsg = $"Cannot save draft for review ({(int)resp.StatusCode}).";
+                _saveError = true;
+                _loadingReview = false;
+                StateHasChanged();
+                return;
+            }
+
+            // 3) Mở modal với iframe — thêm timestamp để bypass cache
+            _reviewUrl = $"/inspection-report/{InspectionId}?preview={DateTime.UtcNow.Ticks}";
+            _showReviewModal = true;
+        }
+        catch (Exception ex)
+        {
+            _saveMsg = $"Review error: {ex.Message}";
+            _saveError = true;
+        }
+        _loadingReview = false;
+        StateHasChanged();
+    }
+
+    void CloseReview()
+    {
+        _showReviewModal = false;
+        _reviewUrl = "";
     }
 
     // ── Step definitions ──
@@ -1581,7 +1669,9 @@ else
         _data.Photo1Url = _inspection.Photo1Url ?? "";
         _data.Photo2Url = _inspection.Photo2Url ?? "";
         _data.InspectionLocation = _inspection.InspectionLocation ?? "";
-        _data.InspectionReference = _inspection.InspectionReference ?? "";
+        // Inspection Reference giữ trong DB nhưng KHÔNG dùng UI nữa — luôn lưu rỗng.
+        // Vị trí cũ trong UI giờ hiển thị "AQL Sampling Simulator" (text-only).
+        _data.InspectionReference = "";
 
         _data.OverallConclusions = _inspection.OverallConclusions?.Any() == true
             ? _inspection.OverallConclusions.Select(o => new QcOverallConclusion
@@ -1754,9 +1844,7 @@ else
         if (!_data.PerformanceTests.Any())
             list.Add(new("", "D. Performance Testing", true));
         list.Add(new("", "E. Appearance & AQL",       false));
-        list.Add(new("", "F. Critical Defects",       true));
-        list.Add(new("", "F. Major Defects",          true));
-        list.Add(new("", "F. Minor Defects",          true));
+        list.Add(new("", "F. Details of Defect Found", true));
         list.Add(new("", "Inspector Comments",          false));
         list.Add(new("", "Compliance & Signature",        false));
 
@@ -1897,7 +1985,7 @@ else
         }
 
         // Validate Final Result — step 11 + carton*B + max(1,perf)
-        int finalResultStep = 11 + _cartonCount * B_STEPS_PER_CARTON + Math.Max(1, _data.PerformanceTests.Count);
+        int finalResultStep = 9 + _cartonCount * B_STEPS_PER_CARTON + Math.Max(1, _data.PerformanceTests.Count);
         if (_currentStepIdx == finalResultStep)
         {
             _finalValidated = true;
@@ -1912,7 +2000,7 @@ else
         }
 
         // Validate Signature — step 12 + carton*B + max(1,perf)
-        int sigStep = 12 + _cartonCount * B_STEPS_PER_CARTON + Math.Max(1, _data.PerformanceTests.Count);
+        int sigStep = 10 + _cartonCount * B_STEPS_PER_CARTON + Math.Max(1, _data.PerformanceTests.Count);
         if (_currentStepIdx == sigStep)
         {
             _sigValidated = true;
@@ -2002,8 +2090,8 @@ else
         // E — Appearance & Craftsmanship
         if (stepIdx == eStep && isSkip("E")) return true;
 
-        // F — Details of Defect Found (F Critical/Major/Minor = 3 steps)
-        if (stepIdx >= fBase && stepIdx <= fBase + 2 && isSkip("F")) return true;
+        // F — Details of Defect Found (1 step duy nhất, gộp Critical/Major/Minor)
+        if (stepIdx == fBase && isSkip("F")) return true;
 
         return false;
     }
@@ -2011,20 +2099,8 @@ else
 
     void EnsureDefaultDefects()
     {
-        int fBase2 = 8 + _cartonCount * B_STEPS_PER_CARTON + Math.Max(1, _data.PerformanceTests.Count);
-        bool isFStep = _currentStepIdx < _steps.Count - 2 &&
-                      (_currentStepIdx == fBase2 || _currentStepIdx == fBase2+1 || _currentStepIdx == fBase2+2);
-        if (!isFStep) return;
-        foreach (var t in new[] { "Critical", "Major", "Minor" })
-        {
-            if (!_data.Defects.Any(d => d.Type == t))
-                _data.Defects.Add(new QcDefect
-                {
-                    Type    = t,
-                    Photos  = new List<string> { "", "" },
-                    Remarks = new List<string> { "", "" }
-                });
-        }
+        // F step giờ chỉ có 1 trang duy nhất, user tự bấm Add để thêm row
+        // Không cần auto-tạo row mặc định nữa.
     }
     void SkipStep()
     {
@@ -2401,6 +2477,81 @@ else
         _uploadingKey = key; StateHasChanged();
         try { await UploadDefectPhoto(e, defect, slotIdx); }
         finally { _uploadingKey = ""; StateHasChanged(); }
+    }
+
+    // ─────────── DEFECT FORM (UI mới: dropdown + capture + remark + Add) ───────────
+    string _newDefectType   = "Critical";
+    string _newDefectPhoto  = "";
+    string _newDefectRemark = "";
+
+    async Task HandleNewDefectPhoto(InputFileChangeEventArgs e)
+    {
+        _uploadingKey = "NewDefect"; StateHasChanged();
+        try
+        {
+            var url = await UploadPhoto(e);
+            if (!string.IsNullOrEmpty(url))
+            {
+                _newDefectPhoto = url;
+            }
+        }
+        catch (Exception ex) { _saveMsg = $"Photo error: {ex.Message}"; _saveError = true; }
+        finally { _uploadingKey = ""; StateHasChanged(); }
+    }
+
+    void AddDefectRow()
+    {
+        if (string.IsNullOrEmpty(_newDefectPhoto)) return;
+        // Mỗi row UI = 1 QcDefect với 1 ảnh + 1 remark — DB schema giữ nguyên
+        _data.Defects.Add(new QcDefect
+        {
+            Type    = _newDefectType,
+            Photos  = new List<string> { _newDefectPhoto },
+            Remarks = new List<string> { _newDefectRemark ?? "" }
+        });
+        // Reset form
+        _newDefectPhoto  = "";
+        _newDefectRemark = "";
+        RecalcDefectCounts();
+        StateHasChanged();
+    }
+
+    void RemoveDefectRow(QcDefect row)
+    {
+        _data.Defects.Remove(row);
+        RecalcDefectCounts();
+        StateHasChanged();
+    }
+
+    /// <summary>
+    /// Backward compat: data cũ có thể lưu mỗi QcDefect chứa NHIỀU ảnh
+    /// (Photos = ["url1","url2",...], Remarks = ["rmk1","rmk2",...]).
+    /// UI mới mỗi row = 1 ảnh + 1 remark, nên flatten ra nhiều QcDefect đơn.
+    /// Gọi sau khi load _data.Defects từ JSON.
+    /// </summary>
+    void FlattenDefectsForNewUi()
+    {
+        var flat = new List<QcDefect>();
+        foreach (var d in _data.Defects)
+        {
+            var photos = d.Photos?.Where(p => !string.IsNullOrEmpty(p)).ToList() ?? new();
+            if (photos.Count == 0)
+            {
+                // Defect không có ảnh — skip (UI mới chỉ hiện row có ảnh)
+                continue;
+            }
+            for (int i = 0; i < photos.Count; i++)
+            {
+                var rmk = (d.Remarks != null && i < d.Remarks.Count) ? d.Remarks[i] : "";
+                flat.Add(new QcDefect
+                {
+                    Type    = d.Type,
+                    Photos  = new List<string> { photos[i] },
+                    Remarks = new List<string> { rmk ?? "" }
+                });
+            }
+        }
+        _data.Defects = flat;
     }
 
     static void SetPhotoInList(List<string> list, int slot, string url)
@@ -3387,6 +3538,17 @@ else
         box-shadow: 0 4px 12px rgba(39,174,96,.35); }
     .btn-done:hover { box-shadow: 0 6px 18px rgba(39,174,96,.45); }
     .btn-done.saving { opacity: .7; cursor: not-allowed; }
+    /* Nút Review — màu tím nhẹ để phân biệt với Done (xanh) và Next (xanh dương) */
+    .btn-review {
+        background: linear-gradient(135deg, #6366f1, #4f46e5);
+        color: #fff;
+        flex: 0 0 auto;
+        padding: 13px 18px;
+        box-shadow: 0 4px 12px rgba(99,102,241,.3);
+    }
+    .btn-review:hover { box-shadow: 0 6px 18px rgba(99,102,241,.45); }
+    .btn-review.saving { opacity: .7; cursor: not-allowed; }
+    .btn-review:disabled { opacity: .55; cursor: not-allowed; }
 
     .qc-toast {
         position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%);
@@ -3756,6 +3918,245 @@ else
     @@media (max-width: 480px) {
         .qc-img-close-btn { top: 12px; right: 12px; width: 36px; height: 36px; font-size: 18px; }
         .qc-img-backdrop  { padding: 12px; }
+    }
+
+    /* ════════════════ Review Report Modal ════════════════ */
+    /* Full-screen iframe cho phép inspector xem trước báo cáo trước khi bấm Done */
+    .qc-review-backdrop {
+        position: fixed; inset: 0;
+        background: #f3f6fb;
+        z-index: 3500;
+        display: flex;
+        flex-direction: column;
+        animation: qcImgFade .15s ease-out;
+    }
+    .qc-review-toolbar {
+        flex: 0 0 auto;
+        height: 52px;
+        padding: 0 16px;
+        background: #1a5fa8;
+        color: #fff;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        box-shadow: 0 2px 8px rgba(0,0,0,.18);
+    }
+    .qc-review-title {
+        font-size: 14px;
+        font-weight: 700;
+        letter-spacing: .04em;
+        text-transform: uppercase;
+    }
+    .qc-review-close-btn {
+        background: rgba(255,255,255,.15);
+        color: #fff;
+        border: 1px solid rgba(255,255,255,.3);
+        border-radius: 6px;
+        padding: 7px 14px;
+        font-size: 13px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: background .15s;
+        -webkit-appearance: none;
+        appearance: none;
+    }
+    .qc-review-close-btn:hover,
+    .qc-review-close-btn:active {
+        background: rgba(255,255,255,.28);
+    }
+    .qc-review-frame-wrap {
+        flex: 1 1 auto;
+        overflow: hidden;
+        background: #f3f6fb;
+        position: relative;
+    }
+    .qc-review-frame {
+        width: 100%;
+        height: 100%;
+        border: none;
+        background: #fff;
+    }
+    @@media (max-width: 480px) {
+        .qc-review-toolbar { height: 46px; padding: 0 10px; }
+        .qc-review-title   { font-size: 12px; }
+        .qc-review-close-btn { padding: 6px 10px; font-size: 12px; }
+    }
+
+    /* ════════════════ Defect Form (UI mới) ════════════════ */
+    .qc-defect-form {
+        background: #fafcff;
+        border: 1px solid #e0e8f5;
+        border-radius: 10px;
+        padding: 14px;
+        margin-bottom: 16px;
+    }
+    .qc-defect-form-row {
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+        align-items: flex-end;
+    }
+    .qc-defect-field {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+    }
+    .qc-defect-lbl {
+        font-size: 11px;
+        font-weight: 700;
+        color: #2D7DD2;
+        text-transform: uppercase;
+        letter-spacing: .04em;
+    }
+    .qc-input,
+    .qc-defect-form .qc-select {
+        height: 38px;
+        padding: 6px 10px;
+        border: 1px solid #dce6f8;
+        border-radius: 8px;
+        font-size: 13px;
+        background: #fff;
+        outline: none;
+        color: #1a1a2e;
+        box-sizing: border-box;
+        width: 100%;
+    }
+    .qc-input:focus,
+    .qc-defect-form .qc-select:focus {
+        border-color: #2D7DD2;
+    }
+    .qc-defect-capture-box {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        position: relative;
+        height: 80px;
+        background: #f0f5ff;
+        border: 2px dashed #b0c8f0;
+        border-radius: 8px;
+        cursor: pointer;
+        overflow: hidden;
+    }
+    .qc-defect-capture-clear {
+        position: absolute;
+        top: 4px; right: 4px;
+        background: rgba(0,0,0,.55);
+        color: #fff;
+        border: none;
+        border-radius: 50%;
+        width: 22px; height: 22px;
+        font-size: 11px;
+        cursor: pointer;
+        line-height: 1;
+    }
+    .qc-defect-add-btn {
+        height: 38px;
+        padding: 0 22px;
+        background: #2D7DD2;
+        color: #fff;
+        border: none;
+        border-radius: 8px;
+        font-size: 14px;
+        font-weight: 700;
+        cursor: pointer;
+        white-space: nowrap;
+        transition: background .15s;
+    }
+    .qc-defect-add-btn:hover { background: #1a5fa8; }
+    .qc-defect-add-btn:disabled {
+        background: #c0cce0;
+        cursor: not-allowed;
+    }
+
+    /* ── Bảng defects ── */
+    .qc-defect-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 13px;
+        background: #fff;
+        border: 1px solid #e0e8f5;
+        border-radius: 8px;
+        overflow: hidden;
+    }
+    .qc-defect-table th {
+        background: #f3f6fb;
+        color: #2D7DD2;
+        font-size: 11px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: .04em;
+        padding: 10px 8px;
+        text-align: left;
+        border-bottom: 1px solid #e0e8f5;
+    }
+    .qc-defect-table td {
+        padding: 10px 8px;
+        border-bottom: 1px solid #eef1f8;
+        vertical-align: middle;
+        color: #1a1a2e;
+    }
+    .qc-defect-table tr:last-child td { border-bottom: none; }
+    .qc-defect-table .tc { text-align: center; }
+    .qc-defect-type-badge {
+        display: inline-block;
+        padding: 3px 10px;
+        border-radius: 12px;
+        color: #fff;
+        font-size: 11px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: .04em;
+    }
+    .qc-defect-row-img {
+        width: 80px;
+        height: 80px;
+        object-fit: cover;
+        border-radius: 6px;
+        cursor: zoom-in;
+        display: block;
+    }
+    .qc-defect-row-remark {
+        word-break: break-word;
+        line-height: 1.4;
+        color: #555;
+        font-size: 13px;
+    }
+    .qc-defect-row-del {
+        background: #fff0f0;
+        color: #e74c3c;
+        border: 1px solid #ffd5d5;
+        border-radius: 50%;
+        width: 30px; height: 30px;
+        font-size: 14px;
+        font-weight: 700;
+        cursor: pointer;
+        line-height: 1;
+        transition: background .15s, transform .15s;
+    }
+    .qc-defect-row-del:hover {
+        background: #e74c3c;
+        color: #fff;
+        transform: scale(1.05);
+    }
+    .qc-defect-empty {
+        background: #f9fafb;
+        border: 1px dashed #d0d7e2;
+        border-radius: 8px;
+        padding: 24px;
+        text-align: center;
+        color: #888;
+        font-size: 13px;
+    }
+
+    /* Mobile: form Defect responsive */
+    @@media (max-width: 600px) {
+        .qc-defect-form-row { flex-direction: column; align-items: stretch; }
+        .qc-defect-field { flex: 1 1 auto !important; min-width: 0 !important; }
+        .qc-defect-add-btn { width: 100%; }
+        .qc-defect-row-img { width: 60px; height: 60px; }
+        .qc-defect-table { font-size: 12px; }
+        .qc-defect-table th,
+        .qc-defect-table td { padding: 8px 6px; }
     }
 </style>
 
