@@ -1516,11 +1516,12 @@ else if (_data != null)
     .rpt-page .rpt-overview-photo-cell img,
     .rpt-page .rpt-overview-photo-cell .rpt-overview-img {
         width: 100% !important;
-        height: 380px !important;
-        object-fit: cover !important;
+        height: 330px !important;
+        object-fit: fill !important;
         object-position: center !important;
         display: block !important;
         vertical-align: top !important;
+        background: #fafbfc !important;
     }
 
     /* ══════════════════════════════════════════
@@ -1615,7 +1616,7 @@ else if (_data != null)
     .rpt-logo-wrap .rpt-logo-img {
         height: 48px;
         width: auto;
-        object-fit: contain;
+        object-fit: fill;
         display: block;
     }
 
@@ -1797,14 +1798,15 @@ else if (_data != null)
     }
     .rpt-overview-img {
         width: 100%;
-        height: 380px;
-        object-fit: cover;
+        height: 330px;
+        object-fit: fill;
         object-position: center;
         display: block;
         vertical-align: top;
+        background: #fafbfc;
     }
     .rpt-photo-empty-lg {
-        height: 380px;
+        height: 330px;
         display: flex; align-items: center; justify-content: center;
         font-size: 13px; color: #bbb;
         background: #fafbfc;
@@ -2113,7 +2115,7 @@ else if (_data != null)
     }
     .rpt-comments-cell { min-height: 80px; }
     .rpt-sign-cell { height: 90px; vertical-align: middle; }
-    .rpt-signature { max-height: 70px; max-width: 200px; object-fit: contain; }
+    .rpt-signature { max-height: 70px; max-width: 200px; object-fit: fill; }
     .rpt-sign-name { font-size: 13px; font-weight: 600; color: #333 !important; display: block; margin-bottom: 4px; }
     .rpt-sign-id   { font-size: 11px; color: #888 !important; display: block; }
     .rpt-sign-placeholder { color: #bbb; font-size: 12px; }
@@ -2333,8 +2335,9 @@ else if (_data != null)
             height: 95mm !important;            /* ≈ 380px @@ 96dpi */
             max-height: 95mm !important;
             min-height: 95mm !important;
-            object-fit: cover !important;
+            object-fit: fill !important;
             object-position: center !important;
+            background: #fafbfc !important;
         }
         .rpt-photo-empty-lg { height: 95mm !important; min-height: 95mm !important; }
 
@@ -2636,8 +2639,7 @@ else if (_data != null)
         }
         .rpt-photo-cell img,
         .rpt-defect-cell img,
-        .rpt-defect-photo-wrap img,
-        .rpt-overview-photo-cell img {
+        .rpt-defect-photo-wrap img {
             max-height: none !important;
             height: 100% !important;
             width: 100% !important;
@@ -2658,8 +2660,9 @@ else if (_data != null)
             min-height: 95mm !important;
             max-height: 95mm !important;
             width: 100% !important;
-            object-fit: cover !important;
+            object-fit: fill !important;
             object-position: center !important;
+            background: #fafbfc !important;
         }
         .rpt-photo-empty-lg { height: 95mm !important; min-height: 95mm !important; }
 
