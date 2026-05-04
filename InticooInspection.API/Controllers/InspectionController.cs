@@ -60,15 +60,19 @@ namespace InticooInspection.API.Controllers
                     .ToListAsync();
 
                 // ── Filter in-memory ──
+                // DB mapping: 0=New, 1=OnGoing, 2=Completed, 3=Pending, 4=Cancel
                 if (!string.IsNullOrWhiteSpace(status))
                 {
-                    var sv = status.ToLower() switch
+                    var key = status.Trim().ToLower().Replace(" ", "").Replace("_", "");
+                    var sv = key switch
                     {
-                        "ongoing" => (int?)0,
-                        "completed" => (int?)1,
-                        "pending" => (int?)2,
-                        "cancelled" => (int?)3,
-                        _ => null
+                        "new"       => (int?)0,
+                        "ongoing"   => (int?)1,
+                        "completed" => (int?)2,
+                        "pending"   => (int?)3,
+                        "cancel"    => (int?)4,
+                        "cancelled" => (int?)4,
+                        _           => null
                     };
                     if (sv.HasValue)
                         allRaw = allRaw.Where(i => (int)i.StatusVal == sv.Value).ToList();
@@ -198,12 +202,14 @@ namespace InticooInspection.API.Controllers
 
                 // ── Map enums → strings in-memory ──
                 // 0=New | 1=OnGoing | 2=Completed | 3=Pending | 4=Cancel
-                static string MapStatus(InspectionStatus st) => st switch
+                // DB mapping: 0=New, 1=OnGoing, 2=Completed, 3=Pending, 4=Cancel
+                static string MapStatus(InspectionStatus st) => (int)st switch
                 {
-                    InspectionStatus.Pending => "New",
-                    InspectionStatus.InProgress => "OnGoing",
-                    InspectionStatus.Completed => "Completed",
-                    InspectionStatus.Cancelled => "Cancel",
+                    0 => "New",
+                    1 => "OnGoing",
+                    2 => "Completed",
+                    3 => "Pending",
+                    4 => "Cancel",
                     _ => "New"
                 };
                 static string MapInspType(InspectionType t) => t switch
@@ -393,12 +399,13 @@ namespace InticooInspection.API.Controllers
             }
 
             // MapStatus: nhất quán với GetAll (0=New,1=OnGoing,2=Completed,3=Pending,4=Cancel)
-            static string MapStatusForEdit(InspectionStatus st) => st switch
+            static string MapStatusForEdit(InspectionStatus st) => (int)st switch
             {
-                InspectionStatus.Pending => "New",
-                InspectionStatus.InProgress => "OnGoing",
-                InspectionStatus.Completed => "Completed",
-                InspectionStatus.Cancelled => "Cancel",
+                0 => "New",
+                1 => "OnGoing",
+                2 => "Completed",
+                3 => "Pending",
+                4 => "Cancel",
                 _ => "New"
             };
 
