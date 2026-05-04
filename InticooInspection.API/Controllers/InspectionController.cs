@@ -60,7 +60,7 @@ namespace InticooInspection.API.Controllers
                     .ToListAsync();
 
                 // ── Filter in-memory ──
-                // DB mapping: 0=New, 1=OnGoing, 2=Completed, 3=Pending, 4=Cancel
+                // DB mapping: 0=New, 1=OnGoing, 2=Completed, 3=Cancel, 4=Pending
                 if (!string.IsNullOrWhiteSpace(status))
                 {
                     var key = status.Trim().ToLower().Replace(" ", "").Replace("_", "");
@@ -69,9 +69,9 @@ namespace InticooInspection.API.Controllers
                         "new"       => (int?)0,
                         "ongoing"   => (int?)1,
                         "completed" => (int?)2,
-                        "pending"   => (int?)3,
-                        "cancel"    => (int?)4,
-                        "cancelled" => (int?)4,
+                        "cancel"    => (int?)3,
+                        "cancelled" => (int?)3,
+                        "pending"   => (int?)4,
                         _           => null
                     };
                     if (sv.HasValue)
@@ -202,14 +202,14 @@ namespace InticooInspection.API.Controllers
 
                 // ── Map enums → strings in-memory ──
                 // 0=New | 1=OnGoing | 2=Completed | 3=Pending | 4=Cancel
-                // DB mapping: 0=New, 1=OnGoing, 2=Completed, 3=Pending, 4=Cancel
+                // DB mapping: 0=New, 1=OnGoing, 2=Completed, 3=Cancel, 4=Pending
                 static string MapStatus(InspectionStatus st) => (int)st switch
                 {
                     0 => "New",
                     1 => "OnGoing",
                     2 => "Completed",
-                    3 => "Pending",
-                    4 => "Cancel",
+                    3 => "Cancel",
+                    4 => "Pending",
                     _ => "New"
                 };
                 static string MapInspType(InspectionType t) => t switch
@@ -398,14 +398,14 @@ namespace InticooInspection.API.Controllers
                 }
             }
 
-            // MapStatus: nhất quán với GetAll (0=New,1=OnGoing,2=Completed,3=Pending,4=Cancel)
+            // MapStatus: nhất quán với GetAll (0=New,1=OnGoing,2=Completed,3=Cancel,4=Pending)
             static string MapStatusForEdit(InspectionStatus st) => (int)st switch
             {
                 0 => "New",
                 1 => "OnGoing",
                 2 => "Completed",
-                3 => "Pending",
-                4 => "Cancel",
+                3 => "Cancel",
+                4 => "Pending",
                 _ => "New"
             };
 
