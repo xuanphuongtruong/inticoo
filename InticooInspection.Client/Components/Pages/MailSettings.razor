@@ -1,0 +1,370 @@
+@page "/mail-settings"
+@using Microsoft.AspNetCore.Authorization
+@using System.Net.Http.Json
+@using System.Net.Http.Headers
+@attribute [Authorize]
+@inject HttpClient Http
+@inject Blazored.SessionStorage.ISessionStorageService SessionStorage
+@inject IJSRuntime JS
+
+<PageTitle>Mail Settings</PageTitle>
+
+<div class="container py-4">
+    <div class="d-flex align-items-center justify-content-between mb-4">
+        <h3 class="mb-0">⚙️ Mail Settings</h3>
+        @if (model is not null)
+        {
+            <span class="badge @(model.FromDatabase ? "bg-success" : "bg-warning text-dark")">
+                @(model.FromDatabase ? "📦 From Database" : "🌐 From Environment Variables")
+            </span>
+        }
+    </div>
+
+    @if (model is null)
+    {
+        <div class="card"><div class="card-body">Đang tải...</div></div>
+    }
+    else
+    {
+        <EditForm Model="model" OnValidSubmit="SaveAsync">
+            <DataAnnotationsValidator />
+
+            @* ═════════════════════ SMTP CONFIG ═════════════════════ *@
+            <div class="card mb-3">
+                <div class="card-header bg-light"><strong>📡 SMTP Server</strong></div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-md-8">
+                            <label class="form-label">SMTP Host</label>
+                            <input class="form-control" @bind="model.SmtpHost" placeholder="smtp.office365.com" />
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label">Port</label>
+                            <input type="number" class="form-control" @bind="model.SmtpPort" />
+                        </div>
+                        <div class="col-md-2 d-flex align-items-end">
+                            <div class="form-check form-switch mb-2">
+                                <input type="checkbox" class="form-check-input" id="useSsl" @bind="model.UseSsl" />
+                                <label class="form-check-label" for="useSsl">Use SSL/TLS</label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            @* ═════════════════════ SENDER INFO ═════════════════════ *@
+            <div class="card mb-3">
+                <div class="card-header bg-light"><strong>👤 Sender Information</strong></div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Sender Email</label>
+                            <input class="form-control" @bind="model.SenderEmail" placeholder="no-reply@inticoo.com" />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Sender Name (hiển thị)</label>
+                            <input class="form-control" @bind="model.SenderName" placeholder="Inticoo Inspection" />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">SMTP Username</label>
+                            <input class="form-control" @bind="model.Username" placeholder="no-reply@inticoo.com" />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Password</label>
+                            <div class="form-control bg-light text-muted">
+                                @if (model.HasPassword)
+                                {
+                                    <span>🔒 Đã cấu hình trong Environment Variable Azure</span>
+                                }
+                                else
+                                {
+                                    <span class="text-danger">⚠️ CHƯA cấu hình - vào Azure App Service → Configuration → MailSettings__Password</span>
+                                }
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            @* ═════════════════════ SCHEDULE ═════════════════════ *@
+            <div class="card mb-3">
+                <div class="card-header bg-light"><strong>🕐 Lịch gửi tự động</strong></div>
+                <div class="card-body">
+                    <div class="row g-3 align-items-end">
+                        <div class="col-md-3">
+                            <label class="form-label">Thứ trong tuần</label>
+                            <select class="form-select" @bind="model.SendDayOfWeek">
+                                <option value="0">Chủ Nhật</option>
+                                <option value="1">Thứ Hai</option>
+                                <option value="2">Thứ Ba</option>
+                                <option value="3">Thứ Tư</option>
+                                <option value="4">Thứ Năm</option>
+                                <option value="5">Thứ Sáu</option>
+                                <option value="6">Thứ Bảy</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label">Giờ (0-23)</label>
+                            <input type="number" min="0" max="23" class="form-control" @bind="model.SendHour" />
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label">Phút (0-59)</label>
+                            <input type="number" min="0" max="59" class="form-control" @bind="model.SendMinute" />
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label">Thông báo trước</label>
+                            <div class="input-group">
+                                <input type="number" min="1" max="60" class="form-control" @bind="model.LookAheadDays" />
+                                <span class="input-group-text">ngày</span>
+                            </div>
+                        </div>
+                        <div class="col-md-3 d-flex align-items-end">
+                            <div class="form-check form-switch mb-2">
+                                <input type="checkbox" class="form-check-input" id="enabled" @bind="model.WeeklyJobEnabled" />
+                                <label class="form-check-label" for="enabled">
+                                    @if (model.WeeklyJobEnabled)
+                                    {
+                                        <strong class="text-success">Đang BẬT</strong>
+                                    }
+                                    else
+                                    {
+                                        <strong class="text-secondary">Đang TẮT</strong>
+                                    }
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="alert alert-info mt-3 mb-0 small">
+                        💡 Job sẽ chạy vào <strong>@GetDayName(model.SendDayOfWeek) @model.SendHour.ToString("D2"):@model.SendMinute.ToString("D2") (giờ VN)</strong> hàng tuần,
+                        thông báo các inspection trong <strong>@model.LookAheadDays ngày tới</strong>.
+                    </div>
+                </div>
+            </div>
+
+            @* ═════════════════════ AUDIT INFO ═════════════════════ *@
+            @if (model.UpdatedAt.HasValue)
+            {
+                <div class="alert alert-secondary small mb-3">
+                    Lần cập nhật gần nhất: <strong>@model.UpdatedAt.Value.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</strong>
+                    bởi <strong>@(model.UpdatedBy ?? "system")</strong>
+                </div>
+            }
+
+            @* ═════════════════════ ACTIONS ═════════════════════ *@
+            <div class="d-flex gap-2 flex-wrap mb-4">
+                <button type="submit" class="btn btn-primary" disabled="@busy">
+                    @if (busy) { <span class="spinner-border spinner-border-sm me-2"></span> }
+                    💾 Save
+                </button>
+                <button type="button" class="btn btn-outline-secondary" @onclick="LoadAsync" disabled="@busy">
+                    🔄 Reload
+                </button>
+                <button type="button" class="btn btn-outline-danger ms-auto" @onclick="ResetToEnvAsync" disabled="@busy">
+                    ↺ Xóa cấu hình DB (về Env Var)
+                </button>
+            </div>
+
+            @if (!string.IsNullOrEmpty(saveResult))
+            {
+                <div class="alert @(saveSuccess ? "alert-success" : "alert-danger")">
+                    @saveResult
+                </div>
+            }
+        </EditForm>
+
+        @* ═════════════════════ TEST SMTP ═════════════════════ *@
+        <div class="card mt-4">
+            <div class="card-header bg-light"><strong>🧪 Test SMTP</strong></div>
+            <div class="card-body">
+                <p class="text-muted small">
+                    Gửi 1 email test với cấu hình HIỆN TẠI để kiểm tra SMTP hoạt động.
+                    Nếu vừa save xong, hãy refresh để chắc chắn dùng config mới.
+                </p>
+                <div class="row g-2 align-items-end">
+                    <div class="col-md-6">
+                        <label class="form-label">Email nhận</label>
+                        <input class="form-control" @bind="testEmail" placeholder="your-email@gmail.com" />
+                    </div>
+                    <div class="col-md-3">
+                        <button class="btn btn-warning w-100" @onclick="TestSmtpAsync" disabled="@(busyTest || string.IsNullOrWhiteSpace(testEmail))">
+                            @if (busyTest) { <span class="spinner-border spinner-border-sm me-2"></span> }
+                            Gửi test
+                        </button>
+                    </div>
+                </div>
+                @if (!string.IsNullOrEmpty(testResult))
+                {
+                    <div class="alert @(testSuccess ? "alert-success" : "alert-danger") mt-3 mb-0">
+                        @testResult
+                    </div>
+                }
+            </div>
+        </div>
+    }
+</div>
+
+
+@code {
+    private MailSettingsDto? model;
+    private bool busy = false;
+    private bool saveSuccess = false;
+    private string? saveResult;
+
+    private string testEmail = "";
+    private bool busyTest = false;
+    private bool testSuccess = false;
+    private string? testResult;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await SetAuthHeader();
+        await LoadAsync();
+    }
+
+    /// <summary>
+    /// Đọc JWT từ SessionStorage và gắn vào header. Pattern này được dùng
+    /// nhất quán trong các page khác (Vendors.razor, Inspections.razor...).
+    /// </summary>
+    private async Task SetAuthHeader()
+    {
+        try
+        {
+            var token = await SessionStorage.GetItemAsync<string>("auth_token");
+            if (!string.IsNullOrEmpty(token))
+                Http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        }
+        catch { }
+    }
+
+    private async Task LoadAsync()
+    {
+        try
+        {
+            await SetAuthHeader();
+            model = await Http.GetFromJsonAsync<MailSettingsDto>("api/mail-settings");
+            saveResult = null;
+        }
+        catch (Exception ex)
+        {
+            await JS.InvokeVoidAsync("alert", "Lỗi tải cấu hình: " + ex.Message);
+        }
+    }
+
+    private async Task SaveAsync()
+    {
+        if (model is null) return;
+
+        busy = true;
+        saveResult = null;
+        try
+        {
+            await SetAuthHeader();
+            var res = await Http.PutAsJsonAsync("api/mail-settings", model);
+            if (res.IsSuccessStatusCode)
+            {
+                saveSuccess = true;
+                saveResult = "✅ Cấu hình đã được lưu. Có hiệu lực ngay (worker đọc lại trong vòng 1 phút).";
+                await LoadAsync();   // reload để thấy FromDatabase = true
+            }
+            else
+            {
+                saveSuccess = false;
+                var body = await res.Content.ReadAsStringAsync();
+                saveResult = "❌ Lỗi: " + body;
+            }
+        }
+        catch (Exception ex)
+        {
+            saveSuccess = false;
+            saveResult = "❌ Exception: " + ex.Message;
+        }
+        finally { busy = false; }
+    }
+
+    private async Task TestSmtpAsync()
+    {
+        busyTest = true;
+        testResult = null;
+        try
+        {
+            await SetAuthHeader();
+            var res = await Http.PostAsJsonAsync("api/mail-settings/test-smtp",
+                new { ToEmail = testEmail });
+
+            if (res.IsSuccessStatusCode)
+            {
+                testSuccess = true;
+                testResult = $"✅ Đã gửi mail test tới {testEmail}. Kiểm tra hộp thư (cả Spam).";
+            }
+            else
+            {
+                testSuccess = false;
+                var body = await res.Content.ReadAsStringAsync();
+                testResult = "❌ Lỗi: " + body;
+            }
+        }
+        catch (Exception ex)
+        {
+            testSuccess = false;
+            testResult = "❌ Exception: " + ex.Message;
+        }
+        finally { busyTest = false; }
+    }
+
+    private async Task ResetToEnvAsync()
+    {
+        if (!await JS.InvokeAsync<bool>("confirm",
+            "Xóa cấu hình DB? App sẽ fallback về Environment Variables. Bạn chắc chắn?")) return;
+
+        busy = true;
+        try
+        {
+            await SetAuthHeader();
+            var res = await Http.PostAsync("api/mail-settings/reset-to-env", null);
+            if (res.IsSuccessStatusCode)
+            {
+                saveSuccess = true;
+                saveResult = "✅ Đã xóa cấu hình DB. App đang dùng Environment Variables.";
+                await LoadAsync();
+            }
+        }
+        catch (Exception ex)
+        {
+            saveResult = "❌ " + ex.Message;
+        }
+        finally { busy = false; }
+    }
+
+    private static string GetDayName(int day) => day switch
+    {
+        0 => "Chủ Nhật",
+        1 => "Thứ Hai",
+        2 => "Thứ Ba",
+        3 => "Thứ Tư",
+        4 => "Thứ Năm",
+        5 => "Thứ Sáu",
+        6 => "Thứ Bảy",
+        _ => "?"
+    };
+
+    public class MailSettingsDto
+    {
+        public string SmtpHost    { get; set; } = "";
+        public int    SmtpPort    { get; set; } = 587;
+        public bool   UseSsl      { get; set; } = true;
+        public string SenderEmail { get; set; } = "";
+        public string SenderName  { get; set; } = "";
+        public string Username    { get; set; } = "";
+
+        public int  LookAheadDays    { get; set; } = 7;
+        public int  SendDayOfWeek    { get; set; } = 5;
+        public int  SendHour         { get; set; } = 18;
+        public int  SendMinute       { get; set; } = 0;
+        public bool WeeklyJobEnabled { get; set; } = true;
+
+        public DateTime? UpdatedAt    { get; set; }
+        public string?   UpdatedBy    { get; set; }
+        public bool      FromDatabase { get; set; }
+        public bool      HasPassword  { get; set; }
+    }
+}

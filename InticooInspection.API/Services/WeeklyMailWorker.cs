@@ -4,29 +4,23 @@ using Microsoft.EntityFrameworkCore;
 namespace InticooInspection.API.Services
 {
     /// <summary>
-    /// Background worker chạy mỗi 15 phút. Nếu đang là thứ Sáu, giờ >= 18:00 (giờ VN)
-    /// và HÔM NAY CHƯA GỬI thì sẽ kích hoạt SendWeeklyVendorMailsAsync().
-    /// Trạng thái "đã gửi" được kiểm tra trong bảng MailLogs (an toàn khi
-    /// app restart nhiều lần trong cùng ngày).
+    /// Background worker chạy mỗi 5 phút. Đọc cấu hình từ DB (qua MailConfigProvider).
+    /// Khi đến đúng thứ + giờ + phút (giờ VN) đã cấu hình, kích hoạt
+    /// SendWeeklyVendorMailsAsync(). Chống gửi trùng bằng MailLogs (1 ngày 1 lần).
     /// </summary>
     public class WeeklyMailWorker : BackgroundService
     {
         private readonly IServiceProvider _sp;
         private readonly ILogger<WeeklyMailWorker> _logger;
-        private readonly IConfiguration _config;
 
         // Giờ VN
         private static readonly TimeZoneInfo VnTz =
             TimeZoneInfo.FindSystemTimeZoneById(
                 OperatingSystem.IsWindows() ? "SE Asia Standard Time" : "Asia/Ho_Chi_Minh");
 
-        public WeeklyMailWorker(
-            IServiceProvider sp,
-            IConfiguration config,
-            ILogger<WeeklyMailWorker> logger)
+        public WeeklyMailWorker(IServiceProvider sp, ILogger<WeeklyMailWorker> logger)
         {
             _sp     = sp;
-            _config = config;
             _logger = logger;
         }
 
@@ -34,11 +28,11 @@ namespace InticooInspection.API.Services
         {
             _logger.LogInformation("WeeklyMailWorker đã khởi động");
 
-            // Đợi 1 phút sau khi app start để DB sẵn sàng
             try { await Task.Delay(TimeSpan.FromMinutes(1), stoppingToken); }
             catch (OperationCanceledException) { return; }
 
-            using var timer = new PeriodicTimer(TimeSpan.FromMinutes(15));
+            // Tick mỗi 5 phút - chính xác hơn cho cấu hình minute
+            using var timer = new PeriodicTimer(TimeSpan.FromMinutes(5));
             do
             {
                 try
@@ -56,29 +50,34 @@ namespace InticooInspection.API.Services
 
         private async Task TickAsync(CancellationToken ct)
         {
-            // Cấu hình: thứ + giờ chạy
-            // Mặc định: Thứ Sáu (5) lúc 18h theo giờ VN
-            var sendDayOfWeek = (DayOfWeek)_config.GetValue<int>("MailSettings:SendDayOfWeek", (int)DayOfWeek.Friday);
-            var sendHour      = _config.GetValue<int>("MailSettings:SendHour", 18);
-            var enabled       = _config.GetValue<bool>("MailSettings:WeeklyJobEnabled", true);
+            await using var scope = _sp.CreateAsyncScope();
+            var provider = scope.ServiceProvider.GetRequiredService<IMailConfigProvider>();
+            var cfg      = await provider.GetAsync(ct);
 
-            if (!enabled)
+            if (!cfg.WeeklyJobEnabled)
                 return;
 
             var nowVn = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, VnTz);
 
-            if (nowVn.DayOfWeek != sendDayOfWeek || nowVn.Hour < sendHour)
+            if ((int)nowVn.DayOfWeek != cfg.SendDayOfWeek) return;
+
+            // Tính tổng số phút từ đầu ngày để so sánh với cấu hình (giờ + phút)
+            var nowMinutes    = nowVn.Hour * 60 + nowVn.Minute;
+            var targetMinutes = cfg.SendHour * 60 + cfg.SendMinute;
+
+            // Cho phép trễ tối đa 30 phút (để worker tick 5 phút có khả năng bắt được)
+            // Phải sau hoặc bằng giờ target, và không quá 30 phút sau
+            if (nowMinutes < targetMinutes || nowMinutes > targetMinutes + 30)
                 return;
 
-            // Mốc đầu ngày gửi (00:00 thứ Sáu giờ VN, đổi sang UTC để so với MailLog.SentAt)
+            // Mốc đầu ngày gửi (00:00 giờ VN, đổi sang UTC để so MailLog.SentAt)
             var startOfSendDayVn  = nowVn.Date;
             var startOfSendDayUtc = TimeZoneInfo.ConvertTimeToUtc(startOfSendDayVn, VnTz);
 
-            await using var scope = _sp.CreateAsyncScope();
             var db   = scope.ServiceProvider.GetRequiredService<AppDbContext>();
             var mail = scope.ServiceProvider.GetRequiredService<IInspectionMailService>();
 
-            // ── Đã gửi trong ngày hôm nay chưa? (kiểm tra DB) ──
+            // Đã gửi hôm nay chưa? Check qua MailLogs
             var alreadySent = await db.MailLogs
                 .AsNoTracking()
                 .AnyAsync(l => l.SentAt >= startOfSendDayUtc && l.IsSuccess, ct);

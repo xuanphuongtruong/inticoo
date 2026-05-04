@@ -9,25 +9,15 @@ namespace InticooInspection.API.Services
 {
     public interface IInspectionMailService
     {
-        /// <summary>
-        /// Gửi mail thông báo inspection trong 7 ngày tới cho TẤT CẢ vendor active.
-        /// Mỗi vendor chỉ nhận 1 mail tổng hợp các inspection của riêng họ.
-        /// </summary>
         Task<MailRunResult> SendWeeklyVendorMailsAsync(CancellationToken ct = default);
-
-        /// <summary>
-        /// Gửi mail cho 1 vendor cụ thể (dùng để test hoặc gửi tay).
-        /// `vendorCode` chính là Inspection.VendorId (Vendor.Code).
-        /// </summary>
-        Task<(bool ok, string? error, int inspectionCount)> SendForVendorAsync(
-            string vendorCode, CancellationToken ct = default);
+        Task<(bool ok, string? error, int inspectionCount)> SendForVendorAsync(string vendorCode, CancellationToken ct = default);
     }
 
     public class MailRunResult
     {
         public int VendorsTotal      { get; set; }
         public int VendorsSent       { get; set; }
-        public int VendorsSkipped    { get; set; } // không có inspection sắp tới
+        public int VendorsSkipped    { get; set; }
         public int VendorsFailed     { get; set; }
         public int InspectionsTotal  { get; set; }
         public List<string> Errors   { get; set; } = new();
@@ -35,34 +25,30 @@ namespace InticooInspection.API.Services
 
     public class InspectionMailService : IInspectionMailService
     {
-        private readonly AppDbContext   _db;
-        private readonly IConfiguration _config;
+        private readonly AppDbContext _db;
+        private readonly IMailConfigProvider _configProvider;
         private readonly ILogger<InspectionMailService> _logger;
 
         public InspectionMailService(
             AppDbContext db,
-            IConfiguration config,
+            IMailConfigProvider configProvider,
             ILogger<InspectionMailService> logger)
         {
-            _db     = db;
-            _config = config;
-            _logger = logger;
+            _db             = db;
+            _configProvider = configProvider;
+            _logger         = logger;
         }
 
         // ─────────────────────────────────────────────────────────────
-        // PUBLIC API
-        // ─────────────────────────────────────────────────────────────
-
         public async Task<MailRunResult> SendWeeklyVendorMailsAsync(CancellationToken ct = default)
         {
             var result = new MailRunResult();
-            var lookAheadDays = _config.GetValue<int>("MailSettings:LookAheadDays", 7);
+            var cfg    = await _configProvider.GetAsync(ct);
 
-            // Khoảng thời gian: từ hôm nay đến 7 ngày tới
             var fromDate = DateTime.Today;
-            var toDate   = fromDate.AddDays(lookAheadDays);
+            var toDate   = fromDate.AddDays(cfg.LookAheadDays);
 
-            // ── Lấy tất cả inspection sắp tới (status = Pending hoặc InProgress) ──
+            // Lấy inspection sắp tới (Pending hoặc InProgress)
             var upcoming = await _db.Inspections
                 .AsNoTracking()
                 .Where(i => i.InspectionDate >= fromDate
@@ -76,18 +62,17 @@ namespace InticooInspection.API.Services
 
             if (upcoming.Count == 0)
             {
-                _logger.LogInformation("Không có inspection nào trong {days} ngày tới", lookAheadDays);
+                _logger.LogInformation("Không có inspection nào trong {days} ngày tới", cfg.LookAheadDays);
                 return result;
             }
 
-            // ── Group theo VendorId (kiểu string = Vendor.Code) ──
+            // Group theo VendorId (trên Inspection là string code)
             var byVendor = upcoming
                 .Where(i => !string.IsNullOrEmpty(i.VendorId))
                 .GroupBy(i => i.VendorId!)
-                .ToDictionary(g => g.Key, g => g.ToList(), StringComparer.OrdinalIgnoreCase);
+                .ToDictionary(g => g.Key, g => g.ToList());
 
-            // ── Lấy vendor info cho các vendor có inspection ──
-            // Inspection.VendorId chính là Vendor.Code → lookup theo Code
+            // Lấy vendor info active
             var vendorCodes = byVendor.Keys.ToList();
             var vendors = await _db.Vendors
                 .AsNoTracking()
@@ -114,25 +99,23 @@ namespace InticooInspection.API.Services
                     continue;
                 }
 
-                var subject = $"[Intico] Lịch Inspection tuần này - {vendor.Name}";
+                var subject = $"[Inticoo] Lịch Inspection tuần này - {vendor.Name}";
                 var html    = BuildEmailHtml(vendor, vendorInspections);
 
-                var (ok, error) = await SendMailAsync(
+                var (ok, error) = await SendMailAsync(cfg,
                     vendor.ContactEmail,
                     vendor.ContactName ?? vendor.Name,
                     subject, html, ct);
 
-                // Lưu MailLog để truy vết và chống gửi trùng tuần
                 _db.MailLogs.Add(new MailLog
                 {
-                    VendorId         = vendor.Id,
-                    VendorCode       = vendor.Code,
-                    ToEmail          = vendor.ContactEmail,
-                    Subject          = subject,
-                    SentAt           = DateTime.UtcNow,
-                    IsSuccess        = ok,
-                    ErrorMessage     = error,
-                    InspectionCount  = vendorInspections.Count
+                    VendorCode      = vendor.Code,
+                    ToEmail         = vendor.ContactEmail,
+                    Subject         = subject,
+                    SentAt          = DateTime.UtcNow,
+                    IsSuccess       = ok,
+                    ErrorMessage    = error,
+                    InspectionCount = vendorInspections.Count
                 });
 
                 if (ok)
@@ -147,32 +130,28 @@ namespace InticooInspection.API.Services
                     result.Errors.Add($"{vendor.Code}: {error}");
                 }
 
-                // Delay tránh SMTP rate-limit
-                await Task.Delay(500, ct);
+                await Task.Delay(500, ct);  // tránh SMTP rate-limit
             }
 
             await _db.SaveChangesAsync(ct);
             return result;
         }
 
+        // ─────────────────────────────────────────────────────────────
         public async Task<(bool ok, string? error, int inspectionCount)> SendForVendorAsync(
             string vendorCode, CancellationToken ct = default)
         {
-            if (string.IsNullOrWhiteSpace(vendorCode))
-                return (false, "Vendor code không hợp lệ", 0);
+            var cfg = await _configProvider.GetAsync(ct);
 
             var vendor = await _db.Vendors.AsNoTracking()
                 .FirstOrDefaultAsync(v => v.Code == vendorCode, ct);
 
-            if (vendor == null)
-                return (false, "Không tìm thấy vendor", 0);
-
+            if (vendor == null)             return (false, "Không tìm thấy vendor", 0);
             if (string.IsNullOrWhiteSpace(vendor.ContactEmail))
                 return (false, "Vendor chưa có ContactEmail", 0);
 
-            var lookAheadDays = _config.GetValue<int>("MailSettings:LookAheadDays", 7);
             var fromDate = DateTime.Today;
-            var toDate   = fromDate.AddDays(lookAheadDays);
+            var toDate   = fromDate.AddDays(cfg.LookAheadDays);
 
             var inspections = await _db.Inspections.AsNoTracking()
                 .Where(i => i.VendorId == vendorCode
@@ -186,18 +165,16 @@ namespace InticooInspection.API.Services
             if (inspections.Count == 0)
                 return (false, "Vendor không có inspection nào trong khoảng thời gian này", 0);
 
-            var subject = $"[Intico] Lịch Inspection tuần này - {vendor.Name}";
+            var subject = $"[Inticoo] Lịch Inspection tuần này - {vendor.Name}";
             var html    = BuildEmailHtml(vendor, inspections);
 
-            var (ok, error) = await SendMailAsync(
+            var (ok, error) = await SendMailAsync(cfg,
                 vendor.ContactEmail,
                 vendor.ContactName ?? vendor.Name,
                 subject, html, ct);
 
-            // TODO: Lưu MailLog khi entity MailLog đã được tạo + add DbSet vào AppDbContext + chạy migration
             _db.MailLogs.Add(new MailLog
             {
-                VendorId        = vendor.Id,
                 VendorCode      = vendor.Code,
                 ToEmail         = vendor.ContactEmail,
                 Subject         = subject,
@@ -212,36 +189,26 @@ namespace InticooInspection.API.Services
         }
 
         // ─────────────────────────────────────────────────────────────
-        // HELPERS - SMTP gửi mail (dùng System.Net.Mail giống InspectionController)
-        // ─────────────────────────────────────────────────────────────
-
         private async Task<(bool ok, string? error)> SendMailAsync(
+            MailConfigSnapshot cfg,
             string toEmail, string toName, string subject, string htmlBody, CancellationToken ct)
         {
             try
             {
-                var host         = _config["MailSettings:SmtpHost"] ?? "";
-                var port         = _config.GetValue<int>("MailSettings:SmtpPort", 587);
-                var senderEmail  = _config["MailSettings:SenderEmail"] ?? "";
-                var senderName   = _config["MailSettings:SenderName"] ?? "Intico Inspection";
-                var username     = _config["MailSettings:Username"] ?? "";
-                var password     = _config["MailSettings:Password"] ?? "";
-                var useSsl       = _config.GetValue<bool>("MailSettings:UseSsl", true);
-
-                using var smtp = new SmtpClient(host, port)
+                using var smtp = new SmtpClient(cfg.SmtpHost, cfg.SmtpPort)
                 {
-                    EnableSsl   = useSsl,
-                    Credentials = new NetworkCredential(username, password),
+                    EnableSsl      = cfg.UseSsl,
+                    Credentials    = new NetworkCredential(cfg.Username, cfg.Password),
                     DeliveryMethod = SmtpDeliveryMethod.Network,
-                    Timeout = 30000
+                    Timeout        = 30000
                 };
 
                 using var msg = new MailMessage
                 {
-                    From       = new MailAddress(senderEmail, senderName),
-                    Subject    = subject,
-                    Body       = htmlBody,
-                    IsBodyHtml = true,
+                    From            = new MailAddress(cfg.SenderEmail, cfg.SenderName),
+                    Subject         = subject,
+                    Body            = htmlBody,
+                    IsBodyHtml      = true,
                     BodyEncoding    = Encoding.UTF8,
                     SubjectEncoding = Encoding.UTF8
                 };
@@ -258,9 +225,6 @@ namespace InticooInspection.API.Services
         }
 
         // ─────────────────────────────────────────────────────────────
-        // HELPERS - Build HTML email
-        // ─────────────────────────────────────────────────────────────
-
         private static string BuildEmailHtml(Vendor vendor, List<Inspection> inspections)
         {
             var sb = new StringBuilder();
@@ -271,13 +235,13 @@ namespace InticooInspection.API.Services
   <div style='max-width:760px;margin:0 auto;background:#fff;border-radius:8px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);'>
     <div style='background:linear-gradient(135deg,#1e6091 0%,#2a9d8f 100%);color:#fff;padding:24px;'>
       <h2 style='margin:0;font-size:22px;'>📋 Inspection Schedule - Weekly Notice</h2>
-      <p style='margin:6px 0 0;opacity:.9;font-size:14px;'>Intico Inspection System</p>
+      <p style='margin:6px 0 0;opacity:.9;font-size:14px;'>Inticoo Inspection System</p>
     </div>
     <div style='padding:24px;'>");
 
             sb.Append($@"
       <p>Dear <strong>{Esc(vendor.ContactName ?? vendor.Name)}</strong>,</p>
-      <p>This is a friendly reminder of the upcoming inspections scheduled for <strong>{Esc(vendor.Name)}</strong> ({Esc(vendor.Code)}) in the next 7 days.</p>
+      <p>This is a friendly reminder of the upcoming inspections scheduled for <strong>{Esc(vendor.Name)}</strong> ({Esc(vendor.Code)}) in the next few days.</p>
       <p>Please prepare the following items and ensure your team is available on the scheduled dates:</p>");
 
             sb.Append(@"
@@ -325,14 +289,14 @@ namespace InticooInspection.API.Services
         <ul style='margin:8px 0 0 18px;padding:0;'>
           <li>Ensure goods are 100% finished and packed before the inspection date.</li>
           <li>Have all necessary documents (PO, BOM, samples, golden samples) ready on site.</li>
-          <li>Contact your inspector or the Intico team immediately if there is any change of schedule.</li>
+          <li>Contact your inspector or the Inticoo team immediately if there is any change of schedule.</li>
         </ul>
       </div>
-      <p style='margin-top:24px;'>If you have any questions, please reply to this email or contact the Intico Inspection team.</p>
-      <p>Best regards,<br/><strong>Intico Inspection Team</strong></p>
+      <p style='margin-top:24px;'>If you have any questions, please reply to this email or contact the Inticoo Inspection team.</p>
+      <p>Best regards,<br/><strong>Inticoo Inspection Team</strong></p>
     </div>
     <div style='padding:14px 24px;background:#f5f7fb;color:#888;font-size:12px;text-align:center;border-top:1px solid #eee;'>
-      This is an automated email from Intico Inspection System. Please do not reply directly to this address if not necessary.
+      This is an automated email from Inticoo Inspection System.
     </div>
   </div>
 </body></html>");
@@ -341,6 +305,6 @@ namespace InticooInspection.API.Services
         }
 
         private static string Esc(string? s)
-            => string.IsNullOrEmpty(s) ? "" : System.Net.WebUtility.HtmlEncode(s);
+            => string.IsNullOrEmpty(s) ? "" : WebUtility.HtmlEncode(s);
     }
 }

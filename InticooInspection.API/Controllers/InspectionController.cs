@@ -1461,7 +1461,12 @@ namespace InticooInspection.API.Controllers
                                 await SendCompletionEmailAsync(inspection, customer.Email);
                         }
                     }
-                    catch { /* Email failure không ảnh hưởng response */ }
+                    catch (Exception emailEx)
+                    {
+                        // Email failure không ảnh hưởng response, nhưng phải log để debug
+                        Console.WriteLine($"[SendCompletionEmail] Lỗi gửi mail Done: {emailEx.Message}");
+                        Console.WriteLine($"[SendCompletionEmail] Stack: {emailEx.StackTrace}");
+                    }
                 });
 
                 return Ok(new { success = true, id = inspection.Id });
@@ -1555,16 +1560,24 @@ namespace InticooInspection.API.Controllers
 
         // ════════════════════════════════════════════════════════
         // Helper: Gửi email hoàn thành inspection cho Customer
+        // Dùng chung cấu hình MailSettings:* với mail vendor hàng tuần.
+        // (KHÔNG đọc section "Email:" cũ nữa để tránh phải cấu hình 2 nơi)
         // ════════════════════════════════════════════════════════
         private async Task SendCompletionEmailAsync(Inspection inspection, string toEmail)
         {
-            var smtp = _config["Email:SmtpHost"] ?? "smtp.gmail.com";
-            var port = int.Parse(_config["Email:SmtpPort"] ?? "587");
-            var user = _config["Email:Username"] ?? "";
-            var pass = _config["Email:Password"] ?? "";
-            var from = _config["Email:FromAddress"] ?? user;
-            var fromName = _config["Email:FromName"] ?? "Inticoo Global Services";
-            var baseUrl = _config["Email:ReportBaseUrl"] ?? "https://app.inticoo.com";
+            // Đọc cùng cấu hình SMTP với mail vendor hàng tuần (no-reply@inticoo.com)
+            var smtp     = _config["MailSettings:SmtpHost"] ?? "smtp.office365.com";
+            var port     = _config.GetValue<int>("MailSettings:SmtpPort", 587);
+            var user     = _config["MailSettings:Username"] ?? "";
+            var pass     = _config["MailSettings:Password"] ?? "";
+            var from     = _config["MailSettings:SenderEmail"] ?? user;
+            var fromName = _config["MailSettings:SenderName"] ?? "Inticoo Global Services";
+            var useSsl   = _config.GetValue<bool>("MailSettings:UseSsl", true);
+            var baseUrl  = _config["Email:ReportBaseUrl"] ?? "https://inticoo.com";
+
+            if (string.IsNullOrEmpty(user) || string.IsNullOrEmpty(pass))
+                throw new InvalidOperationException(
+                    "MailSettings chưa cấu hình đầy đủ (Username/Password trống)");
 
             var completedDate = (inspection.CompletedAt ?? DateTime.UtcNow).ToString("d MMMM yyyy");
             var inspType = inspection.InspectionType.ToString() switch
@@ -1577,42 +1590,103 @@ namespace InticooInspection.API.Controllers
             var result = inspection.FinalResult ?? "N/A";
             var reportLink = $"{baseUrl}/inspection-report/{inspection.Id}";
 
-            var subject = $"Inspection Report Completed - {inspection.JobNumber}";
-            var body = $@"Dear Sir/Madam,
+            // Màu badge theo result
+            var resultColor = result.ToUpper() switch
+            {
+                "PASS" or "APPROVED" or "ACCEPTED" => "#28a745",
+                "FAIL" or "REJECTED" => "#dc3545",
+                "PENDING" or "HOLD" => "#ffc107",
+                _ => "#6c757d"
+            };
 
-This is a notification that the inspection report has been completed on {completedDate}.
+            var subject = $"[Inticoo] Inspection Report Completed - {inspection.JobNumber}";
 
-Please find the inspection details below:
-- Job No: {inspection.JobNumber ?? "—"}
-- Category: {inspection.ProductCategory ?? "—"}
-- Product Name: {inspection.ProductName ?? "—"}
-- Item Number: {inspection.ItemNumber ?? "—"}
-- Inspection Type: {inspType}
-- Vendor Name: {inspection.VendorName ?? "—"}
-- Vendor ID: {inspection.VendorId ?? "—"}
-- Result: {result}
+            // Body HTML đẹp - sender Microsoft 365 sẽ render đúng
+            var body = $@"<!DOCTYPE html>
+<html><head><meta charset='utf-8'><title>Inspection Completed</title></head>
+<body style='font-family:Segoe UI,Arial,sans-serif;color:#333;background:#f5f7fb;padding:20px;margin:0;'>
+  <div style='max-width:680px;margin:0 auto;background:#fff;border-radius:8px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);'>
+    <div style='background:linear-gradient(135deg,#1e6091 0%,#2a9d8f 100%);color:#fff;padding:24px;'>
+      <h2 style='margin:0;font-size:22px;'>✅ Inspection Report Completed</h2>
+      <p style='margin:6px 0 0;opacity:.9;font-size:14px;'>Inticoo Inspection System</p>
+    </div>
+    <div style='padding:24px;'>
+      <p>Dear Sir/Madam,</p>
+      <p>This is a notification that the inspection report has been completed on <strong>{completedDate}</strong>.</p>
+      <p>Please find the inspection details below:</p>
 
-Here is the link to download the inspection report: {reportLink}
+      <table style='width:100%;border-collapse:collapse;margin-top:16px;font-size:14px;'>
+        <tr>
+          <td style='padding:8px 12px;background:#f8f9fa;border:1px solid #e9ecef;width:35%;'><strong>Job No</strong></td>
+          <td style='padding:8px 12px;border:1px solid #e9ecef;'>{System.Net.WebUtility.HtmlEncode(inspection.JobNumber ?? "—")}</td>
+        </tr>
+        <tr>
+          <td style='padding:8px 12px;background:#f8f9fa;border:1px solid #e9ecef;'><strong>Category</strong></td>
+          <td style='padding:8px 12px;border:1px solid #e9ecef;'>{System.Net.WebUtility.HtmlEncode(inspection.ProductCategory ?? "—")}</td>
+        </tr>
+        <tr>
+          <td style='padding:8px 12px;background:#f8f9fa;border:1px solid #e9ecef;'><strong>Product Name</strong></td>
+          <td style='padding:8px 12px;border:1px solid #e9ecef;'>{System.Net.WebUtility.HtmlEncode(inspection.ProductName ?? "—")}</td>
+        </tr>
+        <tr>
+          <td style='padding:8px 12px;background:#f8f9fa;border:1px solid #e9ecef;'><strong>Item Number</strong></td>
+          <td style='padding:8px 12px;border:1px solid #e9ecef;'>{System.Net.WebUtility.HtmlEncode(inspection.ItemNumber ?? "—")}</td>
+        </tr>
+        <tr>
+          <td style='padding:8px 12px;background:#f8f9fa;border:1px solid #e9ecef;'><strong>Inspection Type</strong></td>
+          <td style='padding:8px 12px;border:1px solid #e9ecef;'>{System.Net.WebUtility.HtmlEncode(inspType)}</td>
+        </tr>
+        <tr>
+          <td style='padding:8px 12px;background:#f8f9fa;border:1px solid #e9ecef;'><strong>Vendor Name</strong></td>
+          <td style='padding:8px 12px;border:1px solid #e9ecef;'>{System.Net.WebUtility.HtmlEncode(inspection.VendorName ?? "—")}</td>
+        </tr>
+        <tr>
+          <td style='padding:8px 12px;background:#f8f9fa;border:1px solid #e9ecef;'><strong>Vendor ID</strong></td>
+          <td style='padding:8px 12px;border:1px solid #e9ecef;'>{System.Net.WebUtility.HtmlEncode(inspection.VendorId ?? "—")}</td>
+        </tr>
+        <tr>
+          <td style='padding:8px 12px;background:#f8f9fa;border:1px solid #e9ecef;'><strong>Result</strong></td>
+          <td style='padding:8px 12px;border:1px solid #e9ecef;'>
+            <span style='display:inline-block;padding:4px 12px;background:{resultColor};color:#fff;border-radius:4px;font-weight:600;'>{System.Net.WebUtility.HtmlEncode(result)}</span>
+          </td>
+        </tr>
+      </table>
 
-Should you have any questions or require further clarification, please feel free to contact us.
+      <div style='margin-top:24px;text-align:center;'>
+        <a href='{reportLink}' style='display:inline-block;padding:12px 28px;background:#1e6091;color:#fff;text-decoration:none;border-radius:6px;font-weight:600;'>
+          📄 Download Inspection Report
+        </a>
+      </div>
+      <p style='margin-top:16px;font-size:13px;color:#666;text-align:center;'>
+        Or copy this link: <br/>
+        <a href='{reportLink}' style='color:#1e6091;word-break:break-all;'>{reportLink}</a>
+      </p>
 
-Best regards,
-Inticoo Global Services
-www.Inticoo.com";
+      <p style='margin-top:24px;'>Should you have any questions or require further clarification, please feel free to contact us.</p>
+      <p>Best regards,<br/><strong>Inticoo Global Services</strong></p>
+    </div>
+    <div style='padding:14px 24px;background:#f5f7fb;color:#888;font-size:12px;text-align:center;border-top:1px solid #eee;'>
+      <a href='https://inticoo.com' style='color:#888;'>www.inticoo.com</a> &nbsp;|&nbsp; This is an automated email from Inticoo Inspection System.
+    </div>
+  </div>
+</body></html>";
 
             using var client = new SmtpClient(smtp, port)
             {
-                Credentials = new NetworkCredential(user, pass),
-                EnableSsl = true,
-                DeliveryMethod = SmtpDeliveryMethod.Network
+                Credentials    = new NetworkCredential(user, pass),
+                EnableSsl      = useSsl,
+                DeliveryMethod = SmtpDeliveryMethod.Network,
+                Timeout        = 30000
             };
 
-            var msg = new MailMessage
+            using var msg = new MailMessage
             {
-                From = new MailAddress(from, fromName),
-                Subject = subject,
-                Body = body,
-                IsBodyHtml = false
+                From            = new MailAddress(from, fromName),
+                Subject         = subject,
+                Body            = body,
+                IsBodyHtml      = true,
+                BodyEncoding    = System.Text.Encoding.UTF8,
+                SubjectEncoding = System.Text.Encoding.UTF8
             };
             msg.To.Add(toEmail);
 

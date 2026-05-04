@@ -30,6 +30,7 @@ namespace InticooInspection.Infrastructure.Data
         public DbSet<City>                          Cities                          => Set<City>();
         public DbSet<PerformanceTestMaster>         PerformanceTestMasters          => Set<PerformanceTestMaster>();
         public DbSet<MailLog>                       MailLogs                        => Set<MailLog>();
+        public DbSet<MailConfig>                    MailConfigs                     => Set<MailConfig>();
 
         protected override void OnModelCreating(ModelBuilder builder)
         {
@@ -324,6 +325,17 @@ namespace InticooInspection.Infrastructure.Data
                 e.Property(x => x.ErrorMessage).HasMaxLength(2000);
                 e.HasIndex(x => x.SentAt);
                 e.HasIndex(x => x.VendorId);
+            });
+            
+            // ── MailConfig (cấu hình mail singleton, Id luôn = 1) ──
+            builder.Entity<MailConfig>(e =>
+            {
+                e.HasKey(x => x.Id);
+                e.Property(x => x.SmtpHost).IsRequired().HasMaxLength(200);
+                e.Property(x => x.SenderEmail).IsRequired().HasMaxLength(200);
+                e.Property(x => x.SenderName).HasMaxLength(100);
+                e.Property(x => x.Username).IsRequired().HasMaxLength(200);
+                e.Property(x => x.UpdatedBy).HasMaxLength(200);
             });
         }
     }

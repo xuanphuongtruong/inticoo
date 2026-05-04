@@ -103,6 +103,7 @@ builder.Services.AddSingleton<AzureBlobService>();
 // Mail service - gửi mail thông báo inspection cho Vendor hàng tuần
 // (Mặc định: 18:00 thứ Sáu giờ VN — cấu hình trong appsettings.MailSettings)
 // ─────────────────────────────────────────────────────────────────
+builder.Services.AddSingleton<IMailConfigProvider, MailConfigProvider>();
 builder.Services.AddScoped<IInspectionMailService, InspectionMailService>();
 builder.Services.AddHostedService<WeeklyMailWorker>();
 
