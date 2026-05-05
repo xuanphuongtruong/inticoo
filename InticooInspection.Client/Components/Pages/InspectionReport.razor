@@ -30,9 +30,19 @@ else if (_data != null)
                 <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 15l-5-5 5-5"/></svg>
                 Back
             </button>
-            <button class="rpt-print-btn" @onclick="PrintReport">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
-                Print / Save PDF
+            <button class="rpt-print-btn" @onclick="PrintReport" disabled="@_isPrinting">
+                @if (_isPrinting)
+                {
+                    <svg class="rpt-print-spinner" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+                        <path d="M12 2a10 10 0 0 1 10 10" />
+                    </svg>
+                    <span>Preparing…</span>
+                }
+                else
+                {
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+                    <span>Print / Save PDF</span>
+                }
             </button>
         </div>
 
@@ -1097,6 +1107,15 @@ else if (_data != null)
             </div>
 
         </div>
+
+        <!-- Print-only running footer: position: fixed trong @@media print
+             để xuất hiện ở đáy MỌI trang PDF. Ẩn trên màn hình. -->
+        <div class="rpt-print-footer">
+            <div class="rpt-print-footer-text">
+                www.inticoo.com<br/>
+                The results presented herein reflect our findings at the time and place of inspection. This report does not release the seller or manufacturer from their contractual obligations, nor does it prejudice the buyer&apos;s right to seek compensation for any apparent or latent defects not identified during our random inspection or arising thereafter. This document does not constitute evidence of shipment. Final approval from the client is required prior to the release of the goods.
+            </div>
+        </div>
     </div>
 }
 
@@ -1177,76 +1196,91 @@ else if (_data != null)
         return $"{baseUrl}/{string.Join("/", parts)}";
     }
 
+    // Trạng thái đang xử lý (để disable nút tránh user click liên tục)
+    private bool _isPrinting;
+
     private async Task PrintReport()
     {
-        // Đặt tên file PDF = "{JobNumber}_{ddMMyyyy}". Browser dùng document.title
-        // làm tên file mặc định khi user chọn "Save as PDF" trong dialog print.
-        var jobNumber = !string.IsNullOrWhiteSpace(_data?.JobNumber)
-            ? _data!.JobNumber!
-            : $"Inspection-{InspectionId}";
-
-        // Lấy ngày inspection (ưu tiên _data.InspectionDate, fallback hôm nay)
-        var inspDate = _data?.InspectionDate ?? DateTime.Today;
-        var dateStr  = inspDate.ToString("ddMMyyyy",
-            System.Globalization.CultureInfo.InvariantCulture);
-
-        // Ghép: "PST-JN100002-26_28042026"
-        var rawFileName = $"{jobNumber}_{dateStr}";
-
-        // Sanitize: bỏ ký tự không hợp lệ trong filename (Windows/macOS/Linux)
-        var safeFileName = System.Text.RegularExpressions.Regex.Replace(
-            rawFileName, @"[\\/:*?""<>|]", "_").Trim();
+        if (_isPrinting) return;
+        _isPrinting = true;
+        StateHasChanged();
 
         try
         {
-            // Lưu title hiện tại để restore sau khi in xong
-            var originalTitle = await JS.InvokeAsync<string>("eval", "document.title");
+            // Đặt tên file PDF = "{JobNumber}_{ddMMyyyy}". Browser dùng document.title
+            // làm tên file mặc định khi user chọn "Save as PDF" trong dialog print.
+            var jobNumber = !string.IsNullOrWhiteSpace(_data?.JobNumber)
+                ? _data!.JobNumber!
+                : $"Inspection-{InspectionId}";
 
-            // Set title = file name → tên file PDF mặc định
-            await JS.InvokeVoidAsync("eval",
-                $"document.title = {System.Text.Json.JsonSerializer.Serialize(safeFileName)};");
+            // Lấy ngày inspection (ưu tiên _data.InspectionDate, fallback hôm nay)
+            var inspDate = _data?.InspectionDate ?? DateTime.Today;
+            var dateStr  = inspDate.ToString("ddMMyyyy",
+                System.Globalization.CultureInfo.InvariantCulture);
 
-            // Trước khi print: gỡ class page-break-after khỏi section cuối cùng
-            // có class này (do các section sau bị skip vì IsPass=false).
-            // Tránh sinh trang trắng cuối khi browser thực thi break-after.
-            await JS.InvokeVoidAsync("eval", @"
-                (function(){
-                    var sections = document.querySelectorAll('#rpt-root .rpt-section.page-break-after');
-                    if (!sections.length) return;
-                    var last = sections[sections.length - 1];
-                    var next = last.nextElementSibling;
-                    while (next && !next.classList.contains('rpt-section')) {
-                        next = next.nextElementSibling;
-                    }
-                    if (!next || next.classList.contains('rpt-section-final')) {
-                        last.classList.remove('page-break-after');
-                        last.setAttribute('data-pba-removed', '1');
-                    }
-                })();
-            ");
+            // Ghép: "PST-JN100002-26_28042026"
+            var rawFileName = $"{jobNumber}_{dateStr}";
 
-            // Trigger print (chờ ảnh load xong rồi in)
-            await JS.InvokeVoidAsync("waitImagesAndPrint", "rpt-root");
+            // Sanitize: bỏ ký tự không hợp lệ trong filename (Windows/macOS/Linux)
+            var safeFileName = System.Text.RegularExpressions.Regex.Replace(
+                rawFileName, @"[\\/:*?""<>|]", "_").Trim();
 
-            // Sau print: phục hồi class page-break-after đã gỡ tạm thời
-            await JS.InvokeVoidAsync("eval", @"
-                setTimeout(function(){
-                    var el = document.querySelector('#rpt-root .rpt-section[data-pba-removed]');
-                    if (el) {
-                        el.classList.add('page-break-after');
-                        el.removeAttribute('data-pba-removed');
-                    }
-                }, 1500);
-            ");
+            try
+            {
+                // Lưu title hiện tại để restore sau khi in xong
+                var originalTitle = await JS.InvokeAsync<string>("eval", "document.title");
 
-            // Restore title — delay nhỏ để dialog print đã hiện hoàn toàn
-            await JS.InvokeVoidAsync("eval",
-                $"setTimeout(function(){{ document.title = {System.Text.Json.JsonSerializer.Serialize(originalTitle ?? "Inspection Report")}; }}, 1000);");
+                // Set title = file name → tên file PDF mặc định
+                await JS.InvokeVoidAsync("eval",
+                    $"document.title = {System.Text.Json.JsonSerializer.Serialize(safeFileName)};");
+
+                // Trước khi print: gỡ class page-break-after khỏi section cuối cùng
+                // có class này (do các section sau bị skip vì IsPass=false).
+                // Tránh sinh trang trắng cuối khi browser thực thi break-after.
+                await JS.InvokeVoidAsync("eval", @"
+                    (function(){
+                        var sections = document.querySelectorAll('#rpt-root .rpt-section.page-break-after');
+                        if (!sections.length) return;
+                        var last = sections[sections.length - 1];
+                        var next = last.nextElementSibling;
+                        while (next && !next.classList.contains('rpt-section')) {
+                            next = next.nextElementSibling;
+                        }
+                        if (!next || next.classList.contains('rpt-section-final')) {
+                            last.classList.remove('page-break-after');
+                            last.setAttribute('data-pba-removed', '1');
+                        }
+                    })();
+                ");
+
+                // Trigger print (chờ ảnh load xong rồi in)
+                await JS.InvokeVoidAsync("waitImagesAndPrint", "rpt-root");
+
+                // Sau print: phục hồi class page-break-after đã gỡ tạm thời
+                await JS.InvokeVoidAsync("eval", @"
+                    setTimeout(function(){
+                        var el = document.querySelector('#rpt-root .rpt-section[data-pba-removed]');
+                        if (el) {
+                            el.classList.add('page-break-after');
+                            el.removeAttribute('data-pba-removed');
+                        }
+                    }, 1500);
+                ");
+
+                // Restore title — delay nhỏ để dialog print đã hiện hoàn toàn
+                await JS.InvokeVoidAsync("eval",
+                    $"setTimeout(function(){{ document.title = {System.Text.Json.JsonSerializer.Serialize(originalTitle ?? "Inspection Report")}; }}, 1000);");
+            }
+            catch
+            {
+                // Fallback: gọi print không đổi title
+                await JS.InvokeVoidAsync("waitImagesAndPrint", "rpt-root");
+            }
         }
-        catch
+        finally
         {
-            // Fallback: gọi print không đổi title
-            await JS.InvokeVoidAsync("waitImagesAndPrint", "rpt-root");
+            _isPrinting = false;
+            StateHasChanged();
         }
     }
 
@@ -1536,7 +1570,6 @@ else if (_data != null)
     .rpt-page .rpt-photo-cell .rpt-photo {
         width: 100% !important;
         <!-- height: 330px !important; -->
-        object-fit: cover !important;
         object-position: center !important;
         display: block !important;
         vertical-align: top !important;
@@ -1576,6 +1609,9 @@ else if (_data != null)
     /* ══════════════════════════════════════════
        TOOLBAR (screen only)
     ══════════════════════════════════════════ */
+    /* Print-only running footer — chỉ hiện khi in. Ẩn trên màn hình. */
+    .rpt-print-footer { display: none; }
+
     .rpt-toolbar {
         display: flex;
         align-items: center;
@@ -1609,6 +1645,17 @@ else if (_data != null)
         transition: background .2s;
     }
     .rpt-print-btn:hover { background: var(--brand-dark); }
+    .rpt-print-btn:disabled {
+        opacity: .7;
+        cursor: not-allowed;
+    }
+    .rpt-print-spinner {
+        animation: rpt-spin 0.8s linear infinite;
+    }
+    @@keyframes rpt-spin {
+        from { transform: rotate(0deg); }
+        to   { transform: rotate(360deg); }
+    }
 
     /* ══════════════════════════════════════════
        PAPER CONTAINER
@@ -1800,7 +1847,6 @@ else if (_data != null)
     .rpt-photo-cell img.rpt-photo {
         width: 100%;
         height: 100% !important;
-        object-fit: cover;
         display: block;
     }
 
@@ -1808,7 +1854,6 @@ else if (_data != null)
     .rpt-photo {
         width: 100%;
         height: 350px;
-        object-fit: cover;
         object-position: center;
         display: block;
         vertical-align: top;
@@ -1925,7 +1970,6 @@ else if (_data != null)
     .rpt-qty-photo-img {
         width: 100%;
         height: 350px;
-        object-fit: cover;
         display: block;
         vertical-align: top;
     }
@@ -2084,7 +2128,6 @@ else if (_data != null)
     .rpt-defect-photo {
         width: 100%;
         height: 100%;
-        object-fit: cover;
         display: block;
         vertical-align: top;
     }
@@ -2498,7 +2541,6 @@ else if (_data != null)
             width: 100% !important;
             height: 100% !important;
             max-height: none !important;
-            object-fit: cover !important;
             display: block !important;
         }
 
@@ -2507,7 +2549,6 @@ else if (_data != null)
             height: 350px !important;
             max-height: 350px !important;
             width: 100% !important;
-            object-fit: cover !important;
             object-position: center !important;
         }
 
@@ -2520,7 +2561,6 @@ else if (_data != null)
             height: 350px !important;
             max-height: 350px !important;
             width: 100% !important;
-            object-fit: cover !important;
         }
 
         /* Product Overview photo: 350px + object-fit:fill như desktop */
@@ -2561,7 +2601,6 @@ else if (_data != null)
             width: 100% !important;
             height: 100% !important;
             max-height: none !important;
-            object-fit: cover !important;
             display: block !important;
         }
         .rpt-defect-no-photo { height: 100% !important; min-height: unset !important; }
@@ -2574,45 +2613,61 @@ else if (_data != null)
              tránh trường hợp 1 trang chỉ chứa footer.
            - break-inside: avoid → footer không bị cắt giữa.
         */
-        .rpt-footer {
-            position: static !important;
-            bottom: auto !important;
-            left: auto !important;
-            right: auto !important;
-            margin-top: 16px !important;
-            padding: 8px 0 0 !important;
+        /* ══════════════════════════════════════════
+           RUNNING FOOTER — xuất hiện ở đáy MỌI trang PDF
+           ══════════════════════════════════════════
+           Strategy:
+           1) Ẩn TOÀN BỘ .rpt-footer cũ (đặt trong từng section) — gây trùng lặp
+              hoặc nhảy trang khi section dài/ngắn không đều.
+           2) Hiện .rpt-print-footer (đặt 1 lần ngoài .rpt-paper) ở dạng
+              position: fixed; bottom: 0 — Chrome khi in PDF sẽ render fixed
+              element này ở đáy MỌI trang.
+           3) Section thêm padding-bottom đủ (~24mm) để content không bị footer
+              fixed che phía dưới.
+        */
+
+        /* (1) Ẩn footer cũ trong từng section */
+        .rpt-footer { display: none !important; }
+
+        /* (2) Footer running ở đáy mọi trang */
+        .rpt-print-footer {
+            display: block !important;
+            position: fixed !important;
+            bottom: 0 !important;
+            left: 0 !important;
+            right: 0 !important;
+            width: 210mm !important;
+            margin: 0 auto !important;
+            padding: 6px 12mm 8px !important;
             background: white !important;
             border-top: 1px solid #e8edf5 !important;
-            break-before: avoid !important;
-            page-break-before: avoid !important;
-            break-inside: avoid !important;
-            page-break-inside: avoid !important;
+            box-sizing: border-box !important;
+            z-index: 9999 !important;
         }
-        /* Element cuối cùng trước footer cũng phải báo browser "đừng break sau tao"
-           — đôi khi browser cần hint từ cả 2 phía để giữ footer cùng trang.
-           Áp dụng cho các block thường nằm ngay trước footer trong section. */
-        .rpt-photo-grid-2,
-        .rpt-overview-photo-wrap,
-        .rpt-defect-grid,
-        .rpt-aql-section,
-        .rpt-result-table,
-        .rpt-perf-table,
-        .rpt-info-table {
-            break-after: avoid !important;
-            page-break-after: avoid !important;
+        .rpt-print-footer-text {
+            font-size: 9pt !important;
+            line-height: 1.45 !important;
+            color: #555 !important;
+            text-align: center !important;
+            margin: 0 !important;
         }
-        .rpt-footer-text { font-size: 11px !important; }
-        .rpt-footer-page { display: none; }
-        .rpt-footer-inner::after {
-            content: counter(page-counter);
-            font-size: 11px;
+
+        /* (3) Section: padding-bottom đủ chỗ cho footer fixed (~24mm).
+              Ghi đè padding-bottom của rule .rpt-section bên trên. */
+        .rpt-section,
+        .rpt-section-final {
+            padding-bottom: 24mm !important;
+        }
+        /* Page number ở góc phải dưới của running footer.
+           counter(page) là built-in của CSS Paged Media, không cần increment. */
+        .rpt-print-footer::after {
+            content: counter(page);
+            position: absolute;
+            right: 12mm;
+            bottom: 8px;
+            font-size: 9pt;
             font-weight: 700;
-            color: #aaa;
-            white-space: nowrap;
-            flex-shrink: 0;
-            align-self: flex-end;
-            padding-left: 12px;
-            border-left: 1px solid #e0e0e0;
+            color: #888;
         }
     }
     /* ══════════════════════════════════════════

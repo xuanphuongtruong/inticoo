@@ -106,6 +106,7 @@ builder.Services.AddSingleton<AzureBlobService>();
 builder.Services.AddSingleton<IMailConfigProvider, MailConfigProvider>();
 builder.Services.AddScoped<IInspectionMailService, InspectionMailService>();
 builder.Services.AddHostedService<WeeklyMailWorker>();
+builder.Services.AddScoped<IPdfService, PuppeteerPdfService>();
 
 var app = builder.Build();
 
