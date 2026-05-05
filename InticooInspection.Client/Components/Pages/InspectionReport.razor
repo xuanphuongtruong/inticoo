@@ -2274,29 +2274,42 @@ else if (_data != null)
             display: none !important;
         }
 
-        /* Background xanh của page → trắng khi in */
-        .rpt-page { background: white !important; padding: 0 !important; padding-bottom: 0 !important; }
+        /* Background xanh của page → trắng khi in. Override ĐẦY ĐỦ:
+           - Bỏ min-height: 100vh (gây ra vùng background xanh thừa cuối trang)
+           - Bỏ padding-bottom: 60px (gây ra dải xanh dưới trang cuối)
+           - Force background trắng + cho html/body để chắc chắn */
+        html, body {
+            background: white !important;
+        }
+        .rpt-page {
+            background: white !important;
+            min-height: 0 !important;
+            padding: 0 !important;
+            margin: 0 !important;
+        }
 
         .rpt-paper {
             max-width: 100% !important;
             margin: 0 !important;
             padding: 0 !important;
+            background: white !important;
             counter-reset: page-counter;
         }
 
         /* Section: bỏ shadow + radius (chỉ có ý nghĩa trên màn hình),
-           giữ padding desktop (28px 32px 80px), ép kích thước A4 */
+           giữ padding desktop, KHÔNG ép min-height 297mm — để section co theo
+           content, tránh sinh trang trắng thừa giữa các section ngắn. */
         .rpt-section {
             background: white !important;
             border-radius: 0 !important;
             box-shadow: none !important;
             margin: 0 !important;
             width: 210mm !important;
-            min-height: 297mm !important;
+            min-height: 0 !important;
             height: auto !important;
             max-height: none !important;
             overflow: visible !important;
-            padding: 28px 32px 80px !important;
+            padding: 28px 32px 32px !important;   /* bỏ 80px bottom — footer không còn absolute */
             counter-increment: page-counter;
             position: relative !important;
             box-sizing: border-box !important;
@@ -2304,13 +2317,15 @@ else if (_data != null)
 
         .page-break-after { break-after: page; page-break-after: always; }
 
-        /* Trang cuối — không break-after, không trang trắng thừa */
+        /* Trang cuối — không break-after để tránh trang trắng + dải xanh */
         .rpt-section-final {
             height: auto !important;
-            min-height: unset !important;
+            min-height: 0 !important;
             overflow: visible !important;
             break-after: avoid !important;
             page-break-after: avoid !important;
+            margin-bottom: 0 !important;
+            padding-bottom: 16px !important;
         }
 
         /* Tránh cắt giữa trang cho các block quan trọng */
@@ -2513,14 +2528,18 @@ else if (_data != null)
         }
         .rpt-defect-no-photo { height: 100% !important; min-height: unset !important; }
 
-        /* Footer cố định đáy trang + page counter */
+        /* Footer: flow layout (ở cuối content section) thay vì absolute,
+           để section co theo content mà không tạo khoảng trống thừa.
+           Section đã có padding-bottom 32px, footer thêm margin-top 16px là đủ. */
         .rpt-footer {
-            position: absolute !important;
-            bottom: 0 !important;
-            left: 0 !important;
-            right: 0 !important;
-            padding: 4px 12mm 6px !important;
+            position: static !important;
+            bottom: auto !important;
+            left: auto !important;
+            right: auto !important;
+            margin-top: 16px !important;
+            padding: 8px 0 0 !important;
             background: white !important;
+            border-top: 1px solid #e8edf5 !important;
         }
         .rpt-footer-text { font-size: 11px !important; }
         .rpt-footer-page { display: none; }
