@@ -36,12 +36,12 @@ else if (_data != null)
                     <svg class="rpt-print-spinner" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
                         <path d="M12 2a10 10 0 0 1 10 10" />
                     </svg>
-                    <span>Preparing…</span>
+                    <span>Generating PDF…</span>
                 }
                 else
                 {
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
-                    <span>Print / Save PDF</span>
+                    <span>Download PDF</span>
                 }
             </button>
         </div>
@@ -1207,75 +1207,66 @@ else if (_data != null)
 
         try
         {
-            // Đặt tên file PDF = "{JobNumber}_{ddMMyyyy}". Browser dùng document.title
-            // làm tên file mặc định khi user chọn "Save as PDF" trong dialog print.
+            // Đặt tên file PDF = "{JobNumber}_{ddMMyyyy}"
             var jobNumber = !string.IsNullOrWhiteSpace(_data?.JobNumber)
                 ? _data!.JobNumber!
                 : $"Inspection-{InspectionId}";
 
-            // Lấy ngày inspection (ưu tiên _data.InspectionDate, fallback hôm nay)
             var inspDate = _data?.InspectionDate ?? DateTime.Today;
             var dateStr  = inspDate.ToString("ddMMyyyy",
                 System.Globalization.CultureInfo.InvariantCulture);
 
-            // Ghép: "PST-JN100002-26_28042026"
-            var rawFileName = $"{jobNumber}_{dateStr}";
-
-            // Sanitize: bỏ ký tự không hợp lệ trong filename (Windows/macOS/Linux)
+            var rawFileName  = $"{jobNumber}_{dateStr}";
             var safeFileName = System.Text.RegularExpressions.Regex.Replace(
-                rawFileName, @"[\\/:*?""<>|]", "_").Trim();
+                rawFileName, @"[\\/:*?""<>|]", "_").Trim() + ".pdf";
 
-            try
+            // Lấy JWT token từ sessionStorage (key "auth_token") để gắn vào
+            // request gọi server-side PDF endpoint.
+            var token = await JS.InvokeAsync<string?>(
+                "sessionStorage.getItem", "auth_token");
+
+            if (string.IsNullOrWhiteSpace(token))
             {
-                // Lưu title hiện tại để restore sau khi in xong
-                var originalTitle = await JS.InvokeAsync<string>("eval", "document.title");
-
-                // Set title = file name → tên file PDF mặc định
-                await JS.InvokeVoidAsync("eval",
-                    $"document.title = {System.Text.Json.JsonSerializer.Serialize(safeFileName)};");
-
-                // Trước khi print: gỡ class page-break-after khỏi section cuối cùng
-                // có class này (do các section sau bị skip vì IsPass=false).
-                // Tránh sinh trang trắng cuối khi browser thực thi break-after.
-                await JS.InvokeVoidAsync("eval", @"
-                    (function(){
-                        var sections = document.querySelectorAll('#rpt-root .rpt-section.page-break-after');
-                        if (!sections.length) return;
-                        var last = sections[sections.length - 1];
-                        var next = last.nextElementSibling;
-                        while (next && !next.classList.contains('rpt-section')) {
-                            next = next.nextElementSibling;
-                        }
-                        if (!next || next.classList.contains('rpt-section-final')) {
-                            last.classList.remove('page-break-after');
-                            last.setAttribute('data-pba-removed', '1');
-                        }
-                    })();
-                ");
-
-                // Trigger print (chờ ảnh load xong rồi in)
-                await JS.InvokeVoidAsync("waitImagesAndPrint", "rpt-root");
-
-                // Sau print: phục hồi class page-break-after đã gỡ tạm thời
-                await JS.InvokeVoidAsync("eval", @"
-                    setTimeout(function(){
-                        var el = document.querySelector('#rpt-root .rpt-section[data-pba-removed]');
-                        if (el) {
-                            el.classList.add('page-break-after');
-                            el.removeAttribute('data-pba-removed');
-                        }
-                    }, 1500);
-                ");
-
-                // Restore title — delay nhỏ để dialog print đã hiện hoàn toàn
-                await JS.InvokeVoidAsync("eval",
-                    $"setTimeout(function(){{ document.title = {System.Text.Json.JsonSerializer.Serialize(originalTitle ?? "Inspection Report")}; }}, 1000);");
+                await JS.InvokeVoidAsync("alert",
+                    "Bạn chưa đăng nhập hoặc token đã hết hạn. Vui lòng đăng nhập lại.");
+                return;
             }
-            catch
+
+            Console.WriteLine($"[PdfDownload] Calling api/pdf/inspection/{InspectionId}...");
+
+            // Tạo request kèm Authorization header
+            using var req = new HttpRequestMessage(
+                HttpMethod.Get, $"api/pdf/inspection/{InspectionId}");
+            req.Headers.Authorization =
+                new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+
+            // Gọi server-side PDF generation. Server dùng Puppeteer Sharp render
+            // trang Blazor /inspection-report/{id} và xuất PDF.
+            // Lần đầu có thể mất 30-60s vì Puppeteer cần download Chromium.
+            var response = await Http.SendAsync(req);
+
+            Console.WriteLine($"[PdfDownload] Response: {(int)response.StatusCode} {response.StatusCode}");
+
+            if (!response.IsSuccessStatusCode)
             {
-                // Fallback: gọi print không đổi title
-                await JS.InvokeVoidAsync("waitImagesAndPrint", "rpt-root");
+                var errMsg = await response.Content.ReadAsStringAsync();
+                Console.WriteLine($"[PdfDownload] Error body: {errMsg}");
+                await JS.InvokeVoidAsync("alert",
+                    $"Failed to generate PDF: {response.StatusCode}\n{errMsg}");
+                return;
             }
+
+            var pdfBytes = await response.Content.ReadAsByteArrayAsync();
+            Console.WriteLine($"[PdfDownload] Received {pdfBytes.Length} bytes");
+
+            // Trigger download bằng Blob + anchor click (cần pdf-download.js)
+            var base64 = Convert.ToBase64String(pdfBytes);
+            await JS.InvokeVoidAsync("downloadPdfFromBase64", base64, safeFileName);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[PdfDownload] Exception: {ex}");
+            await JS.InvokeVoidAsync("alert", $"Error generating PDF: {ex.Message}");
         }
         finally
         {
