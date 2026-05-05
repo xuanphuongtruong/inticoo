@@ -262,11 +262,14 @@ else if (_data != null)
                     </tbody>
                 </table>
 
-                <!-- Photo grid 3 cột × 2 hàng — luôn hiển thị theo mẫu PDF -->
+                <!-- Photo grid 2 cột — show tất cả ảnh có thật, pad chẵn cho layout 2 cột -->
                 @{
                     var qcPhotos = (qc?.Photos ?? new List<string>()).Where(p => !string.IsNullOrWhiteSpace(p)).ToList();
-                    // Đảm bảo đủ 6 slot (3 cột × 2 hàng)
-                    var photoSlots = qcPhotos.Cast<string?>().Concat(Enumerable.Repeat<string?>(null, Math.Max(0, 4 - qcPhotos.Count))).Take(4).ToList();
+                    // Pad chẵn cho grid 2 cột (nếu lẻ → thêm 1 slot trống)
+                    var qcPadCount = qcPhotos.Count == 0 ? 0 : (qcPhotos.Count % 2 == 0 ? qcPhotos.Count : qcPhotos.Count + 1);
+                    var photoSlots = qcPhotos.Cast<string?>()
+                        .Concat(Enumerable.Repeat<string?>(null, qcPadCount - qcPhotos.Count))
+                        .ToList();
                 }
                 <div class="rpt-qty-photo-grid">
                     @foreach (var slot in photoSlots)
@@ -363,11 +366,7 @@ else if (_data != null)
                     <!-- i. Carton Size -->
                     <div class="rpt-sub-title">i. Carton Size</div>
                     @{
-                        var _pCartonSize = (cd?.SizePhotos ?? pr?.CartonSizePhotos ?? new List<string>())
-                            .Where(p => !string.IsNullOrWhiteSpace(p)).ToList();
-                        var _sCartonSize = _pCartonSize.Cast<string?>()
-                            .Concat(Enumerable.Repeat<string?>(null, Math.Max(0, 4 - _pCartonSize.Count)))
-                            .Take(4).ToList();
+                        var _sCartonSize = PadEvenForGrid(cd?.SizePhotos ?? pr?.CartonSizePhotos);
                     }
                     <div class="rpt-photo-grid-2">
                         @foreach (var _u in _sCartonSize)
@@ -401,11 +400,7 @@ else if (_data != null)
                     <div class="rpt-keep-together">
                         <div class="rpt-sub-title">ii. Shipping Mark / Labeling / Barcode</div>
                         @{
-                            var _pShipping = (cd?.ShippingMarkPhotos ?? pr?.ShippingMarkPhotos ?? new List<string>())
-                                .Where(p => !string.IsNullOrWhiteSpace(p)).ToList();
-                            var _sShipping = _pShipping.Cast<string?>()
-                                .Concat(Enumerable.Repeat<string?>(null, Math.Max(0, 4 - _pShipping.Count)))
-                                .Take(4).ToList();
+                            var _sShipping = PadEvenForGrid(cd?.ShippingMarkPhotos ?? pr?.ShippingMarkPhotos);
                         }
                         <div class="rpt-photo-grid-2">
                             @foreach (var _u in _sShipping)
@@ -434,11 +429,7 @@ else if (_data != null)
                         @{
                             // FIX: trước đây dùng nhầm cd?.SizePhotos (ảnh Carton Size)
                             // → đã sửa thành cd?.WeightPhotos (đúng ảnh Carton Weight)
-                            var _pWeight = (cd?.WeightPhotos ?? pr?.WeightPhotos ?? new List<string>())
-                                .Where(p => !string.IsNullOrWhiteSpace(p)).ToList();
-                            var _sWeight = _pWeight.Cast<string?>()
-                                .Concat(Enumerable.Repeat<string?>(null, Math.Max(0, 4 - _pWeight.Count)))
-                                .Take(4).ToList();
+                            var _sWeight = PadEvenForGrid(cd?.WeightPhotos ?? pr?.WeightPhotos);
                         }
                         <div class="rpt-photo-grid-2">
                             @foreach (var _u in _sWeight)
@@ -472,11 +463,7 @@ else if (_data != null)
 
                     <div class="rpt-sub-title">iv. Packaging &amp; Labeling Specifications</div>
                     @{
-                        var _pPkgLabel = (cd?.PkgLabelPhotos ?? pr?.PkgLabelPhotos ?? new List<string>())
-                            .Where(p => !string.IsNullOrWhiteSpace(p)).ToList();
-                        var _sPkgLabel = _pPkgLabel.Cast<string?>()
-                            .Concat(Enumerable.Repeat<string?>(null, Math.Max(0, 4 - _pPkgLabel.Count)))
-                            .Take(4).ToList();
+                        var _sPkgLabel = PadEvenForGrid(cd?.PkgLabelPhotos ?? pr?.PkgLabelPhotos);
                     }
                     <div class="rpt-photo-grid-2">
                         @foreach (var _u in _sPkgLabel)
@@ -508,11 +495,7 @@ else if (_data != null)
 
                     <div class="rpt-sub-title">v. Assembly Instruction Specifications</div>
                     @{
-                        var _pAssembly = (cd?.AssemblyPhotos ?? pr?.AssemblyPhotos ?? new List<string>())
-                            .Where(p => !string.IsNullOrWhiteSpace(p)).ToList();
-                        var _sAssembly = _pAssembly.Cast<string?>()
-                            .Concat(Enumerable.Repeat<string?>(null, Math.Max(0, 4 - _pAssembly.Count)))
-                            .Take(4).ToList();
+                        var _sAssembly = PadEvenForGrid(cd?.AssemblyPhotos ?? pr?.AssemblyPhotos);
                     }
                     <div class="rpt-photo-grid-2">
                         @foreach (var _u in _sAssembly)
@@ -543,11 +526,7 @@ else if (_data != null)
                     <div class="rpt-section-title rpt-section-title-lg">B. Packaging &amp; Identification@(cartonSuffix)</div>
                     <div class="rpt-sub-title">vi. Hardware Specifications</div>
                     @{
-                        var _pHardware = (cd?.HardwarePhotos ?? pr?.HardwarePhotos ?? new List<string>())
-                            .Where(p => !string.IsNullOrWhiteSpace(p)).ToList();
-                        var _sHardware = _pHardware.Cast<string?>()
-                            .Concat(Enumerable.Repeat<string?>(null, Math.Max(0, 4 - _pHardware.Count)))
-                            .Take(4).ToList();
+                        var _sHardware = PadEvenForGrid(cd?.HardwarePhotos ?? pr?.HardwarePhotos);
                     }
                     <div class="rpt-photo-grid-2">
                         @foreach (var _u in _sHardware)
@@ -622,7 +601,7 @@ else if (_data != null)
                     <!-- ii. Compare Golden Sample -->
                     <div class="rpt-sub-title">ii. Golden Sample/Comparison</div>
                     <div class="rpt-photo-grid-2">
-                        @foreach (var _gu in (_qcData?.ProductSpec?.GoldenPhotos?.Where(p => !string.IsNullOrWhiteSpace(p)).ToList() ?? new List<string>()).Cast<string?>().Concat(Enumerable.Repeat<string?>(null, Math.Max(0, 4 - (_qcData?.ProductSpec?.GoldenPhotos?.Count(p => !string.IsNullOrWhiteSpace(p)) ?? 0)))).Take(4))
+                        @foreach (var _gu in PadEvenForGrid(_qcData?.ProductSpec?.GoldenPhotos))
                         {
                             <div class="rpt-photo-cell">
                                 @if (!string.IsNullOrEmpty(_gu))
@@ -686,7 +665,7 @@ else if (_data != null)
                     </table>
                 }
                 <div class="rpt-photo-grid-2">
-                    @foreach (var _sw in (_qcData?.ProductSpec?.SwatchPhotos?.Where(p => !string.IsNullOrWhiteSpace(p)).ToList() ?? new List<string>()).Cast<string?>().Concat(Enumerable.Repeat<string?>(null, Math.Max(0, 4 - (_qcData?.ProductSpec?.SwatchPhotos?.Count(p => !string.IsNullOrWhiteSpace(p)) ?? 0)))).Take(4))
+                    @foreach (var _sw in PadEvenForGrid(_qcData?.ProductSpec?.SwatchPhotos))
                     {
                         <div class="rpt-photo-cell">
                             @if (!string.IsNullOrEmpty(_sw))
@@ -768,7 +747,7 @@ else if (_data != null)
                             </table>
                         }
                         @{
-                            var _dSlots = dPhotos.Cast<string?>().Concat(Enumerable.Repeat<string?>(null, Math.Max(0, 4 - dPhotos.Count))).Take(4).ToList();
+                            var _dSlots = PadEvenForGrid(dPhotos);
                         }
                         <div class="rpt-photo-grid-2">
                             @foreach (var _du in _dSlots)
@@ -1141,6 +1120,24 @@ else if (_data != null)
 }
 
 @code {
+    /// <summary>
+    /// Lấy danh sách ảnh, lọc URL hợp lệ, pad chẵn cho grid 2 cột.
+    /// Show TẤT CẢ ảnh có thật (không giới hạn 4) — chỉ thêm 1 slot trống nếu
+    /// số lẻ để layout grid 2 cột không bị lệch hàng cuối.
+    /// Trả về list nullable string: null = ô trống, có giá trị = ô có ảnh.
+    /// </summary>
+    private static List<string?> PadEvenForGrid(IEnumerable<string>? photos)
+    {
+        var list = (photos ?? Enumerable.Empty<string>())
+            .Where(p => !string.IsNullOrWhiteSpace(p))
+            .ToList();
+        if (list.Count == 0) return new List<string?>();
+        // Pad lẻ → chẵn (5 ảnh → 6 slot, 7 ảnh → 8 slot)
+        var slots = list.Cast<string?>().ToList();
+        if (slots.Count % 2 != 0) slots.Add(null);
+        return slots;
+    }
+
     private RenderFragment _Footer =>
         @<div class="rpt-footer">www.inticoo.com<br/>
         The results presented herein reflect our findings at the time and place of inspection. This report does not release the seller or manufacturer from <br/>
