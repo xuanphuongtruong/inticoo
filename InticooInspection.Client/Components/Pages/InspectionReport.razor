@@ -2332,14 +2332,14 @@ else if (_data != null)
         .rpt-page .rpt-overview-photo-cell img,
         .rpt-page .rpt-overview-photo-cell .rpt-overview-img {
             width: 100% !important;
-            height: 95mm !important;            /* ≈ 380px @@ 96dpi */
-            max-height: 95mm !important;
-            min-height: 95mm !important;
+            height: 330px !important;
+            max-height: 330px !important;
+            min-height: 330px !important;
             object-fit: fill !important;
             object-position: center !important;
             background: #fafbfc !important;
         }
-        .rpt-photo-empty-lg { height: 95mm !important; min-height: 95mm !important; }
+        .rpt-photo-empty-lg { height: 330px !important; min-height: 330px !important; }
 
         /* Các block quan trọng KHÔNG ĐƯỢC bị cắt giữa chừng */
         .rpt-info-table,
@@ -2371,11 +2371,15 @@ else if (_data != null)
             page-break-inside: avoid !important;
         }
 
-        /* Overview photo */
+        /* Overview photo — giữ 330px khi in PDF, không bị block này hạ xuống 120px */
         .rpt-overview-photo-cell,
         .rpt-page .rpt-overview-photo-cell .rpt-overview-img,
         .rpt-overview-img {
-            height: 120px !important;
+            height: 330px !important;
+            min-height: 330px !important;
+            max-height: 330px !important;
+            object-fit: fill !important;
+            object-position: center !important;
         }
 
         /* 2-column photo grid */
@@ -2651,20 +2655,20 @@ else if (_data != null)
         .rpt-defect-photo-wrap { flex: 1 1 auto !important; min-height: 0 !important; }
         .rpt-defect-remark     { height: 36px !important; flex: 0 0 36px !important; }
 
-        /* Product Overview photo: ép kích thước lớn (≈ 380px = 95mm) — thắng mọi rule mobile */
+        /* Product Overview photo: ép kích thước cố định 330px — thắng mọi rule mobile */
         .rpt-overview-photo-cell .rpt-overview-img,
         .rpt-overview-photo-cell img.rpt-overview-img,
         .rpt-page .rpt-overview-photo-cell img,
         .rpt-page .rpt-overview-photo-cell .rpt-overview-img {
-            height: 95mm !important;
-            min-height: 95mm !important;
-            max-height: 95mm !important;
+            height: 330px !important;
+            min-height: 330px !important;
+            max-height: 330px !important;
             width: 100% !important;
             object-fit: fill !important;
             object-position: center !important;
             background: #fafbfc !important;
         }
-        .rpt-photo-empty-lg { height: 95mm !important; min-height: 95mm !important; }
+        .rpt-photo-empty-lg { height: 330px !important; min-height: 330px !important; }
 
         /* Header cover trang 1: BẮT BUỘC ngang */
         .rpt-cover-header {
