@@ -2223,7 +2223,18 @@ else if (_data != null)
     }
 
     /* ══════════════════════════════════════════
-       PRINT STYLES
+       PRINT STYLES — PDF giống y desktop view
+       ══════════════════════════════════════════
+       Nguyên tắc:
+       - Tất cả size (height ảnh, font, padding) ĐỀU lấy theo desktop CSS gốc.
+       - @media print chỉ làm những việc tối thiểu cần cho khổ A4:
+           1) @page A4
+           2) Ẩn .no-print, nav, toolbar
+           3) Bỏ background xanh, shadow, border-radius
+           4) Page break + color-adjust
+           5) OVERRIDE mọi rule mobile (max-width:860px) — vì Windows Chrome
+              print preview có viewport ~794px sẽ kích hoạt mobile media,
+              biến layout thành 1 cột → cần ép lại desktop.
     ══════════════════════════════════════════ */
     @@media print {
         @@page {
@@ -2238,7 +2249,7 @@ else if (_data != null)
             padding: 0 !important;
         }
 
-        /* Bắt buộc giữ background-color trên các badge và box quan trọng khi in */
+        /* Giữ background-color trên các badge và box quan trọng khi in */
         .rpt-final-badge,
         .rpt-aql-box,
         .rpt-aql-box-title,
@@ -2254,50 +2265,46 @@ else if (_data != null)
             color-adjust: exact !important;
         }
 
+        /* Ẩn các phần không thuộc nội dung báo cáo */
         .no-print { display: none !important; }
-
-        /* Xóa background xanh khi in — tránh trang trắng bị xanh */
-        .rpt-page { background: white !important; padding-bottom: 0 !important; }
-
         nav, header, .navbar, .sidebar,
         .top-bar, .main-nav, .nav-bar, .app-nav,
         .top-menu, .side-menu, .menu-bar,
-        [class*="nav"], [class*="header"]:not(.rpt-cover-header):not(.rpt-section-header) { display: none !important; }
+        [class*="nav"], [class*="header"]:not(.rpt-cover-header):not(.rpt-section-header) {
+            display: none !important;
+        }
 
-        .rpt-page { background: white !important; padding: 0 !important; }
+        /* Background xanh của page → trắng khi in */
+        .rpt-page { background: white !important; padding: 0 !important; padding-bottom: 0 !important; }
+
         .rpt-paper {
-            max-width: 100%;
-            margin: 0;
+            max-width: 100% !important;
+            margin: 0 !important;
+            padding: 0 !important;
             counter-reset: page-counter;
         }
 
-        /*
-         * Mỗi .rpt-section có min-height = 1 trang A4 để layout sạch sẽ.
-         * Bỏ height/overflow:hidden cố định — nếu nội dung dài hơn, browser TỰ ĐỘNG break
-         * sang trang mới thay vì cắt mất (Windows Chrome dễ bị cắt với height cố định).
-         * page-break-after vẫn bắt buộc xuống trang sau mỗi section.
-         */
+        /* Section: bỏ shadow + radius (chỉ có ý nghĩa trên màn hình),
+           giữ padding desktop (28px 32px 80px), ép kích thước A4 */
         .rpt-section {
+            background: white !important;
             border-radius: 0 !important;
             box-shadow: none !important;
             margin: 0 !important;
             width: 210mm !important;
-            min-height: 297mm !important;   /* không dùng height cố định */
+            min-height: 297mm !important;
             height: auto !important;
             max-height: none !important;
-            overflow: visible !important;    /* không cắt */
-            padding: 10mm 12mm 16mm !important;
+            overflow: visible !important;
+            padding: 28px 32px 80px !important;
             counter-increment: page-counter;
             position: relative !important;
             box-sizing: border-box !important;
         }
 
-        .page-break-after {
-            break-after: page;
-            page-break-after: always;
-        }
+        .page-break-after { break-after: page; page-break-after: always; }
 
-        /* Trang cuối: không cố định height, không break-after — tránh trang trắng thừa */
+        /* Trang cuối — không break-after, không trang trắng thừa */
         .rpt-section-final {
             height: auto !important;
             min-height: unset !important;
@@ -2306,10 +2313,47 @@ else if (_data != null)
             page-break-after: avoid !important;
         }
 
-        table { break-inside: avoid; page-break-inside: avoid; }
-        tr    { break-inside: avoid; page-break-inside: avoid; }
+        /* Tránh cắt giữa trang cho các block quan trọng */
+        table, tr,
+        .rpt-info-table,
+        .rpt-result-table,
+        .rpt-perf-table,
+        .rpt-aql-grid,
+        .rpt-aql-wrap,
+        .rpt-aql-section,
+        .rpt-photo-grid-2,
+        .rpt-overview-photo-wrap,
+        .rpt-overview-photo-cell,
+        .rpt-photo-cell,
+        .rpt-qty-photo-cell,
+        .rpt-qty-photo-grid,
+        .rpt-defect-cell,
+        .rpt-defect-item,
+        .rpt-sign-table,
+        .rpt-perf-block,
+        .rpt-sig-row,
+        .rpt-keep-together {
+            break-inside: avoid !important;
+            page-break-inside: avoid !important;
+        }
+        /* Tiêu đề section không được mồ côi cuối trang */
+        .rpt-section-title,
+        .rpt-sub-title {
+            break-after: avoid !important;
+            page-break-after: avoid !important;
+        }
+        img {
+            max-width: 100% !important;
+            break-inside: avoid !important;
+            page-break-inside: avoid !important;
+        }
 
-        /* Header ở trang cover: BẮT BUỘC ngang, logo trái — INSPECTION REPORT + Job No phải */
+        /* ══════════════════════════════════════════
+           OVERRIDE RULE MOBILE (max-width:860px)
+           Print preview viewport ~794px sẽ match mobile, cần ép về desktop.
+        ══════════════════════════════════════════ */
+
+        /* Header cover: giữ ngang, không xếp dọc như mobile */
         .rpt-cover-header {
             display: flex !important;
             flex-direction: row !important;
@@ -2318,106 +2362,61 @@ else if (_data != null)
             gap: 20px !important;
             flex-wrap: nowrap !important;
         }
-        .rpt-logo-wrap  { flex: 0 0 auto !important; width: auto !important; }
+        .rpt-logo-wrap   { flex: 0 0 auto !important; width: auto !important; }
         .rpt-title-block { text-align: right !important; flex: 1 1 auto !important; }
-        .rpt-main-title  { font-size: 22pt !important; }
-        .rpt-job-no      { font-size: 11pt !important; }
-        .rpt-logo-img    { height: 14mm !important; }
+        /* Font-size desktop: 26px / 14px / 48px — không dùng pt để tránh sai */
+        .rpt-main-title  { font-size: 26px !important; }
+        .rpt-job-no      { font-size: 14px !important; }
+        .rpt-logo-wrap .rpt-logo-img { height: 48px !important; }
 
-        /* Product Overview photo — KHÔNG ĐƯỢC bị co nhỏ khi in (Windows Chrome) */
-        .rpt-overview-photo-wrap,
-        .rpt-overview-photo-cell { width: 100% !important; }
-        .rpt-overview-photo-cell .rpt-overview-img,
-        .rpt-overview-photo-cell img.rpt-overview-img,
-        .rpt-page .rpt-overview-photo-cell img,
-        .rpt-page .rpt-overview-photo-cell .rpt-overview-img {
+        /* Bảng General Info: bắt buộc giữ table 4 cột (mobile bóp về 2 cột) */
+        .rpt-info-table {
+            display: table !important;
             width: 100% !important;
-            height: 330px !important;
-            max-height: 330px !important;
-            min-height: 330px !important;
-            object-fit: fill !important;
-            object-position: center !important;
-            background: #fafbfc !important;
+            border-collapse: collapse !important;
+            font-size: 12px !important;
         }
-        .rpt-photo-empty-lg { height: 330px !important; min-height: 330px !important; }
+        .rpt-info-table tbody { display: table-row-group !important; }
+        .rpt-info-table tr {
+            display: table-row !important;
+            grid-template-columns: unset !important;
+            border-bottom: none !important;
+        }
+        .rpt-info-table td {
+            display: table-cell !important;
+            width: auto !important;
+            border: 1px solid var(--border) !important;
+            border-right: 1px solid var(--border) !important;
+            padding: 7px 10px !important;
+            white-space: normal !important;
+            word-break: break-word;
+            font-size: 12px !important;
+            box-sizing: border-box !important;
+        }
+        .rpt-info-label {
+            background: #f4f7fc !important;
+            font-weight: 600 !important;
+            color: var(--text) !important;
+            width: 150px !important;
+            min-width: 150px !important;
+            white-space: nowrap !important;
+        }
 
-        /* Các block quan trọng KHÔNG ĐƯỢC bị cắt giữa chừng */
-        .rpt-info-table,
+        /* Các bảng còn lại: bỏ display:block + overflow-x:auto của mobile */
         .rpt-result-table,
-        .rpt-perf-table,
-        .rpt-aql-grid,
-        .rpt-photo-grid-2,
-        .rpt-overview-photo-wrap,
-        .rpt-photo-cell,
-        .rpt-defect-cell,
         .rpt-sign-table,
-        .rpt-aql-section,
-        .rpt-aql-wrap,
-        .rpt-keep-together {
-            break-inside: avoid !important;
-            page-break-inside: avoid !important;
-        }
-        /* Section-title (vd: "INSPECTION RESULTS") không được rớt ở cuối trang một mình
-           — buộc dính với nội dung sau nó */
-        .rpt-section-title,
-        .rpt-sub-title {
-            break-after: avoid !important;
-            page-break-after: avoid !important;
-        }
-        /* img phải fit trong page — không vượt height */
-        img {
-            max-width: 100% !important;
-            break-inside: avoid !important;
-            page-break-inside: avoid !important;
+        .rpt-qty-table,
+        .rpt-spec-table,
+        .rpt-perf-table,
+        .rpt-aql-table,
+        .rpt-carton-table {
+            display: table !important;
+            width: 100% !important;
+            overflow-x: visible !important;
+            font-size: inherit !important;
         }
 
-        /* Overview photo — giữ 330px khi in PDF, không bị block này hạ xuống 120px */
-        .rpt-overview-photo-cell,
-        .rpt-page .rpt-overview-photo-cell .rpt-overview-img,
-        .rpt-overview-img {
-            height: 330px !important;
-            min-height: 330px !important;
-            max-height: 330px !important;
-            object-fit: fill !important;
-            object-position: center !important;
-        }
-
-        /* 2-column photo grid */
-        .rpt-photo-cell,
-        .rpt-page .rpt-photo-cell img,
-        .rpt-page .rpt-photo-cell .rpt-photo {
-            height: 220px !important;
-        }
-
-        /* Qty photo grid (Section A) */
-        .rpt-qty-photo-cell,
-        .rpt-qty-photo-img {
-            height: 220px !important;
-        }
-
-        /* Defect photos (Section F) — print mode: cell cố định 256px (220 ảnh + 36 remark) */
-        .rpt-defect-cell       { height: 256px !important; }
-        .rpt-defect-photo-wrap { flex: 1 1 auto !important; min-height: 0 !important; height: auto !important; }
-        .rpt-defect-photo      { height: 100% !important; min-height: unset !important; object-fit: cover !important; }
-        .rpt-defect-no-photo   { height: 100% !important; min-height: unset !important; }
-        .rpt-defect-remark     { height: 36px !important; flex: 0 0 36px !important; }
-
-        /* Generic .rpt-photo */
-        .rpt-photo { height: 220px !important; max-width: 100%; object-fit: cover; }
-
-        .rpt-overview-photo-wrap,
-        .rpt-overview-photo-cell,
-        .rpt-qty-photo-grid,
-        .rpt-qty-photo-cell,
-        .rpt-photo-grid-2,
-        .rpt-photo-cell,
-        .rpt-perf-block,
-        .rpt-defect-item,
-        .rpt-sig-row,
-        .rpt-aql-grid    { break-inside: avoid; page-break-inside: avoid; }
-
-        /* Ép lại layout grid khi in PDF — override mobile media (max-width:860px)
-           kích hoạt nhầm khi Safari macOS/iOS dùng viewport hẹp để xuất PDF */
+        /* Grid ảnh: ép giữ nhiều cột (mobile bóp về 1 cột) */
         .rpt-photo-grid-2 {
             display: grid !important;
             grid-template-columns: 1fr 1fr !important;
@@ -2429,11 +2428,92 @@ else if (_data != null)
             gap: 10px !important;
         }
 
-        /* Toàn bộ block AQL (3 box + RESULT table) không break giữa trang */
-        .rpt-aql-wrap,
-        .rpt-aql-section { break-inside: avoid; page-break-inside: avoid; }
+        /* Ảnh: giữ height theo desktop, không phải max-height 260px của mobile */
+        /* Cover/Quantity photo cell: 500px như desktop */
+        .rpt-photo-cell,
+        .rpt-page .rpt-photo-cell {
+            height: 500px !important;
+            max-height: 500px !important;
+            min-height: unset !important;
+            width: 100% !important;
+            max-width: 100% !important;
+        }
+        .rpt-photo-cell img,
+        .rpt-page .rpt-photo-cell img,
+        .rpt-photo-cell img.rpt-photo,
+        .rpt-page .rpt-photo-cell .rpt-photo {
+            width: 100% !important;
+            height: 100% !important;
+            max-height: none !important;
+            object-fit: cover !important;
+            display: block !important;
+        }
 
-        /* Footer cố định đáy trang */
+        /* Generic .rpt-photo (ảnh trong grid 2 cột): 330px như desktop */
+        .rpt-photo {
+            height: 330px !important;
+            max-height: 330px !important;
+            width: 100% !important;
+            object-fit: cover !important;
+            object-position: center !important;
+        }
+
+        /* Quantity photo (Section A): 330px như desktop */
+        .rpt-qty-photo-cell {
+            height: 330px !important;
+            max-height: 330px !important;
+        }
+        .rpt-qty-photo-img {
+            height: 330px !important;
+            max-height: 330px !important;
+            width: 100% !important;
+            object-fit: cover !important;
+        }
+
+        /* Product Overview photo: 330px + object-fit:fill như desktop */
+        .rpt-overview-photo-wrap,
+        .rpt-overview-photo-cell {
+            width: 100% !important;
+            max-width: 100% !important;
+        }
+        .rpt-overview-img,
+        .rpt-overview-photo-cell .rpt-overview-img,
+        .rpt-overview-photo-cell img.rpt-overview-img,
+        .rpt-page .rpt-overview-photo-cell img,
+        .rpt-page .rpt-overview-photo-cell .rpt-overview-img {
+            width: 100% !important;
+            height: 330px !important;
+            min-height: 330px !important;
+            max-height: 330px !important;
+            object-fit: fill !important;
+            object-position: center !important;
+            background: #fafbfc !important;
+            display: block !important;
+        }
+        .rpt-photo-empty-lg { height: 330px !important; min-height: 330px !important; }
+
+        /* Defect cell (Section F): 500px như desktop */
+        .rpt-defect-cell {
+            height: 500px !important;
+            max-height: 500px !important;
+            width: auto !important;
+            max-width: 100% !important;
+        }
+        .rpt-defect-photo-wrap {
+            flex: 1 1 auto !important;
+            min-height: 0 !important;
+            height: auto !important;
+        }
+        .rpt-defect-photo {
+            width: 100% !important;
+            height: 100% !important;
+            max-height: none !important;
+            object-fit: cover !important;
+            display: block !important;
+        }
+        .rpt-defect-no-photo { height: 100% !important; min-height: unset !important; }
+
+        /* Footer cố định đáy trang + page counter */
         .rpt-footer {
             position: absolute !important;
             bottom: 0 !important;
@@ -2442,7 +2522,7 @@ else if (_data != null)
             padding: 4px 12mm 6px !important;
             background: white !important;
         }
-
+        .rpt-footer-text { font-size: 11px !important; }
         .rpt-footer-page { display: none; }
         .rpt-footer-inner::after {
             content: counter(page-counter);
@@ -2578,116 +2658,4 @@ else if (_data != null)
         .rpt-info-table tr { grid-template-columns: 45% 55%; }
     }
 
-    /* ══════════════════════════════════════════
-       PRINT OVERRIDES — đặt CUỐI CÙNG để thắng
-       các @@media (max-width:...) phía trên do CSS cascade.
-       Safari macOS/iOS khi xuất PDF có thể giữ nguyên viewport hẹp
-       → mobile media match → ảnh xuống 1 cột. Block này ép lại 2 cột.
-    ══════════════════════════════════════════ */
-    @@media print {
-        .rpt-photo-grid-2 {
-            display: grid !important;
-            grid-template-columns: 1fr 1fr !important;
-            gap: 10px !important;
-        }
-        .rpt-aql-grid {
-            display: grid !important;
-            grid-template-columns: 1fr 1fr 1fr !important;
-            gap: 10px !important;
-        }
-
-        /* ════════════════════════════════════════════
-           Bảng General Information & B. Packaging — BẮT BUỘC giữ table 4 cột
-           ════════════════════════════════════════════
-           Mobile rule (max-width: 860px) đổi sang display:block + grid 2 cột.
-           Khi in PDF trên Windows Chrome, viewport print preview ≈ 794px → khớp
-           mobile media → bảng bị bóp về 2 cột. Override ở đây để giữ đúng layout
-           4 cột (label-value-label-value).
-        */
-        .rpt-info-table {
-            display: table !important;
-            width: 100% !important;
-            border-collapse: collapse !important;
-        }
-        .rpt-info-table tbody { display: table-row-group !important; }
-        .rpt-info-table tr {
-            display: table-row !important;
-            grid-template-columns: unset !important;   /* huỷ grid mobile */
-        }
-        .rpt-info-table td {
-            display: table-cell !important;
-            width: auto !important;
-            border: 1px solid var(--border) !important;
-            padding: 7px 10px !important;
-            white-space: normal !important;
-            word-break: break-word;
-            font-size: 11pt !important;
-            box-sizing: border-box !important;
-        }
-        /* Cột label: width cố định, value: auto */
-        .rpt-info-label {
-            background: #f7f9fc !important;
-            font-weight: 600 !important;
-            color: var(--brand) !important;
-            width: 22% !important;
-            min-width: 22% !important;
-            white-space: nowrap !important;
-        }
-
-        /* Ép Safari iOS/macOS giữ ảnh đúng kích thước, không co về 1 cột */
-        .rpt-photo-cell,
-        .rpt-defect-cell,
-        .rpt-overview-photo-cell {
-            width: auto !important;
-            max-width: 100% !important;
-        }
-        .rpt-photo-cell img,
-        .rpt-defect-cell img,
-        .rpt-defect-photo-wrap img {
-            max-height: none !important;
-            height: 100% !important;
-            width: 100% !important;
-            object-fit: cover !important;
-        }
-        /* Cover photo có chiều cao cố định 330px như desktop, không giới hạn 260px */
-        .rpt-photo-cell { height: 330px !important; }
-        .rpt-defect-cell       { height: 256px !important; }
-        .rpt-defect-photo-wrap { flex: 1 1 auto !important; min-height: 0 !important; }
-        .rpt-defect-remark     { height: 36px !important; flex: 0 0 36px !important; }
-
-        /* Product Overview photo: ép kích thước cố định 330px — thắng mọi rule mobile */
-        .rpt-overview-photo-cell .rpt-overview-img,
-        .rpt-overview-photo-cell img.rpt-overview-img,
-        .rpt-page .rpt-overview-photo-cell img,
-        .rpt-page .rpt-overview-photo-cell .rpt-overview-img {
-            height: 330px !important;
-            min-height: 330px !important;
-            max-height: 330px !important;
-            width: 100% !important;
-            object-fit: fill !important;
-            object-position: center !important;
-            background: #fafbfc !important;
-        }
-        .rpt-photo-empty-lg { height: 330px !important; min-height: 330px !important; }
-
-        /* Header cover trang 1: BẮT BUỘC ngang */
-        .rpt-cover-header {
-            display: flex !important;
-            flex-direction: row !important;
-            align-items: center !important;
-            justify-content: space-between !important;
-            gap: 20px !important;
-            flex-wrap: nowrap !important;
-        }
-        .rpt-logo-wrap   { flex: 0 0 auto !important; width: auto !important; }
-        .rpt-title-block { text-align: right !important; flex: 1 1 auto !important; }
-        .rpt-main-title  { font-size: 22pt !important; }
-        .rpt-job-no      { font-size: 11pt !important; }
-        .rpt-logo-img    { height: 14mm !important; }
-
-        /* AQL block + RESULT table giữ nguyên 1 trang */
-        .rpt-aql-wrap,
-        .rpt-aql-section,
-        .rpt-result-table { break-inside: avoid !important; page-break-inside: avoid !important; }
-    }
 </style>
