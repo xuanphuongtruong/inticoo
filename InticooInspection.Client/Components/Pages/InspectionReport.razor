@@ -1206,8 +1206,38 @@ else if (_data != null)
             await JS.InvokeVoidAsync("eval",
                 $"document.title = {System.Text.Json.JsonSerializer.Serialize(safeFileName)};");
 
+            // Trước khi print: gỡ class page-break-after khỏi section cuối cùng
+            // có class này (do các section sau bị skip vì IsPass=false).
+            // Tránh sinh trang trắng cuối khi browser thực thi break-after.
+            await JS.InvokeVoidAsync("eval", @"
+                (function(){
+                    var sections = document.querySelectorAll('#rpt-root .rpt-section.page-break-after');
+                    if (!sections.length) return;
+                    var last = sections[sections.length - 1];
+                    var next = last.nextElementSibling;
+                    while (next && !next.classList.contains('rpt-section')) {
+                        next = next.nextElementSibling;
+                    }
+                    if (!next || next.classList.contains('rpt-section-final')) {
+                        last.classList.remove('page-break-after');
+                        last.setAttribute('data-pba-removed', '1');
+                    }
+                })();
+            ");
+
             // Trigger print (chờ ảnh load xong rồi in)
             await JS.InvokeVoidAsync("waitImagesAndPrint", "rpt-root");
+
+            // Sau print: phục hồi class page-break-after đã gỡ tạm thời
+            await JS.InvokeVoidAsync("eval", @"
+                setTimeout(function(){
+                    var el = document.querySelector('#rpt-root .rpt-section[data-pba-removed]');
+                    if (el) {
+                        el.classList.add('page-break-after');
+                        el.removeAttribute('data-pba-removed');
+                    }
+                }, 1500);
+            ");
 
             // Restore title — delay nhỏ để dialog print đã hiện hoàn toàn
             await JS.InvokeVoidAsync("eval",
@@ -2317,6 +2347,14 @@ else if (_data != null)
 
         .page-break-after { break-after: page; page-break-after: always; }
 
+        /* Khi section có .page-break-after là CON CUỐI CÙNG của parent
+           (do các section sau bị skip do IsPass = false), không cần break-after
+           nữa — tránh sinh trang trắng cuối. */
+        .page-break-after:last-child {
+            break-after: auto !important;
+            page-break-after: auto !important;
+        }
+
         /* Trang cuối — không break-after để tránh trang trắng + dải xanh */
         .rpt-section-final {
             height: auto !important;
@@ -2530,7 +2568,12 @@ else if (_data != null)
 
         /* Footer: flow layout (ở cuối content section) thay vì absolute,
            để section co theo content mà không tạo khoảng trống thừa.
-           Section đã có padding-bottom 32px, footer thêm margin-top 16px là đủ. */
+           Section đã có padding-bottom 32px, footer thêm margin-top 16px là đủ.
+           - break-before: avoid → ép browser KHÔNG break ngay trước footer,
+             nghĩa là footer luôn cố gắng đi cùng trang với content phía trên,
+             tránh trường hợp 1 trang chỉ chứa footer.
+           - break-inside: avoid → footer không bị cắt giữa.
+        */
         .rpt-footer {
             position: static !important;
             bottom: auto !important;
@@ -2540,6 +2583,23 @@ else if (_data != null)
             padding: 8px 0 0 !important;
             background: white !important;
             border-top: 1px solid #e8edf5 !important;
+            break-before: avoid !important;
+            page-break-before: avoid !important;
+            break-inside: avoid !important;
+            page-break-inside: avoid !important;
+        }
+        /* Element cuối cùng trước footer cũng phải báo browser "đừng break sau tao"
+           — đôi khi browser cần hint từ cả 2 phía để giữ footer cùng trang.
+           Áp dụng cho các block thường nằm ngay trước footer trong section. */
+        .rpt-photo-grid-2,
+        .rpt-overview-photo-wrap,
+        .rpt-defect-grid,
+        .rpt-aql-section,
+        .rpt-result-table,
+        .rpt-perf-table,
+        .rpt-info-table {
+            break-after: avoid !important;
+            page-break-after: avoid !important;
         }
         .rpt-footer-text { font-size: 11px !important; }
         .rpt-footer-page { display: none; }
