@@ -36,12 +36,12 @@ else if (_data != null)
                     <svg class="rpt-print-spinner" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
                         <path d="M12 2a10 10 0 0 1 10 10" />
                     </svg>
-                    <span>Generating PDF…</span>
+                    <span>Preparing…</span>
                 }
                 else
                 {
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
-                    <span>Download PDF</span>
+                    <span>Print / Save PDF</span>
                 }
             </button>
         </div>
@@ -943,8 +943,12 @@ else if (_data != null)
                                    ?? (def.PhotoUrl != null ? new List<string> { def.PhotoUrl } : new List<string>());
                         return urls.Select((url, i) => new { Url = url, Remark = def.Remarks?.ElementAtOrDefault(i) ?? def.Remark ?? "" });
                     }).ToList();
-                    // Tối thiểu 2 ô (1 dòng 2 hình); nếu nhiều hơn thì làm tròn chẵn cho grid 2 cột
-                    int _critMin = Math.Max(2, _critItems.Count % 2 == 0 ? _critItems.Count : _critItems.Count + 1);
+                    // Khi có defect: pad chẵn cho grid 2 cột.
+                    // Khi KHÔNG có defect: để rỗng (sẽ render "No defects found"
+                    // thay vì 2 ô "No Photo" lớn chiếm gần hết trang).
+                    int _critMin = _critItems.Count == 0
+                        ? 0
+                        : (_critItems.Count % 2 == 0 ? _critItems.Count : _critItems.Count + 1);
                     var _critSlots = _critItems.Select(p => (string?)p.Url)
                         .Concat(Enumerable.Repeat<string?>(null, _critMin - _critItems.Count))
                         .Zip(_critItems.Select(p => p.Remark).Concat(Enumerable.Repeat("", _critMin - _critItems.Count)),
@@ -952,6 +956,12 @@ else if (_data != null)
                 }
                 <div class="rpt-section-title rpt-section-title-lg" style="margin-top:20px;">F. Details of Defect Found</div>
                 <div class="rpt-defect-type-title defect-critical">Critical</div>
+                @if (_critSlots.Count == 0)
+                {
+                    <div class="rpt-no-defects">No critical defects found.</div>
+                }
+                else
+                {
                 <div class="rpt-photo-grid-2">
                     @foreach (var slot in _critSlots)
                     {
@@ -966,6 +976,7 @@ else if (_data != null)
                         </div>
                     }
                 </div>
+                }
 
                 <div class="rpt-footer">
                     <div class="rpt-footer-inner">
@@ -997,8 +1008,11 @@ else if (_data != null)
                         })
                         .ToList();
 
-                    // Tối thiểu 2 ô (1 dòng 2 hình); pad chẵn cho grid 2 cột
-                    int minSlots = Math.Max(2, photoItems.Count % 2 == 0 ? photoItems.Count : photoItems.Count + 1);
+                    // Khi có defect: pad chẵn cho grid 2 cột.
+                    // Khi KHÔNG có defect: để rỗng (sẽ render text thay vì 2 ô "No Photo").
+                    int minSlots = photoItems.Count == 0
+                        ? 0
+                        : (photoItems.Count % 2 == 0 ? photoItems.Count : photoItems.Count + 1);
                     var slots = photoItems
                         .Select(p => (string?)p.Url)
                         .Concat(Enumerable.Repeat<string?>(null, minSlots - photoItems.Count))
@@ -1010,6 +1024,12 @@ else if (_data != null)
                         .ToList();
 
                     <div class="rpt-defect-type-title defect-@defType.ToLower()">@defType</div>
+                    @if (slots.Count == 0)
+                    {
+                        <div class="rpt-no-defects">No @defType.ToLower() defects found.</div>
+                    }
+                    else
+                    {
                     <div class="rpt-photo-grid-2">
                         @foreach (var slot in slots)
                         {
@@ -1024,6 +1044,7 @@ else if (_data != null)
                             </div>
                         }
                     </div>
+                    }
                 }
 
                 <div class="rpt-footer">
@@ -1199,6 +1220,13 @@ else if (_data != null)
     // Trạng thái đang xử lý (để disable nút tránh user click liên tục)
     private bool _isPrinting;
 
+    /// <summary>
+    /// Trigger trình duyệt mở dialog Print. User chọn "Save as PDF" trong
+    /// dialog để xuất PDF với tên file = "{JobNumber}_{ddMMyyyy}".
+    ///
+    /// Cách này hoạt động ở mọi môi trường (Local, Azure Windows, Azure Static
+    /// Apps) — không phụ thuộc browser headless / Chromium / Puppeteer.
+    /// </summary>
     private async Task PrintReport()
     {
         if (_isPrinting) return;
@@ -1207,7 +1235,8 @@ else if (_data != null)
 
         try
         {
-            // Đặt tên file PDF = "{JobNumber}_{ddMMyyyy}"
+            // Đặt tên file PDF mặc định = "{JobNumber}_{ddMMyyyy}".
+            // Browser dùng document.title làm tên file mặc định khi Save as PDF.
             var jobNumber = !string.IsNullOrWhiteSpace(_data?.JobNumber)
                 ? _data!.JobNumber!
                 : $"Inspection-{InspectionId}";
@@ -1220,154 +1249,62 @@ else if (_data != null)
             var safeFileName = System.Text.RegularExpressions.Regex.Replace(
                 rawFileName, @"[\\/:*?""<>|]", "_").Trim();
 
-            // ─────────────────────────────────────────────────────────
-            // Thử server-side PDF trước (chất lượng tốt hơn)
-            // Nếu fail (Azure không support Puppeteer / API offline / etc.)
-            // → fallback sang window.print() của browser
-            // ─────────────────────────────────────────────────────────
-            var serverSucceeded = await TryServerSidePdf(safeFileName);
-
-            if (!serverSucceeded)
+            try
             {
-                // Hỏi user có muốn dùng print của browser thay thế không
-                var useBrowserPrint = await JS.InvokeAsync<bool>("confirm",
-                    "Server không thể tạo PDF tự động.\n\n" +
-                    "Bạn có muốn dùng chức năng Print của trình duyệt thay thế không?\n" +
-                    "(Sau đó chọn \"Save as PDF\" trong hộp thoại Print)");
+                // Lưu title hiện tại để restore sau khi in xong
+                var originalTitle = await JS.InvokeAsync<string>("eval", "document.title");
 
-                if (useBrowserPrint)
-                {
-                    await BrowserPrintFallback(safeFileName);
-                }
+                // Set title = file name → tên file PDF mặc định
+                await JS.InvokeVoidAsync("eval",
+                    $"document.title = {System.Text.Json.JsonSerializer.Serialize(safeFileName)};");
+
+                // Trước khi print: gỡ class page-break-after khỏi section cuối cùng
+                // có class này (tránh trang trắng cuối khi các section sau bị skip
+                // vì IsPass=false).
+                await JS.InvokeVoidAsync("eval", @"
+                    (function(){
+                        var sections = document.querySelectorAll('#rpt-root .rpt-section.page-break-after');
+                        if (!sections.length) return;
+                        var last = sections[sections.length - 1];
+                        var next = last.nextElementSibling;
+                        while (next && !next.classList.contains('rpt-section')) {
+                            next = next.nextElementSibling;
+                        }
+                        if (!next || next.classList.contains('rpt-section-final')) {
+                            last.classList.remove('page-break-after');
+                            last.setAttribute('data-pba-removed', '1');
+                        }
+                    })();
+                ");
+
+                // Trigger print (waitImagesAndPrint đợi ảnh load xong rồi mới in)
+                await JS.InvokeVoidAsync("waitImagesAndPrint", "rpt-root");
+
+                // Sau print: phục hồi class page-break-after đã gỡ tạm thời
+                await JS.InvokeVoidAsync("eval", @"
+                    setTimeout(function(){
+                        var el = document.querySelector('#rpt-root .rpt-section[data-pba-removed]');
+                        if (el) {
+                            el.classList.add('page-break-after');
+                            el.removeAttribute('data-pba-removed');
+                        }
+                    }, 1500);
+                ");
+
+                // Restore title sau 1s (đợi dialog Print hiện hoàn toàn)
+                await JS.InvokeVoidAsync("eval",
+                    $"setTimeout(function(){{ document.title = {System.Text.Json.JsonSerializer.Serialize(originalTitle ?? "Inspection Report")}; }}, 1000);");
+            }
+            catch
+            {
+                // Fallback: print không đổi title
+                await JS.InvokeVoidAsync("waitImagesAndPrint", "rpt-root");
             }
         }
         finally
         {
             _isPrinting = false;
             StateHasChanged();
-        }
-    }
-
-    /// <summary>
-    /// Thử gọi server-side PDF endpoint. Trả về true nếu thành công, false nếu fail.
-    /// Không hiển thị alert lỗi — caller xử lý fallback.
-    /// </summary>
-    private async Task<bool> TryServerSidePdf(string safeFileNameWithoutExt)
-    {
-        try
-        {
-            // Lấy JWT token từ sessionStorage
-            var token = await JS.InvokeAsync<string?>(
-                "sessionStorage.getItem", "auth_token");
-
-            if (string.IsNullOrWhiteSpace(token))
-            {
-                Console.WriteLine("[PdfDownload] No token in sessionStorage");
-                return false;
-            }
-
-            Console.WriteLine($"[PdfDownload] Calling api/pdf/inspection/{InspectionId}...");
-
-            using var req = new HttpRequestMessage(
-                HttpMethod.Get, $"api/pdf/inspection/{InspectionId}");
-            req.Headers.Authorization =
-                new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
-
-            var response = await Http.SendAsync(req);
-            Console.WriteLine($"[PdfDownload] Response: {(int)response.StatusCode} {response.StatusCode}");
-
-            if (!response.IsSuccessStatusCode)
-            {
-                var errMsg = await response.Content.ReadAsStringAsync();
-                Console.WriteLine($"[PdfDownload] Error body: {errMsg}");
-                return false;
-            }
-
-            // Verify đây là PDF, không phải HTML/JSON error trang
-            var contentType = response.Content.Headers.ContentType?.MediaType;
-            if (contentType != "application/pdf")
-            {
-                Console.WriteLine($"[PdfDownload] Unexpected content type: {contentType}");
-                return false;
-            }
-
-            var pdfBytes = await response.Content.ReadAsByteArrayAsync();
-            if (pdfBytes.Length < 100)  // PDF tối thiểu phải > 100 bytes
-            {
-                Console.WriteLine($"[PdfDownload] PDF too small: {pdfBytes.Length} bytes");
-                return false;
-            }
-
-            Console.WriteLine($"[PdfDownload] Received {pdfBytes.Length} bytes");
-
-            // Trigger download
-            var base64 = Convert.ToBase64String(pdfBytes);
-            await JS.InvokeVoidAsync("downloadPdfFromBase64", base64,
-                safeFileNameWithoutExt + ".pdf");
-            return true;
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"[PdfDownload] Server-side failed: {ex.Message}");
-            return false;
-        }
-    }
-
-    /// <summary>
-    /// Fallback: dùng window.print() của browser. User chọn "Save as PDF"
-    /// trong dialog print sẽ ra PDF với tên file = document.title.
-    /// </summary>
-    private async Task BrowserPrintFallback(string safeFileNameWithoutExt)
-    {
-        try
-        {
-            // Lưu title hiện tại để restore sau khi in xong
-            var originalTitle = await JS.InvokeAsync<string>("eval", "document.title");
-
-            // Set title = file name → tên file PDF mặc định khi Save as PDF
-            await JS.InvokeVoidAsync("eval",
-                $"document.title = {System.Text.Json.JsonSerializer.Serialize(safeFileNameWithoutExt)};");
-
-            // Trước khi print: gỡ class page-break-after khỏi section cuối cùng
-            // (tránh sinh trang trắng cuối khi browser thực thi break-after)
-            await JS.InvokeVoidAsync("eval", @"
-                (function(){
-                    var sections = document.querySelectorAll('#rpt-root .rpt-section.page-break-after');
-                    if (!sections.length) return;
-                    var last = sections[sections.length - 1];
-                    var next = last.nextElementSibling;
-                    while (next && !next.classList.contains('rpt-section')) {
-                        next = next.nextElementSibling;
-                    }
-                    if (!next || next.classList.contains('rpt-section-final')) {
-                        last.classList.remove('page-break-after');
-                        last.setAttribute('data-pba-removed', '1');
-                    }
-                })();
-            ");
-
-            // Trigger print (hàm waitImagesAndPrint đợi ảnh load xong rồi mới in)
-            await JS.InvokeVoidAsync("waitImagesAndPrint", "rpt-root");
-
-            // Sau print: phục hồi class page-break-after đã gỡ tạm thời
-            await JS.InvokeVoidAsync("eval", @"
-                setTimeout(function(){
-                    var el = document.querySelector('#rpt-root .rpt-section[data-pba-removed]');
-                    if (el) {
-                        el.classList.add('page-break-after');
-                        el.removeAttribute('data-pba-removed');
-                    }
-                }, 1500);
-            ");
-
-            // Restore title
-            await JS.InvokeVoidAsync("eval",
-                $"setTimeout(function(){{ document.title = {System.Text.Json.JsonSerializer.Serialize(originalTitle ?? "Inspection Report")}; }}, 1000);");
-        }
-        catch
-        {
-            // Fallback của fallback: gọi print không đổi title
-            await JS.InvokeVoidAsync("waitImagesAndPrint", "rpt-root");
         }
     }
 
@@ -2244,6 +2181,18 @@ else if (_data != null)
         font-style: italic;
         text-align: center;
     }
+    /* Hiển thị khi không có defect — thay cho 2 ô "No Photo" rỗng chiếm cả trang */
+    .rpt-no-defects {
+        padding: 18px 20px;
+        margin: 8px 0 16px;
+        background: #f5f9f5;
+        border: 1px dashed #c8d8c8;
+        border-radius: 6px;
+        font-size: 13px;
+        color: #5a8a5a;
+        font-style: italic;
+        text-align: center;
+    }
     .rpt-defect-remark {
         padding: 5px 10px;
         font-size: 11px;
@@ -2399,9 +2348,42 @@ else if (_data != null)
               biến layout thành 1 cột → cần ép lại desktop.
     ══════════════════════════════════════════ */
     @@media print {
+        /*
+           CSS Paged Media chuẩn: dùng @@page với margin box ở bottom để
+           render footer + page number ở mọi trang. Cách này không bị các
+           lỗi mà cơ chế "position: fixed" cũ gây ra:
+            - Footer không trùng lặp ở trang cuối
+            - Số trang luôn đúng (Chrome tự đếm)
+            - Không cần padding-bottom giả lập chỗ cho footer
+            - Hoạt động giống nhau trên Windows / macOS / mọi browser
+
+           Lưu ý: Chrome chỉ support 1 vài property trong @@page margin box
+           (content, font-*, color). Không hỗ trợ background, border. Nên
+           footer ở đây là plain text — đủ cho mục đích disclaimer.
+        */
         @@page {
             size: A4 portrait;
-            margin: 0;
+            margin: 12mm 12mm 28mm 12mm;  /* top, right, bottom, left */
+
+            @bottom-center {
+                content: "www.inticoo.com — The results presented herein reflect our findings at the time and place of inspection. This report does not release the seller or manufacturer from their contractual obligations, nor does it prejudice the buyer's right to seek compensation for any apparent or latent defects not identified during our random inspection or arising thereafter. This document does not constitute evidence of shipment. Final approval from the client is required prior to the release of the goods.";
+                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+                font-size: 8pt;
+                color: #555;
+                line-height: 1.4;
+                vertical-align: top;
+                padding-top: 4mm;
+            }
+
+            @bottom-right {
+                content: counter(page);
+                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+                font-size: 9pt;
+                font-weight: 700;
+                color: #888;
+                vertical-align: top;
+                padding-top: 4mm;
+            }
         }
 
         html, body {
@@ -2452,21 +2434,21 @@ else if (_data != null)
 
         .rpt-paper {
             max-width: 100% !important;
+            width: 100% !important;
             margin: 0 !important;
             padding: 0 !important;
             background: white !important;
-            counter-reset: page-counter;
         }
 
         /* Section: bỏ shadow + radius (chỉ có ý nghĩa trên màn hình),
-           giữ padding desktop, KHÔNG ép min-height 297mm — để section co theo
-           content, tránh sinh trang trắng thừa giữa các section ngắn. */
+           KHÔNG ép width 210mm vì @@page đã set margin → content area chỉ còn ~186mm.
+           Để section fill content area của @@page (width: 100%), tránh tràn lề. */
         .rpt-section {
             background: white !important;
             border-radius: 0 !important;
             box-shadow: none !important;
             margin: 0 !important;
-            width: 210mm !important;
+            width: 100% !important;
             min-height: 0 !important;
             height: auto !important;
             max-height: none !important;
@@ -2719,48 +2701,16 @@ else if (_data != null)
               fixed che phía dưới.
         */
 
-        /* (1) Ẩn footer cũ trong từng section */
-        .rpt-footer { display: none !important; }
+        /* Ẩn cả footer cũ trong từng section LẪN running footer cũ
+           — đã thay bằng @@page bottom-center / bottom-right ở trên. */
+        .rpt-footer,
+        .rpt-print-footer { display: none !important; }
 
-        /* (2) Footer running ở đáy mọi trang */
-        .rpt-print-footer {
-            display: block !important;
-            position: fixed !important;
-            bottom: 0 !important;
-            left: 0 !important;
-            right: 0 !important;
-            width: 210mm !important;
-            margin: 0 auto !important;
-            padding: 6px 12mm 8px !important;
-            background: white !important;
-            border-top: 1px solid #e8edf5 !important;
-            box-sizing: border-box !important;
-            z-index: 9999 !important;
-        }
-        .rpt-print-footer-text {
-            font-size: 9pt !important;
-            line-height: 1.45 !important;
-            color: #555 !important;
-            text-align: center !important;
-            margin: 0 !important;
-        }
-
-        /* (3) Section: padding-bottom đủ chỗ cho footer fixed (~24mm).
-              Ghi đè padding-bottom của rule .rpt-section bên trên. */
+        /* Section padding-bottom thường (không cần chừa chỗ cho footer fixed
+           vì @@page margin đã đảm nhận việc đó). */
         .rpt-section,
         .rpt-section-final {
-            padding-bottom: 24mm !important;
-        }
-        /* Page number ở góc phải dưới của running footer.
-           counter(page) là built-in của CSS Paged Media, không cần increment. */
-        .rpt-print-footer::after {
-            content: counter(page);
-            position: absolute;
-            right: 12mm;
-            bottom: 8px;
-            font-size: 9pt;
-            font-weight: 700;
-            color: #888;
+            padding-bottom: 16px !important;
         }
     }
     /* ══════════════════════════════════════════

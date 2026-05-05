@@ -61,21 +61,31 @@ namespace InticooInspection.API.Controllers
 
                 // ── Filter in-memory ──
                 // DB mapping: 0=New, 1=OnGoing, 2=Completed, 3=Cancel, 4=Pending
+                // UI hiển thị: New | Delay | Completed | Cancel
+                // → "Delay" filter match cả OnGoing(1) và Pending(4) để gộp
                 if (!string.IsNullOrWhiteSpace(status))
                 {
                     var key = status.Trim().ToLower().Replace(" ", "").Replace("_", "");
-                    var sv = key switch
+                    if (key == "delay")
                     {
-                        "new"       => (int?)0,
-                        "ongoing"   => (int?)1,
-                        "completed" => (int?)2,
-                        "cancel"    => (int?)3,
-                        "cancelled" => (int?)3,
-                        "pending"   => (int?)4,
-                        _           => null
-                    };
-                    if (sv.HasValue)
-                        allRaw = allRaw.Where(i => (int)i.StatusVal == sv.Value).ToList();
+                        // Delay = OnGoing(1) hoặc Pending(4) ở DB
+                        allRaw = allRaw.Where(i => (int)i.StatusVal == 1 || (int)i.StatusVal == 4).ToList();
+                    }
+                    else
+                    {
+                        var sv = key switch
+                        {
+                            "new"       => (int?)0,
+                            "ongoing"   => (int?)1,   // legacy alias for Delay
+                            "completed" => (int?)2,
+                            "cancel"    => (int?)3,
+                            "cancelled" => (int?)3,
+                            "pending"   => (int?)4,   // legacy alias for Delay
+                            _           => null
+                        };
+                        if (sv.HasValue)
+                            allRaw = allRaw.Where(i => (int)i.StatusVal == sv.Value).ToList();
+                    }
                 }
 
                 if (!string.IsNullOrWhiteSpace(search))
@@ -201,15 +211,15 @@ namespace InticooInspection.API.Controllers
                     .ToDictionary(g => g.Key, g => g.ToList());
 
                 // ── Map enums → strings in-memory ──
-                // 0=New | 1=OnGoing | 2=Completed | 3=Pending | 4=Cancel
-                // DB mapping: 0=New, 1=OnGoing, 2=Completed, 3=Cancel, 4=Pending
+                // DB enum: 0=New, 1=OnGoing, 2=Completed, 3=Cancel, 4=Pending
+                // UI hiển thị: New | Delay | Completed | Cancel (gộp OnGoing & Pending vào Delay)
                 static string MapStatus(InspectionStatus st) => (int)st switch
                 {
                     0 => "New",
-                    1 => "OnGoing",
+                    1 => "Delay",      // was "OnGoing"
                     2 => "Completed",
                     3 => "Cancel",
-                    4 => "Pending",
+                    4 => "Delay",      // was "Pending" — gộp vào Delay
                     _ => "New"
                 };
                 static string MapInspType(InspectionType t) => t switch
@@ -398,14 +408,16 @@ namespace InticooInspection.API.Controllers
                 }
             }
 
-            // MapStatus: nhất quán với GetAll (0=New,1=OnGoing,2=Completed,3=Cancel,4=Pending)
+            // MapStatus: nhất quán với GetAll
+            // DB: 0=New, 1=OnGoing, 2=Completed, 3=Cancel, 4=Pending
+            // UI: New | Delay | Completed | Cancel (gộp 1 & 4 vào Delay)
             static string MapStatusForEdit(InspectionStatus st) => (int)st switch
             {
                 0 => "New",
-                1 => "OnGoing",
+                1 => "Delay",      // was "OnGoing"
                 2 => "Completed",
                 3 => "Cancel",
-                4 => "Pending",
+                4 => "Delay",      // was "Pending"
                 _ => "New"
             };
 

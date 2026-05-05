@@ -31,9 +31,8 @@
         <select class="filter-select" @bind="_statusFilter" @bind:after="() => LoadPage(1)">
             <option value="">All Status</option>
             <option value="New">New</option>
-            <option value="OnGoing">On Going</option>
+            <option value="Delay">Delay</option>
             <option value="Completed">Completed</option>
-            <option value="Pending">Pending</option>
             <option value="Cancel">Cancel</option>
         </select>
         <select class="filter-select" @bind="_categoryFilter" @bind:after="() => LoadPage(1)">
@@ -126,7 +125,7 @@
                                     <span class="@GetBadgeClass(it.Status)">@GetStatusLabel(it.Status)</span>
                                 </td>
                                 <td class="tc">
-                                    @* Nếu status là New, OnGoing, Pending → cho phép Edit + Delete *@
+                                    @* Nếu status là New, Delay → cho phép Edit + Delete *@
                                     @if (!_isCustomer)
                                     {
                                         @if (CanEdit(it.Status))
@@ -369,7 +368,9 @@
     private int TotalPages()        => (_total + _pageSize - 1) / _pageSize;
 
     // ── Status logic ──────────────────────────────────────────────
-    // 0 = New | 1 = OnGoing | 2 = Completed | 3 = Pending | 4 = Cancel
+    // Status hiển thị: New | Delay | Completed | Cancel
+    // (Database enum: 0=New, 1=OnGoing, 2=Completed, 3=Cancel, 4=Pending —
+    //  cả OnGoing và Pending đều map thành "Delay" để hiển thị đồng nhất.)
 
     /// <summary>Map status string từ API về chuẩn hiển thị.</summary>
     private static string NormalizeStatus(string? raw)
@@ -380,30 +381,29 @@
         return s switch
         {
             "new"       => "New",
-            "ongoing"   => "OnGoing",
+            "ongoing"   => "Delay",   // OnGoing legacy → Delay
+            "pending"   => "Delay",   // Pending legacy → Delay
+            "delay"     => "Delay",
             "completed" => "Completed",
-            "pending"   => "Pending",
             "cancel"    => "Cancel",
             "cancelled" => "Cancel",
             _           => raw.Trim()   // giữ nguyên thay vì nuốt thành "New"
         };
     }
 
-    /// <summary>Cho phép Edit/Delete khi: New (0), OnGoing (1), Pending (3).</summary>
+    /// <summary>Cho phép Edit/Delete khi: New, Delay (chưa hoàn tất / chưa cancel).</summary>
     private static bool CanEdit(string status) => status switch
     {
-        "New"     => true,
-        "OnGoing" => true,
-        "Pending" => true,
-        _         => false
+        "New"   => true,
+        "Delay" => true,
+        _       => false
     };
 
     private string GetBadgeClass(string status) => status switch
     {
         "New"       => "badge s-new",
-        "OnGoing"   => "badge s-progress",
+        "Delay"     => "badge s-pending",
         "Completed" => "badge s-active",
-        "Pending"   => "badge s-pending",
         "Cancel"    => "badge s-inactive",
         _           => "badge s-new"
     };
@@ -411,9 +411,8 @@
     private string GetStatusLabel(string status) => status switch
     {
         "New"       => "New",
-        "OnGoing"   => "On Going",
+        "Delay"     => "Delay",
         "Completed" => "Completed",
-        "Pending"   => "Pending",
         "Cancel"    => "Cancel",
         _           => status
     };

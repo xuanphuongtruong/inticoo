@@ -33,6 +33,15 @@ namespace InticooInspection.Domain.Entities
         // ── Remark & Reference ───────────────────────────────────────
         public string? Notes        { get; set; }             // REMARK
 
+        // ── Inspection Report Preferences ────────────────────────────
+        // Có nhận inspection report tự động qua email khi inspection complete?
+        public bool    ReceiveInspectionReport { get; set; } = true;
+        // Email type: "Registered" = dùng Email đã đăng ký phía trên,
+        //             "Alternate"  = dùng AlternateReportEmail
+        public string? ReportEmailType         { get; set; } = "Registered";
+        // Email thay thế (chỉ dùng khi ReportEmailType = "Alternate")
+        public string? AlternateReportEmail    { get; set; }
+
         // ── Legacy / kept for compatibility ─────────────────────────
         public string? OfficePhone  { get; set; }             // giữ lại, map từ Phone cũ
         public string? Address      { get; set; }             // giữ lại, map từ Address1

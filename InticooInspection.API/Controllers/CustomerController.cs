@@ -49,6 +49,9 @@ namespace InticooInspection.API.Controllers
                     c.Country,      c.PostalCode,
                     c.ContactPerson,c.Position,     c.Mobile,       c.Email,
                     c.OfficePhone,  c.Notes,        c.IsActive,     c.CreatedAt,
+                    c.ReceiveInspectionReport,
+                    c.ReportEmailType,
+                    c.AlternateReportEmail,
                     FileCount = _db.CustomerFiles.Count(f => f.CustomerId == c.Id)
                 })
                 .ToListAsync();
@@ -84,6 +87,14 @@ namespace InticooInspection.API.Controllers
         {
             if (string.IsNullOrWhiteSpace(request.CompanyName))
                 return BadRequest(new { message = "Company name is required." });
+
+            // Validate alternate email khi user chọn "Alternate"
+            if (request.ReceiveInspectionReport
+                && string.Equals(request.ReportEmailType, "Alternate", StringComparison.OrdinalIgnoreCase)
+                && string.IsNullOrWhiteSpace(request.AlternateReportEmail))
+            {
+                return BadRequest(new { message = "Alternate email is required when 'Use Alternate Email' is selected." });
+            }
 
             var lastCustomer = await _db.Customers
                 .OrderByDescending(c => c.Id)
@@ -121,7 +132,14 @@ namespace InticooInspection.API.Controllers
                 OfficePhone   = request.OfficePhone,
                 Notes         = request.Notes,
                 IsActive      = request.IsActive,
-                CreatedAt     = DateTime.UtcNow
+                CreatedAt     = DateTime.UtcNow,
+
+                // Inspection Report Preferences
+                ReceiveInspectionReport = request.ReceiveInspectionReport,
+                ReportEmailType         = string.IsNullOrWhiteSpace(request.ReportEmailType)
+                                              ? "Registered"
+                                              : request.ReportEmailType,
+                AlternateReportEmail    = request.AlternateReportEmail
             };
             _db.Customers.Add(customer);
             await _db.SaveChangesAsync();
@@ -137,6 +155,14 @@ namespace InticooInspection.API.Controllers
 
             if (string.IsNullOrWhiteSpace(request.CompanyName))
                 return BadRequest(new { message = "Company name is required." });
+
+            // Validate alternate email
+            if (request.ReceiveInspectionReport
+                && string.Equals(request.ReportEmailType, "Alternate", StringComparison.OrdinalIgnoreCase)
+                && string.IsNullOrWhiteSpace(request.AlternateReportEmail))
+            {
+                return BadRequest(new { message = "Alternate email is required when 'Use Alternate Email' is selected." });
+            }
 
             customer.CustomerId    = request.CustomerId;
             customer.CompanyName   = request.CompanyName;
@@ -160,6 +186,13 @@ namespace InticooInspection.API.Controllers
             customer.OfficePhone   = request.OfficePhone;
             customer.Notes         = request.Notes;
             customer.IsActive      = request.IsActive;
+
+            // Inspection Report Preferences
+            customer.ReceiveInspectionReport = request.ReceiveInspectionReport;
+            customer.ReportEmailType         = string.IsNullOrWhiteSpace(request.ReportEmailType)
+                                                   ? "Registered"
+                                                   : request.ReportEmailType;
+            customer.AlternateReportEmail    = request.AlternateReportEmail;
 
             await _db.SaveChangesAsync();
             return Ok(new { success = true });
@@ -201,5 +234,10 @@ namespace InticooInspection.API.Controllers
         public string? OfficePhone   { get; set; }
         public string? Notes         { get; set; }
         public bool    IsActive      { get; set; } = true;
+
+        // ── Inspection Report Preferences ────────────────────────────
+        public bool    ReceiveInspectionReport { get; set; } = true;
+        public string? ReportEmailType         { get; set; } = "Registered";
+        public string? AlternateReportEmail    { get; set; }
     }
 }
