@@ -9,8 +9,17 @@ namespace InticooInspection.API.Services
 {
     public interface IInspectionMailService
     {
+        // ── Vendor (cũ) ───────────────────────────────────────────────
         Task<MailRunResult> SendWeeklyVendorMailsAsync(CancellationToken ct = default);
         Task<(bool ok, string? error, int inspectionCount)> SendForVendorAsync(string vendorCode, CancellationToken ct = default);
+
+        // ── Customer (mới) ────────────────────────────────────────────
+        Task<MailRunResult> SendWeeklyCustomerMailsAsync(CancellationToken ct = default);
+        Task<(bool ok, string? error, int inspectionCount)> SendForCustomerAsync(string customerId, CancellationToken ct = default);
+
+        // ── Test mail (preview template thực tế) ──────────────────────
+        Task<(bool ok, string? error)> SendTestVendorMailAsync(string toEmail, CancellationToken ct = default);
+        Task<(bool ok, string? error)> SendTestCustomerMailAsync(string toEmail, CancellationToken ct = default);
     }
 
     public class MailRunResult
@@ -29,6 +38,9 @@ namespace InticooInspection.API.Services
         private readonly IMailConfigProvider _configProvider;
         private readonly ILogger<InspectionMailService> _logger;
 
+        // Subject chuẩn dùng chung cho cả vendor + customer (theo ảnh template)
+        private const string WEEKLY_SUBJECT = "Subject : Summary Schedule : 14 Days Inspection";
+
         public InspectionMailService(
             AppDbContext db,
             IMailConfigProvider configProvider,
@@ -39,7 +51,9 @@ namespace InticooInspection.API.Services
             _logger         = logger;
         }
 
-        // ─────────────────────────────────────────────────────────────
+        // ═════════════════════════════════════════════════════════════
+        //  VENDOR FLOW
+        // ═════════════════════════════════════════════════════════════
         public async Task<MailRunResult> SendWeeklyVendorMailsAsync(CancellationToken ct = default)
         {
             var result = new MailRunResult();
@@ -48,7 +62,6 @@ namespace InticooInspection.API.Services
             var fromDate = DateTime.Today;
             var toDate   = fromDate.AddDays(cfg.LookAheadDays);
 
-            // Lấy inspection sắp tới (Pending hoặc InProgress)
             var upcoming = await _db.Inspections
                 .AsNoTracking()
                 .Where(i => i.InspectionDate >= fromDate
@@ -62,17 +75,15 @@ namespace InticooInspection.API.Services
 
             if (upcoming.Count == 0)
             {
-                _logger.LogInformation("Không có inspection nào trong {days} ngày tới", cfg.LookAheadDays);
+                _logger.LogInformation("Không có inspection nào trong {days} ngày tới (vendor)", cfg.LookAheadDays);
                 return result;
             }
 
-            // Group theo VendorId (trên Inspection là string code)
             var byVendor = upcoming
                 .Where(i => !string.IsNullOrEmpty(i.VendorId))
                 .GroupBy(i => i.VendorId!)
                 .ToDictionary(g => g.Key, g => g.ToList());
 
-            // Lấy vendor info active
             var vendorCodes = byVendor.Keys.ToList();
             var vendors = await _db.Vendors
                 .AsNoTracking()
@@ -99,19 +110,18 @@ namespace InticooInspection.API.Services
                     continue;
                 }
 
-                var subject = $"[Inticoo] Lịch Inspection tuần này - {vendor.Name}";
-                var html    = BuildEmailHtml(vendor, vendorInspections);
+                var html = BuildVendorEmailHtml(vendor, vendorInspections);
 
                 var (ok, error) = await SendMailAsync(cfg,
-                    vendor.ContactEmail,
+                    new[] { vendor.ContactEmail },
                     vendor.ContactName ?? vendor.Name,
-                    subject, html, ct);
+                    WEEKLY_SUBJECT, html, ct);
 
                 _db.MailLogs.Add(new MailLog
                 {
                     VendorCode      = vendor.Code,
                     ToEmail         = vendor.ContactEmail,
-                    Subject         = subject,
+                    Subject         = WEEKLY_SUBJECT,
                     SentAt          = DateTime.UtcNow,
                     IsSuccess       = ok,
                     ErrorMessage    = error,
@@ -121,7 +131,7 @@ namespace InticooInspection.API.Services
                 if (ok)
                 {
                     result.VendorsSent++;
-                    _logger.LogInformation("Đã gửi tới {email} ({count} inspection)",
+                    _logger.LogInformation("Đã gửi Vendor mail tới {email} ({count} inspection)",
                         vendor.ContactEmail, vendorInspections.Count);
                 }
                 else
@@ -130,14 +140,13 @@ namespace InticooInspection.API.Services
                     result.Errors.Add($"{vendor.Code}: {error}");
                 }
 
-                await Task.Delay(500, ct);  // tránh SMTP rate-limit
+                await Task.Delay(500, ct);
             }
 
             await _db.SaveChangesAsync(ct);
             return result;
         }
 
-        // ─────────────────────────────────────────────────────────────
         public async Task<(bool ok, string? error, int inspectionCount)> SendForVendorAsync(
             string vendorCode, CancellationToken ct = default)
         {
@@ -146,7 +155,7 @@ namespace InticooInspection.API.Services
             var vendor = await _db.Vendors.AsNoTracking()
                 .FirstOrDefaultAsync(v => v.Code == vendorCode, ct);
 
-            if (vendor == null)             return (false, "Không tìm thấy vendor", 0);
+            if (vendor == null) return (false, "Không tìm thấy vendor", 0);
             if (string.IsNullOrWhiteSpace(vendor.ContactEmail))
                 return (false, "Vendor chưa có ContactEmail", 0);
 
@@ -165,19 +174,18 @@ namespace InticooInspection.API.Services
             if (inspections.Count == 0)
                 return (false, "Vendor không có inspection nào trong khoảng thời gian này", 0);
 
-            var subject = $"[Inticoo] Lịch Inspection tuần này - {vendor.Name}";
-            var html    = BuildEmailHtml(vendor, inspections);
+            var html = BuildVendorEmailHtml(vendor, inspections);
 
             var (ok, error) = await SendMailAsync(cfg,
-                vendor.ContactEmail,
+                new[] { vendor.ContactEmail },
                 vendor.ContactName ?? vendor.Name,
-                subject, html, ct);
+                WEEKLY_SUBJECT, html, ct);
 
             _db.MailLogs.Add(new MailLog
             {
                 VendorCode      = vendor.Code,
                 ToEmail         = vendor.ContactEmail,
-                Subject         = subject,
+                Subject         = WEEKLY_SUBJECT,
                 SentAt          = DateTime.UtcNow,
                 IsSuccess       = ok,
                 ErrorMessage    = error,
@@ -188,10 +196,308 @@ namespace InticooInspection.API.Services
             return (ok, error, inspections.Count);
         }
 
-        // ─────────────────────────────────────────────────────────────
+        // ═════════════════════════════════════════════════════════════
+        //  CUSTOMER FLOW
+        // ═════════════════════════════════════════════════════════════
+        public async Task<MailRunResult> SendWeeklyCustomerMailsAsync(CancellationToken ct = default)
+        {
+            var result = new MailRunResult();
+            var cfg    = await _configProvider.GetAsync(ct);
+
+            var fromDate = DateTime.Today;
+            var toDate   = fromDate.AddDays(cfg.LookAheadDays);
+
+            var upcoming = await _db.Inspections
+                .AsNoTracking()
+                .Where(i => i.InspectionDate >= fromDate
+                         && i.InspectionDate <  toDate
+                         && (i.Status == InspectionStatus.Pending
+                          || i.Status == InspectionStatus.InProgress))
+                .OrderBy(i => i.InspectionDate)
+                .ToListAsync(ct);
+
+            result.InspectionsTotal = upcoming.Count;
+
+            if (upcoming.Count == 0)
+            {
+                _logger.LogInformation("Không có inspection nào trong {days} ngày tới (customer)", cfg.LookAheadDays);
+                return result;
+            }
+
+            // Group theo CustomerId
+            var byCustomer = upcoming
+                .Where(i => !string.IsNullOrEmpty(i.CustomerId))
+                .GroupBy(i => i.CustomerId!)
+                .ToDictionary(g => g.Key, g => g.ToList());
+
+            var customerIds = byCustomer.Keys.ToList();
+
+            // Lấy customer active + có nhận inspection report
+            var customers = await _db.Customers
+                .AsNoTracking()
+                .Where(c => customerIds.Contains(c.CustomerId)
+                         && c.IsActive
+                         && c.ReceiveInspectionReport)
+                .ToListAsync(ct);
+
+            // Field VendorsTotal/VendorsSent... được tái sử dụng cho customer counts
+            result.VendorsTotal = customers.Count;
+
+            foreach (var customer in customers)
+            {
+                ct.ThrowIfCancellationRequested();
+
+                var recipients = ResolveCustomerRecipients(customer);
+                if (recipients.Count == 0)
+                {
+                    result.VendorsSkipped++;
+                    _logger.LogWarning("Customer {id} - {name} không có email hợp lệ (Type={type})",
+                        customer.CustomerId, customer.CompanyName, customer.ReportEmailType);
+                    continue;
+                }
+
+                if (!byCustomer.TryGetValue(customer.CustomerId, out var customerInspections) || customerInspections.Count == 0)
+                {
+                    result.VendorsSkipped++;
+                    continue;
+                }
+
+                var html = BuildCustomerEmailHtml(customer, customerInspections);
+
+                var (ok, error) = await SendMailAsync(cfg,
+                    recipients,
+                    customer.ContactPerson ?? customer.CompanyName,
+                    WEEKLY_SUBJECT, html, ct);
+
+                _db.MailLogs.Add(new MailLog
+                {
+                    VendorCode      = $"CUS:{customer.CustomerId}",
+                    ToEmail         = string.Join("; ", recipients),
+                    Subject         = WEEKLY_SUBJECT,
+                    SentAt          = DateTime.UtcNow,
+                    IsSuccess       = ok,
+                    ErrorMessage    = error,
+                    InspectionCount = customerInspections.Count
+                });
+
+                if (ok)
+                {
+                    result.VendorsSent++;
+                    _logger.LogInformation("Đã gửi Customer mail tới {emails} ({count} inspection)",
+                        string.Join(", ", recipients), customerInspections.Count);
+                }
+                else
+                {
+                    result.VendorsFailed++;
+                    result.Errors.Add($"{customer.CustomerId}: {error}");
+                }
+
+                await Task.Delay(500, ct);
+            }
+
+            await _db.SaveChangesAsync(ct);
+            return result;
+        }
+
+        public async Task<(bool ok, string? error, int inspectionCount)> SendForCustomerAsync(
+            string customerId, CancellationToken ct = default)
+        {
+            var cfg = await _configProvider.GetAsync(ct);
+
+            var customer = await _db.Customers.AsNoTracking()
+                .FirstOrDefaultAsync(c => c.CustomerId == customerId, ct);
+
+            if (customer == null) return (false, "Không tìm thấy customer", 0);
+
+            var recipients = ResolveCustomerRecipients(customer);
+            if (recipients.Count == 0)
+                return (false, $"Customer chưa có email hợp lệ (Type={customer.ReportEmailType ?? "Registered"})", 0);
+
+            var fromDate = DateTime.Today;
+            var toDate   = fromDate.AddDays(cfg.LookAheadDays);
+
+            var inspections = await _db.Inspections.AsNoTracking()
+                .Where(i => i.CustomerId == customerId
+                         && i.InspectionDate >= fromDate
+                         && i.InspectionDate <  toDate
+                         && (i.Status == InspectionStatus.Pending
+                          || i.Status == InspectionStatus.InProgress))
+                .OrderBy(i => i.InspectionDate)
+                .ToListAsync(ct);
+
+            if (inspections.Count == 0)
+                return (false, "Customer không có inspection nào trong khoảng thời gian này", 0);
+
+            var html = BuildCustomerEmailHtml(customer, inspections);
+
+            var (ok, error) = await SendMailAsync(cfg,
+                recipients,
+                customer.ContactPerson ?? customer.CompanyName,
+                WEEKLY_SUBJECT, html, ct);
+
+            _db.MailLogs.Add(new MailLog
+            {
+                VendorCode      = $"CUS:{customer.CustomerId}",
+                ToEmail         = string.Join("; ", recipients),
+                Subject         = WEEKLY_SUBJECT,
+                SentAt          = DateTime.UtcNow,
+                IsSuccess       = ok,
+                ErrorMessage    = error,
+                InspectionCount = inspections.Count
+            });
+            await _db.SaveChangesAsync(ct);
+
+            return (ok, error, inspections.Count);
+        }
+
+        // ═════════════════════════════════════════════════════════════
+        //  TEST MAIL (preview template thực tế bằng dữ liệu mẫu)
+        // ═════════════════════════════════════════════════════════════
+        public async Task<(bool ok, string? error)> SendTestVendorMailAsync(string toEmail, CancellationToken ct = default)
+        {
+            if (string.IsNullOrWhiteSpace(toEmail))
+                return (false, "Email không được để trống");
+
+            var cfg = await _configProvider.GetAsync(ct);
+
+            var sampleVendor = new Vendor
+            {
+                Code         = "VD-TEST",
+                Name         = "Sample Vendor Co., Ltd.",
+                ContactName  = "Vendor Contact",
+                ContactEmail = toEmail
+            };
+            var sampleInspections = BuildSampleInspections();
+
+            var html = BuildVendorEmailHtml(sampleVendor, sampleInspections);
+            var subject = "[TEST] " + WEEKLY_SUBJECT;
+
+            var (ok, error) = await SendMailAsync(cfg,
+                new[] { toEmail }, sampleVendor.ContactName!, subject, html, ct);
+
+            _db.MailLogs.Add(new MailLog
+            {
+                VendorCode      = "TEST-VENDOR",
+                ToEmail         = toEmail,
+                Subject         = subject,
+                SentAt          = DateTime.UtcNow,
+                IsSuccess       = ok,
+                ErrorMessage    = error,
+                InspectionCount = sampleInspections.Count
+            });
+            await _db.SaveChangesAsync(ct);
+
+            return (ok, error);
+        }
+
+        public async Task<(bool ok, string? error)> SendTestCustomerMailAsync(string toEmail, CancellationToken ct = default)
+        {
+            if (string.IsNullOrWhiteSpace(toEmail))
+                return (false, "Email không được để trống");
+
+            var cfg = await _configProvider.GetAsync(ct);
+
+            var sampleCustomer = new Customer
+            {
+                CustomerId    = "CP-TEST",
+                CompanyName   = "Sample Customer Co., Ltd.",
+                ContactPerson = "Customer Contact",
+                Email         = toEmail
+            };
+            var sampleInspections = BuildSampleInspections();
+
+            var html = BuildCustomerEmailHtml(sampleCustomer, sampleInspections);
+            var subject = "[TEST] " + WEEKLY_SUBJECT;
+
+            var (ok, error) = await SendMailAsync(cfg,
+                new[] { toEmail }, sampleCustomer.ContactPerson!, subject, html, ct);
+
+            _db.MailLogs.Add(new MailLog
+            {
+                VendorCode      = "TEST-CUSTOMER",
+                ToEmail         = toEmail,
+                Subject         = subject,
+                SentAt          = DateTime.UtcNow,
+                IsSuccess       = ok,
+                ErrorMessage    = error,
+                InspectionCount = sampleInspections.Count
+            });
+            await _db.SaveChangesAsync(ct);
+
+            return (ok, error);
+        }
+
+        // ═════════════════════════════════════════════════════════════
+        //  HELPERS
+        // ═════════════════════════════════════════════════════════════
+
+        /// <summary>
+        /// Tính danh sách email nhận của customer theo ReportEmailType:
+        ///   - "Registered" (default): gửi cả Email VÀ AlternateReportEmail (nếu có)
+        ///   - "Alternate":             chỉ gửi AlternateReportEmail
+        /// </summary>
+        private static List<string> ResolveCustomerRecipients(Customer c)
+        {
+            var list = new List<string>();
+            var type = (c.ReportEmailType ?? "Registered").Trim();
+
+            if (string.Equals(type, "Alternate", StringComparison.OrdinalIgnoreCase))
+            {
+                if (!string.IsNullOrWhiteSpace(c.AlternateReportEmail))
+                    list.Add(c.AlternateReportEmail.Trim());
+            }
+            else // Registered (default)
+            {
+                if (!string.IsNullOrWhiteSpace(c.Email))
+                    list.Add(c.Email.Trim());
+                if (!string.IsNullOrWhiteSpace(c.AlternateReportEmail))
+                    list.Add(c.AlternateReportEmail.Trim());
+            }
+
+            // Khử trùng (case-insensitive) và validate cơ bản
+            return list
+                .Where(e => e.Contains('@'))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+        }
+
+        private static List<Inspection> BuildSampleInspections()
+        {
+            var today = DateTime.Today;
+            return new List<Inspection>
+            {
+                new Inspection
+                {
+                    InspectionDate = today.AddDays(2),
+                    JobNumber      = "JB-2025-0001",
+                    InspectionType = InspectionType.PST,
+                    PoNumber       = "PO-1001",
+                    ProductName    = "Wooden Side Table",
+                    ItemNumber     = "WST-001",
+                    CustomerName   = "Sample Customer Co., Ltd.",
+                    VendorName     = "Sample Vendor Co., Ltd.",
+                    InspectorName  = "John Doe",
+                },
+                new Inspection
+                {
+                    InspectionDate = today.AddDays(5),
+                    JobNumber      = "JB-2025-0002",
+                    InspectionType = InspectionType.DPI,
+                    PoNumber       = "PO-1002",
+                    ProductName    = "Storage Cabinet",
+                    ItemNumber     = "SCB-002",
+                    CustomerName   = "Sample Customer Co., Ltd.",
+                    VendorName     = "Sample Vendor Co., Ltd.",
+                    InspectorName  = "Jane Smith",
+                }
+            };
+        }
+
         private async Task<(bool ok, string? error)> SendMailAsync(
             MailConfigSnapshot cfg,
-            string toEmail, string toName, string subject, string htmlBody, CancellationToken ct)
+            IReadOnlyCollection<string> toEmails,
+            string toDisplayName,
+            string subject, string htmlBody, CancellationToken ct)
         {
             try
             {
@@ -212,97 +518,176 @@ namespace InticooInspection.API.Services
                     BodyEncoding    = Encoding.UTF8,
                     SubjectEncoding = Encoding.UTF8
                 };
-                msg.To.Add(new MailAddress(toEmail, toName));
+
+                bool first = true;
+                foreach (var addr in toEmails)
+                {
+                    if (string.IsNullOrWhiteSpace(addr)) continue;
+                    if (first)
+                    {
+                        msg.To.Add(new MailAddress(addr, toDisplayName));
+                        first = false;
+                    }
+                    else
+                    {
+                        msg.To.Add(new MailAddress(addr));
+                    }
+                }
+
+                if (msg.To.Count == 0)
+                    return (false, "Không có địa chỉ email hợp lệ");
 
                 await smtp.SendMailAsync(msg, ct);
                 return (true, null);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Lỗi gửi mail tới {email}", toEmail);
+                _logger.LogError(ex, "Lỗi gửi mail tới {emails}", string.Join(", ", toEmails));
                 return (false, ex.Message);
             }
         }
 
         // ─────────────────────────────────────────────────────────────
-        private static string BuildEmailHtml(Vendor vendor, List<Inspection> inspections)
+        //  TEMPLATE: VENDOR
+        //  Theo ảnh: header "Vendor", subject "Summary Schedule : 14 Days Inspection",
+        //  bảng có cột Customer Name, kèm đoạn "48 hours rule".
+        // ─────────────────────────────────────────────────────────────
+        private static string BuildVendorEmailHtml(Vendor vendor, List<Inspection> inspections)
         {
             var sb = new StringBuilder();
 
             sb.Append(@"<!DOCTYPE html>
-<html><head><meta charset='utf-8'><title>Inspection Schedule</title></head>
-<body style='font-family:Segoe UI,Arial,sans-serif;color:#333;background:#f5f7fb;padding:20px;'>
-  <div style='max-width:760px;margin:0 auto;background:#fff;border-radius:8px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);'>
-    <div style='background:linear-gradient(135deg,#1e6091 0%,#2a9d8f 100%);color:#fff;padding:24px;'>
-      <h2 style='margin:0;font-size:22px;'>📋 Inspection Schedule - Weekly Notice</h2>
-      <p style='margin:6px 0 0;opacity:.9;font-size:14px;'>Inticoo Inspection System</p>
-    </div>
-    <div style='padding:24px;'>");
-
-            sb.Append($@"
-      <p>Dear <strong>{Esc(vendor.ContactName ?? vendor.Name)}</strong>,</p>
-      <p>This is a friendly reminder of the upcoming inspections scheduled for <strong>{Esc(vendor.Name)}</strong> ({Esc(vendor.Code)}) in the next few days.</p>
-      <p>Please prepare the following items and ensure your team is available on the scheduled dates:</p>");
+<html><head><meta charset='utf-8'><title>Summary Schedule - Vendor</title></head>
+<body style='font-family:Times New Roman,Times,serif;color:#000;background:#fff;padding:20px;margin:0;'>
+  <div style='max-width:900px;margin:0 auto;'>
+    <h2 style='text-align:center;color:#d92121;font-weight:700;margin:0 0 24px;'>Vendor</h2>
+    <p style='font-weight:700;font-size:15px;margin:0 0 14px;'>Subject : Summary Schedule : 14 Days Inspection</p>
+    <p style='margin:0 0 12px;'>Dear Vendor,</p>
+    <p style='margin:0 0 14px;'>Please find below the summary schedule for your upcoming 14-day inspection:</p>");
 
             sb.Append(@"
-      <table style='width:100%;border-collapse:collapse;margin-top:16px;font-size:14px;'>
-        <thead>
-          <tr style='background:#1e6091;color:#fff;'>
-            <th style='padding:10px;text-align:left;border:1px solid #1e6091;'>Date</th>
-            <th style='padding:10px;text-align:left;border:1px solid #1e6091;'>Job No.</th>
-            <th style='padding:10px;text-align:left;border:1px solid #1e6091;'>Type</th>
-            <th style='padding:10px;text-align:left;border:1px solid #1e6091;'>Product</th>
-            <th style='padding:10px;text-align:left;border:1px solid #1e6091;'>Customer</th>
-            <th style='padding:10px;text-align:left;border:1px solid #1e6091;'>PO Number</th>
-          </tr>
-        </thead>
-        <tbody>");
+    <table style='width:100%;border-collapse:collapse;font-size:13px;'>
+      <thead>
+        <tr>
+          <th style='border:1px solid #000;padding:6px 8px;text-align:left;'>No</th>
+          <th style='border:1px solid #000;padding:6px 8px;text-align:left;'>Inspection Date</th>
+          <th style='border:1px solid #000;padding:6px 8px;text-align:left;'>Job Number</th>
+          <th style='border:1px solid #000;padding:6px 8px;text-align:left;'>Customer Name</th>
+          <th style='border:1px solid #000;padding:6px 8px;text-align:left;'>Inspection Type</th>
+          <th style='border:1px solid #000;padding:6px 8px;text-align:left;'>P.O. Number</th>
+          <th style='border:1px solid #000;padding:6px 8px;text-align:left;'>Product Name</th>
+          <th style='border:1px solid #000;padding:6px 8px;text-align:left;'>Product Number</th>
+          <th style='border:1px solid #000;padding:6px 8px;text-align:left;'>Inspector Name</th>
+        </tr>
+      </thead>
+      <tbody>");
 
+            int no = 1;
             foreach (var i in inspections)
             {
-                var typeLabel = i.InspectionType switch
-                {
-                    InspectionType.PPT => "PPT (Pre-Production)",
-                    InspectionType.DPI => "DPI (During Production)",
-                    InspectionType.PST => "PST (Pre-Shipment)",
-                    _ => i.InspectionType.ToString()
-                };
-
                 sb.Append($@"
-          <tr>
-            <td style='padding:10px;border:1px solid #ddd;'><strong>{i.InspectionDate:dd/MM/yyyy}</strong> ({i.InspectionDate:dddd})</td>
-            <td style='padding:10px;border:1px solid #ddd;'>{Esc(i.JobNumber)}</td>
-            <td style='padding:10px;border:1px solid #ddd;'>{Esc(typeLabel)}</td>
-            <td style='padding:10px;border:1px solid #ddd;'>{Esc(i.ProductName)}</td>
-            <td style='padding:10px;border:1px solid #ddd;'>{Esc(i.CustomerName)}</td>
-            <td style='padding:10px;border:1px solid #ddd;'>{Esc(i.PoNumber)}</td>
-          </tr>");
+        <tr>
+          <td style='border:1px solid #000;padding:6px 8px;'>{no++}</td>
+          <td style='border:1px solid #000;padding:6px 8px;'>{i.InspectionDate:dd/MM/yyyy}</td>
+          <td style='border:1px solid #000;padding:6px 8px;'>{Esc(i.JobNumber)}</td>
+          <td style='border:1px solid #000;padding:6px 8px;'>{Esc(i.CustomerName)}</td>
+          <td style='border:1px solid #000;padding:6px 8px;'>{Esc(InspTypeLabel(i.InspectionType))}</td>
+          <td style='border:1px solid #000;padding:6px 8px;'>{Esc(i.PoNumber)}</td>
+          <td style='border:1px solid #000;padding:6px 8px;'>{Esc(i.ProductName)}</td>
+          <td style='border:1px solid #000;padding:6px 8px;'>{Esc(i.ItemNumber)}</td>
+          <td style='border:1px solid #000;padding:6px 8px;'>{Esc(i.InspectorName)}</td>
+        </tr>");
             }
 
             sb.Append(@"
-        </tbody>
-      </table>");
+      </tbody>
+    </table>
 
-            sb.Append(@"
-      <div style='margin-top:24px;padding:16px;background:#fff8e1;border-left:4px solid #f9a825;border-radius:4px;'>
-        <strong>⚠️ Important reminders:</strong>
-        <ul style='margin:8px 0 0 18px;padding:0;'>
-          <li>Ensure goods are 100% finished and packed before the inspection date.</li>
-          <li>Have all necessary documents (PO, BOM, samples, golden samples) ready on site.</li>
-          <li>Contact your inspector or the Inticoo team immediately if there is any change of schedule.</li>
-        </ul>
-      </div>
-      <p style='margin-top:24px;'>If you have any questions, please reply to this email or contact the Inticoo Inspection team.</p>
-      <p>Best regards,<br/><strong>Inticoo Inspection Team</strong></p>
-    </div>
-    <div style='padding:14px 24px;background:#f5f7fb;color:#888;font-size:12px;text-align:center;border-top:1px solid #eee;'>
-      This is an automated email from Inticoo Inspection System.
-    </div>
+    <p style='margin:20px 0 12px;'>Kindly note that changes to the schedule are not permitted within 48 hours of the inspection date.</p>
+    <p style='margin:0 0 12px;'>Should you have any questions or require adjustments outside of this window, please reach out to our support team.</p>
+    <p style='margin:0 0 12px;'>Thank you for your attention.</p>
+    <p style='margin:0 0 4px;'>Best Regards,</p>
+    <p style='margin:0;font-weight:700;'>Inticoo Global Services</p>
   </div>
 </body></html>");
 
             return sb.ToString();
         }
+
+        // ─────────────────────────────────────────────────────────────
+        //  TEMPLATE: CUSTOMER
+        //  Theo ảnh: header "Customer", subject như vendor,
+        //  bảng có cột Vendor Name, KHÔNG có "48 hours rule",
+        //  có dòng "This schedule is provided for your reference...".
+        // ─────────────────────────────────────────────────────────────
+        private static string BuildCustomerEmailHtml(Customer customer, List<Inspection> inspections)
+        {
+            var sb = new StringBuilder();
+
+            sb.Append(@"<!DOCTYPE html>
+<html><head><meta charset='utf-8'><title>Summary Schedule - Customer</title></head>
+<body style='font-family:Times New Roman,Times,serif;color:#000;background:#fff;padding:20px;margin:0;'>
+  <div style='max-width:900px;margin:0 auto;'>
+    <h2 style='text-align:center;color:#d92121;font-weight:700;margin:0 0 24px;'>Customer</h2>
+    <p style='font-weight:700;font-size:15px;margin:0 0 14px;'>Subject : Summary Schedule : 14 Days Inspection</p>
+    <p style='margin:0 0 12px;'>Dear Customer,</p>
+    <p style='margin:0 0 14px;'>Please find below the summary schedule for your upcoming 14-day inspection:</p>");
+
+            sb.Append(@"
+    <table style='width:100%;border-collapse:collapse;font-size:13px;'>
+      <thead>
+        <tr>
+          <th style='border:1px solid #000;padding:6px 8px;text-align:left;'>No</th>
+          <th style='border:1px solid #000;padding:6px 8px;text-align:left;'>Inspection Date</th>
+          <th style='border:1px solid #000;padding:6px 8px;text-align:left;'>Job Number</th>
+          <th style='border:1px solid #000;padding:6px 8px;text-align:left;'>Vendor Name</th>
+          <th style='border:1px solid #000;padding:6px 8px;text-align:left;'>Inspection Type</th>
+          <th style='border:1px solid #000;padding:6px 8px;text-align:left;'>P.O. Number</th>
+          <th style='border:1px solid #000;padding:6px 8px;text-align:left;'>Product Name</th>
+          <th style='border:1px solid #000;padding:6px 8px;text-align:left;'>Product Number</th>
+          <th style='border:1px solid #000;padding:6px 8px;text-align:left;'>Inspector Name</th>
+        </tr>
+      </thead>
+      <tbody>");
+
+            int no = 1;
+            foreach (var i in inspections)
+            {
+                sb.Append($@"
+        <tr>
+          <td style='border:1px solid #000;padding:6px 8px;'>{no++}</td>
+          <td style='border:1px solid #000;padding:6px 8px;'>{i.InspectionDate:dd/MM/yyyy}</td>
+          <td style='border:1px solid #000;padding:6px 8px;'>{Esc(i.JobNumber)}</td>
+          <td style='border:1px solid #000;padding:6px 8px;'>{Esc(i.VendorName)}</td>
+          <td style='border:1px solid #000;padding:6px 8px;'>{Esc(InspTypeLabel(i.InspectionType))}</td>
+          <td style='border:1px solid #000;padding:6px 8px;'>{Esc(i.PoNumber)}</td>
+          <td style='border:1px solid #000;padding:6px 8px;'>{Esc(i.ProductName)}</td>
+          <td style='border:1px solid #000;padding:6px 8px;'>{Esc(i.ItemNumber)}</td>
+          <td style='border:1px solid #000;padding:6px 8px;'>{Esc(i.InspectorName)}</td>
+        </tr>");
+            }
+
+            sb.Append(@"
+      </tbody>
+    </table>
+
+    <p style='margin:20px 0 12px;'>This schedule is provided for your reference to help you prepare accordingly. Should you have any questions or require adjustments, please reach out to our support team.</p>
+    <p style='margin:0 0 12px;'>Thank you for your attention.</p>
+    <p style='margin:0 0 4px;'>Best Regards,</p>
+    <p style='margin:0;font-weight:700;'>Inticoo Global Services</p>
+  </div>
+</body></html>");
+
+            return sb.ToString();
+        }
+
+        private static string InspTypeLabel(InspectionType t) => t switch
+        {
+            InspectionType.PPT => "PPT (Pre-Production)",
+            InspectionType.DPI => "DPI (During Production)",
+            InspectionType.PST => "PST (Pre-Shipment)",
+            _                  => t.ToString()
+        };
 
         private static string Esc(string? s)
             => string.IsNullOrEmpty(s) ? "" : WebUtility.HtmlEncode(s);

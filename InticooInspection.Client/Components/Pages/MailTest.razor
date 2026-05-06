@@ -8,7 +8,7 @@
 <div class="container py-4">
     <div class="d-flex align-items-center mb-4">
         <h3 class="mb-0">📧 Test Mail Notification</h3>
-        <span class="badge bg-info ms-3">Vendor Weekly Mail</span>
+        <span class="badge bg-info ms-3">Vendor + Customer Weekly Mail</span>
     </div>
 
     @* ════════════════════════════════════════════════════════════ *@
@@ -65,27 +65,39 @@
     </div>
 
     @* ════════════════════════════════════════════════════════════ *@
-    @* Section 2: Test gửi 1 email bất kỳ (kiểm tra SMTP) *@
+    @* Section 2: Gửi email test *@
     @* ════════════════════════════════════════════════════════════ *@
     <div class="card mb-4">
         <div class="card-header bg-light">
-            <strong>2. Gửi 1 email test (kiểm tra cấu hình SMTP)</strong>
+            <strong>2. Gửi email test</strong>
         </div>
         <div class="card-body">
             <div class="row g-2 align-items-end">
-                <div class="col-md-6">
+                <div class="col-md-5">
                     <label class="form-label">Email nhận</label>
                     <input class="form-control" @bind="testEmail" placeholder="your-email@example.com" />
                 </div>
-                <div class="col-md-4">
-                    <label class="form-label">Tiêu đề (tuỳ chọn)</label>
-                    <input class="form-control" @bind="testSubject" placeholder="Để trống dùng mặc định" />
+                <div class="col-md-3">
+                    <label class="form-label">Loại template</label>
+                    <select class="form-select" @bind="testKind">
+                        <option value="smtp">SMTP check (mail trống)</option>
+                        <option value="vendor">Template Vendor (data mẫu)</option>
+                        <option value="customer">Template Customer (data mẫu)</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Tiêu đề (tuỳ chọn, chỉ dùng cho SMTP check)</label>
+                    <input class="form-control" @bind="testSubject" placeholder="Mặc định" />
                 </div>
                 <div class="col-md-2">
                     <button class="btn btn-primary w-100" @onclick="SendTestAsync" disabled="@busy1">
                         @(busy1 ? "Đang gửi..." : "Gửi test")
                     </button>
                 </div>
+            </div>
+            <div class="form-text mt-2">
+                <strong>SMTP check</strong>: chỉ kiểm tra cấu hình.
+                <strong>Vendor / Customer</strong>: gửi đúng template theo dữ liệu mẫu (bảng schedule giả).
             </div>
             @if (!string.IsNullOrEmpty(test1Result))
             {
@@ -185,34 +197,149 @@
     </div>
 
     @* ════════════════════════════════════════════════════════════ *@
-    @* Section 4: Trigger thủ công job hàng tuần *@
+    @* Section 4: Preview - customer sẽ nhận mail kỳ tới *@
+    @* ════════════════════════════════════════════════════════════ *@
+    <div class="card mb-4">
+        <div class="card-header bg-light">
+            <strong>4. Preview: Danh sách Customer sẽ nhận mail kỳ tới</strong>
+            <button class="btn btn-sm btn-outline-secondary float-end" @onclick="LoadCustomerPreviewAsync">
+                Refresh
+            </button>
+        </div>
+        <div class="card-body">
+            @if (customerPreview is null)
+            {
+                <p class="text-muted mb-0">Đang tải...</p>
+            }
+            else if (customerPreview.Customers is null || customerPreview.Customers.Count == 0)
+            {
+                <div class="alert alert-warning mb-0">
+                    Không có inspection nào trong @customerPreview.LookAhead ngày tới
+                    (từ @customerPreview.FromDate.ToString("dd/MM/yyyy")
+                    đến @customerPreview.ToDate.ToString("dd/MM/yyyy")).
+                </div>
+            }
+            else
+            {
+                <p class="text-muted">
+                    Tổng <strong>@customerPreview.TotalInspections</strong> inspection
+                    của <strong>@customerPreview.Customers.Count</strong> customer trong
+                    @customerPreview.LookAhead ngày tới
+                    (@customerPreview.FromDate.ToString("dd/MM") - @customerPreview.ToDate.ToString("dd/MM")).
+                </p>
+                <div class="table-responsive">
+                    <table class="table table-sm table-striped">
+                        <thead>
+                            <tr>
+                                <th>Customer ID</th>
+                                <th>Customer Name</th>
+                                <th>Email Type</th>
+                                <th>Recipients</th>
+                                <th class="text-center"># Inspection</th>
+                                <th class="text-center">Trạng thái</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var c in customerPreview.Customers)
+                            {
+                                <tr>
+                                    <td><code>@c.CustomerId</code></td>
+                                    <td>@c.CustomerName</td>
+                                    <td>
+                                        <span class="badge @(c.ReportEmailType == "Alternate" ? "bg-warning text-dark" : "bg-info")">
+                                            @c.ReportEmailType
+                                        </span>
+                                    </td>
+                                    <td>
+                                        @if (c.Recipients is not null && c.Recipients.Count > 0)
+                                        {
+                                            @foreach (var r in c.Recipients)
+                                            {
+                                                <div><small>@r</small></div>
+                                            }
+                                        }
+                                        else
+                                        {
+                                            <span class="text-danger">⚠️ Chưa có email</span>
+                                        }
+                                    </td>
+                                    <td class="text-center">@c.InspectionCount</td>
+                                    <td class="text-center">
+                                        @if (c.CanSend)
+                                        {
+                                            <span class="badge bg-success">Sẽ gửi</span>
+                                        }
+                                        else if (!c.IsActive)
+                                        {
+                                            <span class="badge bg-secondary">Inactive</span>
+                                        }
+                                        else if (!c.ReceiveInspectionReport)
+                                        {
+                                            <span class="badge bg-secondary">Tắt nhận report</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge bg-danger">Thiếu email</span>
+                                        }
+                                    </td>
+                                    <td>
+                                        <button class="btn btn-sm btn-outline-primary"
+                                                disabled="@(!c.CanSend || busy4)"
+                                                @onclick="() => SendForCustomerAsync(c.CustomerId)">
+                                            Gửi
+                                        </button>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </div>
+    </div>
+
+    @* ════════════════════════════════════════════════════════════ *@
+    @* Section 5: Trigger thủ công job hàng tuần *@
     @* ════════════════════════════════════════════════════════════ *@
     <div class="card mb-4 border-warning">
         <div class="card-header bg-warning text-dark">
-            <strong>4. ⚡ Trigger thủ công - Gửi mail HÀNG LOẠT cho TẤT CẢ vendor</strong>
+            <strong>5. ⚡ Trigger thủ công - Gửi mail HÀNG LOẠT</strong>
         </div>
         <div class="card-body">
             <p class="text-muted">
-                Chức năng này sẽ gửi mail cho TẤT CẢ vendor active có inspection sắp tới.
-                Dùng khi cần gửi bù hoặc test job. Lịch gửi tự động sẽ chạy
-                <strong>@GetDayName(settings?.SendDayOfWeek ?? 5) lúc @(settings?.SendHour ?? 18):00</strong> hàng tuần.
+                Lịch gửi tự động sẽ chạy
+                <strong>@GetDayName(settings?.SendDayOfWeek ?? 5) lúc @(settings?.SendHour ?? 18):00</strong> hàng tuần
+                cho cả Vendor và Customer.
             </p>
-            <button class="btn btn-warning" @onclick="RunWeeklyAsync" disabled="@busy3">
-                @if (busy3)
-                {
-                    <span><span class="spinner-border spinner-border-sm me-2"></span>Đang gửi...</span>
-                }
-                else
-                {
-                    <span>🚀 Chạy job NGAY</span>
-                }
-            </button>
+            <div class="d-flex gap-2 flex-wrap">
+                <button class="btn btn-warning" @onclick="RunWeeklyVendorAsync" disabled="@busy3">
+                    @if (busy3)
+                    {
+                        <span><span class="spinner-border spinner-border-sm me-2"></span>Đang gửi Vendor...</span>
+                    }
+                    else
+                    {
+                        <span>🚀 Chạy job VENDOR ngay</span>
+                    }
+                </button>
+                <button class="btn btn-warning" @onclick="RunWeeklyCustomerAsync" disabled="@busy5">
+                    @if (busy5)
+                    {
+                        <span><span class="spinner-border spinner-border-sm me-2"></span>Đang gửi Customer...</span>
+                    }
+                    else
+                    {
+                        <span>🚀 Chạy job CUSTOMER ngay</span>
+                    }
+                </button>
+            </div>
 
             @if (lastRunResult is not null)
             {
                 <div class="alert alert-info mt-3 mb-0">
-                    <strong>Kết quả:</strong>
-                    Tổng vendor: <strong>@lastRunResult.VendorsTotal</strong>,
+                    <strong>Kết quả @lastRunLabel:</strong>
+                    Tổng: <strong>@lastRunResult.VendorsTotal</strong>,
                     Đã gửi: <strong class="text-success">@lastRunResult.VendorsSent</strong>,
                     Bỏ qua: <strong class="text-warning">@lastRunResult.VendorsSkipped</strong>,
                     Lỗi: <strong class="text-danger">@lastRunResult.VendorsFailed</strong>,
@@ -235,11 +362,11 @@
     </div>
 
     @* ════════════════════════════════════════════════════════════ *@
-    @* Section 5: Lịch sử gửi mail *@
+    @* Section 6: Lịch sử gửi mail *@
     @* ════════════════════════════════════════════════════════════ *@
     <div class="card mb-4">
         <div class="card-header bg-light">
-            <strong>5. Lịch sử gửi mail (50 mail gần nhất)</strong>
+            <strong>6. Lịch sử gửi mail (50 mail gần nhất)</strong>
             <button class="btn btn-sm btn-outline-secondary float-end" @onclick="LoadLogsAsync">
                 Refresh
             </button>
@@ -260,7 +387,7 @@
                         <thead>
                             <tr>
                                 <th>Thời gian</th>
-                                <th>Vendor</th>
+                                <th>Loại / Code</th>
                                 <th>Email nhận</th>
                                 <th>Tiêu đề</th>
                                 <th class="text-center"># Insp</th>
@@ -273,8 +400,21 @@
                             {
                                 <tr class="@(l.IsSuccess ? "" : "table-danger")">
                                     <td>@l.SentAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</td>
-                                    <td><code>@l.VendorCode</code></td>
-                                    <td>@l.ToEmail</td>
+                                    <td>
+                                        @{
+                                            var code = l.VendorCode ?? "";
+                                            string badge = "bg-secondary";
+                                            string label = code;
+                                            if (code.StartsWith("CUS:"))      { badge = "bg-info"; label = "Customer"; }
+                                            else if (code == "TEST-VENDOR")    { badge = "bg-primary"; label = "Test Vendor"; }
+                                            else if (code == "TEST-CUSTOMER")  { badge = "bg-primary"; label = "Test Customer"; }
+                                            else if (code == "TEST")           { badge = "bg-secondary"; label = "SMTP Test"; }
+                                            else if (!string.IsNullOrEmpty(code)) { badge = "bg-success"; label = "Vendor"; }
+                                        }
+                                        <span class="badge @badge">@label</span>
+                                        <code class="ms-1"><small>@l.VendorCode</small></code>
+                                    </td>
+                                    <td><small>@l.ToEmail</small></td>
                                     <td><small>@l.Subject</small></td>
                                     <td class="text-center">@l.InspectionCount</td>
                                     <td class="text-center">
@@ -308,22 +448,29 @@
     // Settings
     private MailSettings? settings;
 
-    // Test 1: Send test email
-    private string testEmail = "";
+    // Section 2: Send test email
+    private string testEmail   = "";
     private string testSubject = "";
-    private bool busy1 = false;
-    private bool test1Success = false;
+    private string testKind    = "smtp"; // smtp | vendor | customer
+    private bool   busy1       = false;
+    private bool   test1Success = false;
     private string? test1Result;
 
-    // Section 3: Preview
+    // Section 3: Vendor preview
     private UpcomingPreview? preview;
     private bool busy2 = false;
 
-    // Section 4: Run weekly
-    private bool busy3 = false;
-    private MailRunResult? lastRunResult;
+    // Section 4: Customer preview
+    private UpcomingCustomerPreview? customerPreview;
+    private bool busy4 = false;
 
-    // Section 5: Logs
+    // Section 5: Run weekly
+    private bool busy3 = false;   // vendor
+    private bool busy5 = false;   // customer
+    private MailRunResult? lastRunResult;
+    private string lastRunLabel = "";
+
+    // Section 6: Logs
     private List<MailLogDto>? logs;
 
     protected override async Task OnInitializedAsync()
@@ -331,6 +478,7 @@
         await Task.WhenAll(
             LoadSettingsAsync(),
             LoadPreviewAsync(),
+            LoadCustomerPreviewAsync(),
             LoadLogsAsync()
         );
     }
@@ -348,6 +496,12 @@
         catch (Exception ex) { await JS.InvokeVoidAsync("console.error", ex.Message); }
     }
 
+    private async Task LoadCustomerPreviewAsync()
+    {
+        try { customerPreview = await Http.GetFromJsonAsync<UpcomingCustomerPreview>("api/mail/upcoming-customers"); }
+        catch (Exception ex) { await JS.InvokeVoidAsync("console.error", ex.Message); }
+    }
+
     private async Task LoadLogsAsync()
     {
         try { logs = await Http.GetFromJsonAsync<List<MailLogDto>>("api/mail/logs?take=50"); }
@@ -359,7 +513,7 @@
     {
         if (string.IsNullOrWhiteSpace(testEmail))
         {
-            test1Result = "❌ Vui lòng nhập email nhận";
+            test1Result  = "❌ Vui lòng nhập email nhận";
             test1Success = false;
             return;
         }
@@ -368,16 +522,29 @@
         test1Result = null;
         try
         {
-            var res = await Http.PostAsJsonAsync("api/mail/send-test", new
+            var url = testKind switch
             {
-                ToEmail = testEmail,
-                Subject = string.IsNullOrWhiteSpace(testSubject) ? null : testSubject
-            });
+                "vendor"   => "api/mail/send-test-vendor",
+                "customer" => "api/mail/send-test-customer",
+                _          => "api/mail/send-test"
+            };
+
+            var payload = testKind == "smtp"
+                ? (object)new { ToEmail = testEmail, Subject = string.IsNullOrWhiteSpace(testSubject) ? null : testSubject }
+                : new { ToEmail = testEmail };
+
+            var res = await Http.PostAsJsonAsync(url, payload);
 
             if (res.IsSuccessStatusCode)
             {
                 test1Success = true;
-                test1Result = $"✅ Đã gửi mail test tới {testEmail}. Vui lòng kiểm tra hộp thư (cả Spam).";
+                var label = testKind switch
+                {
+                    "vendor"   => "template Vendor",
+                    "customer" => "template Customer",
+                    _          => "SMTP test"
+                };
+                test1Result = $"✅ Đã gửi mail {label} tới {testEmail}. Vui lòng kiểm tra hộp thư (cả Spam).";
             }
             else
             {
@@ -390,7 +557,7 @@
         catch (Exception ex)
         {
             test1Success = false;
-            test1Result = $"❌ Exception: {ex.Message}";
+            test1Result  = $"❌ Exception: {ex.Message}";
         }
         finally { busy1 = false; }
     }
@@ -403,7 +570,7 @@
         busy2 = true;
         try
         {
-            var res = await Http.PostAsync($"api/mail/send-vendor/{vendorCode}", null);
+            var res  = await Http.PostAsync($"api/mail/send-vendor/{vendorCode}", null);
             var json = await res.Content.ReadAsStringAsync();
             await JS.InvokeVoidAsync("alert",
                 res.IsSuccessStatusCode ? $"✅ Đã gửi cho vendor {vendorCode}" : $"❌ Lỗi: {json}");
@@ -416,8 +583,28 @@
         finally { busy2 = false; }
     }
 
+    private async Task SendForCustomerAsync(string customerId)
+    {
+        if (!await JS.InvokeAsync<bool>("confirm", $"Gửi mail cho customer {customerId}?")) return;
+
+        busy4 = true;
+        try
+        {
+            var res  = await Http.PostAsync($"api/mail/send-customer/{customerId}", null);
+            var json = await res.Content.ReadAsStringAsync();
+            await JS.InvokeVoidAsync("alert",
+                res.IsSuccessStatusCode ? $"✅ Đã gửi cho customer {customerId}" : $"❌ Lỗi: {json}");
+            await LoadLogsAsync();
+        }
+        catch (Exception ex)
+        {
+            await JS.InvokeVoidAsync("alert", "❌ " + ex.Message);
+        }
+        finally { busy4 = false; }
+    }
+
     // ─────────────────────────────────────────────────────────
-    private async Task RunWeeklyAsync()
+    private async Task RunWeeklyVendorAsync()
     {
         if (!await JS.InvokeAsync<bool>("confirm",
             "Bạn chắc chắn muốn gửi mail cho TẤT CẢ vendor có inspection sắp tới?")) return;
@@ -426,8 +613,9 @@
         lastRunResult = null;
         try
         {
-            lastRunResult = await Http.PostAsJsonAsync("api/mail/run-weekly", new { })
-                                       .Result.Content.ReadFromJsonAsync<MailRunResult>();
+            var res = await Http.PostAsJsonAsync("api/mail/run-weekly", new { });
+            lastRunResult = await res.Content.ReadFromJsonAsync<MailRunResult>();
+            lastRunLabel  = "Vendor";
             await LoadLogsAsync();
         }
         catch (Exception ex)
@@ -435,6 +623,27 @@
             await JS.InvokeVoidAsync("alert", "❌ " + ex.Message);
         }
         finally { busy3 = false; }
+    }
+
+    private async Task RunWeeklyCustomerAsync()
+    {
+        if (!await JS.InvokeAsync<bool>("confirm",
+            "Bạn chắc chắn muốn gửi mail cho TẤT CẢ customer có inspection sắp tới?")) return;
+
+        busy5 = true;
+        lastRunResult = null;
+        try
+        {
+            var res = await Http.PostAsJsonAsync("api/mail/run-weekly-customers", new { });
+            lastRunResult = await res.Content.ReadFromJsonAsync<MailRunResult>();
+            lastRunLabel  = "Customer";
+            await LoadLogsAsync();
+        }
+        catch (Exception ex)
+        {
+            await JS.InvokeVoidAsync("alert", "❌ " + ex.Message);
+        }
+        finally { busy5 = false; }
     }
 
     // ─────────────────────────────────────────────────────────
@@ -451,7 +660,7 @@
     };
 
     // ─────────────────────────────────────────────────────────
-    // DTOs khớp với response từ API
+    // DTOs
     // ─────────────────────────────────────────────────────────
     public class MailSettings
     {
@@ -485,6 +694,30 @@
         public bool    IsActive        { get; set; }
         public bool    CanSend         { get; set; }
         public int     InspectionCount { get; set; }
+    }
+
+    public class UpcomingCustomerPreview
+    {
+        public DateTime FromDate         { get; set; }
+        public DateTime ToDate           { get; set; }
+        public int      LookAhead        { get; set; }
+        public int      TotalInspections { get; set; }
+        public List<UpcomingCustomer>? Customers { get; set; }
+    }
+
+    public class UpcomingCustomer
+    {
+        public string       CustomerId              { get; set; } = "";
+        public string?      CustomerName            { get; set; }
+        public string?      ContactPerson           { get; set; }
+        public string?      Email                   { get; set; }
+        public string?      AlternateReportEmail    { get; set; }
+        public string       ReportEmailType         { get; set; } = "Registered";
+        public List<string>? Recipients             { get; set; }
+        public bool         ReceiveInspectionReport { get; set; }
+        public bool         IsActive                { get; set; }
+        public bool         CanSend                 { get; set; }
+        public int          InspectionCount         { get; set; }
     }
 
     public class MailRunResult

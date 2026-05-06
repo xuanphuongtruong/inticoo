@@ -47,7 +47,7 @@ else if (_data != null)
         </div>
 
         <!-- ══════ REPORT CONTENT ══════ -->
-        <div class="rpt-paper">
+        <div class="rpt-paper" data-total="@TotalPages">
 
             <!-- PAGE 1: COVER -->
             <div class="rpt-section page-break-after">
@@ -197,7 +197,7 @@ else if (_data != null)
                 <div class="rpt-footer">
                     <div class="rpt-footer-inner">
                         <span class="rpt-footer-text">www.inticoo.com<br/>The results presented herein reflect our findings at the time and place of inspection. This report does not release the seller or manufacturer from their contractual obligations, nor does it prejudice the buyer's right to seek compensation for any apparent or latent defects not identified during our random inspection or arising thereafter. This document does not constitute evidence of shipment. Final approval from the client is required prior to the release of the goods.</span>
-                        <span class="rpt-footer-page">@(1) / @TotalPages</span>
+                        <span class="rpt-footer-page"></span>
                     </div>
                 </div>
             </div>
@@ -292,7 +292,7 @@ else if (_data != null)
                 <div class="rpt-footer">
                     <div class="rpt-footer-inner">
                         <span class="rpt-footer-text">www.inticoo.com<br/>The results presented herein reflect our findings at the time and place of inspection. This report does not release the seller or manufacturer from their contractual obligations, nor does it prejudice the buyer's right to seek compensation for any apparent or latent defects not identified during our random inspection or arising thereafter. This document does not constitute evidence of shipment. Final approval from the client is required prior to the release of the goods.</span>
-                        <span class="rpt-footer-page">@(2) / @TotalPages</span>
+                        <span class="rpt-footer-page"></span>
                     </div>
                 </div>
             </div>
@@ -316,6 +316,7 @@ else if (_data != null)
                     <div class="rpt-footer">
                         <div class="rpt-footer-inner">
                             <span class="rpt-footer-text">www.inticoo.com<br/>The results presented herein reflect our findings at the time and place of inspection. This report does not release the seller or manufacturer from their contractual obligations, nor does it prejudice the buyer's right to seek compensation for any apparent or latent defects not identified during our random inspection or arising thereafter. This document does not constitute evidence of shipment. Final approval from the client is required prior to the release of the goods.</span>
+                        <span class="rpt-footer-page"></span>
                         </div>
                     </div>
                 </div>
@@ -428,7 +429,7 @@ else if (_data != null)
                     <div class="rpt-footer">
                         <div class="rpt-footer-inner">
                             <span class="rpt-footer-text">www.inticoo.com<br/>The results presented herein reflect our findings at the time and place of inspection. This report does not release the seller or manufacturer from their contractual obligations, nor does it prejudice the buyer's right to seek compensation for any apparent or latent defects not identified during our random inspection or arising thereafter. This document does not constitute evidence of shipment. Final approval from the client is required prior to the release of the goods.</span>
-                            <span class="rpt-footer-page">@(3 + cIdx * 5) / @TotalPages</span>
+                            <span class="rpt-footer-page"></span>
                         </div>
                     </div>
                 </div>
@@ -459,6 +460,7 @@ else if (_data != null)
                         <div class="rpt-footer">
                             <div class="rpt-footer-inner">
                                 <span class="rpt-footer-text">www.inticoo.com<br/>The results presented herein reflect our findings at the time and place of inspection. This report does not release the seller or manufacturer from their contractual obligations, nor does it prejudice the buyer's right to seek compensation for any apparent or latent defects not identified during our random inspection or arising thereafter. This document does not constitute evidence of shipment. Final approval from the client is required prior to the release of the goods.</span>
+                            <span class="rpt-footer-page"></span>
                             </div>
                         </div>
                     </div>
@@ -536,7 +538,7 @@ else if (_data != null)
                         <div class="rpt-footer">
                             <div class="rpt-footer-inner">
                                 <span class="rpt-footer-text">www.inticoo.com<br/>The results presented herein reflect our findings at the time and place of inspection. This report does not release the seller or manufacturer from their contractual obligations, nor does it prejudice the buyer's right to seek compensation for any apparent or latent defects not identified during our random inspection or arising thereafter. This document does not constitute evidence of shipment. Final approval from the client is required prior to the release of the goods.</span>
-                                <span class="rpt-footer-page">@(3 + cIdx * 5 + 1) / @TotalPages</span>
+                                <span class="rpt-footer-page"></span>
                             </div>
                         </div>
                     </div>
@@ -571,6 +573,7 @@ else if (_data != null)
                             <div class="rpt-footer">
                                 <div class="rpt-footer-inner">
                                     <span class="rpt-footer-text">www.inticoo.com<br/>The results presented herein reflect our findings at the time and place of inspection. This report does not release the seller or manufacturer from their contractual obligations, nor does it prejudice the buyer's right to seek compensation for any apparent or latent defects not identified during our random inspection or arising thereafter. This document does not constitute evidence of shipment. Final approval from the client is required prior to the release of the goods.</span>
+                                <span class="rpt-footer-page"></span>
                                 </div>
                             </div>
                         </div>
@@ -608,6 +611,7 @@ else if (_data != null)
                             <div class="rpt-footer">
                                 <div class="rpt-footer-inner">
                                     <span class="rpt-footer-text">www.inticoo.com<br/>The results presented herein reflect our findings at the time and place of inspection. This report does not release the seller or manufacturer from their contractual obligations, nor does it prejudice the buyer's right to seek compensation for any apparent or latent defects not identified during our random inspection or arising thereafter. This document does not constitute evidence of shipment. Final approval from the client is required prior to the release of the goods.</span>
+                                <span class="rpt-footer-page"></span>
                                 </div>
                             </div>
                         </div>
@@ -643,7 +647,7 @@ else if (_data != null)
                         <div class="rpt-footer">
                             <div class="rpt-footer-inner">
                                 <span class="rpt-footer-text">www.inticoo.com<br/>The results presented herein reflect our findings at the time and place of inspection. This report does not release the seller or manufacturer from their contractual obligations, nor does it prejudice the buyer's right to seek compensation for any apparent or latent defects not identified during our random inspection or arising thereafter. This document does not constitute evidence of shipment. Final approval from the client is required prior to the release of the goods.</span>
-                                @if (_plPi == 0) { <span class="rpt-footer-page">@(3 + cIdx * 5 + 2) / @TotalPages</span> }
+                                <span class="rpt-footer-page"></span>
                             </div>
                         </div>
                     </div>
@@ -678,7 +682,7 @@ else if (_data != null)
                         <div class="rpt-footer">
                             <div class="rpt-footer-inner">
                                 <span class="rpt-footer-text">www.inticoo.com<br/>The results presented herein reflect our findings at the time and place of inspection. This report does not release the seller or manufacturer from their contractual obligations, nor does it prejudice the buyer's right to seek compensation for any apparent or latent defects not identified during our random inspection or arising thereafter. This document does not constitute evidence of shipment. Final approval from the client is required prior to the release of the goods.</span>
-                                @if (_asPi == 0) { <span class="rpt-footer-page">@(3 + cIdx * 5 + 3) / @TotalPages</span> }
+                                <span class="rpt-footer-page"></span>
                             </div>
                         </div>
                     </div>
@@ -713,7 +717,7 @@ else if (_data != null)
                         <div class="rpt-footer">
                             <div class="rpt-footer-inner">
                                 <span class="rpt-footer-text">www.inticoo.com<br/>The results presented herein reflect our findings at the time and place of inspection. This report does not release the seller or manufacturer from their contractual obligations, nor does it prejudice the buyer's right to seek compensation for any apparent or latent defects not identified during our random inspection or arising thereafter. This document does not constitute evidence of shipment. Final approval from the client is required prior to the release of the goods.</span>
-                                @if (_hwPi == 0) { <span class="rpt-footer-page">@(3 + cIdx * 5 + 4) / @TotalPages</span> }
+                                <span class="rpt-footer-page"></span>
                             </div>
                         </div>
                     </div>
@@ -790,7 +794,7 @@ else if (_data != null)
                 <div class="rpt-footer">
                     <div class="rpt-footer-inner">
                         <span class="rpt-footer-text">www.inticoo.com<br/>The results presented herein reflect our findings at the time and place of inspection. This report does not release the seller or manufacturer from their contractual obligations, nor does it prejudice the buyer's right to seek compensation for any apparent or latent defects not identified during our random inspection or arising thereafter. This document does not constitute evidence of shipment. Final approval from the client is required prior to the release of the goods.</span>
-                        <span class="rpt-footer-page">@(2 + CartonPageCount + 1) / @TotalPages</span>
+                        <span class="rpt-footer-page"></span>
                     </div>
                 </div>
             </div>
@@ -818,6 +822,7 @@ else if (_data != null)
                             <div class="rpt-footer">
                                 <div class="rpt-footer-inner">
                                     <span class="rpt-footer-text">www.inticoo.com<br/>The results presented herein reflect our findings at the time and place of inspection. This report does not release the seller or manufacturer from their contractual obligations, nor does it prejudice the buyer's right to seek compensation for any apparent or latent defects not identified during our random inspection or arising thereafter. This document does not constitute evidence of shipment. Final approval from the client is required prior to the release of the goods.</span>
+                                <span class="rpt-footer-page"></span>
                                 </div>
                             </div>
                         </div>
@@ -887,7 +892,7 @@ else if (_data != null)
                 <div class="rpt-footer">
                     <div class="rpt-footer-inner">
                         <span class="rpt-footer-text">www.inticoo.com<br/>The results presented herein reflect our findings at the time and place of inspection. This report does not release the seller or manufacturer from their contractual obligations, nor does it prejudice the buyer's right to seek compensation for any apparent or latent defects not identified during our random inspection or arising thereafter. This document does not constitute evidence of shipment. Final approval from the client is required prior to the release of the goods.</span>
-                        <span class="rpt-footer-page">@(2 + CartonPageCount + 2) / @TotalPages</span>
+                        <span class="rpt-footer-page"></span>
                     </div>
                 </div>
             </div>
@@ -910,6 +915,7 @@ else if (_data != null)
                     <div class="rpt-footer">
                         <div class="rpt-footer-inner">
                             <span class="rpt-footer-text">www.inticoo.com<br/>The results presented herein reflect our findings at the time and place of inspection. This report does not release the seller or manufacturer from their contractual obligations, nor does it prejudice the buyer's right to seek compensation for any apparent or latent defects not identified during our random inspection or arising thereafter. This document does not constitute evidence of shipment. Final approval from the client is required prior to the release of the goods.</span>
+                        <span class="rpt-footer-page"></span>
                         </div>
                     </div>
                 </div>
@@ -998,7 +1004,7 @@ else if (_data != null)
                         <div class="rpt-footer">
                             <div class="rpt-footer-inner">
                                 <span class="rpt-footer-text">www.inticoo.com<br/>The results presented herein reflect our findings at the time and place of inspection. This report does not release the seller or manufacturer from their contractual obligations, nor does it prejudice the buyer's right to seek compensation for any apparent or latent defects not identified during our random inspection or arising thereafter. This document does not constitute evidence of shipment. Final approval from the client is required prior to the release of the goods.</span>
-                                <span class="rpt-footer-page">@(2 + CartonPageCount + 2 + dIdx) / @TotalPages</span>
+                                <span class="rpt-footer-page"></span>
                             </div>
                         </div>
                     </div>
@@ -1020,6 +1026,7 @@ else if (_data != null)
                             <div class="rpt-footer">
                                 <div class="rpt-footer-inner">
                                     <span class="rpt-footer-text">www.inticoo.com<br/>The results presented herein reflect our findings at the time and place of inspection. This report does not release the seller or manufacturer from their contractual obligations, nor does it prejudice the buyer's right to seek compensation for any apparent or latent defects not identified during our random inspection or arising thereafter. This document does not constitute evidence of shipment. Final approval from the client is required prior to the release of the goods.</span>
+                                <span class="rpt-footer-page"></span>
                                 </div>
                             </div>
                         </div>
@@ -1071,7 +1078,7 @@ else if (_data != null)
                         <div class="rpt-footer">
                             <div class="rpt-footer-inner">
                                 <span class="rpt-footer-text">www.inticoo.com<br/>The results presented herein reflect our findings at the time and place of inspection. This report does not release the seller or manufacturer from their contractual obligations, nor does it prejudice the buyer's right to seek compensation for any apparent or latent defects not identified during our random inspection or arising thereafter. This document does not constitute evidence of shipment. Final approval from the client is required prior to the release of the goods.</span>
-                                <span class="rpt-footer-page">@(2 + CartonPageCount + 2 + dIdx) / @TotalPages</span>
+                                <span class="rpt-footer-page"></span>
                             </div>
                         </div>
                     </div>
@@ -1085,7 +1092,7 @@ else if (_data != null)
                     <div class="rpt-footer">
                         <div class="rpt-footer-inner">
                             <span class="rpt-footer-text">www.inticoo.com<br/>The results presented herein reflect our findings at the time and place of inspection. This report does not release the seller or manufacturer from their contractual obligations, nor does it prejudice the buyer's right to seek compensation for any apparent or latent defects not identified during our random inspection or arising thereafter. This document does not constitute evidence of shipment. Final approval from the client is required prior to the release of the goods.</span>
-                            <span class="rpt-footer-page">@(2 + CartonPageCount + 2) / @TotalPages</span>
+                            <span class="rpt-footer-page"></span>
                         </div>
                     </div>
                 </div>
@@ -1223,7 +1230,7 @@ else if (_data != null)
                 <div class="rpt-footer">
                     <div class="rpt-footer-inner">
                         <span class="rpt-footer-text">www.inticoo.com<br/>The results presented herein reflect our findings at the time and place of inspection. This report does not release the seller or manufacturer from their contractual obligations, nor does it prejudice the buyer's right to seek compensation for any apparent or latent defects not identified during our random inspection or arising thereafter. This document does not constitute evidence of shipment. Final approval from the client is required prior to the release of the goods.</span>
-                        <span class="rpt-footer-page">@(2 + CartonPageCount + PerfPageCount + 2) / @TotalPages</span>
+                        <span class="rpt-footer-page"></span>
                     </div>
                 </div>
             </div>
@@ -1251,6 +1258,7 @@ else if (_data != null)
                     <div class="rpt-footer">
                         <div class="rpt-footer-inner">
                             <span class="rpt-footer-text">www.inticoo.com<br/>The results presented herein reflect our findings at the time and place of inspection. This report does not release the seller or manufacturer from their contractual obligations, nor does it prejudice the buyer's right to seek compensation for any apparent or latent defects not identified during our random inspection or arising thereafter. This document does not constitute evidence of shipment. Final approval from the client is required prior to the release of the goods.</span>
+                        <span class="rpt-footer-page"></span>
                         </div>
                     </div>
                 </div>
@@ -1303,6 +1311,7 @@ else if (_data != null)
                             <div class="rpt-footer">
                                 <div class="rpt-footer-inner">
                                     <span class="rpt-footer-text">www.inticoo.com<br/>The results presented herein reflect our findings at the time and place of inspection. This report does not release the seller or manufacturer from their contractual obligations, nor does it prejudice the buyer's right to seek compensation for any apparent or latent defects not identified during our random inspection or arising thereafter. This document does not constitute evidence of shipment. Final approval from the client is required prior to the release of the goods.</span>
+                                <span class="rpt-footer-page"></span>
                                 </div>
                             </div>
                         </div>
@@ -1376,7 +1385,7 @@ else if (_data != null)
                 <div class="rpt-footer">
                     <div class="rpt-footer-inner">
                         <span class="rpt-footer-text">www.inticoo.com<br/>The results presented herein reflect our findings at the time and place of inspection. This report does not release the seller or manufacturer from their contractual obligations, nor does it prejudice the buyer's right to seek compensation for any apparent or latent defects not identified during our random inspection or arising thereafter. This document does not constitute evidence of shipment. Final approval from the client is required prior to the release of the goods.</span>
-                        <span class="rpt-footer-page">@(2 + CartonPageCount + PerfPageCount + 4) / @TotalPages</span>
+                        <span class="rpt-footer-page"></span>
                     </div>
                 </div>
             </div>
@@ -1485,6 +1494,30 @@ else if (_data != null)
     {
         await LoadData();
         _loading = false;
+    }
+
+    /// <summary>
+    /// Sau mỗi lần render, đếm chính xác số .rpt-section trên DOM (nguồn sự thật)
+    /// và set data-total trên .rpt-paper. CSS counter::before sẽ tự lấy giá trị này
+    /// để hiển thị "N / Total" trong footer mọi trang.
+    /// Cách này không phụ thuộc công thức C# (CartonPageCount/PerfPageCount/etc.)
+    /// nên luôn khớp với số trang thực tế.
+    /// </summary>
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (_loading || _data == null) return;
+        try
+        {
+            await JS.InvokeVoidAsync("eval", @"
+                (function(){
+                    var paper = document.querySelector('#rpt-root .rpt-paper');
+                    if (!paper) return;
+                    var total = paper.querySelectorAll('.rpt-section').length;
+                    if (total > 0) paper.setAttribute('data-total', total);
+                })();
+            ");
+        }
+        catch { /* JS interop có thể chưa sẵn sàng trong prerender — bỏ qua */ }
     }
 
     private async Task LoadData()
@@ -1601,6 +1634,17 @@ else if (_data != null)
                     })();
                 ");
 
+                // ★ Sync data-total = số .rpt-section thực tế ngay trước khi in.
+                // CSS counter::before sẽ inject "N / Total" vào mọi .rpt-footer-page.
+                await JS.InvokeVoidAsync("eval", @"
+                    (function(){
+                        var paper = document.querySelector('#rpt-root .rpt-paper');
+                        if (!paper) return;
+                        var total = paper.querySelectorAll('.rpt-section').length;
+                        if (total > 0) paper.setAttribute('data-total', total);
+                    })();
+                ");
+
                 // Trigger print (waitImagesAndPrint đợi ảnh load xong rồi mới in)
                 await JS.InvokeVoidAsync("waitImagesAndPrint", "rpt-root");
 
@@ -1650,13 +1694,51 @@ else if (_data != null)
     }
 
     // ── Computed page count properties ──
-    // Layout: 1(Cover) + 1(A) + cartonCount×5(B: i, ii+iii, iv, v, vi) + 2(C1+C2) + perfCount(D) + 3(E,F,Final)
+    // Layout: 1(Cover) + 1(A) + cartonCount×5(B: i, ii+iii, iv, v, vi) + 2(C1+C2) + perfCount(D)
+    //         + 1(E + F-critical heading) + criticalContPages + majorPages + minorPages + 1(Final)
     int CartonPageCount => (_qcData?.Packaging?.CartonDataList?.Count > 0
         ? _qcData.Packaging.CartonDataList.Count : 1) * 5;
     int PerfPageCount   => _qcData?.PerformanceTests?.Count > 0
         ? _qcData.PerformanceTests.Count
         : (_data?.PerformanceTests?.Count > 0 ? _data.PerformanceTests.Count : 1);
-    int TotalPages => 2 + CartonPageCount + 2 + PerfPageCount + 3;
+
+    // ★ Số trang con của F (Critical/Major/Minor) — phải tính khớp với foreach render
+    int CriticalContPagesCount
+    {
+        get
+        {
+            if (!IsPass("E")) return 0;
+            var crit = _qcData?.Defects?.Where(d => d.Type == "Critical").ToList() ?? new();
+            var items = crit.SelectMany(def => {
+                var urls = (def.Photos?.Where(p => !string.IsNullOrWhiteSpace(p)).ToList())
+                           ?? (def.PhotoUrl != null ? new List<string> { def.PhotoUrl } : new List<string>());
+                return urls.Select((url, i) => (Url: (string?)url, Remark: def.Remarks?.ElementAtOrDefault(i) ?? def.Remark ?? ""));
+            }).ToList();
+            // Khi không có critical thì 0 trang cont (heading + 2 placeholder cells nằm trên trang E).
+            if (items.Count == 0) return 0;
+            return ChunkDefectsForPages(items).Count;
+        }
+    }
+
+    int DefectTypePagesCount(string defType)
+    {
+        if (!IsPass("F")) return 0;
+        var typeDefects = _qcData?.Defects?.Where(d => d.Type == defType).ToList() ?? new();
+        var photoItems = typeDefects.SelectMany(def => {
+            var urls = (def.Photos?.Where(p => !string.IsNullOrWhiteSpace(p)).ToList())
+                       ?? (def.PhotoUrl != null ? new List<string> { def.PhotoUrl } : new List<string>());
+            return urls.Select((url, i) => (Url: (string?)url, Remark: def.Remarks?.ElementAtOrDefault(i) ?? def.Remark ?? ""));
+        }).ToList();
+        // ChunkDefectsForPages luôn trả về ít nhất 1 trang (kể cả khi không có defect → 1 trang placeholder)
+        return ChunkDefectsForPages(photoItems).Count;
+    }
+
+    int MajorPagesCount => DefectTypePagesCount("Major");
+    int MinorPagesCount => DefectTypePagesCount("Minor");
+
+    // Tổng trang = Cover(1) + A(1) + B(carton×5) + C(2) + D(perf) + E&F-heading(1) + F-critical-cont + F-major + F-minor + Final(1)
+    int TotalPages => 1 + 1 + CartonPageCount + 2 + PerfPageCount + 1
+                      + CriticalContPagesCount + MajorPagesCount + MinorPagesCount + 1;
 
     // ─── DTOs mirroring API shape ───
 
@@ -2001,6 +2083,8 @@ else if (_data != null)
         max-width: 860px;
         margin: 24px auto;
         background: transparent;
+        /* ★ Khởi tạo CSS counter cho số trang — dùng cho cả screen và print */
+        counter-reset: page-counter;
     }
 
     .rpt-section {
@@ -2011,6 +2095,8 @@ else if (_data != null)
         box-shadow: 0 2px 12px rgba(0,0,0,.07);
         position: relative;
         min-height: 400px;
+        /* ★ Mỗi section = 1 trang → tăng counter */
+        counter-increment: page-counter;
     }
 
     /* ══════════════════════════════════════════
@@ -2531,6 +2617,12 @@ else if (_data != null)
         padding-left: 12px;
         border-left: 1px solid #e0e0e0;
     }
+    /* ★ Tự động inject "current / total" qua CSS counter + attr().
+       counter(page-counter) tăng theo mỗi .rpt-section,
+       attr(data-total) lấy từ data-total trên .rpt-paper. */
+    .rpt-paper .rpt-footer-page::before {
+        content: counter(page-counter) " / " attr(data-total);
+    }
 
     /* ══════════════════════════════════════════
        EMPTY / ERROR STATES
@@ -2642,7 +2734,10 @@ else if (_data != null)
             min-height: 297mm !important;
             max-height: 297mm !important;
             overflow: hidden !important;
-            padding: 12mm 14mm 14mm !important;
+            /* ★ Giảm padding top/bottom (12→9mm, 14→9mm) để:
+               - Có thêm chỗ cho footer 3 dòng (tránh clip)
+               - Giảm khoảng trắng dư ở các trang content ngắn */
+            padding: 9mm 14mm 9mm !important;
             counter-increment: page-counter;
             position: relative !important;
             box-sizing: border-box !important;
@@ -2930,21 +3025,37 @@ else if (_data != null)
         .rpt-footer {
             position: static !important;
             margin-top: auto !important;  /* ★ Đẩy footer xuống đáy .rpt-section flex column */
-            padding: 8px 0 0 !important;
+            padding: 6px 0 0 !important;
             border-top: 1px solid #cfd8e3 !important;
             background: white !important;
             flex-shrink: 0 !important;
+            /* ★ Đảm bảo footer LUÔN có đủ chỗ cho 3 dòng text (tránh bị content phía trên lấn) */
+            min-height: 16mm !important;
+            box-sizing: border-box !important;
+        }
+        .rpt-footer-inner {
+            display: flex !important;
+            align-items: flex-end !important;
+            justify-content: space-between !important;
+            gap: 10px !important;
         }
         .rpt-footer-text {
             font-size: 9px !important;
-            line-height: 1.45 !important;
+            line-height: 1.4 !important;
             color: #333 !important;     /* đậm rõ hơn so với #999 */
             font-weight: 500 !important;
+            /* ★ Cho phép wrap trên 3 dòng, không bị overflow ẩn chữ */
+            white-space: normal !important;
+            word-wrap: break-word !important;
+            flex: 1 1 auto !important;
+            text-align: center !important;
         }
         .rpt-footer-page {
             font-size: 11px !important;
             font-weight: 700 !important;
             color: #222 !important;     /* page number đậm bold */
+            flex-shrink: 0 !important;
+            white-space: nowrap !important;
         }
         /* Ẩn running footer vì position:fixed không reliable trong PDF print */
         .rpt-print-footer { display: none !important; }

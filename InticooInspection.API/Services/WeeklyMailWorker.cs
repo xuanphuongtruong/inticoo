@@ -5,8 +5,10 @@ namespace InticooInspection.API.Services
 {
     /// <summary>
     /// Background worker chạy mỗi 5 phút. Đọc cấu hình từ DB (qua MailConfigProvider).
-    /// Khi đến đúng thứ + giờ + phút (giờ VN) đã cấu hình, kích hoạt
-    /// SendWeeklyVendorMailsAsync(). Chống gửi trùng bằng MailLogs (1 ngày 1 lần).
+    /// Khi đến đúng thứ + giờ + phút (giờ VN) đã cấu hình, kích hoạt:
+    ///   1. SendWeeklyVendorMailsAsync()
+    ///   2. SendWeeklyCustomerMailsAsync()
+    /// Chống gửi trùng bằng MailLogs (1 ngày 1 lần cho mỗi loại).
     /// </summary>
     public class WeeklyMailWorker : BackgroundService
     {
@@ -31,7 +33,6 @@ namespace InticooInspection.API.Services
             try { await Task.Delay(TimeSpan.FromMinutes(1), stoppingToken); }
             catch (OperationCanceledException) { return; }
 
-            // Tick mỗi 5 phút - chính xác hơn cho cấu hình minute
             using var timer = new PeriodicTimer(TimeSpan.FromMinutes(5));
             do
             {
@@ -61,12 +62,10 @@ namespace InticooInspection.API.Services
 
             if ((int)nowVn.DayOfWeek != cfg.SendDayOfWeek) return;
 
-            // Tính tổng số phút từ đầu ngày để so sánh với cấu hình (giờ + phút)
             var nowMinutes    = nowVn.Hour * 60 + nowVn.Minute;
             var targetMinutes = cfg.SendHour * 60 + cfg.SendMinute;
 
-            // Cho phép trễ tối đa 30 phút (để worker tick 5 phút có khả năng bắt được)
-            // Phải sau hoặc bằng giờ target, và không quá 30 phút sau
+            // Cho phép trễ tối đa 30 phút (worker tick 5 phút)
             if (nowMinutes < targetMinutes || nowMinutes > targetMinutes + 30)
                 return;
 
@@ -77,23 +76,52 @@ namespace InticooInspection.API.Services
             var db   = scope.ServiceProvider.GetRequiredService<AppDbContext>();
             var mail = scope.ServiceProvider.GetRequiredService<IInspectionMailService>();
 
-            // Đã gửi hôm nay chưa? Check qua MailLogs
-            var alreadySent = await db.MailLogs
+            // ── 1) VENDOR ────────────────────────────────────────────
+            // Đã gửi vendor hôm nay chưa? Check log có VendorCode KHÔNG bắt đầu bằng "CUS:"
+            // và không phải TEST.
+            var vendorAlreadySent = await db.MailLogs
                 .AsNoTracking()
-                .AnyAsync(l => l.SentAt >= startOfSendDayUtc && l.IsSuccess, ct);
+                .AnyAsync(l => l.SentAt >= startOfSendDayUtc
+                            && l.IsSuccess
+                            && l.VendorCode != null
+                            && !l.VendorCode.StartsWith("CUS:")
+                            && !l.VendorCode.StartsWith("TEST"), ct);
 
-            if (alreadySent)
+            if (vendorAlreadySent)
             {
-                _logger.LogDebug("Hôm nay đã gửi mail vendor, bỏ qua");
-                return;
+                _logger.LogDebug("Hôm nay đã gửi mail vendor, bỏ qua phần vendor");
+            }
+            else
+            {
+                _logger.LogInformation("Bắt đầu gửi mail VENDOR hàng tuần lúc {time} (VN)", nowVn);
+                var vRes = await mail.SendWeeklyVendorMailsAsync(ct);
+                _logger.LogInformation(
+                    "Hoàn tất tuần (Vendor). Sent: {sent}/{total}, Skipped: {skip}, Failed: {fail}, Inspections: {ins}",
+                    vRes.VendorsSent, vRes.VendorsTotal,
+                    vRes.VendorsSkipped, vRes.VendorsFailed, vRes.InspectionsTotal);
             }
 
-            _logger.LogInformation("Bắt đầu gửi mail vendor hàng tuần lúc {time} (VN)", nowVn);
-            var result = await mail.SendWeeklyVendorMailsAsync(ct);
-            _logger.LogInformation(
-                "Hoàn tất tuần. Vendors: {sent}/{total}, Skipped: {skip}, Failed: {fail}, Inspections: {ins}",
-                result.VendorsSent, result.VendorsTotal,
-                result.VendorsSkipped, result.VendorsFailed, result.InspectionsTotal);
+            // ── 2) CUSTOMER ──────────────────────────────────────────
+            var customerAlreadySent = await db.MailLogs
+                .AsNoTracking()
+                .AnyAsync(l => l.SentAt >= startOfSendDayUtc
+                            && l.IsSuccess
+                            && l.VendorCode != null
+                            && l.VendorCode.StartsWith("CUS:"), ct);
+
+            if (customerAlreadySent)
+            {
+                _logger.LogDebug("Hôm nay đã gửi mail customer, bỏ qua phần customer");
+            }
+            else
+            {
+                _logger.LogInformation("Bắt đầu gửi mail CUSTOMER hàng tuần lúc {time} (VN)", nowVn);
+                var cRes = await mail.SendWeeklyCustomerMailsAsync(ct);
+                _logger.LogInformation(
+                    "Hoàn tất tuần (Customer). Sent: {sent}/{total}, Skipped: {skip}, Failed: {fail}, Inspections: {ins}",
+                    cRes.VendorsSent, cRes.VendorsTotal,
+                    cRes.VendorsSkipped, cRes.VendorsFailed, cRes.InspectionsTotal);
+            }
         }
     }
 }
