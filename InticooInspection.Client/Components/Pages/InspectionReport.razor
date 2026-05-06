@@ -1498,10 +1498,9 @@ else if (_data != null)
 
     /// <summary>
     /// Sau mỗi lần render, đếm chính xác số .rpt-section trên DOM (nguồn sự thật)
-    /// và set data-total trên .rpt-paper. CSS counter::before sẽ tự lấy giá trị này
-    /// để hiển thị "N / Total" trong footer mọi trang.
-    /// Cách này không phụ thuộc công thức C# (CartonPageCount/PerfPageCount/etc.)
-    /// nên luôn khớp với số trang thực tế.
+    /// và set textContent "N / Total" cho TỪNG .rpt-footer-page.
+    /// Dùng JS trực tiếp thay vì CSS counter+attr() vì attr() trong content không
+    /// hoạt động ổn định trên print rendering ở 1 số Chrome version.
     /// </summary>
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -1512,8 +1511,14 @@ else if (_data != null)
                 (function(){
                     var paper = document.querySelector('#rpt-root .rpt-paper');
                     if (!paper) return;
-                    var total = paper.querySelectorAll('.rpt-section').length;
-                    if (total > 0) paper.setAttribute('data-total', total);
+                    var sections = paper.querySelectorAll('.rpt-section');
+                    var total = sections.length;
+                    if (total === 0) return;
+                    paper.setAttribute('data-total', total);
+                    sections.forEach(function(sec, idx){
+                        var pn = sec.querySelector('.rpt-footer-page');
+                        if (pn) pn.textContent = (idx + 1) + ' / ' + total;
+                    });
                 })();
             ");
         }
@@ -1634,14 +1639,20 @@ else if (_data != null)
                     })();
                 ");
 
-                // ★ Sync data-total = số .rpt-section thực tế ngay trước khi in.
-                // CSS counter::before sẽ inject "N / Total" vào mọi .rpt-footer-page.
+                // ★ Sync số trang vào textContent của TỪNG .rpt-footer-page ngay trước khi in.
+                // Đây là nguồn sự thật cuối cùng — đếm DOM thực tế, gán "N / Total".
                 await JS.InvokeVoidAsync("eval", @"
                     (function(){
                         var paper = document.querySelector('#rpt-root .rpt-paper');
                         if (!paper) return;
-                        var total = paper.querySelectorAll('.rpt-section').length;
-                        if (total > 0) paper.setAttribute('data-total', total);
+                        var sections = paper.querySelectorAll('.rpt-section');
+                        var total = sections.length;
+                        if (total === 0) return;
+                        paper.setAttribute('data-total', total);
+                        sections.forEach(function(sec, idx){
+                            var pn = sec.querySelector('.rpt-footer-page');
+                            if (pn) pn.textContent = (idx + 1) + ' / ' + total;
+                        });
                     })();
                 ");
 
@@ -2617,12 +2628,6 @@ else if (_data != null)
         padding-left: 12px;
         border-left: 1px solid #e0e0e0;
     }
-    /* ★ Tự động inject "current / total" qua CSS counter + attr().
-       counter(page-counter) tăng theo mỗi .rpt-section,
-       attr(data-total) lấy từ data-total trên .rpt-paper. */
-    .rpt-paper .rpt-footer-page::before {
-        content: counter(page-counter) " / " attr(data-total);
-    }
 
     /* ══════════════════════════════════════════
        EMPTY / ERROR STATES
@@ -2727,25 +2732,23 @@ else if (_data != null)
             box-shadow: none !important;
             margin: 0 !important;
             width: 100% !important;
-            /* ★ Height bằng đúng 1 trang A4 (297mm) để footer luôn ở đáy trang.
-               break-inside:avoid + height fixed = mỗi section chiếm trọn 1 trang in.
-               flex-direction:column + margin-top:auto trên footer = footer nằm sát đáy. */
+            /* ★ Height bằng đúng 1 trang A4 (297mm) → mỗi section chiếm trọn 1 trang in. */
             height: 297mm !important;
             min-height: 297mm !important;
             max-height: 297mm !important;
             overflow: hidden !important;
-            /* ★ Giảm padding top/bottom (12→9mm, 14→9mm) để:
-               - Có thêm chỗ cho footer 3 dòng (tránh clip)
-               - Giảm khoảng trắng dư ở các trang content ngắn */
-            padding: 9mm 14mm 9mm !important;
+            /* ★ Layout: position relative + footer absolute bottom:0
+               Padding-bottom 20mm dành chỗ cho footer (14mm + 6mm spacing).
+               Padding-top 6mm — giảm tối đa để bớt khoảng trắng đầu trang.
+               KHÔNG dùng flex column — flex shrink content có thể đẩy footer ra ngoài
+               vùng nhìn thấy nếu content tổng > 297mm. */
+            padding: 6mm 14mm 20mm !important;
             counter-increment: page-counter;
             position: relative !important;
             box-sizing: border-box !important;
             break-inside: avoid !important;
             page-break-inside: avoid !important;
-            /* ★ Flex column để footer in-flow được đẩy xuống đáy section khi in PDF. */
-            display: flex !important;
-            flex-direction: column !important;
+            display: block !important;  /* override flex từ screen styles */
         }
 
         .page-break-after {
@@ -2763,15 +2766,20 @@ else if (_data != null)
         }
 
         .rpt-section-final {
-            height: auto !important;
-            min-height: 0 !important;
-            overflow: visible !important;
+            /* ★ Cũng giữ full 297mm như section thường để footer absolute bottom
+               nằm đúng vị trí (đáy trang in), không chạy theo content height. */
+            height: 297mm !important;
+            min-height: 297mm !important;
+            max-height: 297mm !important;
+            overflow: hidden !important;
             break-before: page !important;
             page-break-before: always !important;
             break-after: avoid !important;
             page-break-after: avoid !important;
             margin-bottom: 0 !important;
-            padding-bottom: 14mm !important;
+            padding: 6mm 14mm 20mm !important;
+            display: block !important;
+            position: relative !important;
         }
 
         /* Tránh cắt giữa trang.
@@ -3012,7 +3020,7 @@ else if (_data != null)
         /* ══════════════════════════════════════════
            FOOTER (in-flow, đẩy xuống đáy section bằng margin-top:auto trên flex container)
         ══════════════════════════════════════════ */
-        /* Ngăn các direct children bị flex-shrink → giữ kích thước tự nhiên */
+        /* Bỏ rule flex-shrink vì section không còn flex column */
         .rpt-section > .rpt-section-title,
         .rpt-section > .rpt-sub-title,
         .rpt-section > .rpt-photo-grid-2,
@@ -3023,15 +3031,23 @@ else if (_data != null)
             flex-shrink: 0 !important;
         }
         .rpt-footer {
-            position: static !important;
-            margin-top: auto !important;  /* ★ Đẩy footer xuống đáy .rpt-section flex column */
-            padding: 6px 0 0 !important;
+            /* ★ Position absolute trong .rpt-section (relative) → footer LUÔN ở đáy
+               trang in, không bị đẩy ra ngoài kể cả khi content tổng > 297mm.
+               Đây là khác biệt mấu chốt: trang đầu tiên (Cover) có content dài,
+               flex layout sẽ shrink/đẩy footer ra ngoài → footer biến mất.
+               Absolute bottom giải quyết triệt để. */
+            position: absolute !important;
+            bottom: 6mm !important;
+            left: 14mm !important;
+            right: 14mm !important;
+            padding: 4px 0 0 !important;
+            margin: 0 !important;
             border-top: 1px solid #cfd8e3 !important;
             background: white !important;
-            flex-shrink: 0 !important;
-            /* ★ Đảm bảo footer LUÔN có đủ chỗ cho 3 dòng text (tránh bị content phía trên lấn) */
-            min-height: 16mm !important;
             box-sizing: border-box !important;
+            min-height: 14mm !important;
+            max-height: 14mm !important;
+            overflow: hidden !important;
         }
         .rpt-footer-inner {
             display: flex !important;
@@ -3040,11 +3056,10 @@ else if (_data != null)
             gap: 10px !important;
         }
         .rpt-footer-text {
-            font-size: 9px !important;
-            line-height: 1.4 !important;
-            color: #333 !important;     /* đậm rõ hơn so với #999 */
+            font-size: 8.5px !important;       /* nhỏ chút để chắc chắn 3 dòng vừa */
+            line-height: 1.35 !important;
+            color: #333 !important;
             font-weight: 500 !important;
-            /* ★ Cho phép wrap trên 3 dòng, không bị overflow ẩn chữ */
             white-space: normal !important;
             word-wrap: break-word !important;
             flex: 1 1 auto !important;
@@ -3053,9 +3068,12 @@ else if (_data != null)
         .rpt-footer-page {
             font-size: 11px !important;
             font-weight: 700 !important;
-            color: #222 !important;     /* page number đậm bold */
+            color: #222 !important;
             flex-shrink: 0 !important;
             white-space: nowrap !important;
+            padding-left: 10px !important;
+            border-left: 1px solid #ccc !important;
+            align-self: center !important;
         }
         /* Ẩn running footer vì position:fixed không reliable trong PDF print */
         .rpt-print-footer { display: none !important; }
