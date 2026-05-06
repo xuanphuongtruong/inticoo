@@ -5,19 +5,15 @@ namespace InticooInspection.API.Services;
 
 /// <summary>
 /// Service xuất PDF server-side bằng Puppeteer Sharp (headless Chromium).
-/// Render trang Blazor inspection-report sang PDF với chất lượng pixel-perfect.
+/// Render trang Blazor inspection-report sang PDF.
 ///
-/// Phiên bản này có debug logging chi tiết để chẩn đoán lỗi timeout:
-/// - Log từng bước (navigate → inject token → wait #rpt-root)
-/// - Hook console của Puppeteer browser → đẩy log ra ASP.NET logger
-/// - Khi timeout: chụp screenshot + dump HTML vào /wwwroot/pdf-debug để inspect
-/// - Set timeout dài hơn (Blazor WASM lần đầu load mất 10-30s)
-///
-/// Setup:
-/// 1. NuGet: dotnet add package PuppeteerSharp
-/// 2. Lần chạy đầu tự download Chromium ~200MB
-/// 3. Đăng ký service: builder.Services.AddScoped&lt;IPdfService, PuppeteerPdfService&gt;();
-/// 4. appsettings.json: "AppBaseUrl": "http://localhost:5186" (URL của Blazor Client)
+/// THAY ĐỔI v2 (so với v1):
+/// 1. Dùng EvaluateFunctionOnNewDocumentAsync để inject auth_token TRƯỚC khi
+///    page load → đảm bảo Blazor đọc được token ngay lần đầu khởi tạo HttpClient.
+/// 2. Bỏ bước "GoToAsync(baseUrl) rồi mới GoToAsync(pageUrl)" — chỉ navigate 1 lần.
+/// 3. Bỏ footer template Puppeteer (DisplayHeaderFooter=false) → dùng footer
+///    sẵn có của Razor view (.rpt-print-footer) để tránh double footer.
+/// 4. Margin bottom = 0 (để footer fixed của view không bị đè).
 /// </summary>
 public interface IPdfService
 {
@@ -49,12 +45,17 @@ public class PuppeteerPdfService : IPdfService, IAsyncDisposable
         _logger.LogInformation("════════════════════════════════════════════════════");
         _logger.LogInformation("[PDF] Starting generation for inspection {Id}", inspectionId);
 
+        if (string.IsNullOrEmpty(authToken))
+        {
+            throw new UnauthorizedAccessException(
+                "Auth token is required. Frontend must forward Authorization header.");
+        }
+
         var browser = await GetBrowserAsync();
         await using var page = await browser.NewPageAsync();
 
         // ─────────────────────────────────────────────────────────────
-        // Hook console của browser → log ra ASP.NET (giúp debug Blazor app
-        // báo gì khi load data — ví dụ "Failed to fetch" / "401" / etc.)
+        // Hook console + error events từ browser → log ASP.NET
         // ─────────────────────────────────────────────────────────────
         page.Console += (sender, e) =>
         {
@@ -72,7 +73,6 @@ public class PuppeteerPdfService : IPdfService, IAsyncDisposable
         };
         page.Response += (sender, e) =>
         {
-            // Chỉ log response có status >= 400 để bớt noise
             if ((int)e.Response.Status >= 400)
             {
                 _logger.LogWarning("[PDF/browser/RESP] {Status} {Url}",
@@ -80,7 +80,7 @@ public class PuppeteerPdfService : IPdfService, IAsyncDisposable
             }
         };
 
-        // Set viewport desktop để tránh kích hoạt @media (max-width:860px) mobile
+        // Viewport desktop để tránh @media (max-width:860px) mobile
         await page.SetViewportAsync(new ViewPortOptions
         {
             Width  = 1280,
@@ -88,7 +88,6 @@ public class PuppeteerPdfService : IPdfService, IAsyncDisposable
             DeviceScaleFactor = 2
         });
 
-        // Build URL Blazor app
         var baseUrl = _config["AppBaseUrl"]?.TrimEnd('/')
                        ?? throw new InvalidOperationException(
                            "AppBaseUrl chưa được cấu hình trong appsettings.json");
@@ -100,88 +99,72 @@ public class PuppeteerPdfService : IPdfService, IAsyncDisposable
         try
         {
             // ─────────────────────────────────────────────────────────
-            // BƯỚC 1: Mở trang root để có document → có thể access sessionStorage
+            // CRITICAL: Inject auth_token vào sessionStorage TRƯỚC khi
+            // page load. EvaluateFunctionOnNewDocumentAsync sẽ chạy
+            // script TRƯỚC bất kỳ JS nào của trang → đảm bảo Blazor
+            // WASM đọc được token ngay khi khởi tạo.
             // ─────────────────────────────────────────────────────────
-            _logger.LogInformation("[PDF] Step 1/4: Loading root page to access sessionStorage...");
-            await page.GoToAsync(baseUrl, new NavigationOptions
-            {
-                WaitUntil = new[] { WaitUntilNavigation.DOMContentLoaded },
-                Timeout   = 60_000
-            });
-            _logger.LogInformation("[PDF] Step 1/4: ✓ Root page loaded ({Ms}ms)", sw.ElapsedMilliseconds);
+            var escapedToken = System.Text.Json.JsonSerializer.Serialize(authToken);
+            _logger.LogInformation("[PDF] Step 1/3: Injecting auth_token before page load (length={Len})...",
+                authToken.Length);
+
+            await page.EvaluateFunctionOnNewDocumentAsync($@"
+                () => {{
+                    try {{
+                        sessionStorage.setItem('auth_token', {escapedToken});
+                        // Một số app dùng localStorage làm fallback
+                        localStorage.setItem('auth_token', {escapedToken});
+                        console.log('[PDF-INJECT] Token injected, length=' + {escapedToken}.length);
+                    }} catch (e) {{
+                        console.error('[PDF-INJECT] Failed:', e.message);
+                    }}
+                }}
+            ");
 
             // ─────────────────────────────────────────────────────────
-            // BƯỚC 2: Inject token vào sessionStorage
-            // (Blazor Client đọc token từ sessionStorage["auth_token"]
-            //  để gắn header Authorization khi gọi API)
+            // Step 2: Navigate trực tiếp tới trang report
             // ─────────────────────────────────────────────────────────
-            if (!string.IsNullOrEmpty(authToken))
-            {
-                _logger.LogInformation("[PDF] Step 2/4: Injecting auth_token into sessionStorage (length={Len})...",
-                    authToken.Length);
-
-                var escapedToken = System.Text.Json.JsonSerializer.Serialize(authToken);
-                await page.EvaluateExpressionAsync(
-                    $"sessionStorage.setItem('auth_token', {escapedToken});");
-
-                // Verify đã set thành công
-                var verifyToken = await page.EvaluateExpressionAsync<string?>(
-                    "sessionStorage.getItem('auth_token')");
-                _logger.LogInformation("[PDF] Step 2/4: ✓ Token injected (verified length={Len})",
-                    verifyToken?.Length ?? 0);
-            }
-            else
-            {
-                _logger.LogWarning("[PDF] Step 2/4: ⚠ No authToken provided — Blazor app may fail to load data");
-            }
-
-            // ─────────────────────────────────────────────────────────
-            // BƯỚC 3: Navigate vào trang inspection-report thật
-            // ─────────────────────────────────────────────────────────
-            _logger.LogInformation("[PDF] Step 3/4: Navigating to {Url}...", pageUrl);
+            _logger.LogInformation("[PDF] Step 2/3: Navigating to {Url}...", pageUrl);
             await page.GoToAsync(pageUrl, new NavigationOptions
             {
                 WaitUntil = new[] { WaitUntilNavigation.Networkidle2 },
-                Timeout   = 90_000  // Blazor WASM lần đầu load mất 10-30s
+                Timeout   = 90_000
             });
-            _logger.LogInformation("[PDF] Step 3/4: ✓ Navigation complete ({Ms}ms)", sw.ElapsedMilliseconds);
+            _logger.LogInformation("[PDF] Step 2/3: ✓ Navigation complete ({Ms}ms)", sw.ElapsedMilliseconds);
 
             // ─────────────────────────────────────────────────────────
-            // BƯỚC 4: Chờ Blazor render xong + ảnh load xong
+            // Step 3: Đợi Blazor render xong + ảnh load + KHÔNG có error/login
             // ─────────────────────────────────────────────────────────
-            _logger.LogInformation("[PDF] Step 4/4: Waiting for #rpt-root + images...");
+            _logger.LogInformation("[PDF] Step 3/3: Waiting for #rpt-root + images...");
 
             try
             {
                 await page.WaitForFunctionAsync(@"
                     () => {
-                        // Detect lỗi rõ ràng để fail nhanh thay vì chờ timeout
+                        // Detect lỗi rõ ràng để fail nhanh
                         const errorEl = document.querySelector('.rpt-error');
                         if (errorEl) {
                             throw new Error('Blazor app shows error: ' + errorEl.textContent.trim());
                         }
-
-                        // Detect đang ở trang login
+                        // Detect bị redirect sang login
                         if (window.location.pathname.toLowerCase().includes('login')) {
                             throw new Error('Redirected to login: ' + window.location.href);
                         }
-
-                        // Đợi root + không còn loading
+                        // Đợi root + hết loading
                         const root = document.getElementById('rpt-root');
                         if (!root) return false;
                         if (document.querySelector('.rpt-loading')) return false;
-
-                        // Đợi tất cả ảnh load xong (ngoại trừ ảnh không có src)
+                        // Đợi tất cả ảnh load xong
                         const imgs = Array.from(document.querySelectorAll('#rpt-root img'));
                         return imgs.every(img => !img.src || (img.complete && img.naturalHeight > 0));
                     }
                 ", new WaitForFunctionOptions { Timeout = 90_000 });
 
-                _logger.LogInformation("[PDF] Step 4/4: ✓ Page rendered ({Ms}ms)", sw.ElapsedMilliseconds);
+                _logger.LogInformation("[PDF] Step 3/3: ✓ Page rendered ({Ms}ms)", sw.ElapsedMilliseconds);
             }
             catch (Exception waitEx)
             {
-                _logger.LogError("[PDF] Step 4/4: ✗ Wait failed — capturing diagnostics...");
+                _logger.LogError("[PDF] Step 3/3: ✗ Wait failed — capturing diagnostics...");
                 await CaptureDebugInfoAsync(page, inspectionId);
                 throw new InvalidOperationException(
                     $"Puppeteer timeout while waiting for #rpt-root. " +
@@ -189,54 +172,32 @@ public class PuppeteerPdfService : IPdfService, IAsyncDisposable
                     $"Original error: {waitEx.Message}", waitEx);
             }
 
-            // ─────────────────────────────────────────────────────────
-            // Inject CSS bổ sung khi render PDF
-            // ─────────────────────────────────────────────────────────
-            await page.AddStyleTagAsync(new AddTagOptions
+            // Đợi font load
+            try
             {
-                Content = @"
-                    .rpt-toolbar, .no-print { display: none !important; }
-                    html, body, .rpt-page { background: white !important; }
-                    .rpt-section { box-shadow: none !important; border-radius: 0 !important; }
-                    .rpt-footer, .rpt-print-footer { display: none !important; }
-                "
-            });
+                await page.EvaluateExpressionAsync("document.fonts && document.fonts.ready");
+            }
+            catch { /* ignore */ }
 
             // ─────────────────────────────────────────────────────────
-            // Generate PDF
+            // Generate PDF — KHÔNG dùng Puppeteer header/footer (dùng
+            // footer sẵn có của Razor view để tránh double).
+            // Margin = 0 để view tự kiểm soát layout.
             // ─────────────────────────────────────────────────────────
             _logger.LogInformation("[PDF] Generating PDF binary...");
             var pdfBytes = await page.PdfDataAsync(new PdfOptions
             {
-                Format          = PaperFormat.A4,
-                PrintBackground = true,
-                DisplayHeaderFooter = true,
-                MarginOptions = new MarginOptions
+                Format              = PaperFormat.A4,
+                PrintBackground     = true,
+                PreferCSSPageSize   = true,
+                DisplayHeaderFooter = false,
+                MarginOptions       = new MarginOptions
                 {
-                    Top    = "15mm",
-                    Bottom = "28mm",
+                    Top    = "0",
+                    Bottom = "0",
                     Left   = "0",
                     Right  = "0"
-                },
-                HeaderTemplate = "<div></div>",
-                FooterTemplate = @"
-                    <div style='font-family: Arial, sans-serif; font-size: 9px; color: #555;
-                                width: 100%; padding: 0 12mm; box-sizing: border-box;
-                                border-top: 1px solid #e8edf5; padding-top: 6px;'>
-                        <div style='text-align: center; line-height: 1.4;'>
-                            www.inticoo.com<br/>
-                            The results presented herein reflect our findings at the time and place of inspection.
-                            This report does not release the seller or manufacturer from their contractual obligations,
-                            nor does it prejudice the buyer's right to seek compensation for any apparent or latent
-                            defects not identified during our random inspection or arising thereafter.
-                            This document does not constitute evidence of shipment.
-                            Final approval from the client is required prior to the release of the goods.
-                        </div>
-                        <div style='position: absolute; right: 12mm; bottom: 8px;
-                                    font-weight: 700; color: #888;'>
-                            <span class='pageNumber'></span>
-                        </div>
-                    </div>"
+                }
             });
 
             sw.Stop();
@@ -255,7 +216,6 @@ public class PuppeteerPdfService : IPdfService, IAsyncDisposable
 
     /// <summary>
     /// Khi Puppeteer timeout: chụp screenshot + dump HTML để inspect lỗi.
-    /// File lưu vào {ContentRoot}/wwwroot/pdf-debug/.
     /// </summary>
     private async Task CaptureDebugInfoAsync(IPage page, int inspectionId)
     {
@@ -268,14 +228,11 @@ public class PuppeteerPdfService : IPdfService, IAsyncDisposable
             var pngPath  = Path.Combine(debugDir, $"insp-{inspectionId}-{ts}.png");
             var htmlPath = Path.Combine(debugDir, $"insp-{inspectionId}-{ts}.html");
 
-            // Screenshot trang đầy đủ (giúp thấy có trang login / error / blank không)
             await page.ScreenshotAsync(pngPath, new ScreenshotOptions { FullPage = true });
 
-            // Dump HTML để có thể search element bằng tay
             var html = await page.GetContentAsync();
             await File.WriteAllTextAsync(htmlPath, html);
 
-            // Log thêm URL hiện tại + title
             var currentUrl   = page.Url;
             var currentTitle = await page.GetTitleAsync();
 
@@ -294,7 +251,7 @@ public class PuppeteerPdfService : IPdfService, IAsyncDisposable
         Path.Combine(_env.ContentRootPath, "wwwroot", "pdf-debug");
 
     /// <summary>
-    /// Lazy-init Chromium browser. Singleton cho cả app — tránh khởi động lại.
+    /// Lazy-init Chromium browser. Singleton cho cả app.
     /// </summary>
     private async Task<IBrowser> GetBrowserAsync()
     {

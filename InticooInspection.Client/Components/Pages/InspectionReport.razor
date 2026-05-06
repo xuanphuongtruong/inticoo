@@ -262,13 +262,23 @@ else if (_data != null)
                     </tbody>
                 </table>
 
-                <!-- Photo grid 2 cột — show tất cả ảnh có thật, pad chẵn cho layout 2 cột.
-                     Khi không có ảnh nào, helper tự trả về 2 slot trống. -->
+                <!-- ★ Photo grid: chia thành chunks. Trang đầu (chung với table)
+                     tối đa 4 ảnh; các trang tiếp theo tối đa 6 ảnh.
+                     Tránh tràn trang gây ra trang trắng. -->
                 @{
-                    var photoSlots = PadEvenForGrid(qc?.Photos);
+                    var aPhotosAll = (qc?.Photos ?? Enumerable.Empty<string>())
+                        .Where(p => !string.IsNullOrWhiteSpace(p)).ToList();
+                    // Trang đầu (cùng table) tối đa 4 ảnh
+                    var aFirstPage = aPhotosAll.Take(4).Cast<string?>().ToList();
+                    if (aFirstPage.Count > 0 && aFirstPage.Count % 2 != 0) aFirstPage.Add(null);
+                    if (aFirstPage.Count == 0) aFirstPage = new List<string?> { null, null };
+                    // Các trang sau (chia 6 ảnh/trang)
+                    var aRestPages = ChunkPhotosForPages(aPhotosAll.Skip(4));
+                    // ChunkPhotosForPages trả về [[null,null]] khi rỗng — bỏ trường hợp đó
+                    if (aPhotosAll.Count <= 4) aRestPages = new List<List<string?>>();
                 }
                 <div class="rpt-qty-photo-grid">
-                    @foreach (var slot in photoSlots)
+                    @foreach (var slot in aFirstPage)
                     {
                         <div class="rpt-qty-photo-cell">
                             @if (!string.IsNullOrEmpty(slot))
@@ -286,6 +296,30 @@ else if (_data != null)
                     </div>
                 </div>
             </div>
+
+            @* Trang tiếp theo của Section A (nếu > 4 ảnh) *@
+            @foreach (var pageSlots in aRestPages)
+            {
+                <div class="rpt-section page-break-after">
+                    <div class="rpt-section-title rpt-section-title-lg">A. Quantity Conformity (cont.)</div>
+                    <div class="rpt-qty-photo-grid">
+                        @foreach (var slot in pageSlots)
+                        {
+                            <div class="rpt-qty-photo-cell">
+                                @if (!string.IsNullOrEmpty(slot))
+                                {
+                                    <img src="@NormalizeUrl(slot)" class="rpt-qty-photo-img" alt="Quantity photo" loading="eager"/>
+                                }
+                            </div>
+                        }
+                    </div>
+                    <div class="rpt-footer">
+                        <div class="rpt-footer-inner">
+                            <span class="rpt-footer-text">www.inticoo.com<br/>The results presented herein reflect our findings at the time and place of inspection. This report does not release the seller or manufacturer from their contractual obligations, nor does it prejudice the buyer's right to seek compensation for any apparent or latent defects not identified during our random inspection or arising thereafter. This document does not constitute evidence of shipment. Final approval from the client is required prior to the release of the goods.</span>
+                        </div>
+                    </div>
+                </div>
+            }
             } @* end IsPass("A") *@
 
             <!-- ══ SECTION B: Packaging & Identification ══ -->
@@ -362,10 +396,20 @@ else if (_data != null)
                     <!-- i. Carton Size -->
                     <div class="rpt-sub-title">i. Carton Size</div>
                     @{
-                        var _sCartonSize = PadEvenForGrid(cd?.SizePhotos ?? pr?.CartonSizePhotos);
+                        var _csAll = ((cd?.SizePhotos ?? pr?.CartonSizePhotos) ?? Enumerable.Empty<string>())
+                            .Where(p => !string.IsNullOrWhiteSpace(p)).ToList();
+                        // Trang đầu (cùng info table) → tối đa 4 ảnh để vừa A4
+                        var _csFirstPage = _csAll.Take(4).Cast<string?>().ToList();
+                        if (_csFirstPage.Count > 0 && _csFirstPage.Count % 2 != 0) _csFirstPage.Add(null);
+                        if (_csFirstPage.Count == 0) _csFirstPage = new List<string?> { null, null };
+                        // Các trang tiếp theo (chia 6 ảnh/trang)
+                        var _csRestPages = _csAll.Count > 4
+                            ? ChunkPhotosForPages(_csAll.Skip(4))
+                            : new List<List<string?>>();
+                        var _csResult = cd?.CartonSizeResult ?? pr?.CartonSizeResult;
                     }
                     <div class="rpt-photo-grid-2">
-                        @foreach (var _u in _sCartonSize)
+                        @foreach (var _u in _csFirstPage)
                         {
                             <div class="rpt-photo-cell">
                                 @if (!string.IsNullOrEmpty(_u))
@@ -373,8 +417,8 @@ else if (_data != null)
                             </div>
                         }
                     </div>
-                    @{ var _csResult = cd?.CartonSizeResult ?? pr?.CartonSizeResult; }
-                    @if (!string.IsNullOrEmpty(_csResult))
+                    @* Chỉ hiển thị badge result trên trang cuối của block này nếu KHÔNG có trang tiếp theo *@
+                    @if (!string.IsNullOrEmpty(_csResult) && _csRestPages.Count == 0)
                     {
                         <div style="text-align:right;margin-top:4px">
                             <span class="rpt-compliance-badge comp-@(_csResult.ToLower())">@_csResult</span>
@@ -389,164 +433,303 @@ else if (_data != null)
                     </div>
                 </div>
 
-                <!-- ── Trang ii+iii. Shipping Mark + Carton Weight (gộp chung 1 trang nếu vừa, không thì iii sang trang mới) ── -->
-                <div class="rpt-section page-break-after">
-                    <div class="rpt-section-title rpt-section-title-lg">B. Packaging &amp; Identification@(cartonSuffix)</div>
-
-                    <div>
-                        <div class="rpt-sub-title">ii. Shipping Mark / Labeling / Barcode</div>
-                        @{
-                            var _sShipping = PadEvenForGrid(cd?.ShippingMarkPhotos ?? pr?.ShippingMarkPhotos);
-                        }
+                @* Trang tiếp theo của i. Carton Size (nếu > 4 ảnh) *@
+                @for (int _csPi = 0; _csPi < _csRestPages.Count; _csPi++)
+                {
+                    var _csPage = _csRestPages[_csPi];
+                    var _csIsLast = _csPi == _csRestPages.Count - 1;
+                    <div class="rpt-section page-break-after">
+                        <div class="rpt-section-title rpt-section-title-lg">B. Packaging &amp; Identification@(cartonSuffix)</div>
+                        <div class="rpt-sub-title">i. Carton Size (cont.)</div>
                         <div class="rpt-photo-grid-2">
-                            @foreach (var _u in _sShipping)
+                            @foreach (var _u in _csPage)
                             {
                                 <div class="rpt-photo-cell">
                                     @if (!string.IsNullOrEmpty(_u))
-                                    { <img src="@NormalizeUrl(_u)" class="rpt-photo" alt="Shipping mark" loading="eager"/> }
+                                    { <img src="@NormalizeUrl(_u)" class="rpt-photo" alt="Carton size" loading="eager"/> }
                                 </div>
                             }
                         </div>
-                        @{ var _smResult = cd?.ShippingMarkResult ?? pr?.ShippingMarkResult; }
-                        @if (!string.IsNullOrEmpty(_smResult))
+                        @if (_csIsLast && !string.IsNullOrEmpty(_csResult))
                         {
                             <div style="text-align:right;margin-top:4px">
-                                <span class="rpt-compliance-badge comp-@(_smResult.ToLower())">@_smResult</span>
+                                <span class="rpt-compliance-badge comp-@(_csResult.ToLower())">@_csResult</span>
                             </div>
                         }
+                        <div class="rpt-footer">
+                            <div class="rpt-footer-inner">
+                                <span class="rpt-footer-text">www.inticoo.com<br/>The results presented herein reflect our findings at the time and place of inspection. This report does not release the seller or manufacturer from their contractual obligations, nor does it prejudice the buyer's right to seek compensation for any apparent or latent defects not identified during our random inspection or arising thereafter. This document does not constitute evidence of shipment. Final approval from the client is required prior to the release of the goods.</span>
+                            </div>
+                        </div>
                     </div>
+                }
 
-                    <div style="margin-top:16px;">
-                        <div class="rpt-sub-title">iii. Carton Weight</div>
-                        @if (cd != null && cd.Weight > 0)
-                        {
-                            <div style="font-size:12px;color:#555;margin-bottom:8px">Actual Weight: <strong>@cd.Weight kg</strong></div>
-                        }
-                        @{
-                            // FIX: trước đây dùng nhầm cd?.SizePhotos (ảnh Carton Size)
-                            // → đã sửa thành cd?.WeightPhotos (đúng ảnh Carton Weight)
-                            var _sWeight = PadEvenForGrid(cd?.WeightPhotos ?? pr?.WeightPhotos);
-                        }
+                <!-- ── ii. Shipping Mark + iii. Carton Weight ──
+                     Logic: Nếu tổng ảnh ≤ 4 → gộp 1 trang (giữ layout như cũ).
+                     Nếu nhiều hơn → mỗi phần 1 trang riêng, mỗi trang ≤ 6 ảnh. -->
+                @{
+                    var _shipAll = ((cd?.ShippingMarkPhotos ?? pr?.ShippingMarkPhotos) ?? Enumerable.Empty<string>())
+                        .Where(p => !string.IsNullOrWhiteSpace(p)).ToList();
+                    var _wgtAll = ((cd?.WeightPhotos ?? pr?.WeightPhotos) ?? Enumerable.Empty<string>())
+                        .Where(p => !string.IsNullOrWhiteSpace(p)).ToList();
+                    var _smResult = cd?.ShippingMarkResult ?? pr?.ShippingMarkResult;
+                    var _cwResult = cd?.CartonWeightResult ?? pr?.CartonWeightResult;
+                    bool _combineShipWgt = _shipAll.Count + _wgtAll.Count <= 4;
+                }
+
+                @if (_combineShipWgt)
+                {
+                    @* Trang gộp ii + iii (≤ 4 ảnh tổng cộng) *@
+                    <div class="rpt-section page-break-after">
+                        <div class="rpt-section-title rpt-section-title-lg">B. Packaging &amp; Identification@(cartonSuffix)</div>
+
+                        <div>
+                            <div class="rpt-sub-title">ii. Shipping Mark / Labeling / Barcode</div>
+                            @{
+                                var _shipPad = _shipAll.Cast<string?>().ToList();
+                                if (_shipPad.Count == 0) _shipPad = new List<string?> { null, null };
+                                else if (_shipPad.Count % 2 != 0) _shipPad.Add(null);
+                            }
+                            <div class="rpt-photo-grid-2">
+                                @foreach (var _u in _shipPad)
+                                {
+                                    <div class="rpt-photo-cell">
+                                        @if (!string.IsNullOrEmpty(_u))
+                                        { <img src="@NormalizeUrl(_u)" class="rpt-photo" alt="Shipping mark" loading="eager"/> }
+                                    </div>
+                                }
+                            </div>
+                            @if (!string.IsNullOrEmpty(_smResult))
+                            {
+                                <div style="text-align:right;margin-top:4px">
+                                    <span class="rpt-compliance-badge comp-@(_smResult.ToLower())">@_smResult</span>
+                                </div>
+                            }
+                        </div>
+
+                        <div style="margin-top:16px;">
+                            <div class="rpt-sub-title">iii. Carton Weight</div>
+                            @if (cd != null && cd.Weight > 0)
+                            {
+                                <div style="font-size:12px;color:#555;margin-bottom:8px">Actual Weight: <strong>@cd.Weight kg</strong></div>
+                            }
+                            @{
+                                var _wgtPad = _wgtAll.Cast<string?>().ToList();
+                                if (_wgtPad.Count == 0) _wgtPad = new List<string?> { null, null };
+                                else if (_wgtPad.Count % 2 != 0) _wgtPad.Add(null);
+                            }
+                            <div class="rpt-photo-grid-2">
+                                @foreach (var _u in _wgtPad)
+                                {
+                                    <div class="rpt-photo-cell">
+                                        @if (!string.IsNullOrEmpty(_u))
+                                        { <img src="@NormalizeUrl(_u)" class="rpt-photo" alt="Carton weight" loading="eager"/> }
+                                    </div>
+                                }
+                            </div>
+                            @if (!string.IsNullOrEmpty(_cwResult))
+                            {
+                                <div style="text-align:right;margin-top:4px">
+                                    <span class="rpt-compliance-badge comp-@(_cwResult.ToLower())">@_cwResult</span>
+                                </div>
+                            }
+                        </div>
+
+                        <div class="rpt-footer">
+                            <div class="rpt-footer-inner">
+                                <span class="rpt-footer-text">www.inticoo.com<br/>The results presented herein reflect our findings at the time and place of inspection. This report does not release the seller or manufacturer from their contractual obligations, nor does it prejudice the buyer's right to seek compensation for any apparent or latent defects not identified during our random inspection or arising thereafter. This document does not constitute evidence of shipment. Final approval from the client is required prior to the release of the goods.</span>
+                                <span class="rpt-footer-page">@(3 + cIdx * 5 + 1) / @TotalPages</span>
+                            </div>
+                        </div>
+                    </div>
+                }
+                else
+                {
+                    @* Tách: ii thành các trang riêng (max 6 ảnh/trang) *@
+                    @{
+                        var _shipPages = ChunkPhotosForPages(_shipAll);
+                    }
+                    @for (int _shipPi = 0; _shipPi < _shipPages.Count; _shipPi++)
+                    {
+                        var _shipPage = _shipPages[_shipPi];
+                        var _shipIsLast = _shipPi == _shipPages.Count - 1;
+                        var _shipSuffix = _shipPages.Count > 1 ? " (cont.)" : "";
+                        <div class="rpt-section page-break-after">
+                            <div class="rpt-section-title rpt-section-title-lg">B. Packaging &amp; Identification@(cartonSuffix)</div>
+                            <div class="rpt-sub-title">ii. Shipping Mark / Labeling / Barcode@(_shipPi == 0 ? "" : _shipSuffix)</div>
+                            <div class="rpt-photo-grid-2">
+                                @foreach (var _u in _shipPage)
+                                {
+                                    <div class="rpt-photo-cell">
+                                        @if (!string.IsNullOrEmpty(_u))
+                                        { <img src="@NormalizeUrl(_u)" class="rpt-photo" alt="Shipping mark" loading="eager"/> }
+                                    </div>
+                                }
+                            </div>
+                            @if (_shipIsLast && !string.IsNullOrEmpty(_smResult))
+                            {
+                                <div style="text-align:right;margin-top:4px">
+                                    <span class="rpt-compliance-badge comp-@(_smResult.ToLower())">@_smResult</span>
+                                </div>
+                            }
+                            <div class="rpt-footer">
+                                <div class="rpt-footer-inner">
+                                    <span class="rpt-footer-text">www.inticoo.com<br/>The results presented herein reflect our findings at the time and place of inspection. This report does not release the seller or manufacturer from their contractual obligations, nor does it prejudice the buyer's right to seek compensation for any apparent or latent defects not identified during our random inspection or arising thereafter. This document does not constitute evidence of shipment. Final approval from the client is required prior to the release of the goods.</span>
+                                </div>
+                            </div>
+                        </div>
+                    }
+
+                    @* Tách: iii thành các trang riêng (max 6 ảnh/trang) *@
+                    @{
+                        var _wgtPages = ChunkPhotosForPages(_wgtAll);
+                    }
+                    @for (int _wgtPi = 0; _wgtPi < _wgtPages.Count; _wgtPi++)
+                    {
+                        var _wgtPage = _wgtPages[_wgtPi];
+                        var _wgtIsLast = _wgtPi == _wgtPages.Count - 1;
+                        var _wgtSuffix = _wgtPages.Count > 1 ? " (cont.)" : "";
+                        <div class="rpt-section page-break-after">
+                            <div class="rpt-section-title rpt-section-title-lg">B. Packaging &amp; Identification@(cartonSuffix)</div>
+                            <div class="rpt-sub-title">iii. Carton Weight@(_wgtPi == 0 ? "" : _wgtSuffix)</div>
+                            @if (_wgtPi == 0 && cd != null && cd.Weight > 0)
+                            {
+                                <div style="font-size:12px;color:#555;margin-bottom:8px">Actual Weight: <strong>@cd.Weight kg</strong></div>
+                            }
+                            <div class="rpt-photo-grid-2">
+                                @foreach (var _u in _wgtPage)
+                                {
+                                    <div class="rpt-photo-cell">
+                                        @if (!string.IsNullOrEmpty(_u))
+                                        { <img src="@NormalizeUrl(_u)" class="rpt-photo" alt="Carton weight" loading="eager"/> }
+                                    </div>
+                                }
+                            </div>
+                            @if (_wgtIsLast && !string.IsNullOrEmpty(_cwResult))
+                            {
+                                <div style="text-align:right;margin-top:4px">
+                                    <span class="rpt-compliance-badge comp-@(_cwResult.ToLower())">@_cwResult</span>
+                                </div>
+                            }
+                            <div class="rpt-footer">
+                                <div class="rpt-footer-inner">
+                                    <span class="rpt-footer-text">www.inticoo.com<br/>The results presented herein reflect our findings at the time and place of inspection. This report does not release the seller or manufacturer from their contractual obligations, nor does it prejudice the buyer's right to seek compensation for any apparent or latent defects not identified during our random inspection or arising thereafter. This document does not constitute evidence of shipment. Final approval from the client is required prior to the release of the goods.</span>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                }
+
+                <!-- ── iv. Packaging & Labeling Specifications (chunked: 6 ảnh/trang) ── -->
+                @{
+                    var _plPages = ChunkPhotosForPages(cd?.PkgLabelPhotos ?? pr?.PkgLabelPhotos);
+                    var _plResult = cd?.PkgLabelResult ?? pr?.PkgLabelResult;
+                }
+                @for (int _plPi = 0; _plPi < _plPages.Count; _plPi++)
+                {
+                    var _plPage = _plPages[_plPi];
+                    var _plIsLast = _plPi == _plPages.Count - 1;
+                    var _plSuffix = _plPages.Count > 1 && _plPi > 0 ? " (cont.)" : "";
+                    <div class="rpt-section page-break-after">
+                        <div class="rpt-section-title rpt-section-title-lg">B. Packaging &amp; Identification@(cartonSuffix)</div>
+                        <div class="rpt-sub-title">iv. Packaging &amp; Labeling Specifications@(_plSuffix)</div>
                         <div class="rpt-photo-grid-2">
-                            @foreach (var _u in _sWeight)
+                            @foreach (var _u in _plPage)
                             {
                                 <div class="rpt-photo-cell">
                                     @if (!string.IsNullOrEmpty(_u))
-                                    { <img src="@NormalizeUrl(_u)" class="rpt-photo" alt="Carton weight" loading="eager"/> }
+                                    { <img src="@NormalizeUrl(_u)" class="rpt-photo" alt="Pkg label" loading="eager"/> }
                                 </div>
                             }
                         </div>
-                        @{ var _cwResult = cd?.CartonWeightResult ?? pr?.CartonWeightResult; }
-                        @if (!string.IsNullOrEmpty(_cwResult))
+                        @if (_plIsLast && !string.IsNullOrEmpty(_plResult))
                         {
                             <div style="text-align:right;margin-top:4px">
-                                <span class="rpt-compliance-badge comp-@(_cwResult.ToLower())">@_cwResult</span>
+                                <span class="rpt-compliance-badge comp-@(_plResult.ToLower())">@_plResult</span>
                             </div>
                         }
-                    </div>
-
-                    <div class="rpt-footer">
-                        <div class="rpt-footer-inner">
-                            <span class="rpt-footer-text">www.inticoo.com<br/>The results presented herein reflect our findings at the time and place of inspection. This report does not release the seller or manufacturer from their contractual obligations, nor does it prejudice the buyer's right to seek compensation for any apparent or latent defects not identified during our random inspection or arising thereafter. This document does not constitute evidence of shipment. Final approval from the client is required prior to the release of the goods.</span>
-                            <span class="rpt-footer-page">@(3 + cIdx * 5 + 1) / @TotalPages</span>
+                        <div class="rpt-footer">
+                            <div class="rpt-footer-inner">
+                                <span class="rpt-footer-text">www.inticoo.com<br/>The results presented herein reflect our findings at the time and place of inspection. This report does not release the seller or manufacturer from their contractual obligations, nor does it prejudice the buyer's right to seek compensation for any apparent or latent defects not identified during our random inspection or arising thereafter. This document does not constitute evidence of shipment. Final approval from the client is required prior to the release of the goods.</span>
+                                @if (_plPi == 0) { <span class="rpt-footer-page">@(3 + cIdx * 5 + 2) / @TotalPages</span> }
+                            </div>
                         </div>
                     </div>
-                </div>
+                }
 
-                <!-- ── Trang iv. Packaging & Labeling Specifications ── -->
-                <div class="rpt-section page-break-after">
-                    <div class="rpt-section-title rpt-section-title-lg">B. Packaging &amp; Identification@(cartonSuffix)</div>
-
-                    <div class="rpt-sub-title">iv. Packaging &amp; Labeling Specifications</div>
-                    @{
-                        var _sPkgLabel = PadEvenForGrid(cd?.PkgLabelPhotos ?? pr?.PkgLabelPhotos);
-                    }
-                    <div class="rpt-photo-grid-2">
-                        @foreach (var _u in _sPkgLabel)
+                <!-- ── v. Assembly Instruction Specifications (chunked: 6 ảnh/trang) ── -->
+                @{
+                    var _asPages = ChunkPhotosForPages(cd?.AssemblyPhotos ?? pr?.AssemblyPhotos);
+                    var _asResult = cd?.AssemblyResult ?? pr?.AssemblyResult;
+                }
+                @for (int _asPi = 0; _asPi < _asPages.Count; _asPi++)
+                {
+                    var _asPage = _asPages[_asPi];
+                    var _asIsLast = _asPi == _asPages.Count - 1;
+                    var _asSuffix = _asPages.Count > 1 && _asPi > 0 ? " (cont.)" : "";
+                    <div class="rpt-section page-break-after">
+                        <div class="rpt-section-title rpt-section-title-lg">B. Packaging &amp; Identification@(cartonSuffix)</div>
+                        <div class="rpt-sub-title">v. Assembly Instruction Specifications@(_asSuffix)</div>
+                        <div class="rpt-photo-grid-2">
+                            @foreach (var _u in _asPage)
+                            {
+                                <div class="rpt-photo-cell">
+                                    @if (!string.IsNullOrEmpty(_u))
+                                    { <img src="@NormalizeUrl(_u)" class="rpt-photo" alt="Assembly" loading="eager"/> }
+                                </div>
+                            }
+                        </div>
+                        @if (_asIsLast && !string.IsNullOrEmpty(_asResult))
                         {
-                            <div class="rpt-photo-cell">
-                                @if (!string.IsNullOrEmpty(_u))
-                                { <img src="@NormalizeUrl(_u)" class="rpt-photo" alt="Pkg label" loading="eager"/> }
+                            <div style="text-align:right;margin-top:4px">
+                                <span class="rpt-compliance-badge comp-@(_asResult.ToLower())">@_asResult</span>
                             </div>
                         }
-                    </div>
-                    @{ var _plResult = cd?.PkgLabelResult ?? pr?.PkgLabelResult; }
-                    @if (!string.IsNullOrEmpty(_plResult))
-                    {
-                        <div style="text-align:right;margin-top:4px">
-                            <span class="rpt-compliance-badge comp-@(_plResult.ToLower())">@_plResult</span>
-                        </div>
-                    }
-                    <div class="rpt-footer">
-                        <div class="rpt-footer-inner">
-                            <span class="rpt-footer-text">www.inticoo.com<br/>The results presented herein reflect our findings at the time and place of inspection. This report does not release the seller or manufacturer from their contractual obligations, nor does it prejudice the buyer's right to seek compensation for any apparent or latent defects not identified during our random inspection or arising thereafter. This document does not constitute evidence of shipment. Final approval from the client is required prior to the release of the goods.</span>
-                            <span class="rpt-footer-page">@(3 + cIdx * 5 + 2) / @TotalPages</span>
+                        <div class="rpt-footer">
+                            <div class="rpt-footer-inner">
+                                <span class="rpt-footer-text">www.inticoo.com<br/>The results presented herein reflect our findings at the time and place of inspection. This report does not release the seller or manufacturer from their contractual obligations, nor does it prejudice the buyer's right to seek compensation for any apparent or latent defects not identified during our random inspection or arising thereafter. This document does not constitute evidence of shipment. Final approval from the client is required prior to the release of the goods.</span>
+                                @if (_asPi == 0) { <span class="rpt-footer-page">@(3 + cIdx * 5 + 3) / @TotalPages</span> }
+                            </div>
                         </div>
                     </div>
-                </div>
+                }
 
-                <!-- ── Trang v. Assembly Instruction Specifications ── -->
-                <div class="rpt-section page-break-after">
-                    <div class="rpt-section-title rpt-section-title-lg">B. Packaging &amp; Identification@(cartonSuffix)</div>
-
-                    <div class="rpt-sub-title">v. Assembly Instruction Specifications</div>
-                    @{
-                        var _sAssembly = PadEvenForGrid(cd?.AssemblyPhotos ?? pr?.AssemblyPhotos);
-                    }
-                    <div class="rpt-photo-grid-2">
-                        @foreach (var _u in _sAssembly)
+                <!-- ── vi. Hardware Specifications (chunked: 6 ảnh/trang) ── -->
+                @{
+                    var _hwPages = ChunkPhotosForPages(cd?.HardwarePhotos ?? pr?.HardwarePhotos);
+                    var _hwResult = cd?.HardwareResult ?? pr?.HardwareResult;
+                }
+                @for (int _hwPi = 0; _hwPi < _hwPages.Count; _hwPi++)
+                {
+                    var _hwPage = _hwPages[_hwPi];
+                    var _hwIsLast = _hwPi == _hwPages.Count - 1;
+                    var _hwSuffix = _hwPages.Count > 1 && _hwPi > 0 ? " (cont.)" : "";
+                    <div class="rpt-section page-break-after">
+                        <div class="rpt-section-title rpt-section-title-lg">B. Packaging &amp; Identification@(cartonSuffix)</div>
+                        <div class="rpt-sub-title">vi. Hardware Specifications@(_hwSuffix)</div>
+                        <div class="rpt-photo-grid-2">
+                            @foreach (var _u in _hwPage)
+                            {
+                                <div class="rpt-photo-cell">
+                                    @if (!string.IsNullOrEmpty(_u))
+                                    { <img src="@NormalizeUrl(_u)" class="rpt-photo" alt="Hardware" loading="eager"/> }
+                                </div>
+                            }
+                        </div>
+                        @if (_hwIsLast && !string.IsNullOrEmpty(_hwResult))
                         {
-                            <div class="rpt-photo-cell">
-                                @if (!string.IsNullOrEmpty(_u))
-                                { <img src="@NormalizeUrl(_u)" class="rpt-photo" alt="Assembly" loading="eager"/> }
+                            <div style="text-align:right;margin-top:4px">
+                                <span class="rpt-compliance-badge comp-@(_hwResult.ToLower())">@_hwResult</span>
                             </div>
                         }
-                    </div>
-                    @{ var _asResult = cd?.AssemblyResult ?? pr?.AssemblyResult; }
-                    @if (!string.IsNullOrEmpty(_asResult))
-                    {
-                        <div style="text-align:right;margin-top:4px">
-                            <span class="rpt-compliance-badge comp-@(_asResult.ToLower())">@_asResult</span>
-                        </div>
-                    }
-                    <div class="rpt-footer">
-                        <div class="rpt-footer-inner">
-                            <span class="rpt-footer-text">www.inticoo.com<br/>The results presented herein reflect our findings at the time and place of inspection. This report does not release the seller or manufacturer from their contractual obligations, nor does it prejudice the buyer's right to seek compensation for any apparent or latent defects not identified during our random inspection or arising thereafter. This document does not constitute evidence of shipment. Final approval from the client is required prior to the release of the goods.</span>
-                            <span class="rpt-footer-page">@(3 + cIdx * 5 + 3) / @TotalPages</span>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- ── Trang vi. Hardware ── -->
-                <div class="rpt-section page-break-after">
-                    <div class="rpt-section-title rpt-section-title-lg">B. Packaging &amp; Identification@(cartonSuffix)</div>
-                    <div class="rpt-sub-title">vi. Hardware Specifications</div>
-                    @{
-                        var _sHardware = PadEvenForGrid(cd?.HardwarePhotos ?? pr?.HardwarePhotos);
-                    }
-                    <div class="rpt-photo-grid-2">
-                        @foreach (var _u in _sHardware)
-                        {
-                            <div class="rpt-photo-cell">
-                                @if (!string.IsNullOrEmpty(_u))
-                                { <img src="@NormalizeUrl(_u)" class="rpt-photo" alt="Hardware" loading="eager"/> }
+                        <div class="rpt-footer">
+                            <div class="rpt-footer-inner">
+                                <span class="rpt-footer-text">www.inticoo.com<br/>The results presented herein reflect our findings at the time and place of inspection. This report does not release the seller or manufacturer from their contractual obligations, nor does it prejudice the buyer's right to seek compensation for any apparent or latent defects not identified during our random inspection or arising thereafter. This document does not constitute evidence of shipment. Final approval from the client is required prior to the release of the goods.</span>
+                                @if (_hwPi == 0) { <span class="rpt-footer-page">@(3 + cIdx * 5 + 4) / @TotalPages</span> }
                             </div>
-                        }
-                    </div>
-                    @{ var _hwResult = cd?.HardwareResult ?? pr?.HardwareResult; }
-                    @if (!string.IsNullOrEmpty(_hwResult))
-                    {
-                        <div style="text-align:right;margin-top:4px">
-                            <span class="rpt-compliance-badge comp-@(_hwResult.ToLower())">@_hwResult</span>
-                        </div>
-                    }
-                    <div class="rpt-footer">
-                        <div class="rpt-footer-inner">
-                            <span class="rpt-footer-text">www.inticoo.com<br/>The results presented herein reflect our findings at the time and place of inspection. This report does not release the seller or manufacturer from their contractual obligations, nor does it prejudice the buyer's right to seek compensation for any apparent or latent defects not identified during our random inspection or arising thereafter. This document does not constitute evidence of shipment. Final approval from the client is required prior to the release of the goods.</span>
-                            <span class="rpt-footer-page">@(3 + cIdx * 5 + 4) / @TotalPages</span>
                         </div>
                     </div>
-                </div>
+                }
             }
             } @* end IsPass("B") *@
 
@@ -594,10 +777,18 @@ else if (_data != null)
                         </div>
                     }
 
-                    <!-- ii. Compare Golden Sample -->
+                    <!-- ii. Compare Golden Sample (chunked: trang đầu 4 ảnh do có table, sau đó 6/trang) -->
                     <div class="rpt-sub-title">ii. Golden Sample/Comparison</div>
+                    @{
+                        var _gpAll = (_qcData?.ProductSpec?.GoldenPhotos ?? Enumerable.Empty<string>())
+                            .Where(p => !string.IsNullOrWhiteSpace(p)).ToList();
+                        var _gpFirst = _gpAll.Take(4).Cast<string?>().ToList();
+                        if (_gpFirst.Count > 0 && _gpFirst.Count % 2 != 0) _gpFirst.Add(null);
+                        if (_gpFirst.Count == 0) _gpFirst = new List<string?> { null, null };
+                        var _gpRest = _gpAll.Count > 4 ? ChunkPhotosForPages(_gpAll.Skip(4)) : new List<List<string?>>();
+                    }
                     <div class="rpt-photo-grid-2">
-                        @foreach (var _gu in PadEvenForGrid(_qcData?.ProductSpec?.GoldenPhotos))
+                        @foreach (var _gu in _gpFirst)
                         {
                             <div class="rpt-photo-cell">
                                 @if (!string.IsNullOrEmpty(_gu))
@@ -618,6 +809,36 @@ else if (_data != null)
                     </div>
                 </div>
             </div>
+
+            @* Trang Golden Sample tiếp theo (nếu > 4 ảnh) *@
+            @if (_qcData?.ProductSpec?.GoldenPhotos != null)
+            {
+                var _gpAllOuter = _qcData.ProductSpec.GoldenPhotos.Where(p => !string.IsNullOrWhiteSpace(p)).ToList();
+                if (_gpAllOuter.Count > 4)
+                {
+                    foreach (var _gpPage in ChunkPhotosForPages(_gpAllOuter.Skip(4)))
+                    {
+                        <div class="rpt-section page-break-after">
+                            <div class="rpt-section-title rpt-section-title-lg">C. Product Specification Compliance (1/2)</div>
+                            <div class="rpt-sub-title">ii. Golden Sample/Comparison (cont.)</div>
+                            <div class="rpt-photo-grid-2">
+                                @foreach (var _gu in _gpPage)
+                                {
+                                    <div class="rpt-photo-cell">
+                                        @if (!string.IsNullOrEmpty(_gu))
+                                        { <img src="@NormalizeUrl(_gu)" class="rpt-photo" alt="Golden sample photo" loading="eager"/> }
+                                    </div>
+                                }
+                            </div>
+                            <div class="rpt-footer">
+                                <div class="rpt-footer-inner">
+                                    <span class="rpt-footer-text">www.inticoo.com<br/>The results presented herein reflect our findings at the time and place of inspection. This report does not release the seller or manufacturer from their contractual obligations, nor does it prejudice the buyer's right to seek compensation for any apparent or latent defects not identified during our random inspection or arising thereafter. This document does not constitute evidence of shipment. Final approval from the client is required prior to the release of the goods.</span>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                }
+            }
 
             <!-- ══ SECTION C (2/2): Product Specification Compliance — Colour Swatch ══ -->
             <div class="rpt-section page-break-after">
@@ -660,8 +881,16 @@ else if (_data != null)
                         </tbody>
                     </table>
                 }
+                @{
+                    var _swAll = (_qcData?.ProductSpec?.SwatchPhotos ?? Enumerable.Empty<string>())
+                        .Where(p => !string.IsNullOrWhiteSpace(p)).ToList();
+                    var _swFirst = _swAll.Take(4).Cast<string?>().ToList();
+                    if (_swFirst.Count > 0 && _swFirst.Count % 2 != 0) _swFirst.Add(null);
+                    if (_swFirst.Count == 0) _swFirst = new List<string?> { null, null };
+                    var _swRest = _swAll.Count > 4 ? ChunkPhotosForPages(_swAll.Skip(4)) : new List<List<string?>>();
+                }
                 <div class="rpt-photo-grid-2">
-                    @foreach (var _sw in PadEvenForGrid(_qcData?.ProductSpec?.SwatchPhotos))
+                    @foreach (var _sw in _swFirst)
                     {
                         <div class="rpt-photo-cell">
                             @if (!string.IsNullOrEmpty(_sw))
@@ -677,6 +906,29 @@ else if (_data != null)
                     </div>
                 </div>
             </div>
+
+            @* Trang Swatch tiếp theo (nếu > 4 ảnh) *@
+            @foreach (var _swPage in _swRest)
+            {
+                <div class="rpt-section page-break-after">
+                    <div class="rpt-section-title rpt-section-title-lg">C. Product Specification Compliance (2/2)</div>
+                    <div class="rpt-sub-title">iii. Colour Swatch Comparison (cont.)</div>
+                    <div class="rpt-photo-grid-2">
+                        @foreach (var _sw in _swPage)
+                        {
+                            <div class="rpt-photo-cell">
+                                @if (!string.IsNullOrEmpty(_sw))
+                                { <img src="@NormalizeUrl(_sw)" class="rpt-photo" alt="Swatch photo" loading="eager"/> }
+                            </div>
+                        }
+                    </div>
+                    <div class="rpt-footer">
+                        <div class="rpt-footer-inner">
+                            <span class="rpt-footer-text">www.inticoo.com<br/>The results presented herein reflect our findings at the time and place of inspection. This report does not release the seller or manufacturer from their contractual obligations, nor does it prejudice the buyer's right to seek compensation for any apparent or latent defects not identified during our random inspection or arising thereafter. This document does not constitute evidence of shipment. Final approval from the client is required prior to the release of the goods.</span>
+                        </div>
+                    </div>
+                </div>
+            }
             } @* end IsPass("C") *@
 
             <!-- ══ SECTION D: Performance Testing — mỗi test 1 trang riêng ══ -->
@@ -743,10 +995,14 @@ else if (_data != null)
                             </table>
                         }
                         @{
-                            var _dSlots = PadEvenForGrid(dPhotos);
+                            // Trang đầu D có table + protocol → chỉ chứa được ~2 ảnh
+                            var _dFirst = dPhotos.Take(2).Cast<string?>().ToList();
+                            if (_dFirst.Count > 0 && _dFirst.Count % 2 != 0) _dFirst.Add(null);
+                            if (_dFirst.Count == 0) _dFirst = new List<string?> { null, null };
+                            var _dRest = dPhotos.Count > 2 ? ChunkPhotosForPages(dPhotos.Skip(2)) : new List<List<string?>>();
                         }
                         <div class="rpt-photo-grid-2">
-                            @foreach (var _du in _dSlots)
+                            @foreach (var _du in _dFirst)
                             {
                                 <div class="rpt-photo-cell">
                                     @if (!string.IsNullOrEmpty(_du))
@@ -761,6 +1017,28 @@ else if (_data != null)
                             </div>
                         </div>
                     </div>
+
+                    @* Trang Performance Testing tiếp theo (nếu > 2 ảnh) *@
+                    @foreach (var _dPage in _dRest)
+                    {
+                        <div class="rpt-section page-break-after">
+                            <div class="rpt-section-title rpt-section-title-lg">D. Performance Testing@(dSuffix) (cont.)</div>
+                            <div class="rpt-photo-grid-2">
+                                @foreach (var _du in _dPage)
+                                {
+                                    <div class="rpt-photo-cell">
+                                        @if (!string.IsNullOrEmpty(_du))
+                                        { <img src="@NormalizeUrl(_du)" class="rpt-photo" alt="Performance test photo" loading="eager"/> }
+                                    </div>
+                                }
+                            </div>
+                            <div class="rpt-footer">
+                                <div class="rpt-footer-inner">
+                                    <span class="rpt-footer-text">www.inticoo.com<br/>The results presented herein reflect our findings at the time and place of inspection. This report does not release the seller or manufacturer from their contractual obligations, nor does it prejudice the buyer's right to seek compensation for any apparent or latent defects not identified during our random inspection or arising thereafter. This document does not constitute evidence of shipment. Final approval from the client is required prior to the release of the goods.</span>
+                                </div>
+                            </div>
+                        </div>
+                    }
                 }
             }
             else if (_legacyPerf != null)
@@ -910,41 +1188,52 @@ else if (_data != null)
                     <div class="rpt-no-data">No AQL data recorded.</div>
                 }
 
-                <!-- Critical defects gộp vào cuối trang E -->
+                <!-- Critical defects: tách thành các trang riêng, mỗi trang max 6 ảnh.
+                     Trang đầu chỉ chứa AQL + Result (đã chiếm gần hết) — Critical
+                     header + ảnh đầu tiên đặt ở trang đầu nếu có ≤ 2 defect, ngược
+                     lại sang trang sau. -->
                 @{
                     var _critDefects = _qcData?.Defects?.Where(d => d.Type == "Critical").ToList() ?? new();
                     var _critItems = _critDefects.SelectMany(def => {
                         var urls = (def.Photos?.Where(p => !string.IsNullOrWhiteSpace(p)).ToList())
                                    ?? (def.PhotoUrl != null ? new List<string> { def.PhotoUrl } : new List<string>());
-                        return urls.Select((url, i) => new { Url = url, Remark = def.Remarks?.ElementAtOrDefault(i) ?? def.Remark ?? "" });
+                        return urls.Select((url, i) => (Url: (string?)url, Remark: def.Remarks?.ElementAtOrDefault(i) ?? def.Remark ?? ""));
                     }).ToList();
-                    // Khi có defect: pad chẵn cho grid 2 cột.
-                    // Khi KHÔNG có defect: vẫn render 2 khung trống ("No Photo")
-                    // để section không bị rỗng — đồng nhất với các photo grid khác.
-                    int _critMin = _critItems.Count == 0
-                        ? 2   // 2 khung trống mặc định
-                        : (_critItems.Count % 2 == 0 ? _critItems.Count : _critItems.Count + 1);
-                    var _critSlots = _critItems.Select(p => (string?)p.Url)
-                        .Concat(Enumerable.Repeat<string?>(null, _critMin - _critItems.Count))
-                        .Zip(_critItems.Select(p => p.Remark).Concat(Enumerable.Repeat("", _critMin - _critItems.Count)),
-                             (url, remark) => (Url: url, Remark: remark)).ToList();
+                    // Trang E đã đầy với AQL + Result → critical defects đặt cuối nếu còn chỗ
+                    // (chỉ 0 ảnh trên trang E để an toàn)
+                    bool _critOnSamePage = _critItems.Count == 0;  // chỉ render heading + 2 khung trống nếu rỗng
+                    var _critPagesAll = _critItems.Count > 0
+                        ? ChunkDefectsForPages(_critItems)
+                        : new List<List<(string? Url, string Remark)>>();
                 }
+                <!-- Heading F + Critical luôn render ở cuối trang E (chỉ heading + 2 khung trống) -->
                 <div class="rpt-section-title rpt-section-title-lg" style="margin-top:20px;">F. Details of Defect Found</div>
                 <div class="rpt-defect-type-title defect-critical">Critical</div>
-                <div class="rpt-photo-grid-2">
-                    @foreach (var slot in _critSlots)
-                    {
+                @if (_critOnSamePage)
+                {
+                    <!-- Không có critical → 2 khung trống cho cân đối -->
+                    <div class="rpt-photo-grid-2">
                         <div class="rpt-defect-cell">
                             <div class="rpt-defect-photo-wrap">
-                                @if (!string.IsNullOrEmpty(slot.Url))
-                                { <img src="@NormalizeUrl(slot.Url)" class="rpt-defect-photo" alt="Critical defect photo" loading="eager"/> }
-                                else
-                                { <div class="rpt-defect-no-photo">No Photo</div> }
+                                <div class="rpt-defect-no-photo">No Photo</div>
                             </div>
-                            <div class="rpt-defect-remark">Remark: @(string.IsNullOrEmpty(slot.Remark) ? "—" : slot.Remark)</div>
+                            <div class="rpt-defect-remark">Remark: —</div>
                         </div>
-                    }
-                </div>
+                        <div class="rpt-defect-cell">
+                            <div class="rpt-defect-photo-wrap">
+                                <div class="rpt-defect-no-photo">No Photo</div>
+                            </div>
+                            <div class="rpt-defect-remark">Remark: —</div>
+                        </div>
+                    </div>
+                }
+                else
+                {
+                    <!-- Có critical defects → ghi chú "see next page" và đặt ảnh ở trang sau -->
+                    <div style="text-align:center;color:#888;font-size:11px;padding:12px;">
+                        See critical defect photos on the following page(s).
+                    </div>
+                }
 
                 <div class="rpt-footer">
                     <div class="rpt-footer-inner">
@@ -953,14 +1242,41 @@ else if (_data != null)
                     </div>
                 </div>
             </div>
+
+            @* Trang riêng cho Critical defects (mỗi trang max 6 ảnh) *@
+            @foreach (var _critPage in _critPagesAll)
+            {
+                <div class="rpt-section page-break-after">
+                    <div class="rpt-section-title rpt-section-title-lg">F. Details of Defect Found (cont.)</div>
+                    <div class="rpt-defect-type-title defect-critical">Critical</div>
+                    <div class="rpt-photo-grid-2">
+                        @foreach (var slot in _critPage)
+                        {
+                            <div class="rpt-defect-cell">
+                                <div class="rpt-defect-photo-wrap">
+                                    @if (!string.IsNullOrEmpty(slot.Url))
+                                    { <img src="@NormalizeUrl(slot.Url)" class="rpt-defect-photo" alt="Critical defect photo" loading="eager"/> }
+                                    else
+                                    { <div class="rpt-defect-no-photo">No Photo</div> }
+                                </div>
+                                <div class="rpt-defect-remark">Remark: @(string.IsNullOrEmpty(slot.Remark) ? "—" : slot.Remark)</div>
+                            </div>
+                        }
+                    </div>
+                    <div class="rpt-footer">
+                        <div class="rpt-footer-inner">
+                            <span class="rpt-footer-text">www.inticoo.com<br/>The results presented herein reflect our findings at the time and place of inspection. This report does not release the seller or manufacturer from their contractual obligations, nor does it prejudice the buyer's right to seek compensation for any apparent or latent defects not identified during our random inspection or arising thereafter. This document does not constitute evidence of shipment. Final approval from the client is required prior to the release of the goods.</span>
+                        </div>
+                    </div>
+                </div>
+            }
             } @* end IsPass("E") *@
 
             <!-- ══ SECTION F: Major + Minor Defects ══ -->
             @if (IsPass("F"))
             {
-            <div class="rpt-section page-break-after">
-                <div class="rpt-section-title rpt-section-title-lg">F. Details of Defect Found (cont.)</div>
-
+                @* Major + Minor defects: mỗi defect type chia thành các trang, mỗi trang max 6 ảnh.
+                   Major và Minor không gộp chung 1 trang (đảm bảo layout rõ ràng). *@
                 @foreach (var defType in new[] { "Major", "Minor" })
                 {
                     var typeDefects = _qcData?.Defects?.Where(d => d.Type == defType).ToList() ?? new();
@@ -969,52 +1285,44 @@ else if (_data != null)
                         {
                             var urls = (def.Photos?.Where(p => !string.IsNullOrWhiteSpace(p)).ToList())
                                        ?? (def.PhotoUrl != null ? new List<string> { def.PhotoUrl } : new List<string>());
-                            return urls.Select((url, i) => new {
-                                Url    = url,
-                                Remark = def.Remarks?.ElementAtOrDefault(i) ?? def.Remark ?? ""
-                            });
+                            return urls.Select((url, i) => (
+                                Url: (string?)url,
+                                Remark: def.Remarks?.ElementAtOrDefault(i) ?? def.Remark ?? ""
+                            ));
                         })
                         .ToList();
 
-                    // Khi có defect: pad chẵn cho grid 2 cột.
-                    // Khi KHÔNG có defect: vẫn render 2 khung trống ("No Photo").
-                    int minSlots = photoItems.Count == 0
-                        ? 2   // 2 khung trống mặc định
-                        : (photoItems.Count % 2 == 0 ? photoItems.Count : photoItems.Count + 1);
-                    var slots = photoItems
-                        .Select(p => (string?)p.Url)
-                        .Concat(Enumerable.Repeat<string?>(null, minSlots - photoItems.Count))
-                        .Zip(
-                            photoItems.Select(p => p.Remark)
-                                      .Concat(Enumerable.Repeat("", minSlots - photoItems.Count)),
-                            (url, remark) => (Url: url, Remark: remark)
-                        )
-                        .ToList();
+                    var defectPages = ChunkDefectsForPages(photoItems);
 
-                    <div class="rpt-defect-type-title defect-@defType.ToLower()">@defType</div>
-                    <div class="rpt-photo-grid-2">
-                        @foreach (var slot in slots)
-                        {
-                            <div class="rpt-defect-cell">
-                                <div class="rpt-defect-photo-wrap">
-                                    @if (!string.IsNullOrEmpty(slot.Url))
-                                    { <img src="@NormalizeUrl(slot.Url)" class="rpt-defect-photo" alt="@defType defect photo" loading="eager"/> }
-                                    else
-                                    { <div class="rpt-defect-no-photo">No Photo</div> }
-                                </div>
-                                <div class="rpt-defect-remark">Remark: @(string.IsNullOrEmpty(slot.Remark) ? "—" : slot.Remark)</div>
+                    @for (int _dpPi = 0; _dpPi < defectPages.Count; _dpPi++)
+                    {
+                        var defectPage = defectPages[_dpPi];
+                        var defSuffix = defectPages.Count > 1 && _dpPi > 0 ? " (cont.)" : "";
+                        <div class="rpt-section page-break-after">
+                            <div class="rpt-section-title rpt-section-title-lg">F. Details of Defect Found (cont.)</div>
+                            <div class="rpt-defect-type-title defect-@defType.ToLower()">@defType@defSuffix</div>
+                            <div class="rpt-photo-grid-2">
+                                @foreach (var slot in defectPage)
+                                {
+                                    <div class="rpt-defect-cell">
+                                        <div class="rpt-defect-photo-wrap">
+                                            @if (!string.IsNullOrEmpty(slot.Url))
+                                            { <img src="@NormalizeUrl(slot.Url)" class="rpt-defect-photo" alt="@defType defect photo" loading="eager"/> }
+                                            else
+                                            { <div class="rpt-defect-no-photo">No Photo</div> }
+                                        </div>
+                                        <div class="rpt-defect-remark">Remark: @(string.IsNullOrEmpty(slot.Remark) ? "—" : slot.Remark)</div>
+                                    </div>
+                                }
                             </div>
-                        }
-                    </div>
+                            <div class="rpt-footer">
+                                <div class="rpt-footer-inner">
+                                    <span class="rpt-footer-text">www.inticoo.com<br/>The results presented herein reflect our findings at the time and place of inspection. This report does not release the seller or manufacturer from their contractual obligations, nor does it prejudice the buyer's right to seek compensation for any apparent or latent defects not identified during our random inspection or arising thereafter. This document does not constitute evidence of shipment. Final approval from the client is required prior to the release of the goods.</span>
+                                </div>
+                            </div>
+                        </div>
+                    }
                 }
-
-                <div class="rpt-footer">
-                    <div class="rpt-footer-inner">
-                        <span class="rpt-footer-text">www.inticoo.com<br/>The results presented herein reflect our findings at the time and place of inspection. This report does not release the seller or manufacturer from their contractual obligations, nor does it prejudice the buyer's right to seek compensation for any apparent or latent defects not identified during our random inspection or arising thereafter. This document does not constitute evidence of shipment. Final approval from the client is required prior to the release of the goods.</span>
-                        <span class="rpt-footer-page">@(2 + CartonPageCount + PerfPageCount + 3) / @TotalPages</span>
-                    </div>
-                </div>
-            </div>
             } @* end IsPass("F") *@
 
             <!-- ══ FINAL PAGE: Conclusion & Signature ══ -->
@@ -1121,6 +1429,55 @@ else if (_data != null)
         var slots = list.Cast<string?>().ToList();
         if (slots.Count % 2 != 0) slots.Add(null);
         return slots;
+    }
+
+    // ★ Giới hạn ảnh/trang: 3 hàng × 2 cột = 6 ảnh.
+    //   Layout vừa khít A4: 6×75mm + heading + padding ≈ 260mm < 271mm.
+    //   Đoán định được — KHÔNG bao giờ tạo trang trắng do tràn.
+    private const int MAX_PHOTOS_PER_PAGE = 6;
+
+    // Chia photos thành các "chunk" tối đa 6 ảnh/trang (đã pad chẵn).
+    // Trả về List<List<>> — mỗi inner list = 1 trang.
+    // - Không có ảnh → 1 chunk gồm 2 khung trống.
+    private static List<List<string?>> ChunkPhotosForPages(IEnumerable<string>? photos)
+    {
+        var list = (photos ?? Enumerable.Empty<string>())
+            .Where(p => !string.IsNullOrWhiteSpace(p))
+            .ToList();
+
+        var pages = new List<List<string?>>();
+        if (list.Count == 0)
+        {
+            pages.Add(new List<string?> { null, null });
+            return pages;
+        }
+        for (int i = 0; i < list.Count; i += MAX_PHOTOS_PER_PAGE)
+        {
+            var chunk = list.Skip(i).Take(MAX_PHOTOS_PER_PAGE).Cast<string?>().ToList();
+            if (chunk.Count % 2 != 0) chunk.Add(null);
+            pages.Add(chunk);
+        }
+        return pages;
+    }
+
+    // Tương tự nhưng cho defects (Url + Remark).
+    private static List<List<(string? Url, string Remark)>> ChunkDefectsForPages(
+        List<(string? Url, string Remark)>? items)
+    {
+        var pages = new List<List<(string?, string)>>();
+        var list = items ?? new List<(string?, string)>();
+        if (list.Count == 0)
+        {
+            pages.Add(new List<(string?, string)> { (null, ""), (null, "") });
+            return pages;
+        }
+        for (int i = 0; i < list.Count; i += MAX_PHOTOS_PER_PAGE)
+        {
+            var chunk = list.Skip(i).Take(MAX_PHOTOS_PER_PAGE).ToList();
+            if (chunk.Count % 2 != 0) chunk.Add((null, ""));
+            pages.Add(chunk);
+        }
+        return pages;
     }
 
     private RenderFragment _Footer =>
@@ -2221,34 +2578,17 @@ else if (_data != null)
     }
 
     /* ══════════════════════════════════════════════════════════════
-       PRINT STYLES — ★★★ FIX CHÍNH cho PDF không có trang trắng ★★★
+       PRINT STYLES — ★★★ FIX: 6 ẢNH/TRANG ĐOÁN ĐỊNH ★★★
        ═══════════════════════════════════════════════════════════════
-       Vấn đề trước đây:
-       1) Trang trắng giữa các section B (i, ii+iii, iv, v, vi):
-          - padding-bottom 22mm trên .rpt-section + content gần đầy trang
-            → browser ngắt trang sớm, để khoảng trắng cuối trang trước
-          → FIX: padding-bottom giảm từ 22mm → 14mm. Photo height đổi
-            sang đơn vị mm (75mm) để dễ tính đúng số ảnh vừa 1 trang.
+       Chiến lược mới (giải quyết triệt để vấn đề trang trắng):
+       - Mỗi sub-section được pre-chunked ở Razor: max 6 ảnh/trang.
+       - Trang có table phía trên (A, B-i, C, D) → trang đầu max 4 ảnh.
+       - Mỗi chunk = 1 .rpt-section riêng → page-break-after: always vừa khít.
+       - Layout đoán định 100%, không phụ thuộc browser.
 
-       2) Trang trắng do "i. Carton Size" có nhiều ảnh tràn sang trang 2
-          rồi tiếp tục force page-break-after → tạo thêm trang trắng:
-          → FIX: cho phép .rpt-section break-inside:auto (vỡ qua nhiều
-            trang nếu cần). page-break-after chỉ áp dụng cho LAST page
-            của section, không tạo thêm trang trắng.
-
-       3) Heading "iv. Packaging & Labeling" mồ côi cuối trang, content
-          nhảy sang trang sau:
-          → FIX: thêm break-after:avoid cho heading + heading bonded
-            với element kế tiếp.
-
-       4) Photo grid container có break-inside:avoid → cả grid bị đẩy
-          sang trang mới:
-          → FIX: chỉ đặt break-inside:avoid trên photo CELL, không trên
-            container .rpt-photo-grid-2.
-
-       5) Mac/Safari cũ cắt ảnh giữa trang:
-          → FIX: dùng flex-wrap thay vì grid (Safari không honor
-            break-inside:avoid trên grid items).
+       Math A4: 297mm cao - 12mm top - 14mm bottom = 271mm vùng print
+                Heading lg ~10mm + sub-title ~7mm + 3 hàng ảnh (3×75mm + 2×6mm gap = 237mm)
+                = ~254mm < 271mm → vừa đúng 1 trang.
     ══════════════════════════════════════════════════════════════ */
     @@media print {
         @@page {
@@ -2313,24 +2653,17 @@ else if (_data != null)
             min-height: 0 !important;
             height: auto !important;
             max-height: none !important;
-            overflow: visible !important;
-            /* ★ FIX: Giảm padding bottom để tránh đẩy nội dung tạo trang trắng.
-               padding-bottom lớn (22mm) cộng với content gần đầy trang sẽ
-               khiến browser ngắt trang sớm và để lại khoảng trắng phía sau. */
+            overflow: hidden !important;
             padding: 12mm 14mm 14mm !important;
             counter-increment: page-counter;
             position: relative !important;
             box-sizing: border-box !important;
-            /* ★ FIX: cho phép section vỡ qua nhiều trang nếu nội dung dài
-               (vd: i. Carton Size có nhiều ảnh). */
-            break-inside: auto !important;
-            page-break-inside: auto !important;
+            /* ★ Section đã pre-chunked ≤ 6 ảnh = vừa 1 trang.
+               break-inside:avoid để section LUÔN nằm gọn trong 1 trang. */
+            break-inside: avoid !important;
+            page-break-inside: avoid !important;
         }
 
-        /* ★ FIX page-break-after:
-           - Dùng break-after: page (chuẩn mới) + page-break-after: always (cũ)
-           - KHÔNG áp dụng cho section CUỐI cùng để tránh trang trắng cuối file
-           - KHÔNG áp dụng nếu section trước đó là rỗng (bảo vệ thêm) */
         .page-break-after {
             break-after: page !important;
             page-break-after: always !important;
@@ -2340,8 +2673,6 @@ else if (_data != null)
             break-after: auto !important;
             page-break-after: auto !important;
         }
-        /* Section ngay trước section cuối (final) — không cần page-break vì
-           rpt-section-final sẽ tự ở trang riêng */
         .rpt-section.page-break-after + .rpt-section-final {
             break-before: page !important;
             page-break-before: always !important;
