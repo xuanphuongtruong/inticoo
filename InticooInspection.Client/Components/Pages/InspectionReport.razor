@@ -2647,6 +2647,9 @@ else if (_data != null)
                break-inside:avoid để section LUÔN nằm gọn trong 1 trang. */
             break-inside: avoid !important;
             page-break-inside: avoid !important;
+            /* ★ Flex column để footer in-flow được đẩy xuống đáy section khi in PDF. */
+            display: flex !important;
+            flex-direction: column !important;
         }
 
         .page-break-after {
@@ -2911,41 +2914,37 @@ else if (_data != null)
         .rpt-defect-no-photo { height: 100% !important; min-height: unset !important; }
 
         /* ══════════════════════════════════════════
-           RUNNING FOOTER
+           FOOTER (in-flow, đẩy xuống đáy section bằng margin-top:auto trên flex container)
         ══════════════════════════════════════════ */
-        .rpt-footer { display: none !important; }
-
-        .rpt-print-footer {
-            display: block !important;
-            position: fixed !important;
-            bottom: 0 !important;
-            left: 0 !important;
-            right: 0 !important;
-            width: 210mm !important;
-            margin: 0 auto !important;
-            padding: 4px 12mm 6px !important;
+        /* Ngăn các direct children bị flex-shrink → giữ kích thước tự nhiên */
+        .rpt-section > .rpt-section-title,
+        .rpt-section > .rpt-sub-title,
+        .rpt-section > .rpt-photo-grid-2,
+        .rpt-section > .rpt-qty-photo-grid,
+        .rpt-section > table,
+        .rpt-section > .rpt-aql-grid,
+        .rpt-section > .rpt-result-table {
+            flex-shrink: 0 !important;
+        }
+        .rpt-footer {
+            position: static !important;
+            margin-top: auto !important;  /* ★ Đẩy footer xuống đáy .rpt-section flex column */
+            padding: 6px 0 0 !important;
+            border-top: 1px solid #f0f0f0 !important;
             background: white !important;
-            border-top: 1px solid #e8edf5 !important;
-            box-sizing: border-box !important;
-            z-index: 9999 !important;
+            flex-shrink: 0 !important;
         }
-        .rpt-print-footer-text {
-            font-size: 7pt !important;
-            line-height: 1.35 !important;
-            color: #777 !important;
-            text-align: center !important;
-            margin: 0 !important;
-            padding-right: 30px !important;
+        .rpt-footer-text {
+            font-size: 8px !important;
+            line-height: 1.4 !important;
+            color: #999 !important;
         }
-        .rpt-print-footer::after {
-            content: counter(page) " / " counter(pages);
-            position: absolute;
-            right: 12mm;
-            bottom: 6px;
-            font-size: 8pt;
-            font-weight: 700;
-            color: #888;
+        .rpt-footer-page {
+            font-size: 9px !important;
+            color: #888 !important;
         }
+        /* Ẩn running footer vì position:fixed không reliable trong PDF print */
+        .rpt-print-footer { display: none !important; }
     }
 
     /* ══════════════════════════════════════════
