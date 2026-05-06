@@ -464,20 +464,18 @@ else if (_data != null)
                     </div>
                 }
 
-                <!-- ── ii. Shipping Mark + iii. Carton Weight ──
-                     Logic: Nếu tổng ảnh ≤ 4 → gộp 1 trang (giữ layout như cũ).
-                     Nếu nhiều hơn → mỗi phần 1 trang riêng, mỗi trang ≤ 6 ảnh. -->
-                @{
-                    var _shipAll = ((cd?.ShippingMarkPhotos ?? pr?.ShippingMarkPhotos) ?? Enumerable.Empty<string>())
-                        .Where(p => !string.IsNullOrWhiteSpace(p)).ToList();
-                    var _wgtAll = ((cd?.WeightPhotos ?? pr?.WeightPhotos) ?? Enumerable.Empty<string>())
-                        .Where(p => !string.IsNullOrWhiteSpace(p)).ToList();
-                    var _smResult = cd?.ShippingMarkResult ?? pr?.ShippingMarkResult;
-                    var _cwResult = cd?.CartonWeightResult ?? pr?.CartonWeightResult;
-                    bool _combineShipWgt = _shipAll.Count + _wgtAll.Count <= 4;
-                }
+                @* ── ii. Shipping Mark + iii. Carton Weight ──
+                   Logic: Nếu tổng ảnh ≤ 4 → gộp 1 trang (giữ layout như cũ).
+                   Nếu nhiều hơn → mỗi phần 1 trang riêng, mỗi trang ≤ 6 ảnh. *@
+                var _shipAll = ((cd?.ShippingMarkPhotos ?? pr?.ShippingMarkPhotos) ?? Enumerable.Empty<string>())
+                    .Where(p => !string.IsNullOrWhiteSpace(p)).ToList();
+                var _wgtAll = ((cd?.WeightPhotos ?? pr?.WeightPhotos) ?? Enumerable.Empty<string>())
+                    .Where(p => !string.IsNullOrWhiteSpace(p)).ToList();
+                var _smResult = cd?.ShippingMarkResult ?? pr?.ShippingMarkResult;
+                var _cwResult = cd?.CartonWeightResult ?? pr?.CartonWeightResult;
+                bool _combineShipWgt = _shipAll.Count + _wgtAll.Count <= 4;
 
-                @if (_combineShipWgt)
+                if (_combineShipWgt)
                 {
                     @* Trang gộp ii + iii (≤ 4 ảnh tổng cộng) *@
                     <div class="rpt-section page-break-after">
@@ -546,9 +544,7 @@ else if (_data != null)
                 else
                 {
                     @* Tách: ii thành các trang riêng (max 6 ảnh/trang) *@
-                    @{
-                        var _shipPages = ChunkPhotosForPages(_shipAll);
-                    }
+                    var _shipPages = ChunkPhotosForPages(_shipAll);
                     @for (int _shipPi = 0; _shipPi < _shipPages.Count; _shipPi++)
                     {
                         var _shipPage = _shipPages[_shipPi];
@@ -581,9 +577,7 @@ else if (_data != null)
                     }
 
                     @* Tách: iii thành các trang riêng (max 6 ảnh/trang) *@
-                    @{
-                        var _wgtPages = ChunkPhotosForPages(_wgtAll);
-                    }
+                    var _wgtPages = ChunkPhotosForPages(_wgtAll);
                     @for (int _wgtPi = 0; _wgtPi < _wgtPages.Count; _wgtPi++)
                     {
                         var _wgtPage = _wgtPages[_wgtPi];
@@ -620,11 +614,9 @@ else if (_data != null)
                     }
                 }
 
-                <!-- ── iv. Packaging & Labeling Specifications (chunked: 6 ảnh/trang) ── -->
-                @{
-                    var _plPages = ChunkPhotosForPages(cd?.PkgLabelPhotos ?? pr?.PkgLabelPhotos);
-                    var _plResult = cd?.PkgLabelResult ?? pr?.PkgLabelResult;
-                }
+                @* ── iv. Packaging & Labeling Specifications (chunked: 6 ảnh/trang) ── *@
+                var _plPages = ChunkPhotosForPages(cd?.PkgLabelPhotos ?? pr?.PkgLabelPhotos);
+                var _plResult = cd?.PkgLabelResult ?? pr?.PkgLabelResult;
                 @for (int _plPi = 0; _plPi < _plPages.Count; _plPi++)
                 {
                     var _plPage = _plPages[_plPi];
@@ -657,11 +649,9 @@ else if (_data != null)
                     </div>
                 }
 
-                <!-- ── v. Assembly Instruction Specifications (chunked: 6 ảnh/trang) ── -->
-                @{
-                    var _asPages = ChunkPhotosForPages(cd?.AssemblyPhotos ?? pr?.AssemblyPhotos);
-                    var _asResult = cd?.AssemblyResult ?? pr?.AssemblyResult;
-                }
+                @* ── v. Assembly Instruction Specifications (chunked: 6 ảnh/trang) ── *@
+                var _asPages = ChunkPhotosForPages(cd?.AssemblyPhotos ?? pr?.AssemblyPhotos);
+                var _asResult = cd?.AssemblyResult ?? pr?.AssemblyResult;
                 @for (int _asPi = 0; _asPi < _asPages.Count; _asPi++)
                 {
                     var _asPage = _asPages[_asPi];
@@ -694,11 +684,9 @@ else if (_data != null)
                     </div>
                 }
 
-                <!-- ── vi. Hardware Specifications (chunked: 6 ảnh/trang) ── -->
-                @{
-                    var _hwPages = ChunkPhotosForPages(cd?.HardwarePhotos ?? pr?.HardwarePhotos);
-                    var _hwResult = cd?.HardwareResult ?? pr?.HardwareResult;
-                }
+                @* ── vi. Hardware Specifications (chunked: 6 ảnh/trang) ── *@
+                var _hwPages = ChunkPhotosForPages(cd?.HardwarePhotos ?? pr?.HardwarePhotos);
+                var _hwResult = cd?.HardwareResult ?? pr?.HardwareResult;
                 @for (int _hwPi = 0; _hwPi < _hwPages.Count; _hwPi++)
                 {
                     var _hwPage = _hwPages[_hwPi];
@@ -785,7 +773,6 @@ else if (_data != null)
                         var _gpFirst = _gpAll.Take(4).Cast<string?>().ToList();
                         if (_gpFirst.Count > 0 && _gpFirst.Count % 2 != 0) _gpFirst.Add(null);
                         if (_gpFirst.Count == 0) _gpFirst = new List<string?> { null, null };
-                        var _gpRest = _gpAll.Count > 4 ? ChunkPhotosForPages(_gpAll.Skip(4)) : new List<List<string?>>();
                     }
                     <div class="rpt-photo-grid-2">
                         @foreach (var _gu in _gpFirst)
@@ -2587,8 +2574,8 @@ else if (_data != null)
        - Layout đoán định 100%, không phụ thuộc browser.
 
        Math A4: 297mm cao - 12mm top - 14mm bottom = 271mm vùng print
-                Heading lg ~10mm + sub-title ~7mm + 3 hàng ảnh (3×75mm + 2×6mm gap = 237mm)
-                = ~254mm < 271mm → vừa đúng 1 trang.
+                Heading lg ~10mm + sub-title ~7mm + 3 hàng ảnh (3 x 75mm + 2 x 6mm gap = 237mm)
+                ~ 254mm — vừa đúng 1 trang.
     ══════════════════════════════════════════════════════════════ */
     @@media print {
         @@page {
