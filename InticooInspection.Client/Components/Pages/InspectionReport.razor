@@ -765,15 +765,13 @@ else if (_data != null)
                         </div>
                     }
 
-                    <!-- ii. Compare Golden Sample (chunked: trang đầu 4 ảnh do có table, sau đó 6/trang) -->
+                    @* ii. Compare Golden Sample (chunked: trang đầu 4 ảnh do có table, sau đó 6/trang) *@
                     <div class="rpt-sub-title">ii. Golden Sample/Comparison</div>
-                    @{
-                        var _gpAll = (_qcData?.ProductSpec?.GoldenPhotos ?? Enumerable.Empty<string>())
-                            .Where(p => !string.IsNullOrWhiteSpace(p)).ToList();
-                        var _gpFirst = _gpAll.Take(4).Cast<string?>().ToList();
-                        if (_gpFirst.Count > 0 && _gpFirst.Count % 2 != 0) _gpFirst.Add(null);
-                        if (_gpFirst.Count == 0) _gpFirst = new List<string?> { null, null };
-                    }
+                    var _gpAll = (_qcData?.ProductSpec?.GoldenPhotos ?? Enumerable.Empty<string>())
+                        .Where(p => !string.IsNullOrWhiteSpace(p)).ToList();
+                    var _gpFirst = _gpAll.Take(4).Cast<string?>().ToList();
+                    if (_gpFirst.Count > 0 && _gpFirst.Count % 2 != 0) _gpFirst.Add(null);
+                    if (_gpFirst.Count == 0) _gpFirst = new List<string?> { null, null };
                     <div class="rpt-photo-grid-2">
                         @foreach (var _gu in _gpFirst)
                         {
