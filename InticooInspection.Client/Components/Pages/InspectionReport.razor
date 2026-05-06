@@ -2221,19 +2221,34 @@ else if (_data != null)
     }
 
     /* ══════════════════════════════════════════════════════════════
-       PRINT STYLES — ★★★ FIX CHÍNH cho Safari Mac + Chrome Windows ★★★
+       PRINT STYLES — ★★★ FIX CHÍNH cho PDF không có trang trắng ★★★
        ═══════════════════════════════════════════════════════════════
-       1) Mac/Safari cũ: cắt ảnh giữa trang
-          → FIX: Photo grid đã đổi grid → flex-wrap (xem ở trên).
-            Safari handle break-inside:avoid trên flex item đúng.
+       Vấn đề trước đây:
+       1) Trang trắng giữa các section B (i, ii+iii, iv, v, vi):
+          - padding-bottom 22mm trên .rpt-section + content gần đầy trang
+            → browser ngắt trang sớm, để khoảng trắng cuối trang trước
+          → FIX: padding-bottom giảm từ 22mm → 14mm. Photo height đổi
+            sang đơn vị mm (75mm) để dễ tính đúng số ảnh vừa 1 trang.
 
-       2) Windows/Chrome cũ: 1 ảnh/dòng (33 trang)
-          → FIX: Giảm height ảnh khi in 350px → 280px.
-            Section padding-y giảm xuống vừa đủ. 2 hàng × 280px = 560px
-            vẫn vừa trong content area A4.
+       2) Trang trắng do "i. Carton Size" có nhiều ảnh tràn sang trang 2
+          rồi tiếp tục force page-break-after → tạo thêm trang trắng:
+          → FIX: cho phép .rpt-section break-inside:auto (vỡ qua nhiều
+            trang nếu cần). page-break-after chỉ áp dụng cho LAST page
+            của section, không tạo thêm trang trắng.
 
-       3) Bỏ .rpt-keep-together cho khối Shipping + Weight (đã làm ở
-          Razor markup — Bước 1 phía trên).
+       3) Heading "iv. Packaging & Labeling" mồ côi cuối trang, content
+          nhảy sang trang sau:
+          → FIX: thêm break-after:avoid cho heading + heading bonded
+            với element kế tiếp.
+
+       4) Photo grid container có break-inside:avoid → cả grid bị đẩy
+          sang trang mới:
+          → FIX: chỉ đặt break-inside:avoid trên photo CELL, không trên
+            container .rpt-photo-grid-2.
+
+       5) Mac/Safari cũ cắt ảnh giữa trang:
+          → FIX: dùng flex-wrap thay vì grid (Safari không honor
+            break-inside:avoid trên grid items).
     ══════════════════════════════════════════════════════════════ */
     @@media print {
         @@page {
@@ -2299,27 +2314,49 @@ else if (_data != null)
             height: auto !important;
             max-height: none !important;
             overflow: visible !important;
-            /* ★ Padding nhỏ hơn để 2 hàng × 280px vừa 1 trang */
-            padding: 18mm 14mm 22mm !important;
+            /* ★ FIX: Giảm padding bottom để tránh đẩy nội dung tạo trang trắng.
+               padding-bottom lớn (22mm) cộng với content gần đầy trang sẽ
+               khiến browser ngắt trang sớm và để lại khoảng trắng phía sau. */
+            padding: 12mm 14mm 14mm !important;
             counter-increment: page-counter;
             position: relative !important;
             box-sizing: border-box !important;
+            /* ★ FIX: cho phép section vỡ qua nhiều trang nếu nội dung dài
+               (vd: i. Carton Size có nhiều ảnh). */
+            break-inside: auto !important;
+            page-break-inside: auto !important;
         }
 
-        .page-break-after { break-after: page; page-break-after: always; }
-        .page-break-after:last-child {
+        /* ★ FIX page-break-after:
+           - Dùng break-after: page (chuẩn mới) + page-break-after: always (cũ)
+           - KHÔNG áp dụng cho section CUỐI cùng để tránh trang trắng cuối file
+           - KHÔNG áp dụng nếu section trước đó là rỗng (bảo vệ thêm) */
+        .page-break-after {
+            break-after: page !important;
+            page-break-after: always !important;
+        }
+        .page-break-after:last-child,
+        .page-break-after:last-of-type {
             break-after: auto !important;
             page-break-after: auto !important;
+        }
+        /* Section ngay trước section cuối (final) — không cần page-break vì
+           rpt-section-final sẽ tự ở trang riêng */
+        .rpt-section.page-break-after + .rpt-section-final {
+            break-before: page !important;
+            page-break-before: always !important;
         }
 
         .rpt-section-final {
             height: auto !important;
             min-height: 0 !important;
             overflow: visible !important;
+            break-before: page !important;
+            page-break-before: always !important;
             break-after: avoid !important;
             page-break-after: avoid !important;
             margin-bottom: 0 !important;
-            padding-bottom: 22mm !important;
+            padding-bottom: 14mm !important;
         }
 
         /* Tránh cắt giữa trang.
@@ -2343,9 +2380,26 @@ else if (_data != null)
             page-break-inside: avoid !important;
         }
         .rpt-section-title,
+        .rpt-section-title-lg,
         .rpt-sub-title {
             break-after: avoid !important;
             page-break-after: avoid !important;
+            break-inside: avoid !important;
+            page-break-inside: avoid !important;
+        }
+        /* Heading + element kế tiếp giữ chung 1 trang (ngăn heading mồ côi) */
+        .rpt-section-title-lg + *,
+        .rpt-sub-title + * {
+            break-before: avoid !important;
+            page-break-before: avoid !important;
+        }
+        /* Margin nhỏ hơn khi in để tận dụng trang */
+        .rpt-section-title-lg {
+            margin-bottom: 6mm !important;
+            padding-bottom: 4mm !important;
+        }
+        .rpt-sub-title {
+            margin: 4mm 0 2mm !important;
         }
         img {
             max-width: 100% !important;
@@ -2419,24 +2473,32 @@ else if (_data != null)
         /* ═══════════════════════════════════════════
            ★★★ KEY FIX khi in: PHOTO GRID
            - flex-wrap (override mobile direction:column)
-           - height 350px → 280px để 2 hàng vừa 1 trang
+           - Dùng đơn vị mm cho ổn định khi in (px khi in không đáng tin)
+           - 3 hàng × 75mm = 225mm + heading + padding ≈ vừa 1 trang A4
+           - Cell có break-inside:avoid để 1 ảnh không bị cắt đôi
         ═══════════════════════════════════════════ */
         .rpt-photo-grid-2 {
             display: flex !important;
             flex-wrap: wrap !important;
             flex-direction: row !important;
-            gap: 10px !important;
+            gap: 6mm !important;
+            margin: 4mm 0 !important;
+            /* ★ FIX: container KHÔNG được break-inside:avoid
+               (sẽ làm cả grid bị đẩy sang trang mới = trang trắng) */
+            break-inside: auto !important;
+            page-break-inside: auto !important;
         }
         .rpt-photo-cell,
         .rpt-page .rpt-photo-cell {
-            flex: 0 0 calc(50% - 5px) !important;
-            max-width: calc(50% - 5px) !important;
+            flex: 0 0 calc(50% - 3mm) !important;
+            max-width: calc(50% - 3mm) !important;
             box-sizing: border-box !important;
-            height: 280px !important;
-            max-height: 280px !important;
+            height: 75mm !important;
+            max-height: 75mm !important;
             min-height: 0 !important;
             break-inside: avoid !important;
             page-break-inside: avoid !important;
+            -webkit-column-break-inside: avoid !important;
         }
         .rpt-photo-cell img,
         .rpt-page .rpt-photo-cell img,
@@ -2449,8 +2511,8 @@ else if (_data != null)
             display: block !important;
         }
         .rpt-photo {
-            height: 280px !important;
-            max-height: 280px !important;
+            height: 75mm !important;
+            max-height: 75mm !important;
             width: 100% !important;
             object-fit: contain !important;
             object-position: center !important;
@@ -2460,14 +2522,16 @@ else if (_data != null)
             display: flex !important;
             flex-wrap: wrap !important;
             flex-direction: row !important;
-            gap: 10px !important;
+            gap: 6mm !important;
+            break-inside: auto !important;
+            page-break-inside: auto !important;
         }
         .rpt-qty-photo-cell {
-            flex: 0 0 calc(50% - 5px) !important;
-            max-width: calc(50% - 5px) !important;
+            flex: 0 0 calc(50% - 3mm) !important;
+            max-width: calc(50% - 3mm) !important;
             box-sizing: border-box !important;
-            height: 280px !important;
-            max-height: 280px !important;
+            height: 75mm !important;
+            max-height: 75mm !important;
             min-height: 0 !important;
             break-inside: avoid !important;
             page-break-inside: avoid !important;
@@ -2496,22 +2560,22 @@ else if (_data != null)
         .rpt-page .rpt-overview-photo-cell img,
         .rpt-page .rpt-overview-photo-cell .rpt-overview-img {
             width: 100% !important;
-            height: 320px !important;
-            min-height: 320px !important;
-            max-height: 320px !important;
+            height: 85mm !important;
+            min-height: 85mm !important;
+            max-height: 85mm !important;
             object-fit: contain !important;
             object-position: center !important;
             background: #fafbfc !important;
             display: block !important;
         }
-        .rpt-photo-empty-lg { height: 320px !important; min-height: 320px !important; }
+        .rpt-photo-empty-lg { height: 85mm !important; min-height: 85mm !important; }
 
         .rpt-defect-cell {
-            flex: 0 0 calc(50% - 5px) !important;
-            max-width: calc(50% - 5px) !important;
+            flex: 0 0 calc(50% - 3mm) !important;
+            max-width: calc(50% - 3mm) !important;
             box-sizing: border-box !important;
-            height: 280px !important;
-            max-height: 280px !important;
+            height: 75mm !important;
+            max-height: 75mm !important;
             min-height: 0 !important;
             break-inside: avoid !important;
             page-break-inside: avoid !important;
