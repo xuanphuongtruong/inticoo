@@ -38,8 +38,8 @@ namespace InticooInspection.API.Services
         private readonly IMailConfigProvider _configProvider;
         private readonly ILogger<InspectionMailService> _logger;
 
-        // Subject chuẩn dùng chung cho cả vendor + customer (theo ảnh template)
-        private const string WEEKLY_SUBJECT = "Subject : Summary Schedule : 14 Days Inspection";
+        // Subject của email (đã đưa từ body lên)
+        private const string WEEKLY_SUBJECT = "Summary Schedule : 14 Days Inspection";
 
         public InspectionMailService(
             AppDbContext db,
@@ -560,8 +560,6 @@ namespace InticooInspection.API.Services
 <html><head><meta charset='utf-8'><title>Summary Schedule - Vendor</title></head>
 <body style='font-family:Times New Roman,Times,serif;color:#000;background:#fff;padding:20px;margin:0;'>
   <div style='max-width:900px;margin:0 auto;'>
-    <h2 style='text-align:center;color:#d92121;font-weight:700;margin:0 0 24px;'>Vendor</h2>
-    <p style='font-weight:700;font-size:15px;margin:0 0 14px;'>Subject : Summary Schedule : 14 Days Inspection</p>
     <p style='margin:0 0 12px;'>Dear Vendor,</p>
     <p style='margin:0 0 14px;'>Please find below the summary schedule for your upcoming 14-day inspection:</p>");
 
@@ -628,8 +626,6 @@ namespace InticooInspection.API.Services
 <html><head><meta charset='utf-8'><title>Summary Schedule - Customer</title></head>
 <body style='font-family:Times New Roman,Times,serif;color:#000;background:#fff;padding:20px;margin:0;'>
   <div style='max-width:900px;margin:0 auto;'>
-    <h2 style='text-align:center;color:#d92121;font-weight:700;margin:0 0 24px;'>Customer</h2>
-    <p style='font-weight:700;font-size:15px;margin:0 0 14px;'>Subject : Summary Schedule : 14 Days Inspection</p>
     <p style='margin:0 0 12px;'>Dear Customer,</p>
     <p style='margin:0 0 14px;'>Please find below the summary schedule for your upcoming 14-day inspection:</p>");
 

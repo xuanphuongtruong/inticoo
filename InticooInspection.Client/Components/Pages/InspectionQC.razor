@@ -243,6 +243,15 @@ else
                     <div class="qc-info-row"><span class="qc-info-lbl">Item per Carton</span>
                         <input class="qc-info-input" type="number" @bind="_data.QuantityConformity.ItemPerCarton" placeholder="0"/></div>
                     <div class="qc-info-row"><span class="qc-info-lbl">Shipment Qty</span><span class="qc-info-val">@_inspection.TotalShipmentQty</span></div>
+                    <div class="qc-info-row">
+                        <span class="qc-info-lbl">AQL Quantity</span>
+                        <span class="qc-info-val qc-auto">
+                            @_data.Aql.MajorSampleSize
+                            <span style="color:#888;font-weight:400;font-size:12px;margin-left:6px">
+                                (Lvl @(_data.Aql.InspectionLevel ?? "II") · Lot @_data.Aql.Quantity)
+                            </span>
+                        </span>
+                    </div>
                     <div class="qc-info-row" style="flex-direction:column;align-items:flex-start;gap:6px">
                         <span class="qc-info-lbl" style="padding-top:0">Presented Qty for Inspection <span style="color:#e74c3c">*</span></span>
                         <div class="qc-split-val">
@@ -3170,17 +3179,30 @@ else
         border-bottom: 2px solid #eef4ff;
     }
 
-    .qc-photo-row { display: flex; gap: 10px; margin-bottom: 14px; }
+    /* ── Photo grids: cố định 3 ảnh/hàng, ảnh thừa tự xuống hàng mới ── */
+    .qc-photo-row {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 10px;
+        margin-bottom: 14px;
+    }
     .qc-photo-box {
-        flex: 1; aspect-ratio: 4/3; background: #f0f5ff;
+        aspect-ratio: 4/3; background: #f0f5ff;
         border: 2px dashed #b0c8f0; border-radius: 10px;
         display: flex; align-items: center; justify-content: center;
         cursor: pointer; overflow: hidden; transition: border-color .2s;
         position: relative;
+        width: 100%;
+        min-width: 0;
     }
     .qc-photo-box:hover { border-color: #2D7DD2; }
     .qc-photo-add { color: #2D7DD2; font-size: 13px; font-weight: 600; }
-    .qc-photo-img {  height: 170px; object-fit: cover; }
+    .qc-photo-img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        display: block;
+    }
     .qc-photo-del {
         position: absolute; top: 4px; right: 4px;
         background: rgba(0,0,0,.55); color: #fff;
@@ -3188,6 +3210,7 @@ else
         width: 22px; height: 22px; font-size: 11px;
         cursor: pointer; display: flex; align-items: center; justify-content: center;
         line-height: 1;
+        z-index: 2;
     }
     .qc-photo-readonly {
         cursor: default !important;
@@ -3198,17 +3221,30 @@ else
         justify-content: center;
     }
 
-    .qc-photo3-row { display: flex; gap: 8px; margin: 10px 0; }
+    .qc-photo3-row {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 8px;
+        margin: 10px 0;
+    }
     .qc-photo-box3 {
-        flex: 1; aspect-ratio: 1/1; background: #f0f5ff;
+        aspect-ratio: 1/1; background: #f0f5ff;
         border: 2px dashed #b0c8f0; border-radius: 8px;
         display: flex; align-items: center; justify-content: center;
         cursor: pointer; overflow: hidden;
         min-height: 80px; transition: border-color .2s;
         position: relative;
+        width: 100%;
+        min-width: 0;
     }
     .qc-photo-box3.tall { aspect-ratio: 3/4; }
     .qc-photo-box3:hover { border-color: #2D7DD2; }
+
+    /* Mobile nhỏ: vẫn giữ 3 cột nhưng gap nhỏ lại để ảnh không quá bé */
+    @@media (max-width: 380px) {
+        .qc-photo-row  { gap: 6px; }
+        .qc-photo3-row { gap: 5px; }
+    }
 
     .qc-info-table { margin-bottom: 6px; }
     .qc-info-row {
