@@ -2635,16 +2635,17 @@ else if (_data != null)
             box-shadow: none !important;
             margin: 0 !important;
             width: 100% !important;
-            min-height: 0 !important;
-            height: auto !important;
-            max-height: none !important;
+            /* ★ Height bằng đúng 1 trang A4 (297mm) để footer luôn ở đáy trang.
+               break-inside:avoid + height fixed = mỗi section chiếm trọn 1 trang in.
+               flex-direction:column + margin-top:auto trên footer = footer nằm sát đáy. */
+            height: 297mm !important;
+            min-height: 297mm !important;
+            max-height: 297mm !important;
             overflow: hidden !important;
             padding: 12mm 14mm 14mm !important;
             counter-increment: page-counter;
             position: relative !important;
             box-sizing: border-box !important;
-            /* ★ Section đã pre-chunked ≤ 6 ảnh = vừa 1 trang.
-               break-inside:avoid để section LUÔN nằm gọn trong 1 trang. */
             break-inside: avoid !important;
             page-break-inside: avoid !important;
             /* ★ Flex column để footer in-flow được đẩy xuống đáy section khi in PDF. */
@@ -2929,19 +2930,21 @@ else if (_data != null)
         .rpt-footer {
             position: static !important;
             margin-top: auto !important;  /* ★ Đẩy footer xuống đáy .rpt-section flex column */
-            padding: 6px 0 0 !important;
-            border-top: 1px solid #f0f0f0 !important;
+            padding: 8px 0 0 !important;
+            border-top: 1px solid #cfd8e3 !important;
             background: white !important;
             flex-shrink: 0 !important;
         }
         .rpt-footer-text {
-            font-size: 8px !important;
-            line-height: 1.4 !important;
-            color: #999 !important;
+            font-size: 9px !important;
+            line-height: 1.45 !important;
+            color: #333 !important;     /* đậm rõ hơn so với #999 */
+            font-weight: 500 !important;
         }
         .rpt-footer-page {
-            font-size: 9px !important;
-            color: #888 !important;
+            font-size: 11px !important;
+            font-weight: 700 !important;
+            color: #222 !important;     /* page number đậm bold */
         }
         /* Ẩn running footer vì position:fixed không reliable trong PDF print */
         .rpt-print-footer { display: none !important; }
