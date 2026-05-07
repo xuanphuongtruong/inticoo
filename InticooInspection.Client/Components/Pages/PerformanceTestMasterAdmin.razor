@@ -1071,7 +1071,21 @@
     .ptm-select, .ptm-search {
         border: 1.5px solid #e4eaf4; border-radius: 9px; padding: 8px 11px;
         font-size: 13px; background: #fafbfe; outline: none;
+        font-family: inherit; color: #1a1a2e;
+        height: 36px; box-sizing: border-box;
     }
+    .ptm-select {
+        -webkit-appearance: none;
+        -moz-appearance: none;
+        appearance: none;
+        padding-right: 32px;
+        background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'><path d='M1 1l4 4 4-4' stroke='%237a8fad' stroke-width='1.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/></svg>");
+        background-repeat: no-repeat;
+        background-position: right 11px center;
+        background-size: 10px 6px;
+        cursor: pointer;
+    }
+    .ptm-select::-ms-expand { display: none; }
     .ptm-select:focus, .ptm-search:focus { border-color: #2D7DD2; }
     .ptm-search-group { min-width: 0; }
 
