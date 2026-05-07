@@ -62,25 +62,38 @@ namespace InticooInspection.API.Controllers
                 // ── Filter in-memory ──
                 // DB mapping: 0=New, 1=OnGoing, 2=Completed, 3=Cancel, 4=Pending
                 // UI hiển thị: New | Delay | Completed | Cancel
-                // → "Delay" filter match cả OnGoing(1) và Pending(4) để gộp
+                // → "Delay" = Status=0 (New) VÀ InspectionDate < hôm nay (quá hạn mà chưa làm)
+                // → "New"   = Status=0 (New) VÀ InspectionDate >= hôm nay (chưa tới hạn)
+                var today = DateTime.Today;
                 if (!string.IsNullOrWhiteSpace(status))
                 {
                     var key = status.Trim().ToLower().Replace(" ", "").Replace("_", "");
                     if (key == "delay")
                     {
-                        // Delay = OnGoing(1) hoặc Pending(4) ở DB
-                        allRaw = allRaw.Where(i => (int)i.StatusVal == 1 || (int)i.StatusVal == 4).ToList();
+                        // Delay = Status=0 (New) AND InspectionDate < today
+                        allRaw = allRaw.Where(i =>
+                            (int)i.StatusVal == 0 &&
+                            i.InspectionDate != default(DateTime) &&
+                            i.InspectionDate.Date < today
+                        ).ToList();
+                    }
+                    else if (key == "new")
+                    {
+                        // New = Status=0 (New) AND (InspectionDate >= today HOẶC chưa set ngày)
+                        allRaw = allRaw.Where(i =>
+                            (int)i.StatusVal == 0 &&
+                            (i.InspectionDate == default(DateTime) || i.InspectionDate.Date >= today)
+                        ).ToList();
                     }
                     else
                     {
                         var sv = key switch
                         {
-                            "new"       => (int?)0,
-                            "ongoing"   => (int?)1,   // legacy alias for Delay
+                            "ongoing"   => (int?)1,
                             "completed" => (int?)2,
                             "cancel"    => (int?)3,
                             "cancelled" => (int?)3,
-                            "pending"   => (int?)4,   // legacy alias for Delay
+                            "pending"   => (int?)4,
                             _           => null
                         };
                         if (sv.HasValue)
@@ -212,14 +225,17 @@ namespace InticooInspection.API.Controllers
 
                 // ── Map enums → strings in-memory ──
                 // DB enum: 0=New, 1=OnGoing, 2=Completed, 3=Cancel, 4=Pending
-                // UI hiển thị: New | Delay | Completed | Cancel (gộp OnGoing & Pending vào Delay)
-                static string MapStatus(InspectionStatus st) => (int)st switch
+                // UI hiển thị: New | Delay | Completed | Cancel
+                // → Status=0 (New) + InspectionDate < hôm nay  ⇒ "Delay"
+                // → Status=0 (New) + InspectionDate >= hôm nay ⇒ "New"
+                // → 1 (OnGoing) và 4 (Pending) legacy: vẫn map sang "Delay" để tương thích dữ liệu cũ
+                string MapStatus(InspectionStatus st, DateTime inspDate) => (int)st switch
                 {
-                    0 => "New",
-                    1 => "Delay",      // was "OnGoing"
+                    0 => (inspDate != default(DateTime) && inspDate.Date < today) ? "Delay" : "New",
+                    1 => "Delay",      // legacy OnGoing
                     2 => "Completed",
                     3 => "Cancel",
-                    4 => "Delay",      // was "Pending" — gộp vào Delay
+                    4 => "Delay",      // legacy Pending
                     _ => "New"
                 };
                 static string MapInspType(InspectionType t) => t switch
@@ -275,7 +291,7 @@ namespace InticooInspection.API.Controllers
                     {
                         id = i.Id,
                         title = i.Title,
-                        status = MapStatus(i.StatusVal),
+                        status = MapStatus(i.StatusVal, i.InspectionDate),
                         createdAt = i.CreatedAt,
                         completedAt = i.CompletedAt,
                         jobNumber = i.JobNumber,
@@ -410,14 +426,18 @@ namespace InticooInspection.API.Controllers
 
             // MapStatus: nhất quán với GetAll
             // DB: 0=New, 1=OnGoing, 2=Completed, 3=Cancel, 4=Pending
-            // UI: New | Delay | Completed | Cancel (gộp 1 & 4 vào Delay)
-            static string MapStatusForEdit(InspectionStatus st) => (int)st switch
+            // UI: New | Delay | Completed | Cancel
+            //   → Status=0 + InspectionDate < today  ⇒ Delay
+            //   → Status=0 + InspectionDate >= today ⇒ New
+            //   → 1 (OnGoing) và 4 (Pending) legacy: vẫn map sang Delay
+            var todayForEdit = DateTime.Today;
+            string MapStatusForEdit(InspectionStatus st, DateTime inspDate) => (int)st switch
             {
-                0 => "New",
-                1 => "Delay",      // was "OnGoing"
+                0 => (inspDate != default(DateTime) && inspDate.Date < todayForEdit) ? "Delay" : "New",
+                1 => "Delay",      // legacy OnGoing
                 2 => "Completed",
                 3 => "Cancel",
-                4 => "Delay",      // was "Pending"
+                4 => "Delay",      // legacy Pending
                 _ => "New"
             };
 
@@ -478,7 +498,7 @@ namespace InticooInspection.API.Controllers
                 id = inspection.Id,
                 title = inspection.Title,
                 description = inspection.Description,
-                status = MapStatusForEdit(inspection.Status),
+                status = MapStatusForEdit(inspection.Status, inspection.InspectionDate),
                 jobNumber = inspection.JobNumber,
                 customerName = inspection.CustomerName,
                 customerId = inspection.CustomerId,

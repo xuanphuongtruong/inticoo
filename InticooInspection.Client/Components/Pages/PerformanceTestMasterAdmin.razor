@@ -1,7 +1,9 @@
 @page "/admin/performance-test-master"
 @using System.Net.Http.Json
 @using System.Text.Json
+@using Microsoft.AspNetCore.Components.Forms
 @inject HttpClient Http
+@inject IJSRuntime JS
 @inject Blazored.SessionStorage.ISessionStorageService SessionStorage
 
 <div class="ptm-page">
@@ -122,28 +124,57 @@
                         <th class="th-protocol">Protocol Name</th>
                         <th class="th-testprot">Test Protocol</th>
                         <th class="th-req">Requirements</th>
+                        <th class="th-ref">References</th>
                         <th class="th-status">Status</th>
                         <th class="th-action">Action</th>
                     </tr>
                 </thead>
                 <tbody>
-                    @foreach (var item in FilteredItems())
+                    @{ var filtered = FilteredItems(); var rowNo = 0; }
+                    @foreach (var item in filtered)
                     {
+                        rowNo++;
+                        var displayNo = rowNo;
                         <tr class="@(item.IsActive ? "" : "row-inactive")">
-                            <td class="td-no">@item.SortOrder</td>
+                            <td class="td-no">@displayNo</td>
                             <td class="td-category">
                                 <span class="ptm-cat-badge cat-@Slug(item.Category)">@item.Category</span>
                             </td>
-                            <td class="td-protocol" title="@item.ProtocolName">@Truncate(item.ProtocolName, 50)</td>
-                            <td class="td-testprot" title="@item.TestProtocol">
+                            <td class="td-protocol">@item.ProtocolName</td>
+                            <td class="td-testprot">
                                 @if (!string.IsNullOrEmpty(item.TestProtocol))
-                                { <span class="ptm-tp-text">@Truncate(item.TestProtocol, 55)</span> }
+                                { <span class="ptm-tp-text">@item.TestProtocol</span> }
                                 else { <span class="ptm-na">—</span> }
                             </td>
-                            <td class="td-req" title="@item.Requirements">
+                            <td class="td-req">
                                 @if (!string.IsNullOrEmpty(item.Requirements))
-                                { <span class="ptm-req-text">@Truncate(item.Requirements, 45)</span> }
+                                { <span class="ptm-req-text">@item.Requirements</span> }
                                 else { <span class="ptm-na">—</span> }
+                            </td>
+                            <td class="td-ref">
+                                @if (item.References != null && item.References.Count > 0)
+                                {
+                                    <!-- File đầu tiên hiển thị link tải -->
+                                    var first = item.References[0];
+                                    <a class="ptm-ref-link" href="@($"api/performance-test-master/references/{first.Id}")"
+                                       target="_blank" title="@first.FileName">
+                                        <svg width="13" height="13" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                                            <path d="M14 2H6a2 2 0 00-2 2v12a2 2 0 002 2h8a2 2 0 002-2V6l-2-4z"/>
+                                            <path d="M14 2v4h4"/>
+                                        </svg>
+                                        <span>@Truncate(first.FileName, 16)</span>
+                                    </a>
+                                    @if (item.References.Count > 1)
+                                    {
+                                        <button class="ptm-ref-more" @onclick="() => OpenDetail(item)" title="View all files">
+                                            +@(item.References.Count - 1)
+                                        </button>
+                                    }
+                                }
+                                else
+                                {
+                                    <span class="ptm-na">—</span>
+                                }
                             </td>
                             <td class="td-status">
                                 <button class="ptm-toggle @(item.IsActive ? "tog-on" : "tog-off")"
@@ -152,6 +183,12 @@
                                 </button>
                             </td>
                             <td class="td-action">
+                                <button class="ptm-btn-view" @onclick="() => OpenDetail(item)" title="Full Detail">
+                                    <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                                        <path d="M1 10s3-7 9-7 9 7 9 7-3 7-9 7-9-7-9-7z"/>
+                                        <circle cx="10" cy="10" r="3"/>
+                                    </svg>
+                                </button>
                                 <button class="ptm-btn-edit" @onclick="() => OpenEdit(item)" title="Edit">
                                     <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M11 4l5 5-9 9H2v-5L11 4z"/></svg>
                                 </button>
@@ -164,7 +201,7 @@
                 </tbody>
             </table>
         </div>
-        <div class="ptm-count">Showing @FilteredItems().Count / @_items.Count records</div>
+        <div class="ptm-count">Showing @filtered.Count / @_items.Count records</div>
     }
 </div>
 
@@ -260,16 +297,19 @@
                     <input class="ptm-input" placeholder="Full name: EN581-1 & EN581-2:2015 (Outdoor Seating for Europe market)" @bind="_form.ProtocolName" />
                 </div>
 
-                <!-- Sort Order -->
+                <!-- Sort Order (ẩn) -->
                 <div class="ptm-form-group" style="max-width:160px;display: none;">
                     <label class="ptm-label">Sort Order</label>
                     <input class="ptm-input" type="number" min="0" @bind="_form.SortOrder" />
                 </div>
 
-                <!-- Test Protocol (tên/mô tả bước) -->
+                <!-- Test Protocol -->
                 <div class="ptm-form-group">
                     <label class="ptm-label">Test Protocol (Step name)</label>
-                    <input class="ptm-input" placeholder="E.g.: 1. General Safety Requirements. / 2. Seat and back static load test..." @bind="_form.TestProtocol" />
+                    <textarea class="ptm-textarea ptm-textarea-3"
+                              rows="3"
+                              placeholder="E.g.: 1. General Safety Requirements. / 2. Seat and back static load test..."
+                              @bind="_form.TestProtocol"></textarea>
                 </div>
 
                 <!-- Procedure -->
@@ -282,6 +322,85 @@
                 <div class="ptm-form-group">
                     <label class="ptm-label">Requirements</label>
                     <textarea class="ptm-textarea" rows="2" placeholder="E.g.: No product damage is allowed. / Must meet all." @bind="_form.Requirements"></textarea>
+                </div>
+
+                <!-- ═══════ Reference (multi-file) ═══════ -->
+                <div class="ptm-form-group">
+                    <label class="ptm-label">Reference (Attached files)</label>
+
+                    <!-- Danh sách file đã upload (có Id thật, lưu sẵn ở DB) -->
+                    @if (_existingRefs != null && _existingRefs.Count > 0)
+                    {
+                        <div class="ptm-ref-list">
+                            @foreach (var r in _existingRefs)
+                            {
+                                <div class="ptm-ref-existing">
+                                    <div class="ptm-ref-existing-info">
+                                        <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="#2D7DD2" stroke-width="2" stroke-linecap="round">
+                                            <path d="M14 2H6a2 2 0 00-2 2v12a2 2 0 002 2h8a2 2 0 002-2V6l-2-4z"/>
+                                            <path d="M14 2v4h4"/>
+                                        </svg>
+                                        <a href="@($"api/performance-test-master/references/{r.Id}")" target="_blank">
+                                            @r.FileName
+                                        </a>
+                                        <span class="ptm-ref-size">(@FormatSize(r.FileSize))</span>
+                                    </div>
+                                    <button type="button" class="ptm-ref-remove"
+                                            @onclick="@(() => RemoveExistingReference(r.Id))"
+                                            title="Remove this file">✕</button>
+                                </div>
+                            }
+                        </div>
+                    }
+
+                    <!-- File mới được chọn (queue, chưa upload) -->
+                    @if (_pickedRefs != null && _pickedRefs.Count > 0)
+                    {
+                        <div class="ptm-ref-list">
+                            @foreach (var pf in _pickedRefs)
+                            {
+                                <div class="ptm-ref-picked-row">
+                                    <div class="ptm-ref-existing-info">
+                                        <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="#2e7d32" stroke-width="2" stroke-linecap="round">
+                                            <path d="M14 2H6a2 2 0 00-2 2v12a2 2 0 002 2h8a2 2 0 002-2V6l-2-4z"/>
+                                            <path d="M14 2v4h4"/>
+                                        </svg>
+                                        <strong>@pf.File.Name</strong>
+                                        <span class="ptm-ref-size">(@FormatSize(pf.File.Size))</span>
+                                        <span class="ptm-ref-newtag">NEW</span>
+                                    </div>
+                                    <button type="button" class="ptm-ref-remove ptm-ref-remove-inline"
+                                            @onclick="@(() => RemovePickedFile(pf.Key))"
+                                            title="Cancel this file">✕</button>
+                                </div>
+                            }
+                        </div>
+                    }
+
+                    <!-- Nút chọn file (multiple) -->
+                    <div class="ptm-file-row">
+                        <InputFile OnChange="OnPickReferenceFiles"
+                                   class="ptm-file-input"
+                                   id="ptm-ref-file"
+                                   multiple
+                                   accept=".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg,.zip,.rar" />
+                        <label for="ptm-ref-file" class="ptm-file-btn">
+                            <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                                <path d="M10 4v12M4 10h12"/>
+                            </svg>
+                            + Add files
+                        </label>
+                        @{
+                            var existCount  = _existingRefs?.Count ?? 0;
+                            var pickedCount = _pickedRefs?.Count   ?? 0;
+                            var totalCount  = existCount + pickedCount;
+                        }
+                        @if (totalCount > 0)
+                        {
+                            <span class="ptm-ref-counter">@totalCount file(s) attached</span>
+                        }
+                    </div>
+                    <div class="ptm-ref-hint">PDF, Word, Excel, image or archive — up to 50 MB per file. You can attach multiple files.</div>
                 </div>
 
                 <!-- Active -->
@@ -301,6 +420,100 @@
                         <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M4 10l5 5 7-8"/></svg>
                         <span>@(_editId == null ? "+ Add New" : "Save")</span>
                     }
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+<!-- ═══════ MODAL FULL DETAIL ═══════ -->
+@if (_detailItem != null)
+{
+    <div class="ptm-overlay" @onclick="@(() => _detailItem = null)">
+        <div class="ptm-modal ptm-modal-detail" @onclick:stopPropagation="true">
+            <div class="ptm-modal-header">
+                <span class="ptm-modal-title">Full Detail</span>
+                <button class="ptm-modal-close" @onclick="@(() => _detailItem = null)">
+                    <svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M5 5l10 10M15 5L5 15"/></svg>
+                </button>
+            </div>
+            <div class="ptm-modal-body">
+                <div class="ptm-detail-row">
+                    <div class="ptm-detail-label">Category</div>
+                    <div class="ptm-detail-value">
+                        <span class="ptm-cat-badge cat-@Slug(_detailItem.Category)">@_detailItem.Category</span>
+                    </div>
+                </div>
+                <div class="ptm-detail-row">
+                    <div class="ptm-detail-label">Protocol Name</div>
+                    <div class="ptm-detail-value ptm-detail-strong">@_detailItem.ProtocolName</div>
+                </div>
+                <div class="ptm-detail-row">
+                    <div class="ptm-detail-label">Test Protocol</div>
+                    <div class="ptm-detail-value">
+                        @if (string.IsNullOrEmpty(_detailItem.TestProtocol))
+                        { <span class="ptm-na">—</span> }
+                        else
+                        { <pre class="ptm-detail-pre">@_detailItem.TestProtocol</pre> }
+                    </div>
+                </div>
+                <div class="ptm-detail-row">
+                    <div class="ptm-detail-label">Procedure</div>
+                    <div class="ptm-detail-value">
+                        @if (string.IsNullOrEmpty(_detailItem.Procedure))
+                        { <span class="ptm-na">—</span> }
+                        else
+                        { <pre class="ptm-detail-pre">@_detailItem.Procedure</pre> }
+                    </div>
+                </div>
+                <div class="ptm-detail-row">
+                    <div class="ptm-detail-label">Requirements</div>
+                    <div class="ptm-detail-value">
+                        @if (string.IsNullOrEmpty(_detailItem.Requirements))
+                        { <span class="ptm-na">—</span> }
+                        else
+                        { <pre class="ptm-detail-pre">@_detailItem.Requirements</pre> }
+                    </div>
+                </div>
+                <div class="ptm-detail-row">
+                    <div class="ptm-detail-label">References</div>
+                    <div class="ptm-detail-value">
+                        @if (_detailItem.References != null && _detailItem.References.Count > 0)
+                        {
+                            <div class="ptm-ref-list">
+                                @foreach (var r in _detailItem.References)
+                                {
+                                    <a class="ptm-ref-link" href="@($"api/performance-test-master/references/{r.Id}")" target="_blank">
+                                        <svg width="13" height="13" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                                            <path d="M14 2H6a2 2 0 00-2 2v12a2 2 0 002 2h8a2 2 0 002-2V6l-2-4z"/>
+                                            <path d="M14 2v4h4"/>
+                                        </svg>
+                                        <span>@r.FileName</span>
+                                        <span class="ptm-ref-size">(@FormatSize(r.FileSize))</span>
+                                    </a>
+                                }
+                            </div>
+                        }
+                        else
+                        {
+                            <span class="ptm-na">No file attached</span>
+                        }
+                    </div>
+                </div>
+                <div class="ptm-detail-row">
+                    <div class="ptm-detail-label">Status</div>
+                    <div class="ptm-detail-value">
+                        <span class="ptm-toggle @(_detailItem.IsActive ? "tog-on" : "tog-off")" style="cursor:default;">
+                            @(_detailItem.IsActive ? "Active" : "Inactive")
+                        </span>
+                    </div>
+                </div>
+            </div>
+            <div class="ptm-modal-footer">
+                <button class="ptm-btn-cancel" @onclick="@(() => _detailItem = null)">Close</button>
+                <button class="ptm-btn-save" @onclick="@(() => { var x = _detailItem; _detailItem = null; OpenEdit(x!); })">
+                    <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M11 4l5 5-9 9H2v-5L11 4z"/></svg>
+                    <span>Edit</span>
                 </button>
             </div>
         </div>
@@ -343,12 +556,29 @@
     private string _filterActive    = "all";
     private string _searchText        = "";
 
-    private readonly List<string> _categories = new() { "Packaging Test","Product test","Moisture content test","Adhessive test" };
+    private readonly List<string> _categories = new()
+    {
+        "Packaging Test",
+        "Product Test",
+        "Moisture Content Test",
+        "Adhesive Test"
+    };
 
     private bool  _showModal  = false;
     private int?  _editId     = null;
     private FormModel _form   = new();
     private TestMasterItem? _deleteTarget = null;
+    private TestMasterItem? _detailItem = null;
+
+    // ─── Reference state (multi-file) ───
+    /// <summary>File đã có trên DB của bản ghi đang edit (snapshot khi mở modal)</summary>
+    private List<ReferenceFileItem> _existingRefs = new();
+    /// <summary>Id các file user bấm xoá khi đang edit (sẽ gọi DELETE khi Save)</summary>
+    private HashSet<int> _pendingDeleteRefIds = new();
+    /// <summary>File user mới chọn, chờ upload khi Save</summary>
+    private List<PickedFile> _pickedRefs = new();
+    /// <summary>Khoá tăng dần để key duy nhất cho file mới chọn (dùng cho @key)</summary>
+    private int _pickedKeySeq = 0;
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -392,15 +622,20 @@
         _formCmbQuery = "";
         _formCmbOpen = false;
         _modalError = "";
+        _existingRefs = new();
+        _pendingDeleteRefIds = new();
+        _pickedRefs = new();
         _showModal  = true;
     }
 
-    // ─── Inline ComboBox state (filter) ───
+    private void OpenDetail(TestMasterItem item) => _detailItem = item;
+
+    // ─── ComboBox state (filter) ───
     private bool   _filterCmbOpen      = false;
     private string _filterCmbQuery     = "";
     private int    _filterCmbHighlight = -1;
 
-    // ─── Inline ComboBox state (form) ───
+    // ─── ComboBox state (form) ───
     private bool   _formCmbOpen        = false;
     private string _formCmbQuery       = "";
     private int    _formCmbHighlight   = -1;
@@ -517,10 +752,47 @@
         _formCmbQuery = item.Category ?? "";
         _formCmbOpen = false;
         _modalError = "";
+
+        _existingRefs = item.References != null
+            ? item.References.Select(r => new ReferenceFileItem
+            {
+                Id = r.Id, FileName = r.FileName,
+                ContentType = r.ContentType, FileSize = r.FileSize
+            }).ToList()
+            : new();
+        _pendingDeleteRefIds = new();
+        _pickedRefs = new();
         _showModal  = true;
     }
 
     private void CloseModal() { _showModal = false; _modalError = ""; }
+
+    // ── Reference file handlers ──────────────────────────────────────────
+    /// <summary>User chọn nhiều file qua InputFile (multiple).</summary>
+    private void OnPickReferenceFiles(InputFileChangeEventArgs e)
+    {
+        // GetMultipleFiles cho phép giới hạn số file; lấy max 20 file/lần để an toàn.
+        var files = e.GetMultipleFiles(maximumFileCount: 20);
+        foreach (var f in files)
+        {
+            _pickedKeySeq++;
+            _pickedRefs.Add(new PickedFile { Key = _pickedKeySeq, File = f });
+        }
+    }
+
+    /// <summary>Bỏ 1 file mới chọn ra khỏi queue (chưa upload).</summary>
+    private void RemovePickedFile(int key)
+    {
+        var idx = _pickedRefs.FindIndex(p => p.Key == key);
+        if (idx >= 0) _pickedRefs.RemoveAt(idx);
+    }
+
+    /// <summary>Đánh dấu xoá 1 file đã có trên DB. Sẽ thực thi DELETE khi Save.</summary>
+    private void RemoveExistingReference(int refId)
+    {
+        _pendingDeleteRefIds.Add(refId);
+        _existingRefs.RemoveAll(r => r.Id == refId);
+    }
 
     private async Task SaveAsync()
     {
@@ -534,6 +806,7 @@
             if (string.IsNullOrEmpty(token))
             { _modalError = "Not authenticated. Please log in again."; _saving = false; return; }
 
+            // 1) Upsert dữ liệu chính
             var reqPayload = new UpsertPayload
             {
                 Category     = _form.Category,
@@ -545,8 +818,8 @@
                 IsActive     = _form.IsActive
             };
 
-            var json    = System.Text.Json.JsonSerializer.Serialize(reqPayload,
-                          new System.Text.Json.JsonSerializerOptions { PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase });
+            var json    = JsonSerializer.Serialize(reqPayload,
+                          new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
             var content = new StringContent(json, System.Text.Encoding.UTF8, "application/json");
             var url     = _editId == null ? "api/performance-test-master" : $"api/performance-test-master/{_editId}";
             var method  = _editId == null ? HttpMethod.Post : HttpMethod.Put;
@@ -554,12 +827,73 @@
             msg.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
 
             var resp = await Http.SendAsync(msg);
-            if (resp.IsSuccessStatusCode) { _showModal = false; await LoadAsync(); }
-            else
+            if (!resp.IsSuccessStatusCode)
             {
                 var body = await resp.Content.ReadAsStringAsync();
                 _modalError = $"Error {(int)resp.StatusCode}: {body}";
+                _saving = false; return;
             }
+
+            var saved   = await resp.Content.ReadFromJsonAsync<TestMasterItem>();
+            var savedId = saved?.Id ?? _editId ?? 0;
+            if (savedId <= 0)
+            {
+                _modalError = "Could not determine saved record id.";
+                _saving = false; return;
+            }
+
+            // 2) Xoá những file user đã bấm ✕ (nếu là edit)
+            if (_editId != null && _pendingDeleteRefIds.Count > 0)
+            {
+                foreach (var refId in _pendingDeleteRefIds)
+                {
+                    var delMsg = new HttpRequestMessage(
+                        HttpMethod.Delete,
+                        $"api/performance-test-master/references/{refId}");
+                    delMsg.Headers.Authorization =
+                        new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+                    await Http.SendAsync(delMsg);
+                }
+            }
+
+            // 3) Upload toàn bộ file mới chọn (gộp 1 request multipart)
+            if (_pickedRefs.Count > 0)
+            {
+                using var multipart = new MultipartFormDataContent();
+                foreach (var pf in _pickedRefs)
+                {
+                    using var ms = new MemoryStream();
+                    // 50 MB / file
+                    await pf.File.OpenReadStream(50 * 1024 * 1024).CopyToAsync(ms);
+                    var bytes = ms.ToArray();
+
+                    var fileContent = new ByteArrayContent(bytes);
+                    fileContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue(
+                        string.IsNullOrWhiteSpace(pf.File.ContentType)
+                            ? "application/octet-stream"
+                            : pf.File.ContentType);
+                    multipart.Add(fileContent, "files", pf.File.Name);
+                }
+
+                var upMsg = new HttpRequestMessage(
+                    HttpMethod.Post,
+                    $"api/performance-test-master/{savedId}/references")
+                { Content = multipart };
+                upMsg.Headers.Authorization =
+                    new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+
+                var upResp = await Http.SendAsync(upMsg);
+                if (!upResp.IsSuccessStatusCode)
+                {
+                    var body = await upResp.Content.ReadAsStringAsync();
+                    _modalError = $"Saved record but file upload failed: {(int)upResp.StatusCode} {body}";
+                    await LoadAsync();
+                    _saving = false; return;
+                }
+            }
+
+            _showModal = false;
+            await LoadAsync();
         }
         catch (Exception ex) { _modalError = ex.Message; }
         finally { _saving = false; }
@@ -596,18 +930,19 @@
         catch { }
     }
 
-    private async Task SetAuthHeader()
-    {
-        var token = await SessionStorage.GetItemAsync<string>("auth_token");
-        if (!string.IsNullOrEmpty(token))
-            Http.DefaultRequestHeaders.Authorization =
-                new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
-    }
-
     private static string Truncate(string? s, int max) =>
         string.IsNullOrEmpty(s) ? "" : s.Length <= max ? s : s[..max] + "…";
     private static string Slug(string s) => s.ToLower().Replace(" ", "").Replace("/","");
 
+    private static string FormatSize(long bytes)
+    {
+        if (bytes < 1024)            return $"{bytes} B";
+        if (bytes < 1024 * 1024)     return $"{bytes / 1024.0:0.#} KB";
+        if (bytes < 1024L * 1024 * 1024) return $"{bytes / (1024.0 * 1024):0.#} MB";
+        return $"{bytes / (1024.0 * 1024 * 1024):0.#} GB";
+    }
+
+    // ─── Models ──────────────────────────────────────────────────────────
     private class TestMasterItem
     {
         public int     Id           { get; set; }
@@ -618,6 +953,23 @@
         public string? Requirements { get; set; }
         public int     SortOrder    { get; set; }
         public bool    IsActive     { get; set; }
+        public List<ReferenceFileItem> References { get; set; } = new();
+    }
+
+    private class ReferenceFileItem
+    {
+        public int      Id          { get; set; }
+        public string   FileName    { get; set; } = "";
+        public string   ContentType { get; set; } = "";
+        public long     FileSize    { get; set; }
+        public int      SortOrder   { get; set; }
+        public DateTime UploadedAt  { get; set; }
+    }
+
+    private class PickedFile
+    {
+        public int           Key  { get; set; }
+        public IBrowserFile  File { get; set; } = default!;
     }
 
     private class UpsertPayload
@@ -666,108 +1018,108 @@
     .ptm-add-btn:hover { box-shadow: 0 5px 16px rgba(45,125,210,.45); transform: translateY(-1px); }
 
     .ptm-filters {
-        display: flex; flex-wrap: wrap; gap: 12px;
-        background: white; border-radius: 12px; padding: 14px 20px;
-        box-shadow: 0 2px 8px rgba(0,0,0,.06); margin-bottom: 16px;
+        display: grid; grid-template-columns: 240px 160px 1fr; gap: 14px;
+        background: white; border-radius: 14px; padding: 14px 18px;
+        box-shadow: 0 2px 10px rgba(0,0,0,.07); margin-bottom: 14px;
     }
     .ptm-filter-group { display: flex; flex-direction: column; gap: 4px; }
-    .ptm-filter-label { font-size: 11px; font-weight: 600; color: #999; text-transform: uppercase; letter-spacing: .05em; }
+    .ptm-filter-label { font-size: 11px; font-weight: 700; color: #7a8fad; text-transform: uppercase; letter-spacing: .04em; }
     .ptm-select, .ptm-search {
-        border: 1.5px solid #e4eaf4; border-radius: 8px; padding: 7px 10px;
-        font-size: 13px; color: #333; background: #fafbfe; outline: none;
-        transition: border .2s; min-width: 130px;
+        border: 1.5px solid #e4eaf4; border-radius: 9px; padding: 8px 11px;
+        font-size: 13px; background: #fafbfe; outline: none;
     }
-    .ptm-search { min-width: 220px; }
     .ptm-select:focus, .ptm-search:focus { border-color: #2D7DD2; }
+    .ptm-search-group { min-width: 0; }
 
-    /* ComboBox sizing inside filters bar */
-    .ptm-combo-filter { min-width: 180px; max-width: 220px; }
-    /* ComboBox inside modal form (full width of row) */
-    .ptm-combo-form { width: 100%; }
-
-    /* ───────── Inline ComboBox ───────── */
-    .ptm-cmb-root { position: relative; box-sizing: border-box; }
+    /* ─── ComboBox ─── */
+    .ptm-cmb-root { position: relative; }
     .ptm-cmb-control {
-        display: flex; align-items: center;
-        border: 1.5px solid #e4eaf4; border-radius: 8px;
-        background: #fafbfe; padding: 0 8px 0 0;
-        transition: border-color .15s, box-shadow .15s;
-        cursor: text; min-height: 36px;
+        display: flex; align-items: center; gap: 6px;
+        border: 1.5px solid #e4eaf4; border-radius: 9px; background: #fafbfe;
+        padding: 0 10px 0 11px; height: 36px; cursor: text; transition: border .2s;
     }
-    .ptm-cmb-control.ptm-cmb-open,
-    .ptm-cmb-root:focus-within .ptm-cmb-control { border-color: #2D7DD2; box-shadow: 0 0 0 3px rgba(45,125,210,0.08); }
+    .ptm-cmb-control.ptm-cmb-open, .ptm-cmb-control:focus-within { border-color: #2D7DD2; }
     .ptm-cmb-input {
-        flex: 1; min-width: 0;
-        border: none; outline: none; background: transparent;
-        padding: 7px 10px; font-size: 13px; color: #333;
-        font-family: inherit;
+        flex: 1; border: none; outline: none; background: transparent;
+        font-size: 13px; color: #1a1a2e; min-width: 0;
     }
-    .ptm-cmb-input::placeholder { color: #b0bdd4; }
-    .ptm-cmb-arrow { display: inline-flex; align-items: center; justify-content: center; padding: 0 6px; pointer-events: none; }
-    .ptm-cmb-clear { background: transparent; border: none; cursor: pointer; color: #9baac8; font-size: 12px; padding: 2px 6px; border-radius: 4px; line-height: 1; }
-    .ptm-cmb-clear:hover { background: #eef2f8; color: #2D7DD2; }
+    .ptm-cmb-clear {
+        background: transparent; border: none; cursor: pointer;
+        color: #aaa; font-size: 12px; padding: 2px 6px; border-radius: 4px;
+    }
+    .ptm-cmb-clear:hover { background: #f0f3f8; color: #555; }
+    .ptm-cmb-arrow { display: inline-flex; pointer-events: none; }
     .ptm-cmb-menu {
-        position: absolute; left: 0; right: 0; top: calc(100% + 4px);
-        background: #fff; border: 1px solid #e4eaf4; border-radius: 8px;
-        box-shadow: 0 6px 20px rgba(20,40,80,.12);
-        z-index: 50; max-height: 240px; overflow-y: auto; padding: 4px;
+        position: absolute; top: calc(100% + 4px); left: 0; right: 0;
+        background: white; border: 1px solid #e4eaf4; border-radius: 9px;
+        box-shadow: 0 8px 24px rgba(0,0,0,.1); max-height: 220px; overflow: auto;
+        z-index: 50;
     }
-    .ptm-cmb-item { padding: 8px 10px; font-size: 13px; color: #333; border-radius: 5px; cursor: pointer; user-select: none; }
-    .ptm-cmb-item.ptm-cmb-highlight, .ptm-cmb-item:hover { background: #eef4ff; color: #2D7DD2; }
-    .ptm-cmb-item.ptm-cmb-selected { background: #e0ecff; color: #2D7DD2; font-weight: 600; }
-    .ptm-cmb-item.ptm-cmb-item-empty { color: #7a8fad; font-style: italic; }
-    .ptm-cmb-item.ptm-cmb-item-create { color: #1e7e34; }
+    .ptm-cmb-item {
+        padding: 8px 12px; font-size: 13px; color: #1a1a2e; cursor: pointer;
+    }
+    .ptm-cmb-item:hover, .ptm-cmb-highlight { background: #eef4ff; }
+    .ptm-cmb-selected { background: #e3f2fd; font-weight: 600; }
+    .ptm-cmb-empty { padding: 10px 12px; font-size: 12px; color: #999; font-style: italic; }
+    .ptm-cmb-item-create { color: #2D7DD2; font-weight: 600; }
     .ptm-cmb-create-tag {
-        display: inline-block; background: #dcf0df; color: #1e7e34;
-        font-size: 10px; font-weight: 700; padding: 1px 6px; border-radius: 10px;
-        margin-right: 4px; text-transform: uppercase; letter-spacing: .03em;
+        display: inline-block; font-size: 10px; font-weight: 800;
+        background: #2D7DD2; color: white; padding: 2px 6px; border-radius: 4px; margin-right: 6px;
     }
-    .ptm-cmb-empty { padding: 10px; text-align: center; color: #9baac8; font-size: 12.5px; font-style: italic; }
-    .ptm-search-group { flex: 1; }
+    .ptm-cmb-item-empty { font-style: italic; color: #888; }
 
-    .ptm-table-wrap { background: white; border-radius: 14px; box-shadow: 0 2px 10px rgba(0,0,0,.07); overflow-x: auto; }
+    /* ─── Table ─── */
+    .ptm-table-wrap { background: white; border-radius: 14px; overflow: auto; box-shadow: 0 2px 10px rgba(0,0,0,.07); }
     .ptm-table { width: 100%; border-collapse: collapse; font-size: 13px; }
-    .ptm-table thead tr { background: #f5f8fc; border-bottom: 2px solid #e4eaf4; }
-    .ptm-table th {
-        padding: 12px 12px; text-align: left;
-        font-size: 11px; font-weight: 700; color: #7a8fad;
-        text-transform: uppercase; letter-spacing: .05em; white-space: nowrap;
+    .ptm-table thead {
+        background: linear-gradient(135deg,#f7fafd,#eef2f7);
+        border-bottom: 2px solid #e4eaf4;
     }
+    .ptm-table th {
+        padding: 12px 14px; text-align: left; font-weight: 700;
+        color: #506680; font-size: 11.5px; text-transform: uppercase; letter-spacing: .04em;
+    }
+    .ptm-table th.th-no { width: 50px; text-align: center; }
+    .ptm-table th.th-category { width: 150px; }
+    .ptm-table th.th-protocol { width: 220px; }
+    .ptm-table th.th-ref      { width: 180px; }
+    .ptm-table th.th-status   { width: 90px; text-align: center; }
+    .ptm-table th.th-action   { width: 130px; text-align: center; }
     .ptm-table tbody tr { border-bottom: 1px solid #f0f3f8; transition: background .15s; }
     .ptm-table tbody tr:hover { background: #f7fafd; }
-    .ptm-table tbody tr:last-child { border-bottom: none; }
-    .ptm-table td { padding: 10px 12px; vertical-align: top; }
-    .row-inactive { opacity: .45; }
+    .ptm-table tbody tr.row-inactive { opacity: .55; }
+    .ptm-table td { padding: 10px 14px; vertical-align: top; color: #1a1a2e; }
+    .ptm-table td.td-no { text-align: center; color: #7a8fad; font-weight: 600; }
+    .ptm-table td.td-status, .ptm-table td.td-action { text-align: center; }
+    .ptm-tp-text, .ptm-req-text {
+        display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical;
+        overflow: hidden; line-height: 1.5;
+    }
+    .ptm-na { color: #cfd8e3; font-style: italic; }
 
-    .th-no,.td-no         { width: 44px; color: #b0bdd4; font-weight: 600; vertical-align: middle !important; }
-    .th-category,.td-category { width: 140px; vertical-align: middle !important; }
-    .th-std,.td-std       { width: 160px; }
-    .th-type,.td-type     { width: 90px; vertical-align: middle !important; }
-    .th-market,.td-market { width: 80px; vertical-align: middle !important; }
-    .th-status,.td-status { width: 90px; vertical-align: middle !important; }
-    .th-action,.td-action { width: 72px; vertical-align: middle !important; }
-    .th-protocol,.td-protocol,.th-testprot,.td-testprot,.th-req,.td-req { max-width: 200px; }
-    .td-protocol { color: #1a1a2e; font-weight: 500; }
+    .ptm-cat-badge {
+        display: inline-block; padding: 4px 10px; border-radius: 20px;
+        font-size: 11px; font-weight: 700; white-space: nowrap;
+    }
+    .cat-packagingtest        { background: #fff3e0; color: #e65100; }
+    .cat-producttest          { background: #e3f2fd; color: #1565c0; }
+    .cat-moisturecontenttest  { background: #e8f5e9; color: #2e7d32; }
+    .cat-adhesivetest         { background: #fce4ec; color: #c2185b; }
 
-    .ptm-cat-badge { display: inline-block; font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 6px; white-space: nowrap; }
-    .cat-packagingtest       { background: #fff3e0; color: #e65100; }
-    .cat-producttest         { background: #e3f2fd; color: #1565c0; }
-    .cat-moisturecontenttest { background: #e8f5e9; color: #2e7d32; }
-    .cat-adhessivetest       { background: #f3e5f5; color: #6a1b9a; }
-
-    .ptm-std-chip { display: inline-block; font-size: 11px; font-weight: 600; background: #eef3fb; color: #2D7DD2; padding: 2px 8px; border-radius: 5px; }
-    .ptm-type-badge { display: inline-block; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 5px; background: #f5f5f5; color: #666; }
-    .type-seating { background: #e8eaf6; color: #3949ab; }
-    .type-table   { background: #e0f7fa; color: #00838f; }
-    .type-bed     { background: #fce4ec; color: #c62828; }
-    .type-wood    { background: #fff8e1; color: #f57f17; }
-    .type-all     { background: #f5f5f5; color: #757575; }
-    .ptm-market-badge { display: inline-block; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 5px; }
-    .market-europe { background: #e8f5e9; color: #2e7d32; }
-    .market-us     { background: #fff3e0; color: #e65100; }
-    .market-all    { background: #f5f5f5; color: #757575; }
-    .ptm-na { color: #ccc; }
-    .ptm-tp-text,.ptm-req-text { font-size: 12px; color: #555; line-height: 1.45; display: block; }
+    /* Reference link in table */
+    .ptm-ref-link {
+        display: inline-flex; align-items: center; gap: 5px;
+        font-size: 12px; color: #1565c0; text-decoration: none;
+        background: #e3f2fd; padding: 4px 8px; border-radius: 6px;
+        max-width: 100%; word-break: break-all;
+    }
+    .ptm-ref-link:hover { background: #bbdefb; text-decoration: underline; }
+    .ptm-ref-more {
+        margin-left: 6px; padding: 3px 8px; border-radius: 12px;
+        background: #eef4ff; color: #1565c0; border: 1px solid #c7dcf2;
+        font-size: 11px; font-weight: 700; cursor: pointer;
+    }
+    .ptm-ref-more:hover { background: #d6e7fb; }
 
     .ptm-toggle {
         display: inline-block; font-size: 11px; font-weight: 700;
@@ -778,13 +1130,16 @@
     .tog-off { background: #f5f5f5; color: #9e9e9e; }
     .tog-off:hover { background: #e0e0e0; }
 
-    .ptm-btn-edit,.ptm-btn-del {
+    .ptm-btn-edit,.ptm-btn-del,.ptm-btn-view {
         display: inline-flex; align-items: center; justify-content: center;
         width: 30px; height: 30px; border-radius: 7px; border: none; cursor: pointer; transition: all .15s;
+        margin-right: 4px;
     }
-    .ptm-btn-edit { background: #e3f2fd; color: #1565c0; margin-right: 4px; }
+    .ptm-btn-view { background: #f0f4f8; color: #455a64; }
+    .ptm-btn-view:hover { background: #e0e7ee; }
+    .ptm-btn-edit { background: #e3f2fd; color: #1565c0; }
     .ptm-btn-edit:hover { background: #bbdefb; }
-    .ptm-btn-del  { background: #fce4ec; color: #c62828; }
+    .ptm-btn-del  { background: #fce4ec; color: #c62828; margin-right: 0; }
     .ptm-btn-del:hover  { background: #f8bbd9; }
 
     .ptm-count { text-align: right; font-size: 12px; color: #aaa; padding: 10px 16px; }
@@ -796,6 +1151,7 @@
 
     .ptm-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.45); display: flex; align-items: center; justify-content: center; z-index: 1000; padding: 16px; }
     .ptm-modal { background: white; border-radius: 16px; width: 100%; max-width: 640px; box-shadow: 0 20px 60px rgba(0,0,0,.2); display: flex; flex-direction: column; max-height: 92vh; }
+    .ptm-modal-detail { max-width: 720px; }
     .ptm-modal-header { display: flex; align-items: center; justify-content: space-between; padding: 18px 22px 14px; border-bottom: 1px solid #f0f3f8; }
     .ptm-modal-title { font-size: 16px; font-weight: 800; color: #1a1a2e; }
     .ptm-modal-close { background: none; border: none; cursor: pointer; color: #aaa; padding: 4px; border-radius: 6px; transition: color .15s; }
@@ -813,22 +1169,83 @@
         border: 1.5px solid #e4eaf4; border-radius: 8px; padding: 8px 11px;
         font-size: 13px; color: #333; background: #fafbfe; outline: none;
         transition: border .2s; font-family: inherit;
+        line-height: 1.5;
     }
     .ptm-input:focus,.ptm-textarea:focus { border-color: #2D7DD2; }
     .ptm-textarea { resize: vertical; min-height: 80px; }
+    .ptm-textarea-3 { min-height: 78px; }
+
     .ptm-form-check { flex-direction: row !important; align-items: center; gap: 8px; }
     .ptm-form-check label { font-size: 20px; color: #444; cursor: pointer; }
     .ptm-modal-footer { display: flex; align-items: center; justify-content: flex-end; gap: 10px; padding: 14px 22px; border-top: 1px solid #f0f3f8; }
-    input#chk-active {
-        width: 26px;
-        height: 26px;
-    }
+    input#chk-active { width: 26px; height: 26px; }
     .ptm-btn-cancel { padding: 9px 20px; border-radius: 9px; border: 1.5px solid #e4eaf4; background: white; font-size: 13px; font-weight: 600; color: #666; cursor: pointer; transition: all .15s; }
     .ptm-btn-cancel:hover { border-color: #bbb; color: #333; }
     .ptm-btn-cancel:disabled { opacity: .5; cursor: not-allowed; }
     .ptm-btn-save { display: inline-flex; align-items: center; gap: 6px; padding: 9px 22px; border-radius: 9px; border: none; background: linear-gradient(135deg,#2D7DD2,#1a5fa8); color: white; font-size: 13px; font-weight: 700; cursor: pointer; transition: all .2s; box-shadow: 0 3px 10px rgba(45,125,210,.3); }
     .ptm-btn-save:hover { box-shadow: 0 5px 14px rgba(45,125,210,.4); }
     .ptm-btn-save:disabled { opacity: .6; cursor: not-allowed; }
+
+    /* ─── Reference (multi-file) ─── */
+    .ptm-ref-list {
+        display: flex; flex-direction: column; gap: 6px;
+        margin-bottom: 6px;
+    }
+    .ptm-file-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 4px; }
+    .ptm-file-input { display: none; }
+    .ptm-file-btn {
+        display: inline-flex; align-items: center; gap: 6px;
+        padding: 7px 14px; border-radius: 8px; border: 1.5px dashed #b9c5d8;
+        background: #fafbfe; color: #2D7DD2; font-size: 13px; font-weight: 600;
+        cursor: pointer; transition: all .15s;
+    }
+    .ptm-file-btn:hover { background: #eef4ff; border-color: #2D7DD2; }
+    .ptm-ref-counter { font-size: 12px; color: #7a8fad; font-weight: 600; }
+
+    .ptm-ref-existing {
+        display: flex; align-items: center; justify-content: space-between;
+        gap: 10px;
+        background: #e3f2fd; color: #1565c0; padding: 8px 12px;
+        border-radius: 8px; font-size: 13px;
+    }
+    .ptm-ref-picked-row {
+        display: flex; align-items: center; justify-content: space-between;
+        gap: 10px;
+        background: #e8f5e9; color: #2e7d32; padding: 8px 12px;
+        border-radius: 8px; font-size: 13px;
+    }
+    .ptm-ref-existing-info {
+        display: inline-flex; align-items: center; gap: 8px;
+        min-width: 0; flex-wrap: wrap;
+    }
+    .ptm-ref-existing-info a { color: #1565c0; text-decoration: none; font-weight: 600; word-break: break-all; }
+    .ptm-ref-existing-info a:hover { text-decoration: underline; }
+    .ptm-ref-size { color: #7a8fad; font-size: 11.5px; font-weight: 500; }
+    .ptm-ref-newtag {
+        display: inline-block; font-size: 10px; font-weight: 800;
+        background: #2e7d32; color: white; padding: 2px 6px; border-radius: 4px; letter-spacing: .04em;
+    }
+    .ptm-ref-remove {
+        background: transparent; border: none; cursor: pointer;
+        color: #c62828; font-size: 14px; padding: 2px 8px;
+        border-radius: 4px; line-height: 1;
+    }
+    .ptm-ref-remove:hover { background: rgba(198,40,40,.1); }
+    .ptm-ref-remove-inline { color: #2e7d32; }
+    .ptm-ref-remove-inline:hover { background: rgba(46,125,50,.1); }
+    .ptm-ref-hint { font-size: 11px; color: #9baac8; font-style: italic; margin-top: 4px; }
+
+    /* Detail modal */
+    .ptm-detail-row { display: grid; grid-template-columns: 140px 1fr; gap: 12px; padding: 8px 0; border-bottom: 1px dashed #eef0f5; }
+    .ptm-detail-row:last-child { border-bottom: none; }
+    .ptm-detail-label { font-size: 12px; font-weight: 700; color: #7a8fad; text-transform: uppercase; letter-spacing: .04em; padding-top: 2px; }
+    .ptm-detail-value { font-size: 13px; color: #1a1a2e; line-height: 1.6; word-break: break-word; }
+    .ptm-detail-strong { font-weight: 600; }
+    .ptm-detail-pre {
+        font-family: inherit; font-size: 13px; color: #333;
+        margin: 0; white-space: pre-wrap; line-height: 1.6;
+        background: #f7fafd; padding: 10px 12px; border-radius: 8px;
+    }
 
     .ptm-confirm-modal { background: white; border-radius: 16px; width: 100%; max-width: 380px; padding: 32px 28px 24px; text-align: center; box-shadow: 0 20px 60px rgba(0,0,0,.2); }
     .ptm-confirm-icon { margin-bottom: 14px; }
@@ -839,8 +1256,13 @@
     .ptm-btn-delete:hover { box-shadow: 0 5px 14px rgba(229,57,53,.4); }
     .ptm-btn-delete:disabled { opacity: .6; cursor: not-allowed; }
 
+    @@media (max-width: 900px) {
+        .ptm-filters { grid-template-columns: 1fr 1fr; }
+    }
     @@media (max-width: 640px) {
+        .ptm-filters { grid-template-columns: 1fr; }
         .ptm-form-row { flex-direction: column; }
         .ptm-header { flex-direction: column; gap: 12px; align-items: flex-start; }
+        .ptm-detail-row { grid-template-columns: 1fr; }
     }
 </style>
