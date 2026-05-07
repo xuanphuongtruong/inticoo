@@ -29,6 +29,7 @@ namespace InticooInspection.Infrastructure.Data
         public DbSet<Country>                       Countries                       => Set<Country>();
         public DbSet<City>                          Cities                          => Set<City>();
         public DbSet<PerformanceTestMaster>         PerformanceTestMasters          => Set<PerformanceTestMaster>();
+        public DbSet<PerformanceTestReference>      PerformanceTestReferences       => Set<PerformanceTestReference>();
         public DbSet<MailLog>                       MailLogs                        => Set<MailLog>();
         public DbSet<MailConfig>                    MailConfigs                     => Set<MailConfig>();
 
@@ -248,6 +249,29 @@ namespace InticooInspection.Infrastructure.Data
                 e.Property(x => x.Procedure).HasColumnType("nvarchar(max)");
                 e.Property(x => x.Requirements).HasColumnType("nvarchar(max)");
                 e.HasIndex(x => new { x.Category, x.IsActive });
+
+                // 1 master ─ N reference files (cascade delete)
+                e.HasMany(x => x.References)
+                 .WithOne(r => r.Master)
+                 .HasForeignKey(r => r.PerformanceTestMasterId)
+                 .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            builder.Entity<PerformanceTestReference>(e =>
+            {
+                e.ToTable("PerformanceTestReferences");
+                e.HasKey(x => x.Id);
+
+                e.Property(x => x.FileName).IsRequired().HasMaxLength(500);
+                e.Property(x => x.ContentType).IsRequired().HasMaxLength(200)
+                    .HasDefaultValue("application/octet-stream");
+                e.Property(x => x.FileData).IsRequired();
+                e.Property(x => x.FileSize).IsRequired();
+                e.Property(x => x.SortOrder).HasDefaultValue(0);
+                e.Property(x => x.UploadedAt).HasDefaultValueSql("SYSUTCDATETIME()");
+
+                e.HasIndex(x => x.PerformanceTestMasterId)
+                 .HasDatabaseName("IX_PerfTestRef_MasterId");
             });
 
             // ── AppUser extra fields ──────────────────────────────
