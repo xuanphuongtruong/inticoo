@@ -156,14 +156,15 @@
                                 {
                                     <!-- File đầu tiên hiển thị link tải -->
                                     var first = item.References[0];
-                                    <a class="ptm-ref-link" href="@($"api/performance-test-references/{first.Id}")"
-                                       target="_blank" title="@first.FileName">
+                                    <button type="button" class="ptm-ref-link"
+                                            @onclick="@(() => DownloadReferenceAsync(first.Id, first.FileName, first.ContentType))"
+                                            title="@first.FileName">
                                         <svg width="13" height="13" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
                                             <path d="M14 2H6a2 2 0 00-2 2v12a2 2 0 002 2h8a2 2 0 002-2V6l-2-4z"/>
                                             <path d="M14 2v4h4"/>
                                         </svg>
                                         <span>@Truncate(first.FileName, 16)</span>
-                                    </a>
+                                    </button>
                                     @if (item.References.Count > 1)
                                     {
                                         <button class="ptm-ref-more" @onclick="() => OpenDetail(item)" title="View all files">
@@ -340,7 +341,9 @@
                                             <path d="M14 2H6a2 2 0 00-2 2v12a2 2 0 002 2h8a2 2 0 002-2V6l-2-4z"/>
                                             <path d="M14 2v4h4"/>
                                         </svg>
-                                        <a href="@($"api/performance-test-references/{r.Id}")" target="_blank">
+                                        <a href="javascript:void(0)"
+                                           @onclick="@(() => DownloadReferenceAsync(r.Id, r.FileName, r.ContentType))"
+                                           @onclick:preventDefault="true">
                                             @r.FileName
                                         </a>
                                         <span class="ptm-ref-size">(@FormatSize(r.FileSize))</span>
@@ -483,14 +486,15 @@
                             <div class="ptm-ref-list">
                                 @foreach (var r in _detailItem.References)
                                 {
-                                    <a class="ptm-ref-link" href="@($"api/performance-test-references/{r.Id}")" target="_blank">
+                                    <button type="button" class="ptm-ref-link"
+                                            @onclick="@(() => DownloadReferenceAsync(r.Id, r.FileName, r.ContentType))">
                                         <svg width="13" height="13" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
                                             <path d="M14 2H6a2 2 0 00-2 2v12a2 2 0 002 2h8a2 2 0 002-2V6l-2-4z"/>
                                             <path d="M14 2v4h4"/>
                                         </svg>
                                         <span>@r.FileName</span>
                                         <span class="ptm-ref-size">(@FormatSize(r.FileSize))</span>
-                                    </a>
+                                    </button>
                                 }
                             </div>
                         }
@@ -930,6 +934,46 @@
         catch { }
     }
 
+    /// <summary>
+    /// Tải file Reference qua HttpClient (kèm Bearer token), tạo blob URL rồi mở/lưu.
+    /// Giải pháp này thay cho &lt;a target="_blank"&gt; vì link như vậy
+    /// bị Azure Static Web Apps chặn (auth gateway redirect về dashboard).
+    /// </summary>
+    private async Task DownloadReferenceAsync(int refId, string fileName, string? contentType)
+    {
+        try
+        {
+            var token = await SessionStorage.GetItemAsync<string>("auth_token") ?? "";
+            var msg   = new HttpRequestMessage(HttpMethod.Get, $"api/performance-test-references/{refId}");
+            if (!string.IsNullOrEmpty(token))
+                msg.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+
+            var resp = await Http.SendAsync(msg);
+            if (!resp.IsSuccessStatusCode)
+            {
+                await JS.InvokeVoidAsync("alert", $"Cannot open file. Server returned {(int)resp.StatusCode}.");
+                return;
+            }
+
+            var bytes = await resp.Content.ReadAsByteArrayAsync();
+            var mime  = resp.Content.Headers.ContentType?.MediaType
+                        ?? contentType
+                        ?? "application/octet-stream";
+
+            // Một số định dạng có thể xem trực tiếp trên trình duyệt → mở tab mới;
+            // còn lại thì tải về máy.
+            var openInline = mime.StartsWith("image/", StringComparison.OrdinalIgnoreCase)
+                          || mime.Equals("application/pdf", StringComparison.OrdinalIgnoreCase)
+                          || mime.StartsWith("text/", StringComparison.OrdinalIgnoreCase);
+
+            await JS.InvokeVoidAsync("ptmDownloadBlob", bytes, mime, fileName, openInline);
+        }
+        catch (Exception ex)
+        {
+            await JS.InvokeVoidAsync("alert", $"Open file failed: {ex.Message}");
+        }
+    }
+
     private static string Truncate(string? s, int max) =>
         string.IsNullOrEmpty(s) ? "" : s.Length <= max ? s : s[..max] + "…";
     private static string Slug(string s) => s.ToLower().Replace(" ", "").Replace("/","");
@@ -1106,13 +1150,16 @@
     .cat-moisturecontenttest  { background: #e8f5e9; color: #2e7d32; }
     .cat-adhesivetest         { background: #fce4ec; color: #c2185b; }
 
-    /* Reference link in table */
+    /* Reference link in table - works for both <a> and <button> */
     .ptm-ref-link {
         display: inline-flex; align-items: center; gap: 5px;
         font-size: 12px; color: #1565c0; text-decoration: none;
         background: #e3f2fd; padding: 4px 8px; border-radius: 6px;
         max-width: 100%; word-break: break-all;
+        border: none; cursor: pointer; font-family: inherit;
+        text-align: left;
     }
+    button.ptm-ref-link { line-height: 1.4; }
     .ptm-ref-link:hover { background: #bbdefb; text-decoration: underline; }
     .ptm-ref-more {
         margin-left: 6px; padding: 3px 8px; border-radius: 12px;
