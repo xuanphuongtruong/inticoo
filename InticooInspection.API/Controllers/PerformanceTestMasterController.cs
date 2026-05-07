@@ -133,9 +133,9 @@ public class PerformanceTestMasterController : ControllerBase
     //  REFERENCE FILES (multi)  — Upload / List / Download / Delete
     // ════════════════════════════════════════════════════════════════════
 
-    // GET /api/performance-test-master/{id}/references
+    // GET /api/performance-test-references/by-master/{id}
     //   Liệt kê các file (chỉ meta) thuộc 1 master.
-    [HttpGet("{id:int}/references")]
+    [HttpGet("/api/performance-test-references/by-master/{id:int}")]
     [AllowAnonymous]
     public async Task<IActionResult> ListReferences(int id)
     {
@@ -152,9 +152,9 @@ public class PerformanceTestMasterController : ControllerBase
         return Ok(list);
     }
 
-    // POST /api/performance-test-master/{id}/references  (multipart/form-data)
+    // POST /api/performance-test-references/by-master/{id}  (multipart/form-data)
     //   Upload 1 hoặc nhiều file trong cùng 1 request (field name: "files").
-    [HttpPost("{id:int}/references")]
+    [HttpPost("/api/performance-test-references/by-master/{id:int}")]
     [RequestSizeLimit(200_000_000)] // 200 MB tổng / 1 request
     public async Task<IActionResult> UploadReferences(int id, [FromForm] List<IFormFile> files)
     {
@@ -205,9 +205,9 @@ public class PerformanceTestMasterController : ControllerBase
         return Ok(list);
     }
 
-    // GET /api/performance-test-master/references/{refId}
+    // GET /api/performance-test-references/{refId}
     //   Tải 1 file cụ thể về.
-    [HttpGet("references/{refId:int}")]
+    [HttpGet("/api/performance-test-references/{refId:int}")]
     [AllowAnonymous]
     public async Task<IActionResult> DownloadReference(int refId)
     {
@@ -222,9 +222,9 @@ public class PerformanceTestMasterController : ControllerBase
                     r.FileName ?? $"reference-{refId}.bin");
     }
 
-    // DELETE /api/performance-test-master/references/{refId}
+    // DELETE /api/performance-test-references/{refId}
     //   Xoá 1 file đính kèm.
-    [HttpDelete("references/{refId:int}")]
+    [HttpDelete("/api/performance-test-references/{refId:int}")]
     public async Task<IActionResult> DeleteReference(int refId)
     {
         var r = await _db.PerformanceTestReferences.FindAsync(refId);
