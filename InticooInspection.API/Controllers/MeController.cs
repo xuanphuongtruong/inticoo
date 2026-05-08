@@ -2,30 +2,33 @@ using InticooInspection.Domain.Entities;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
+using System.Text;
 
 namespace InticooInspection.API.Controllers
 {
     /// <summary>
     /// Standalone controller for the current user's context endpoints.
-    /// Kept SEPARATE from UserController because UserController has
-    /// [AllowAnonymous] at class level, which makes the JWT middleware
-    /// skip token parsing entirely — so User.Claims is empty even when
-    /// the client sends a valid Bearer token.
     ///
-    /// This controller has [Authorize] at class level, forcing the
-    /// JWT bearer handler to run and populate User.Claims.
+    /// IMPORTANT: Class-level [AllowAnonymous] vi [Authorize] thuan tuy
+    /// dang bi xung dot voi cookie scheme cua AddIdentity tren Azure
+    /// (du da cau hinh JWT). De fix dut diem, controller nay tu doc
+    /// va validate JWT token tu Authorization header.
     /// </summary>
     [ApiController]
     [Route("api/me")]
-    [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
+    [AllowAnonymous]
     public class MeController : ControllerBase
     {
         private readonly UserManager<AppUser> _userManager;
+        private readonly IConfiguration       _config;
 
-        public MeController(UserManager<AppUser> userManager)
+        public MeController(UserManager<AppUser> userManager, IConfiguration config)
         {
             _userManager = userManager;
+            _config      = config;
         }
 
         // GET api/me/page-access
@@ -34,15 +37,52 @@ namespace InticooInspection.API.Controllers
         [HttpGet("page-access")]
         public async Task<IActionResult> GetPageAccess()
         {
-            // ASP.NET maps JWT `sub` claim → ClaimTypes.NameIdentifier by default.
-            // Fall back to other common identifiers to be safe.
-            var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
-                      ?? User.FindFirst(System.IdentityModel.Tokens.Jwt.JwtRegisteredClaimNames.Sub)?.Value
-                      ?? User.FindFirst("sub")?.Value;
+            // ── 1. Read Authorization header ──
+            var authHeader = Request.Headers["Authorization"].ToString();
+            if (string.IsNullOrEmpty(authHeader) || !authHeader.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
+                return Unauthorized(new { message = "Missing Bearer token." });
+
+            var token = authHeader.Substring("Bearer ".Length).Trim();
+            if (string.IsNullOrEmpty(token))
+                return Unauthorized(new { message = "Empty Bearer token." });
+
+            // ── 2. Validate JWT ──
+            string? userId = null;
+            try
+            {
+                var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_config["Jwt:Key"]!));
+                var validationParams = new TokenValidationParameters
+                {
+                    ValidateIssuer           = true,
+                    ValidateAudience         = true,
+                    ValidateLifetime         = true,
+                    ValidateIssuerSigningKey = true,
+                    ValidIssuer              = _config["Jwt:Issuer"],
+                    ValidAudience            = _config["Jwt:Audience"],
+                    IssuerSigningKey         = key,
+                    ClockSkew                = TimeSpan.FromMinutes(2)
+                };
+
+                var handler = new JwtSecurityTokenHandler();
+                var principal = handler.ValidateToken(token, validationParams, out _);
+
+                userId = principal.FindFirst(ClaimTypes.NameIdentifier)?.Value
+                      ?? principal.FindFirst(JwtRegisteredClaimNames.Sub)?.Value
+                      ?? principal.FindFirst("sub")?.Value;
+            }
+            catch (SecurityTokenExpiredException)
+            {
+                return Unauthorized(new { message = "Token expired." });
+            }
+            catch (Exception ex)
+            {
+                return Unauthorized(new { message = $"Invalid token: {ex.Message}" });
+            }
 
             if (string.IsNullOrEmpty(userId))
                 return Unauthorized(new { message = "No user id in token." });
 
+            // ── 3. Load user + roles ──
             var user = await _userManager.FindByIdAsync(userId);
             if (user == null)
                 return Unauthorized(new { message = "User not found." });
