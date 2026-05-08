@@ -825,16 +825,18 @@
 
     // ────────────────────────────────────────────
     //  STATUS HELPERS
-    //  API trả: "New" | "OnGoing" | "Completed" | "Cancel"
-    //  To Do  = New hoặc OnGoing  (chưa hoàn thành)
-    //  Done   = Completed
+    //  API trả: "New" | "OnGoing" | "Delay" | "Completed" | "Cancel"
+    //  ── "Delay" = New nhưng InspectionDate đã quá hạn (backend tự map)
+    //  ── To Do  = New / OnGoing / Delay  (chưa hoàn thành)
+    //  ── Done   = Completed
     // ────────────────────────────────────────────
     private static bool IsCompleted(JobItem j) =>
         string.Equals(j.Status, "Completed", StringComparison.OrdinalIgnoreCase);
 
     private static bool IsTodo(JobItem j) =>
         string.Equals(j.Status, "New",      StringComparison.OrdinalIgnoreCase) ||
-        string.Equals(j.Status, "OnGoing",  StringComparison.OrdinalIgnoreCase);
+        string.Equals(j.Status, "OnGoing",  StringComparison.OrdinalIgnoreCase) ||
+        string.Equals(j.Status, "Delay",    StringComparison.OrdinalIgnoreCase);
 
     // ────────────────────────────────────────────
     //  COMPUTED
@@ -1298,6 +1300,7 @@
     {
         "Completed" or "completed"   => "st-done",
         "OnGoing"   or "ongoing"     => "st-going",
+        "Delay"     or "delay"       => "st-delay",
         "Pending"   or "pending"     => "st-pending",
         "Cancel"    or "cancelled"   => "st-cancel",
         _                            => "st-new"
@@ -1730,6 +1733,7 @@
     .iss-st-pill { font-size: 11px; font-weight: 600; padding: 3px 10px; border-radius: 10px; }
     .st-new     { background: #e8f0fe; color: #1565c0; }
     .st-going   { background: #e3f2fd; color: #0277bd; }
+    .st-delay   { background: #fff4d6; color: #b8860b; }
     .st-done    { background: #e8f5e9; color: #2e7d32; }
     .st-pending { background: #fff8e1; color: #f57f17; }
     .st-cancel  { background: #fce4ec; color: #c62828; }
