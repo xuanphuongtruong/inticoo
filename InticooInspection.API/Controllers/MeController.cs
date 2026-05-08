@@ -2,6 +2,7 @@ using InticooInspection.Domain.Entities;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 
 namespace InticooInspection.API.Controllers
 {
@@ -17,7 +18,7 @@ namespace InticooInspection.API.Controllers
     /// </summary>
     [ApiController]
     [Route("api/me")]
-    [Authorize]
+    [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
     public class MeController : ControllerBase
     {
         private readonly UserManager<AppUser> _userManager;
