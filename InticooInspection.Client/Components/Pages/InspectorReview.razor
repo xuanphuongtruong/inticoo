@@ -1,8 +1,10 @@
 @page "/inspector-reviews/{InspectorId}"
-@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Admin")]
+@attribute [Microsoft.AspNetCore.Authorization.Authorize]
 @using System.Net.Http.Json
+@using InticooInspection.Client.Services
 @inject HttpClient Http
 @inject NavigationManager Navigation
+@inject PageAccessService PageAccess
 
 <PageTitle>Inspector Performance - Inticoo</PageTitle>
 
@@ -265,7 +267,16 @@ else if (_data != null)
     int _year  = DateTime.Now.Year;
     int _month = DateTime.Now.Month;
 
-    protected override async Task OnParametersSetAsync() => await Load();
+    protected override async Task OnParametersSetAsync()
+    {
+        await PageAccess.EnsureLoadedAsync();
+        if (!PageAccess.HasAccess("PerformanceReview"))
+        {
+            Navigation.NavigateTo("/", replace: true);
+            return;
+        }
+        await Load();
+    }
 
     async Task Load()
     {

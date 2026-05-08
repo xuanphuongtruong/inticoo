@@ -7,6 +7,7 @@
 @using InticooInspection.Client.Services
 @using InticooInspection.Client.Helpers
 @inject WaitingService Waiting
+@inject InticooInspection.Client.Services.PageAccessService PageAccess
 
 <PageTitle>Vendors - Inticoo</PageTitle>
 
@@ -76,7 +77,10 @@ else
                     <th rowspan="2" class="tc th-y">Files</th>
                     <th rowspan="2" class="tc th-y">Status</th>
                     <th rowspan="2" class="tc th-y">Full Detail</th>
-                    <th rowspan="2" class="tc th-y">Action</th>
+                    @if (PageAccess.IsAdmin)
+                    {
+                        <th rowspan="2" class="tc th-y">Action</th>
+                    }
                 </tr>
                 <tr>
                     <th class="tc th-y">States / Province</th>
@@ -165,15 +169,16 @@ else
                                 View
                             </button>
                         </td>
-                        <td class="tc">
-                            <div class="action-btns">
-                                <AuthorizeView Roles="Admin">
+                        @if (PageAccess.IsAdmin)
+                        {
+                            <td class="tc">
+                                <div class="action-btns">
                                     <button class="bico bedit" @onclick="async () => await OpenEdit(item)">
                                             <svg width="13" height="13" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 2l4 4-10 10H4v-4L14 2z" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
                                     <button class="bico bdel" @onclick="() => ConfirmDelete(item)"><svg width="13" height="13" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 6h14M8 6V4h4v2M5 6l1 11h8l1-11" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
-                                </AuthorizeView>
-                            </div>
-                        </td>
+                                </div>
+                            </td>
+                        }
                     </tr>
                 }
             </tbody>
@@ -809,6 +814,7 @@ else
     protected override async Task OnInitializedAsync()
     {
         await SetAuthHeader();
+        await PageAccess.EnsureLoadedAsync();
         await Task.WhenAll(LoadPage(1), LoadCountries());
     }
 

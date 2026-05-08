@@ -1,8 +1,10 @@
 @page "/inspector-reviews"
-@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Admin")]
+@attribute [Microsoft.AspNetCore.Authorization.Authorize]
 @using System.Net.Http.Json
+@using InticooInspection.Client.Services
 @inject HttpClient Http
 @inject NavigationManager Navigation
+@inject PageAccessService PageAccess
 
 <PageTitle>Inspector Reviews - Inticoo</PageTitle>
 
@@ -60,6 +62,14 @@
 
     protected override async Task OnInitializedAsync()
     {
+        // Page Access guard
+        await PageAccess.EnsureLoadedAsync();
+        if (!PageAccess.HasAccess("PerformanceReview"))
+        {
+            Navigation.NavigateTo("/", replace: true);
+            return;
+        }
+
         try
         {
             var result = await Http.GetFromJsonAsync<UserListResult>("api/users?pageSize=500",

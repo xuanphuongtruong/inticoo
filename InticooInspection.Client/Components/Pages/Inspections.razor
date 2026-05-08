@@ -9,6 +9,7 @@
 @inject AuthenticationStateProvider AuthStateProvider
 @using InticooInspection.Client.Services
 @inject WaitingService Waiting
+@inject PageAccessService PageAccess
 
 <PageTitle>Summary Inspections - Inticoo</PageTitle>
 
@@ -87,13 +88,13 @@
                         <th class="th-y">Inspector Name</th>
                         <th class="th-y">Inspector ID</th>
                         <th class="th-y">Status</th>
-                        @if (!_isCustomer) { <th class="th-y">Action</th> }
+                        @if (PageAccess.IsAdmin) { <th class="th-y">Action</th> }
                     </tr>
                 </thead>
                 <tbody>
                     @if (_inspections.Count == 0)
                     {
-                        <tr><td colspan="14" class="td-empty">No inspections found.</td></tr>
+                        <tr><td colspan="@(PageAccess.IsAdmin ? 14 : 13)" class="td-empty">No inspections found.</td></tr>
                     }
                     else
                     {
@@ -124,10 +125,10 @@
                                 <td class="tc">
                                     <span class="@GetBadgeClass(it.Status)">@GetStatusLabel(it.Status)</span>
                                 </td>
-                                <td class="tc">
-                                    @* Nếu status là New, Delay → cho phép Edit + Delete *@
-                                    @if (!_isCustomer)
-                                    {
+                                @if (PageAccess.IsAdmin)
+                                {
+                                    <td class="tc">
+                                        @* Nếu status là New, Delay → cho phép Edit + Delete *@
                                         @if (CanEdit(it.Status))
                                         {
                                             <button class="bico bedit" @onclick="() => GoToEdit(it.Id)" title="Edit">
@@ -169,8 +170,8 @@
                                                 </button>
                                             }
                                         }
-                                    }
-                                </td>
+                                    </td>
+                                }
                             </tr>
                         }
                     }
@@ -285,6 +286,8 @@
 
     protected override async Task OnInitializedAsync()
     {
+        await PageAccess.EnsureLoadedAsync();
+
         var authState = await AuthStateProvider.GetAuthenticationStateAsync();
         var user      = authState.User;
 

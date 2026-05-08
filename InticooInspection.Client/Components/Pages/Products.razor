@@ -5,6 +5,7 @@
 @inject IJSRuntime JS
 @using InticooInspection.Client.Services
 @inject WaitingService Waiting
+@inject PageAccessService PageAccess
 
 <PageTitle>Product Information - Inticoo</PageTitle>
 
@@ -67,13 +68,16 @@
                         <th class="th-y tc">Establish Date</th>
                         <th class="th-y tc">Status</th>
                         <th class="th-y tc">Full Detail</th>
-                        <th class="th-y tc">Action</th>
+                        @if (PageAccess.IsAdmin)
+                        {
+                            <th class="th-y tc">Action</th>
+                        }
                     </tr>
                 </thead>
                 <tbody>
                     @if (!_filtered.Any())
                     {
-                        <tr><td colspan="11" class="td-empty">No products found.</td></tr>
+                        <tr><td colspan="@(PageAccess.IsAdmin ? 11 : 10)" class="td-empty">No products found.</td></tr>
                     }
                     else
                     {
@@ -112,16 +116,19 @@
                                         View
                                     </button>
                                 </td>
-                                <td class="tc">
-                                    <div class="action-btns">
-                                        <button class="bico bedit" @onclick="() => OpenEdit(item)" title="Edit">
-                                            <svg width="13" height="13" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 2l4 4-10 10H4v-4L14 2z" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                                        </button>
-                                        <button class="bico bdel" @onclick="() => AskDelete(item)" title="Delete">
-                                            <svg width="13" height="13" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 6h14M8 6V4h4v2M5 6l1 11h8l1-11" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                                        </button>
-                                    </div>
-                                </td>
+                                @if (PageAccess.IsAdmin)
+                                {
+                                    <td class="tc">
+                                        <div class="action-btns">
+                                            <button class="bico bedit" @onclick="() => OpenEdit(item)" title="Edit">
+                                                <svg width="13" height="13" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 2l4 4-10 10H4v-4L14 2z" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                                            </button>
+                                            <button class="bico bdel" @onclick="() => AskDelete(item)" title="Delete">
+                                                <svg width="13" height="13" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 6h14M8 6V4h4v2M5 6l1 11h8l1-11" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                                            </button>
+                                        </div>
+                                    </td>
+                                }
                             </tr>
                         }
                     }
@@ -612,7 +619,10 @@
         => string.Concat((name ?? "").Split(" ").Take(2).Select(w => w.Length > 0 ? w[0].ToString().ToUpper() : ""));
 
     protected override async Task OnInitializedAsync()
-        => await Task.WhenAll(Load(), LoadCusts(), LoadVends(), LoadCategories());
+    {
+        await PageAccess.EnsureLoadedAsync();
+        await Task.WhenAll(Load(), LoadCusts(), LoadVends(), LoadCategories());
+    }
 
     async Task Load()
     {
