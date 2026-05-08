@@ -42,26 +42,15 @@
                     <div class="nav-divider"></div>
                 </AuthorizeView>
 
-                <!-- ── Inspector: Inspection Schedule link thẳng (thay Dashboard) ── -->
-                <AuthorizeView Roles="Inspector">
-                    <NavLink href="/inspection-schedule" class="nav-link" Match="NavLinkMatch.All">
-                        <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" style="vertical-align:-2px;margin-right:5px">
-                            <rect x="2" y="4" width="16" height="13" rx="2"/>
-                            <path d="M6 2v4M14 2v4M2 9h16" stroke-linecap="round"/>
-                            <circle cx="7" cy="13" r="1.2" fill="currentColor" stroke="none"/>
-                            <circle cx="10" cy="13" r="1.2" fill="currentColor" stroke="none"/>
-                            <circle cx="13" cy="13" r="1.2" fill="currentColor" stroke="none"/>
-                        </svg>
-                        Inspection Schedule
-                    </NavLink>
-                </AuthorizeView>
                 <!-- ══════════════════════════════════════════════
-                     CUSTOMER / INTICOO: menu items gated by Page Access
-                     (Admin is handled in the dedicated Admin block below
-                      and bypasses these checks.)
+                     NON-ADMIN USERS (Customer / Inticoo / Inspector):
+                     menu items gated by Page Access — KHONG con check role.
+                     Admin van duoc xu ly o block rieng ben duoi
+                     (Job Request / Inspection Schedule / Summary Inspections /
+                     Directory / Performance Review / Performance Test / Login Account).
                      ══════════════════════════════════════════════ -->
-                <AuthorizeView Roles="Customer,Inticoo">
-                    @if (CanSee("JobRequest"))
+                <AuthorizeView Context="nonAdminAuth">
+                    @if (CanSeeForNonAdmin("JobRequest"))
                     {
                         <NavLink href="/inspections/new" class="nav-link">
                             <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" style="vertical-align:-2px;margin-right:5px">
@@ -71,7 +60,7 @@
                         </NavLink>
                         <div class="nav-divider"></div>
                     }
-                    @if (CanSee("InspectionSchedule"))
+                    @if (CanSeeForNonAdmin("InspectionSchedule"))
                     {
                         <NavLink href="/inspection-schedule" class="nav-link">
                             <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" style="vertical-align:-2px;margin-right:5px">
@@ -82,7 +71,7 @@
                         </NavLink>
                         <div class="nav-divider"></div>
                     }
-                    @if (CanSee("SummaryInspections"))
+                    @if (CanSeeForNonAdmin("SummaryInspections"))
                     {
                         <NavLink href="/inspections" class="nav-link">
                             <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" style="vertical-align:-2px;margin-right:5px">
@@ -93,7 +82,7 @@
                         </NavLink>
                         <div class="nav-divider"></div>
                     }
-                    @if (CanSee("PerformanceReview"))
+                    @if (CanSeeForNonAdmin("PerformanceReview"))
                     {
                         <div class="nav-dropdown">
                             <button class="nav-link nav-dropdown-btn">
@@ -418,32 +407,24 @@
                     </button>
                 </div>
 
-                <!-- ── Inspector role ── -->
-                <AuthorizeView Roles="Inspector">
-                    <div class="mobile-nav-group-label">Inspector</div>
-                    <NavLink href="/inspection-schedule" class="mobile-nav-item" Match="NavLinkMatch.All" @onclick="CloseMobileMenu">
-                        Inspection Schedule
-                    </NavLink>
-                </AuthorizeView>
-
-                <!-- ── Customer / Inticoo: menu items gated by Page Access ── -->
-                <AuthorizeView Roles="Customer,Inticoo">
-                    @if (CanSee("JobRequest"))
+                <!-- ── Non-Admin (Inspector / Customer / Inticoo): menu items gated by Page Access ── -->
+                <AuthorizeView Context="nonAdminMobile">
+                    @if (CanSeeForNonAdmin("JobRequest"))
                     {
                         <div class="mobile-nav-group-label">Job Request</div>
                         <NavLink href="/inspections/new" class="mobile-nav-item" @onclick="CloseMobileMenu">New Inspection</NavLink>
                     }
-                    @if (CanSee("InspectionSchedule"))
+                    @if (CanSeeForNonAdmin("InspectionSchedule"))
                     {
                         <div class="mobile-nav-group-label">Inspection Schedule</div>
                         <NavLink href="/inspection-schedule" class="mobile-nav-item" @onclick="CloseMobileMenu">Inspection Schedule</NavLink>
                     }
-                    @if (CanSee("SummaryInspections"))
+                    @if (CanSeeForNonAdmin("SummaryInspections"))
                     {
                         <div class="mobile-nav-group-label">Summary Inspections</div>
                         <NavLink href="/inspections" class="mobile-nav-item" @onclick="CloseMobileMenu">Inspection Reports</NavLink>
                     }
-                    @if (CanSee("PerformanceReview"))
+                    @if (CanSeeForNonAdmin("PerformanceReview"))
                     {
                         <div class="mobile-nav-group-label">Performance Review</div>
                         <NavLink href="/vendor-reviews"    class="mobile-nav-item" @onclick="CloseMobileMenu">Vendor Performance</NavLink>
@@ -572,6 +553,13 @@
     /// For Customer/Inticoo users, the page key must be in their PageAccess list.
     /// </summary>
     private bool CanSee(string pageKey) => PageAccess.IsAdmin || PageAccess.HasAccess(pageKey);
+
+    /// <summary>
+    /// Used INSIDE the non-admin menu block.
+    /// Admin uses the dedicated admin block below, so they must NOT see
+    /// the non-admin block (otherwise menu items would render twice).
+    /// </summary>
+    private bool CanSeeForNonAdmin(string pageKey) => !PageAccess.IsAdmin && PageAccess.HasAccess(pageKey);
 
     private async Task Logout()
     {

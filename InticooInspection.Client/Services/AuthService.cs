@@ -65,13 +65,16 @@ namespace InticooInspection.Client.Services
         private readonly HttpClient _http;
         private readonly ISessionStorageService _localStorage;
         private readonly AuthenticationStateProvider _authStateProvider;
+        private readonly PageAccessService _pageAccess;
 
         public AuthService(HttpClient http, ISessionStorageService localStorage,
-                           AuthenticationStateProvider authStateProvider)
+                           AuthenticationStateProvider authStateProvider,
+                           PageAccessService pageAccess)
         {
-            _http = http;
-            _localStorage = localStorage;
+            _http              = http;
+            _localStorage      = localStorage;
             _authStateProvider = authStateProvider;
+            _pageAccess        = pageAccess;
         }
 
         public async Task<AuthResponseDto> LoginAsync(LoginDto dto)
@@ -93,6 +96,10 @@ namespace InticooInspection.Client.Services
                 _http.DefaultRequestHeaders.Authorization =
                     new AuthenticationHeaderValue("Bearer", result.Token);
                 ((JwtAuthStateProvider)_authStateProvider).NotifyAuthStateChanged();
+
+                // Load PageAccess ngay sau khi login thanh cong, de menu hien dung
+                // ngay trang dau tien (khong phai doi MainLayout.OnInitializedAsync)
+                try { await _pageAccess.ReloadAsync(); } catch { }
             }
 
             return result ?? new AuthResponseDto { Success = false, Message = "Unknown error." };
@@ -104,6 +111,7 @@ namespace InticooInspection.Client.Services
             await _localStorage.RemoveItemAsync("auth_token");
             await _localStorage.RemoveItemAsync("user_info");
             _http.DefaultRequestHeaders.Authorization = null;
+            _pageAccess.Clear();
             ((JwtAuthStateProvider)_authStateProvider).NotifyAuthStateChanged();
         }
 
