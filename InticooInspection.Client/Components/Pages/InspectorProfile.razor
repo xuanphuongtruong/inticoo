@@ -27,6 +27,7 @@
                @bind="_search" @bind:event="oninput" @onkeyup="OnSearchKey" />
     </div>
     <span class="total-count">@_total inspectors</span>
+    <ImportExcelButton ApiBase="api/users" OnImported="() => LoadPage(_page)" />
     <button class="btn-new" @onclick="async () => await OpenCreate()">
         <svg width="13" height="13" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M10 4v12M4 10h12"/></svg>
         New Inspector

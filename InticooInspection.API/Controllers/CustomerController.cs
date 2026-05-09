@@ -4,6 +4,8 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
+using ClosedXML.Excel;
+using Microsoft.AspNetCore.Hosting;
 namespace InticooInspection.API.Controllers
 {
     [ApiController]
@@ -208,7 +210,149 @@ namespace InticooInspection.API.Controllers
             await _db.SaveChangesAsync();
             return Ok(new { success = true });
         }
-    }
+    
+        // ─────────────────────────────────────────────────────────────────
+        // GET api/customers/template
+        // ─────────────────────────────────────────────────────────────────
+        [HttpGet("template")]
+        [AllowAnonymous]
+        public IActionResult DownloadImportTemplate([FromServices] IWebHostEnvironment env)
+            => ImportHelper.ServeTemplate(env, "Customers_Import_Template.xlsx");
+
+        // ─────────────────────────────────────────────────────────────────
+        // POST api/customers/import
+        // ─────────────────────────────────────────────────────────────────
+        [HttpPost("import")]
+        [RequestSizeLimit(20 * 1024 * 1024)]
+        public async Task<IActionResult> Import([FromForm] IFormFile file)
+        {
+            var validateError = ImportHelper.ValidateFile(file);
+            if (validateError != null) return validateError;
+
+            var rows = new List<CustomerImportRow>();
+            var errors = new List<ImportRowError>();
+
+            try
+            {
+                using var stream = file.OpenReadStream();
+                using var workbook = new XLWorkbook(stream);
+                var sheet = workbook.Worksheets.FirstOrDefault(
+                    s => string.Equals(s.Name, "Data", StringComparison.OrdinalIgnoreCase));
+                if (sheet == null)
+                    return BadRequest(new { success = false, message = "Sheet 'Data' not found." });
+
+                var headerMap = ImportHelper.ReadHeaderMap(sheet, headerRow: 1);
+                if (!headerMap.ContainsKey("CompanyName") && !headerMap.ContainsKey("CompanyName*"))
+                    return BadRequest(new { success = false, message = "Missing required column: CompanyName" });
+
+                int lastRow = sheet.LastRowUsed()?.RowNumber() ?? 0;
+                for (int r = 2; r <= lastRow; r++)
+                {
+                    var row = ReadCustomerRow(sheet, r, headerMap);
+                    if (row.IsEmpty()) continue;
+                    row.RowNumber = r;
+                    rows.Add(row);
+                }
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { success = false, message = $"Failed to read Excel: {ex.Message}" });
+            }
+
+            if (rows.Count == 0)
+                return BadRequest(new { success = false, message = "No data rows found." });
+
+            var lastC = await _db.Customers.OrderByDescending(c => c.Id).FirstOrDefaultAsync();
+            int nextNum = 1;
+            if (lastC != null && !string.IsNullOrEmpty(lastC.CustomerId) && lastC.CustomerId.StartsWith("CP"))
+                if (int.TryParse(lastC.CustomerId.Substring(2), out int n)) nextNum = n + 1;
+
+            int created = 0;
+            foreach (var row in rows)
+            {
+                var rowErrs = new List<string>();
+                if (string.IsNullOrWhiteSpace(row.CompanyName)) rowErrs.Add("CompanyName is required.");
+                if (!string.IsNullOrEmpty(row.Email) && !ImportHelper.IsValidEmail(row.Email))
+                    rowErrs.Add("Email format is invalid.");
+
+                if (rowErrs.Count > 0)
+                {
+                    errors.Add(new ImportRowError { Row = row.RowNumber, Key = row.CompanyName, Errors = rowErrs });
+                    continue;
+                }
+
+                try
+                {
+                    var customer = new Customer
+                    {
+                        CustomerId    = $"CP{nextNum:D6}",
+                        CompanyName   = row.CompanyName!,
+                        ShortName     = row.ShortName,
+                        BusinessType  = row.BusinessType,
+                        Category      = row.Category,
+                        TaxCode       = row.TaxCode,
+                        BusinessRefNo = row.BusinessRefNo,
+                        Phone         = row.Phone,
+                        Website       = row.Website,
+                        Address1      = row.Address1,
+                        Address2      = row.Address2,
+                        City          = row.City,
+                        State         = row.State,
+                        Country       = row.Country,
+                        PostalCode    = row.PostalCode,
+                        ContactPerson = row.ContactPerson,
+                        Position      = row.Position,
+                        Mobile        = row.Mobile,
+                        Email         = row.Email,
+                        OfficePhone   = row.OfficePhone,
+                        Notes         = row.Notes,
+                        IsActive      = row.IsActive ?? true,
+                        CreatedAt     = DateTime.UtcNow,
+                        ReceiveInspectionReport = true,
+                        ReportEmailType = "Registered",
+                    };
+                    _db.Customers.Add(customer);
+                    await _db.SaveChangesAsync();
+                    nextNum++;
+                    created++;
+                }
+                catch (Exception ex)
+                {
+                    errors.Add(new ImportRowError { Row = row.RowNumber, Key = row.CompanyName,
+                        Errors = new List<string> { ex.InnerException?.Message ?? ex.Message } });
+                }
+            }
+
+            return Ok(new { success = errors.Count == 0, totalRows = rows.Count, created, failed = errors.Count, errors });
+        }
+
+        private static CustomerImportRow ReadCustomerRow(IXLWorksheet sheet, int rowNum, Dictionary<string, int> map)
+            => new CustomerImportRow
+            {
+                CompanyName   = ImportHelper.GetStr(sheet, rowNum, map, "CompanyName"),
+                ShortName     = ImportHelper.GetStr(sheet, rowNum, map, "ShortName"),
+                BusinessType  = ImportHelper.GetStr(sheet, rowNum, map, "BusinessType"),
+                Category      = ImportHelper.GetStr(sheet, rowNum, map, "Category"),
+                TaxCode       = ImportHelper.GetStr(sheet, rowNum, map, "TaxCode"),
+                BusinessRefNo = ImportHelper.GetStr(sheet, rowNum, map, "BusinessRefNo"),
+                Phone         = ImportHelper.GetStr(sheet, rowNum, map, "Phone"),
+                Website       = ImportHelper.GetStr(sheet, rowNum, map, "Website"),
+                Address1      = ImportHelper.GetStr(sheet, rowNum, map, "Address1"),
+                Address2      = ImportHelper.GetStr(sheet, rowNum, map, "Address2"),
+                City          = ImportHelper.GetStr(sheet, rowNum, map, "City"),
+                State         = ImportHelper.GetStr(sheet, rowNum, map, "State"),
+                Country       = ImportHelper.GetStr(sheet, rowNum, map, "Country"),
+                PostalCode    = ImportHelper.GetStr(sheet, rowNum, map, "PostalCode"),
+                ContactPerson = ImportHelper.GetStr(sheet, rowNum, map, "ContactPerson"),
+                Position      = ImportHelper.GetStr(sheet, rowNum, map, "Position"),
+                Mobile        = ImportHelper.GetStr(sheet, rowNum, map, "Mobile"),
+                Email         = ImportHelper.GetStr(sheet, rowNum, map, "Email"),
+                OfficePhone   = ImportHelper.GetStr(sheet, rowNum, map, "OfficePhone"),
+                Notes         = ImportHelper.GetStr(sheet, rowNum, map, "Notes"),
+                IsActive      = ImportHelper.GetBool(sheet, rowNum, map, "IsActive"),
+            };
+
+        }
 
     public class CustomerRequest
     {
@@ -240,4 +384,34 @@ namespace InticooInspection.API.Controllers
         public string? ReportEmailType         { get; set; } = "Registered";
         public string? AlternateReportEmail    { get; set; }
     }
+
+    public class CustomerImportRow
+    {
+        public int     RowNumber     { get; set; }
+        public string? CompanyName   { get; set; }
+        public string? ShortName     { get; set; }
+        public string? BusinessType  { get; set; }
+        public string? Category      { get; set; }
+        public string? TaxCode       { get; set; }
+        public string? BusinessRefNo { get; set; }
+        public string? Phone         { get; set; }
+        public string? Website       { get; set; }
+        public string? Address1      { get; set; }
+        public string? Address2      { get; set; }
+        public string? City          { get; set; }
+        public string? State         { get; set; }
+        public string? Country       { get; set; }
+        public string? PostalCode    { get; set; }
+        public string? ContactPerson { get; set; }
+        public string? Position      { get; set; }
+        public string? Mobile        { get; set; }
+        public string? Email         { get; set; }
+        public string? OfficePhone   { get; set; }
+        public string? Notes         { get; set; }
+        public bool?   IsActive      { get; set; }
+        public bool IsEmpty() =>
+            string.IsNullOrWhiteSpace(CompanyName) && string.IsNullOrWhiteSpace(Email) &&
+            string.IsNullOrWhiteSpace(TaxCode) && string.IsNullOrWhiteSpace(Phone);
+    }
+
 }

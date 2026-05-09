@@ -4,6 +4,8 @@ using InticooInspection.Infrastructure.Data;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
+using ClosedXML.Excel;
+using Microsoft.AspNetCore.Hosting;
 namespace InticooInspection.API.Controllers
 {
     [ApiController]
@@ -421,7 +423,180 @@ namespace InticooInspection.API.Controllers
                 fileName = file.FileName
             });
         }
-    }
+    
+        // ─────────────────────────────────────────────────────────────────
+        // GET api/products/template
+        // ─────────────────────────────────────────────────────────────────
+        [HttpGet("template")]
+        [Microsoft.AspNetCore.Authorization.AllowAnonymous]
+        public IActionResult DownloadImportTemplate([FromServices] IWebHostEnvironment env)
+            => ImportHelper.ServeTemplate(env, "Products_Import_Template.xlsx");
+
+        // ─────────────────────────────────────────────────────────────────
+        // POST api/products/import
+        // ⭐ Resolve CustomerName / VendorName → FK ID theo 3 cách:
+        //    1. Code/CustomerId  2. Full name  3. ShortName
+        // ─────────────────────────────────────────────────────────────────
+        [HttpPost("import")]
+        [RequestSizeLimit(20 * 1024 * 1024)]
+        public async Task<IActionResult> Import([FromForm] IFormFile file)
+        {
+            var validateError = ImportHelper.ValidateFile(file);
+            if (validateError != null) return validateError;
+
+            var rows = new List<ProductImportRow>();
+            var errors = new List<ImportRowError>();
+
+            try
+            {
+                using var stream = file.OpenReadStream();
+                using var workbook = new XLWorkbook(stream);
+                var sheet = workbook.Worksheets.FirstOrDefault(
+                    s => string.Equals(s.Name, "Data", StringComparison.OrdinalIgnoreCase));
+                if (sheet == null)
+                    return BadRequest(new { success = false, message = "Sheet 'Data' not found." });
+
+                var headerMap = ImportHelper.ReadHeaderMap(sheet, headerRow: 1);
+                string[] required = { "CustomerName", "VendorName", "ProductName" };
+                var missing = required.Where(h => !headerMap.ContainsKey(h) && !headerMap.ContainsKey(h + "*")).ToList();
+                if (missing.Count > 0)
+                    return BadRequest(new { success = false, message = $"Missing required columns: {string.Join(", ", missing)}" });
+
+                int lastRow = sheet.LastRowUsed()?.RowNumber() ?? 0;
+                for (int r = 2; r <= lastRow; r++)
+                {
+                    var row = ReadProductRow(sheet, r, headerMap);
+                    if (row.IsEmpty()) continue;
+                    row.RowNumber = r;
+                    rows.Add(row);
+                }
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { success = false, message = $"Failed to read Excel: {ex.Message}" });
+            }
+
+            if (rows.Count == 0)
+                return BadRequest(new { success = false, message = "No data rows found." });
+
+            // Pre-load Customer/Vendor để resolve nhanh (tránh N+1)
+            var customers = await _db.Customers
+                .Select(c => new { c.Id, c.CustomerId, c.CompanyName, c.ShortName }).ToListAsync();
+            var vendors = await _db.Vendors
+                .Select(v => new { v.Id, v.Code, v.Name, v.ShortName }).ToListAsync();
+
+            var custByCode  = customers.Where(c => !string.IsNullOrEmpty(c.CustomerId))
+                .GroupBy(c => c.CustomerId, StringComparer.OrdinalIgnoreCase)
+                .ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
+            var custByName  = customers.GroupBy(c => c.CompanyName, StringComparer.OrdinalIgnoreCase)
+                .ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
+            var custByShort = customers.Where(c => !string.IsNullOrEmpty(c.ShortName))
+                .GroupBy(c => c.ShortName!, StringComparer.OrdinalIgnoreCase)
+                .ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
+
+            var vendByCode  = vendors.Where(v => !string.IsNullOrEmpty(v.Code))
+                .GroupBy(v => v.Code, StringComparer.OrdinalIgnoreCase)
+                .ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
+            var vendByName  = vendors.GroupBy(v => v.Name, StringComparer.OrdinalIgnoreCase)
+                .ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
+            var vendByShort = vendors.Where(v => !string.IsNullOrEmpty(v.ShortName))
+                .GroupBy(v => v.ShortName!, StringComparer.OrdinalIgnoreCase)
+                .ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
+
+            int created = 0;
+            foreach (var row in rows)
+            {
+                var rowErrs = new List<string>();
+                if (string.IsNullOrWhiteSpace(row.ProductName))  rowErrs.Add("ProductName is required.");
+                if (string.IsNullOrWhiteSpace(row.CustomerName)) rowErrs.Add("CustomerName is required.");
+                if (string.IsNullOrWhiteSpace(row.VendorName))   rowErrs.Add("VendorName is required.");
+
+                int? customerFkId = null;
+                if (!string.IsNullOrWhiteSpace(row.CustomerName))
+                {
+                    var key = row.CustomerName.Trim();
+                    if (custByCode.TryGetValue(key, out var c1))      customerFkId = c1.Id;
+                    else if (custByName.TryGetValue(key, out var c2)) customerFkId = c2.Id;
+                    else if (custByShort.TryGetValue(key, out var c3)) customerFkId = c3.Id;
+                    else rowErrs.Add($"Customer '{key}' not found (tried CustomerId / CompanyName / ShortName).");
+                }
+
+                int? vendorFkId = null;
+                if (!string.IsNullOrWhiteSpace(row.VendorName))
+                {
+                    var key = row.VendorName.Trim();
+                    if (vendByCode.TryGetValue(key, out var v1))      vendorFkId = v1.Id;
+                    else if (vendByName.TryGetValue(key, out var v2)) vendorFkId = v2.Id;
+                    else if (vendByShort.TryGetValue(key, out var v3)) vendorFkId = v3.Id;
+                    else rowErrs.Add($"Vendor '{key}' not found (tried Code / Name / ShortName).");
+                }
+
+                if (rowErrs.Count > 0)
+                {
+                    errors.Add(new ImportRowError { Row = row.RowNumber, Key = row.ProductName, Errors = rowErrs });
+                    continue;
+                }
+
+                try
+                {
+                    var product = new Product
+                    {
+                        CustomerId    = customerFkId,
+                        VendorId      = vendorFkId,
+                        Category      = row.Category,
+                        ProductType   = row.ProductType,
+                        ProductName   = row.ProductName!,
+                        ProductCode   = row.ProductCode,
+                        ItemNumber    = row.ItemNumber,
+                        ProductColor  = row.ProductColor,
+                        ProductSize   = row.ProductSize,
+                        SizeL         = row.SizeL,
+                        SizeW         = row.SizeW,
+                        SizeH         = row.SizeH,
+                        Weight        = row.Weight,
+                        PhotoUrl      = row.PhotoUrl,
+                        Remark        = row.Remark,
+                        IsActive      = row.IsActive ?? true,
+                        EstablishDate = row.EstablishDate,
+                        CreatedAt     = DateTime.UtcNow,
+                    };
+                    _db.Products.Add(product);
+                    await _db.SaveChangesAsync();
+                    created++;
+                }
+                catch (Exception ex)
+                {
+                    errors.Add(new ImportRowError { Row = row.RowNumber, Key = row.ProductName,
+                        Errors = new List<string> { ex.InnerException?.Message ?? ex.Message } });
+                }
+            }
+
+            return Ok(new { success = errors.Count == 0, totalRows = rows.Count, created, failed = errors.Count, errors });
+        }
+
+        private static ProductImportRow ReadProductRow(IXLWorksheet sheet, int rowNum, Dictionary<string, int> map)
+            => new ProductImportRow
+            {
+                CustomerName  = ImportHelper.GetStr(sheet, rowNum, map, "CustomerName"),
+                VendorName    = ImportHelper.GetStr(sheet, rowNum, map, "VendorName"),
+                Category      = ImportHelper.GetStr(sheet, rowNum, map, "Category"),
+                ProductType   = ImportHelper.GetStr(sheet, rowNum, map, "ProductType"),
+                ProductName   = ImportHelper.GetStr(sheet, rowNum, map, "ProductName"),
+                ProductCode   = ImportHelper.GetStr(sheet, rowNum, map, "ProductCode"),
+                ItemNumber    = ImportHelper.GetStr(sheet, rowNum, map, "ItemNumber"),
+                ProductColor  = ImportHelper.GetStr(sheet, rowNum, map, "ProductColor"),
+                ProductSize   = ImportHelper.GetStr(sheet, rowNum, map, "ProductSize"),
+                SizeL         = ImportHelper.GetDecimal(sheet, rowNum, map, "SizeL"),
+                SizeW         = ImportHelper.GetDecimal(sheet, rowNum, map, "SizeW"),
+                SizeH         = ImportHelper.GetDecimal(sheet, rowNum, map, "SizeH"),
+                Weight        = ImportHelper.GetDecimal(sheet, rowNum, map, "Weight"),
+                PhotoUrl      = ImportHelper.GetStr(sheet, rowNum, map, "PhotoUrl"),
+                Remark        = ImportHelper.GetStr(sheet, rowNum, map, "Remark"),
+                IsActive      = ImportHelper.GetBool(sheet, rowNum, map, "IsActive"),
+                EstablishDate = ImportHelper.GetDate(sheet, rowNum, map, "EstablishDate"),
+            };
+
+        }
 
     // ── DTOs ─────────────────────────────────────────────────────────
     public class ProductDto
@@ -488,4 +663,31 @@ namespace InticooInspection.API.Controllers
         public string? FileUrl   { get; set; }
         public string? FileName  { get; set; }
     }
+
+    public class ProductImportRow
+    {
+        public int       RowNumber     { get; set; }
+        public string?   CustomerName  { get; set; }
+        public string?   VendorName    { get; set; }
+        public string?   Category      { get; set; }
+        public string?   ProductType   { get; set; }
+        public string?   ProductName   { get; set; }
+        public string?   ProductCode   { get; set; }
+        public string?   ItemNumber    { get; set; }
+        public string?   ProductColor  { get; set; }
+        public string?   ProductSize   { get; set; }
+        public decimal?  SizeL         { get; set; }
+        public decimal?  SizeW         { get; set; }
+        public decimal?  SizeH         { get; set; }
+        public decimal?  Weight        { get; set; }
+        public string?   PhotoUrl      { get; set; }
+        public string?   Remark        { get; set; }
+        public bool?     IsActive      { get; set; }
+        public DateTime? EstablishDate { get; set; }
+        public bool IsEmpty() =>
+            string.IsNullOrWhiteSpace(ProductName) && string.IsNullOrWhiteSpace(CustomerName) &&
+            string.IsNullOrWhiteSpace(VendorName) && string.IsNullOrWhiteSpace(ProductCode) &&
+            string.IsNullOrWhiteSpace(ItemNumber);
+    }
+
 }

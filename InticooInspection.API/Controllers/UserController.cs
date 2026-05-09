@@ -4,6 +4,8 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
+using ClosedXML.Excel;
+using Microsoft.AspNetCore.Hosting;
 namespace InticooInspection.API.Controllers
 {
     [ApiController]
@@ -413,7 +415,196 @@ namespace InticooInspection.API.Controllers
             customerId          = u.CustomerId,
             pageAccess          = u.PageAccess
         };
-    }
+    
+        // ─────────────────────────────────────────────────────────────────
+        // GET api/users/template  - download Excel template for Inspector import
+        // ─────────────────────────────────────────────────────────────────
+        [HttpGet("template")]
+        public IActionResult DownloadImportTemplate([FromServices] IWebHostEnvironment env)
+            => ImportHelper.ServeTemplate(env, "Inspector_Import_Template.xlsx");
+
+        // ─────────────────────────────────────────────────────────────────
+        // POST api/users/import  - import inspectors from Excel
+        // ─────────────────────────────────────────────────────────────────
+        [HttpPost("import")]
+        [RequestSizeLimit(20 * 1024 * 1024)]
+        public async Task<IActionResult> Import([FromForm] IFormFile file)
+        {
+            var validateError = ImportHelper.ValidateFile(file);
+            if (validateError != null) return validateError;
+
+            var rows = new List<InspectorImportRow>();
+            var errors = new List<ImportRowError>();
+
+            try
+            {
+                using var stream = file.OpenReadStream();
+                using var workbook = new XLWorkbook(stream);
+                var sheet = workbook.Worksheets.FirstOrDefault(
+                    s => string.Equals(s.Name, "Inspectors", StringComparison.OrdinalIgnoreCase));
+                if (sheet == null)
+                    return BadRequest(new { success = false, message = "Sheet 'Inspectors' not found." });
+
+                var headerMap = ImportHelper.ReadHeaderMap(sheet, headerRow: 3);
+                string[] required = { "InspectorId", "FullName", "Email", "Password", "Role" };
+                var missing = required.Where(h => !headerMap.ContainsKey(h)).ToList();
+                if (missing.Count > 0)
+                    return BadRequest(new { success = false, message = $"Missing required columns: {string.Join(", ", missing)}" });
+
+                int lastRow = sheet.LastRowUsed()?.RowNumber() ?? 0;
+                for (int r = 4; r <= lastRow; r++)
+                {
+                    var row = ReadInspectorRow(sheet, r, headerMap);
+                    if (row.IsEmpty()) continue;
+                    // Skip sample row mặc định
+                    if (row.InspectorId == "IP10001" && row.Email == "john.smith@example.com") continue;
+                    row.RowNumber = r;
+                    rows.Add(row);
+                }
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { success = false, message = $"Failed to read Excel: {ex.Message}" });
+            }
+
+            if (rows.Count == 0)
+                return BadRequest(new { success = false, message = "No data rows found." });
+
+            var seenIds    = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            var seenEmails = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            int created = 0;
+
+            foreach (var row in rows)
+            {
+                var rowErrs = new List<string>();
+                if (string.IsNullOrWhiteSpace(row.InspectorId)) rowErrs.Add("InspectorId is required.");
+                if (string.IsNullOrWhiteSpace(row.FullName))    rowErrs.Add("FullName is required.");
+                if (string.IsNullOrWhiteSpace(row.Email))       rowErrs.Add("Email is required.");
+                else if (!ImportHelper.IsValidEmail(row.Email)) rowErrs.Add("Email format is invalid.");
+                if (string.IsNullOrWhiteSpace(row.Password))    rowErrs.Add("Password is required.");
+                else if (row.Password.Length < 6)               rowErrs.Add("Password must be at least 6 characters.");
+                if (string.IsNullOrWhiteSpace(row.Role))        rowErrs.Add("Role is required.");
+                else if (!new[] { "Admin", "Inspector", "Customer", "Manager" }.Contains(row.Role, StringComparer.OrdinalIgnoreCase))
+                    rowErrs.Add($"Role '{row.Role}' is not valid. Must be: Admin / Inspector / Customer / Manager.");
+
+                if (!string.IsNullOrEmpty(row.InspectorId) && !seenIds.Add(row.InspectorId))
+                    rowErrs.Add($"Duplicate InspectorId '{row.InspectorId}' in file.");
+                if (!string.IsNullOrEmpty(row.Email) && !seenEmails.Add(row.Email))
+                    rowErrs.Add($"Duplicate Email '{row.Email}' in file.");
+
+                if (rowErrs.Count > 0)
+                {
+                    errors.Add(new ImportRowError { Row = row.RowNumber, Key = row.Email ?? row.InspectorId, Errors = rowErrs });
+                    continue;
+                }
+
+                try
+                {
+                    if (await _userManager.FindByEmailAsync(row.Email!) != null)
+                    {
+                        errors.Add(new ImportRowError { Row = row.RowNumber, Key = row.Email,
+                            Errors = new List<string> { "Email already exists in system." } });
+                        continue;
+                    }
+                    var userName = string.IsNullOrWhiteSpace(row.UserName) ? row.Email : row.UserName;
+                    if (await _userManager.FindByNameAsync(userName!) != null)
+                    {
+                        errors.Add(new ImportRowError { Row = row.RowNumber, Key = row.Email,
+                            Errors = new List<string> { $"Username '{userName}' already exists." } });
+                        continue;
+                    }
+                    if (!string.IsNullOrEmpty(row.InspectorId) && _userManager.Users.Any(u => u.InspectorId == row.InspectorId))
+                    {
+                        errors.Add(new ImportRowError { Row = row.RowNumber, Key = row.Email,
+                            Errors = new List<string> { $"InspectorId '{row.InspectorId}' already exists." } });
+                        continue;
+                    }
+
+                    var user = new AppUser
+                    {
+                        UserName            = userName,
+                        Email               = row.Email,
+                        EmailConfirmed      = true,
+                        LockoutEnabled      = true,
+                        FullName            = row.FullName ?? "",
+                        ShortName           = row.ShortName,
+                        PhoneNumber         = row.PhoneNumber,
+                        Mobile              = row.Mobile,
+                        DateOfBirth         = row.DateOfBirth,
+                        Gender              = row.Gender,
+                        Nationality         = row.Nationality,
+                        IdType              = row.IdType,
+                        IdNumber            = row.IdNumber,
+                        Category            = row.Category,
+                        InspectionStartYear = row.InspectionStartYear,
+                        Language            = row.Language,
+                        InspectorId         = row.InspectorId,
+                        Address1            = row.Address1,
+                        Address2            = row.Address2,
+                        City                = row.City,
+                        State               = row.State,
+                        Country             = row.Country,
+                        PostalCode          = row.PostalCode,
+                        CustomerId          = row.CustomerId,
+                        PageAccess          = row.PageAccess,
+                        IsActive            = row.IsActive ?? true,
+                        CreatedAt           = DateTime.UtcNow,
+                    };
+                    var result = await _userManager.CreateAsync(user, row.Password!);
+                    if (!result.Succeeded)
+                    {
+                        errors.Add(new ImportRowError { Row = row.RowNumber, Key = row.Email,
+                            Errors = result.Errors.Select(e => e.Description).ToList() });
+                        continue;
+                    }
+
+                    if (!string.IsNullOrWhiteSpace(row.Role) && await _roleManager.RoleExistsAsync(row.Role))
+                        await _userManager.AddToRoleAsync(user, row.Role);
+
+                    created++;
+                }
+                catch (Exception ex)
+                {
+                    errors.Add(new ImportRowError { Row = row.RowNumber, Key = row.Email,
+                        Errors = new List<string> { ex.InnerException?.Message ?? ex.Message } });
+                }
+            }
+
+            return Ok(new { success = errors.Count == 0, totalRows = rows.Count, created, failed = errors.Count, errors });
+        }
+
+        private static InspectorImportRow ReadInspectorRow(IXLWorksheet sheet, int rowNum, Dictionary<string, int> map)
+            => new InspectorImportRow
+            {
+                InspectorId         = ImportHelper.GetStr(sheet, rowNum, map, "InspectorId"),
+                FullName            = ImportHelper.GetStr(sheet, rowNum, map, "FullName"),
+                ShortName           = ImportHelper.GetStr(sheet, rowNum, map, "ShortName"),
+                Email               = ImportHelper.GetStr(sheet, rowNum, map, "Email"),
+                UserName            = ImportHelper.GetStr(sheet, rowNum, map, "UserName"),
+                Password            = ImportHelper.GetStr(sheet, rowNum, map, "Password"),
+                PhoneNumber         = ImportHelper.GetStr(sheet, rowNum, map, "PhoneNumber"),
+                Mobile              = ImportHelper.GetStr(sheet, rowNum, map, "Mobile"),
+                DateOfBirth         = ImportHelper.GetDate(sheet, rowNum, map, "DateOfBirth"),
+                Gender              = ImportHelper.GetStr(sheet, rowNum, map, "Gender"),
+                Nationality         = ImportHelper.GetStr(sheet, rowNum, map, "Nationality"),
+                IdType              = ImportHelper.GetStr(sheet, rowNum, map, "IdType"),
+                IdNumber            = ImportHelper.GetStr(sheet, rowNum, map, "IdNumber"),
+                Category            = ImportHelper.GetStr(sheet, rowNum, map, "Category"),
+                InspectionStartYear = ImportHelper.GetInt(sheet, rowNum, map, "InspectionStartYear"),
+                Language            = ImportHelper.GetStr(sheet, rowNum, map, "Language"),
+                Address1            = ImportHelper.GetStr(sheet, rowNum, map, "Address1"),
+                Address2            = ImportHelper.GetStr(sheet, rowNum, map, "Address2"),
+                City                = ImportHelper.GetStr(sheet, rowNum, map, "City"),
+                State               = ImportHelper.GetStr(sheet, rowNum, map, "State"),
+                Country             = ImportHelper.GetStr(sheet, rowNum, map, "Country"),
+                PostalCode          = ImportHelper.GetStr(sheet, rowNum, map, "PostalCode"),
+                CustomerId          = ImportHelper.GetStr(sheet, rowNum, map, "CustomerId"),
+                PageAccess          = ImportHelper.GetStr(sheet, rowNum, map, "PageAccess"),
+                IsActive            = ImportHelper.GetBool(sheet, rowNum, map, "IsActive"),
+                Role                = ImportHelper.GetStr(sheet, rowNum, map, "Role"),
+            };
+
+        }
 
     // ─────────────────────────────────────────────────────────────────
     // DTOs
@@ -489,4 +680,39 @@ namespace InticooInspection.API.Controllers
         public string CurrentPassword { get; set; } = "";
         public string NewPassword     { get; set; } = "";
     }
+
+    public class InspectorImportRow
+    {
+        public int       RowNumber           { get; set; }
+        public string?   InspectorId         { get; set; }
+        public string?   FullName            { get; set; }
+        public string?   ShortName           { get; set; }
+        public string?   Email               { get; set; }
+        public string?   UserName            { get; set; }
+        public string?   Password            { get; set; }
+        public string?   PhoneNumber         { get; set; }
+        public string?   Mobile              { get; set; }
+        public DateTime? DateOfBirth         { get; set; }
+        public string?   Gender              { get; set; }
+        public string?   Nationality         { get; set; }
+        public string?   IdType              { get; set; }
+        public string?   IdNumber            { get; set; }
+        public string?   Category            { get; set; }
+        public int?      InspectionStartYear { get; set; }
+        public string?   Language            { get; set; }
+        public string?   Address1            { get; set; }
+        public string?   Address2            { get; set; }
+        public string?   City                { get; set; }
+        public string?   State               { get; set; }
+        public string?   Country             { get; set; }
+        public string?   PostalCode          { get; set; }
+        public string?   CustomerId          { get; set; }
+        public string?   PageAccess          { get; set; }
+        public bool?     IsActive            { get; set; }
+        public string?   Role                { get; set; }
+        public bool IsEmpty() =>
+            string.IsNullOrWhiteSpace(InspectorId) && string.IsNullOrWhiteSpace(FullName) &&
+            string.IsNullOrWhiteSpace(Email) && string.IsNullOrWhiteSpace(Password);
+    }
+
 }

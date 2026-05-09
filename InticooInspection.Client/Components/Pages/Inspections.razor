@@ -19,14 +19,13 @@
     <div class="top-bar">
         <div class="title-block">
             <h1 class="page-title">Summary Inspections</h1>
-            <span class="page-sub">Manage and track all inspections</span>
         </div>
         <div class="sep"></div>
         <div class="search-wrap">
             <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2">
                 <circle cx="9" cy="9" r="6"/><path d="M15 15l-3.5-3.5" stroke-linecap="round"/>
             </svg>
-            <input class="search-input" type="text" placeholder="Search job no, customer, product..."
+            <input class="search-input" type="text" placeholder="Search job no, customer, product, inspector..."
                    @bind="_search" @bind:event="oninput" @onkeyup="OnSearchKeyUp" />
         </div>
         <select class="filter-select" @bind="_statusFilter" @bind:after="() => LoadPage(1)">
@@ -48,6 +47,19 @@
             <option value="Food &amp; Beverage">Food &amp; Beverage</option>
             <option value="Other">Other</option>
         </select>
+
+        <!-- Date filter group -->
+        <select class="filter-select" @bind="_dateField" @bind:after="() => LoadPage(1)" title="Date type">
+            <option value="inspection">Inspection Date</option>
+            <option value="receive">Receive Date</option>
+        </select>
+        <input class="filter-date" type="date" @bind="_dateFrom" @bind:after="() => LoadPage(1)" title="From date" />
+        <input class="filter-date" type="date" @bind="_dateTo"   @bind:after="() => LoadPage(1)" title="To date" />
+        @if (!string.IsNullOrEmpty(_dateFrom) || !string.IsNullOrEmpty(_dateTo))
+        {
+            <button class="btn-clear-date" @onclick="ClearDateRange" title="Clear date filter">✕</button>
+        }
+
         <button class="btn-add" @onclick="GoToNew">
             <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.5">
                 <path d="M10 4v12M4 10h12" stroke-linecap="round"/>
@@ -264,6 +276,11 @@
     private string _search          = "";
     private string _statusFilter    = "";
     private string _categoryFilter  = "";
+
+    // Date range filter
+    private string _dateField = "inspection"; // "inspection" | "receive"
+    private string _dateFrom  = "";           // yyyy-MM-dd
+    private string _dateTo    = "";           // yyyy-MM-dd
     private int    _page         = 1;
     private int    _pageSize     = 20;
     private int    _total        = 0;
@@ -492,6 +509,14 @@
                       $"&search={Uri.EscapeDataString(_search)}" +
                       $"&category={Uri.EscapeDataString(_categoryFilter)}";
 
+            // Date range filter (gửi lên backend nếu có hỗ trợ; vẫn fallback client-side bên dưới)
+            if (!string.IsNullOrEmpty(_dateFrom))
+                url += $"&dateFrom={Uri.EscapeDataString(_dateFrom)}";
+            if (!string.IsNullOrEmpty(_dateTo))
+                url += $"&dateTo={Uri.EscapeDataString(_dateTo)}";
+            if (!string.IsNullOrEmpty(_dateFrom) || !string.IsNullOrEmpty(_dateTo))
+                url += $"&dateField={Uri.EscapeDataString(_dateField)}";
+
             // Role-based filter
             if (!string.IsNullOrEmpty(_filterInspectorId))
                 url += $"&inspectorId={Uri.EscapeDataString(_filterInspectorId)}";
@@ -522,6 +547,45 @@
                         !string.IsNullOrEmpty(i.Status) &&
                         i.Status.Equals(_statusFilter, StringComparison.OrdinalIgnoreCase));
 
+                // Client-side: mở rộng search sang Inspector (Name + ID).
+                // Backend hiện search theo job/customer/product. Tại đây ta lọc lại
+                // theo cùng query — nhưng bao gồm thêm InspectorName & InspectorId.
+                // Lưu ý: vì pagination ở backend, kết quả Inspector chỉ tin cậy
+                // trong phạm vi trang đã tải; khi backend được nâng cấp thêm
+                // 'inspector' vào search, có thể bỏ block này.
+                if (!string.IsNullOrWhiteSpace(_search))
+                {
+                    var q = _search.Trim();
+                    items = items.Where(i =>
+                        (i.JobNumber       ?? "").Contains(q, StringComparison.OrdinalIgnoreCase) ||
+                        (i.PoNumber        ?? "").Contains(q, StringComparison.OrdinalIgnoreCase) ||
+                        (i.CustomerName    ?? "").Contains(q, StringComparison.OrdinalIgnoreCase) ||
+                        (i.VendorName      ?? "").Contains(q, StringComparison.OrdinalIgnoreCase) ||
+                        (i.ProductCategory ?? "").Contains(q, StringComparison.OrdinalIgnoreCase) ||
+                        (i.ProductType     ?? "").Contains(q, StringComparison.OrdinalIgnoreCase) ||
+                        (i.InspectorName   ?? "").Contains(q, StringComparison.OrdinalIgnoreCase) ||
+                        (i.InspectorId     ?? "").Contains(q, StringComparison.OrdinalIgnoreCase)
+                    );
+                }
+
+                // Client-side date range filter (backup)
+                if (!string.IsNullOrEmpty(_dateFrom) || !string.IsNullOrEmpty(_dateTo))
+                {
+                    DateTime? from = DateTime.TryParse(_dateFrom, out var f) ? f.Date : (DateTime?)null;
+                    DateTime? to   = DateTime.TryParse(_dateTo,   out var t) ? t.Date : (DateTime?)null;
+
+                    items = items.Where(i =>
+                    {
+                        DateTime? d = _dateField == "receive"
+                            ? i.CreatedAt.Date
+                            : i.InspectionDate?.Date;
+                        if (d == null) return false;
+                        if (from.HasValue && d.Value < from.Value) return false;
+                        if (to.HasValue   && d.Value > to.Value)   return false;
+                        return true;
+                    });
+                }
+
                 _inspections = items.ToList();
                 _total       = result.Total;
                 _pageError   = "";
@@ -534,6 +598,13 @@
     private async Task OnSearchKeyUp(KeyboardEventArgs e)
     {
         if (e.Key == "Enter") await LoadPage(1);
+    }
+
+    private async Task ClearDateRange()
+    {
+        _dateFrom = "";
+        _dateTo   = "";
+        await LoadPage(1);
     }
 
     // ── DTOs ──────────────────────────────────────────────────────
@@ -599,6 +670,38 @@
     .filter-select { background:rgba(255,255,255,.1); border:1px solid rgba(255,255,255,.15); border-radius:8px; padding:8px 32px 8px 12px; color:#fff; font-size:13px; outline:none; cursor:pointer; min-width:130px; font-family:"DM Sans",sans-serif; flex-shrink:0; -webkit-appearance:none; -moz-appearance:none; appearance:none; background-image:url("data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23ffffff' stroke-width='1.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E"); background-repeat:no-repeat; background-position:right 10px center; background-size:10px 6px; }
     .filter-select::-ms-expand { display:none; }
     .filter-select option { background:#1565c0; }
+
+    /* Date range filter */
+    .filter-date {
+        background:rgba(255,255,255,.1);
+        border:1px solid rgba(255,255,255,.15);
+        border-radius:8px;
+        padding:7px 10px;
+        color:#fff;
+        font-size:13px;
+        font-family:"DM Sans",sans-serif;
+        outline:none;
+        cursor:pointer;
+        flex-shrink:0;
+        min-width:140px;
+        color-scheme:dark;
+    }
+    .filter-date::-webkit-calendar-picker-indicator { filter:invert(1) opacity(.6); cursor:pointer; }
+    .filter-date:hover { border-color:rgba(255,255,255,.3); }
+    .btn-clear-date {
+        display:inline-flex; align-items:center; justify-content:center;
+        width:30px; height:34px;
+        background:rgba(220,38,38,.15);
+        border:1px solid rgba(220,38,38,.35);
+        border-radius:8px;
+        color:#fca5a5;
+        font-size:14px;
+        font-weight:600;
+        cursor:pointer;
+        flex-shrink:0;
+        transition:all .15s;
+    }
+    .btn-clear-date:hover { background:#dc2626; color:#fff; border-color:#dc2626; }
     .btn-add { display:flex; align-items:center; gap:7px; padding:8px 16px; background:#1e90d6; color:#fff; border:none; border-radius:8px; font-size:13px; font-weight:600; cursor:pointer; font-family:"DM Sans",sans-serif; white-space:nowrap; flex-shrink:0; transition:background .2s; }
     .btn-add:hover { background:#1565c0; }
 
@@ -687,6 +790,8 @@
         /* Search + filter full-width */
         .search-wrap { width:100%; min-width:0; }
         .filter-select { width:100%; min-width:0; }
+        .filter-date   { width:100%; min-width:0; }
+        .btn-clear-date { width:100%; height:38px; }
         .btn-add { width:100%; justify-content:center; padding:10px 16px; }
 
         /* Table scroll ngang + gợi ý shadow cạnh phải */
@@ -728,7 +833,7 @@
     /* iOS-specific: tắt zoom khi focus vào input (cần font ≥ 16px) */
     @@supports (-webkit-touch-callout: none) {
         @@media (max-width: 768px) {
-            .search-input, .filter-select { font-size:16px; }
+            .search-input, .filter-select, .filter-date { font-size:16px; }
         }
     }
 </style>

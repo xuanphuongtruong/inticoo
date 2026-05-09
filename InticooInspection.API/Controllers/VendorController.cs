@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
+using ClosedXML.Excel;
 namespace InticooInspection.API.Controllers
 {
     [ApiController]
@@ -747,7 +748,181 @@ namespace InticooInspection.API.Controllers
                 return StatusCode(500, new { error = ex.Message });
             }
         }
-    }
+    
+        // ─────────────────────────────────────────────────────────────────
+        // GET api/vendors/template
+        // ─────────────────────────────────────────────────────────────────
+        [HttpGet("template")]
+        [AllowAnonymous]
+        public IActionResult DownloadImportTemplate()
+            => ImportHelper.ServeTemplate(_env, "Vendors_Import_Template.xlsx");
+
+        // ─────────────────────────────────────────────────────────────────
+        // POST api/vendors/import
+        // ─────────────────────────────────────────────────────────────────
+        [HttpPost("import")]
+        [RequestSizeLimit(20 * 1024 * 1024)]
+        public async Task<IActionResult> Import([FromForm] IFormFile file)
+        {
+            var validateError = ImportHelper.ValidateFile(file);
+            if (validateError != null) return validateError;
+
+            var rows = new List<VendorImportRow>();
+            var errors = new List<ImportRowError>();
+
+            try
+            {
+                using var stream = file.OpenReadStream();
+                using var workbook = new XLWorkbook(stream);
+                var sheet = workbook.Worksheets.FirstOrDefault(
+                    s => string.Equals(s.Name, "Data", StringComparison.OrdinalIgnoreCase));
+                if (sheet == null)
+                    return BadRequest(new { success = false, message = "Sheet 'Data' not found." });
+
+                var headerMap = ImportHelper.ReadHeaderMap(sheet, headerRow: 1);
+                if (!headerMap.ContainsKey("Name") && !headerMap.ContainsKey("Name*"))
+                    return BadRequest(new { success = false, message = "Missing required column: Name" });
+
+                int lastRow = sheet.LastRowUsed()?.RowNumber() ?? 0;
+                for (int r = 2; r <= lastRow; r++)
+                {
+                    var row = ReadVendorRow(sheet, r, headerMap);
+                    if (row.IsEmpty()) continue;
+                    row.RowNumber = r;
+                    rows.Add(row);
+                }
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { success = false, message = $"Failed to read Excel: {ex.Message}" });
+            }
+
+            if (rows.Count == 0)
+                return BadRequest(new { success = false, message = "No data rows found." });
+
+            var lastV = await _db.Vendors
+                .Where(v => v.Code.StartsWith("VP"))
+                .OrderByDescending(v => v.Code)
+                .FirstOrDefaultAsync();
+            int nextNum = 100001;
+            if (lastV != null && lastV.Code.Length > 2 && int.TryParse(lastV.Code.Substring(2), out int n))
+                nextNum = n + 1;
+
+            var seenCodes = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            int created = 0;
+
+            foreach (var row in rows)
+            {
+                var rowErrs = new List<string>();
+                if (string.IsNullOrWhiteSpace(row.Name)) rowErrs.Add("Name is required.");
+                if (!string.IsNullOrEmpty(row.ContactEmail) && !ImportHelper.IsValidEmail(row.ContactEmail))
+                    rowErrs.Add("ContactEmail format is invalid.");
+
+                int typeVal = 0, statusVal = 0;
+                if (!string.IsNullOrWhiteSpace(row.Type))
+                {
+                    if (Enum.TryParse(typeof(VendorType), row.Type, true, out var t)) typeVal = (int)t!;
+                    else rowErrs.Add($"Type '{row.Type}' is not valid. Allowed: {string.Join(", ", Enum.GetNames(typeof(VendorType)))}");
+                }
+                if (!string.IsNullOrWhiteSpace(row.Status))
+                {
+                    if (Enum.TryParse(typeof(VendorStatus), row.Status, true, out var s)) statusVal = (int)s!;
+                    else rowErrs.Add($"Status '{row.Status}' is not valid. Allowed: {string.Join(", ", Enum.GetNames(typeof(VendorStatus)))}");
+                }
+
+                if (rowErrs.Count > 0)
+                {
+                    errors.Add(new ImportRowError { Row = row.RowNumber, Key = row.Name, Errors = rowErrs });
+                    continue;
+                }
+
+                try
+                {
+                    var code = string.IsNullOrWhiteSpace(row.Code) ? $"VP{nextNum}" : row.Code!.Trim();
+
+                    if (!seenCodes.Add(code))
+                    {
+                        errors.Add(new ImportRowError { Row = row.RowNumber, Key = row.Name,
+                            Errors = new List<string> { $"Duplicate Code '{code}' in file." } });
+                        continue;
+                    }
+                    if (await _db.Vendors.AnyAsync(v => v.Code == code))
+                    {
+                        errors.Add(new ImportRowError { Row = row.RowNumber, Key = row.Name,
+                            Errors = new List<string> { $"Vendor code '{code}' already exists." } });
+                        continue;
+                    }
+
+                    var vendor = new Vendor
+                    {
+                        Code           = code,
+                        Name           = row.Name!,
+                        ShortName      = row.ShortName,
+                        Type           = (VendorType)typeVal,
+                        Status         = (VendorStatus)statusVal,
+                        Category       = row.Category,
+                        TaxCode        = row.TaxCode,
+                        BusinessRegNo  = row.BusinessRegNo,
+                        Phone          = row.Phone,
+                        Website        = row.Website,
+                        Notes          = row.Notes,
+                        Address1       = row.Address1,
+                        Address2       = row.Address2,
+                        City           = row.City,
+                        State          = row.State,
+                        Country        = row.Country,
+                        PostalCode     = row.PostalCode,
+                        ContactName    = row.ContactName,
+                        ContactTitle   = row.ContactTitle,
+                        ContactPhone   = row.ContactPhone,
+                        ContactEmail   = row.ContactEmail,
+                        FactoryEvaluationNotes = row.FactoryEvaluationNotes,
+                        CreatedAt      = DateTime.UtcNow,
+                    };
+
+                    _db.Vendors.Add(vendor);
+                    await _db.SaveChangesAsync();
+                    if (string.IsNullOrWhiteSpace(row.Code)) nextNum++;
+                    created++;
+                }
+                catch (Exception ex)
+                {
+                    errors.Add(new ImportRowError { Row = row.RowNumber, Key = row.Name,
+                        Errors = new List<string> { ex.InnerException?.Message ?? ex.Message } });
+                }
+            }
+
+            return Ok(new { success = errors.Count == 0, totalRows = rows.Count, created, failed = errors.Count, errors });
+        }
+
+        private static VendorImportRow ReadVendorRow(IXLWorksheet sheet, int rowNum, Dictionary<string, int> map)
+            => new VendorImportRow
+            {
+                Code           = ImportHelper.GetStr(sheet, rowNum, map, "Code"),
+                Name           = ImportHelper.GetStr(sheet, rowNum, map, "Name"),
+                ShortName      = ImportHelper.GetStr(sheet, rowNum, map, "ShortName"),
+                Type           = ImportHelper.GetStr(sheet, rowNum, map, "Type"),
+                Status         = ImportHelper.GetStr(sheet, rowNum, map, "Status"),
+                Category       = ImportHelper.GetStr(sheet, rowNum, map, "Category"),
+                TaxCode        = ImportHelper.GetStr(sheet, rowNum, map, "TaxCode"),
+                BusinessRegNo  = ImportHelper.GetStr(sheet, rowNum, map, "BusinessRegNo"),
+                Phone          = ImportHelper.GetStr(sheet, rowNum, map, "Phone"),
+                Website        = ImportHelper.GetStr(sheet, rowNum, map, "Website"),
+                Notes          = ImportHelper.GetStr(sheet, rowNum, map, "Notes"),
+                Address1       = ImportHelper.GetStr(sheet, rowNum, map, "Address1"),
+                Address2       = ImportHelper.GetStr(sheet, rowNum, map, "Address2"),
+                City           = ImportHelper.GetStr(sheet, rowNum, map, "City"),
+                State          = ImportHelper.GetStr(sheet, rowNum, map, "State"),
+                Country        = ImportHelper.GetStr(sheet, rowNum, map, "Country"),
+                PostalCode     = ImportHelper.GetStr(sheet, rowNum, map, "PostalCode"),
+                ContactName    = ImportHelper.GetStr(sheet, rowNum, map, "ContactName"),
+                ContactTitle   = ImportHelper.GetStr(sheet, rowNum, map, "ContactTitle"),
+                ContactPhone   = ImportHelper.GetStr(sheet, rowNum, map, "ContactPhone"),
+                ContactEmail   = ImportHelper.GetStr(sheet, rowNum, map, "ContactEmail"),
+                FactoryEvaluationNotes = ImportHelper.GetStr(sheet, rowNum, map, "FactoryEvaluationNotes"),
+            };
+
+        }
 
     // ─────────────────────────────────────────────────────────────────
     // DTOs / Request models
@@ -826,4 +1001,35 @@ namespace InticooInspection.API.Controllers
         public List<AttachmentDto> Attachments       { get; set; } = new();
         public int                 FactoryEvalFileCount { get; set; }
     }
+
+    public class VendorImportRow
+    {
+        public int     RowNumber     { get; set; }
+        public string? Code          { get; set; }
+        public string? Name          { get; set; }
+        public string? ShortName     { get; set; }
+        public string? Type          { get; set; }
+        public string? Status        { get; set; }
+        public string? Category      { get; set; }
+        public string? TaxCode       { get; set; }
+        public string? BusinessRegNo { get; set; }
+        public string? Phone         { get; set; }
+        public string? Website       { get; set; }
+        public string? Notes         { get; set; }
+        public string? Address1      { get; set; }
+        public string? Address2      { get; set; }
+        public string? City          { get; set; }
+        public string? State         { get; set; }
+        public string? Country       { get; set; }
+        public string? PostalCode    { get; set; }
+        public string? ContactName   { get; set; }
+        public string? ContactTitle  { get; set; }
+        public string? ContactPhone  { get; set; }
+        public string? ContactEmail  { get; set; }
+        public string? FactoryEvaluationNotes { get; set; }
+        public bool IsEmpty() =>
+            string.IsNullOrWhiteSpace(Name) && string.IsNullOrWhiteSpace(Code) &&
+            string.IsNullOrWhiteSpace(TaxCode) && string.IsNullOrWhiteSpace(ContactEmail);
+    }
+
 }
