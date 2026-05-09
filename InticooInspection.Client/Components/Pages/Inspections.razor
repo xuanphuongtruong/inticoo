@@ -55,7 +55,7 @@
         </select>
         <input class="filter-date" type="date" @bind="_dateFrom" @bind:after="() => LoadPage(1)" title="From date" />
         <input class="filter-date" type="date" @bind="_dateTo"   @bind:after="() => LoadPage(1)" title="To date" />
-        @if (!string.IsNullOrEmpty(_dateFrom) || !string.IsNullOrEmpty(_dateTo))
+        @if (_dateFrom.HasValue || _dateTo.HasValue)
         {
             <button class="btn-clear-date" @onclick="ClearDateRange" title="Clear date filter">✕</button>
         }
@@ -279,8 +279,8 @@
 
     // Date range filter
     private string _dateField = "inspection"; // "inspection" | "receive"
-    private string _dateFrom  = "";           // yyyy-MM-dd
-    private string _dateTo    = "";           // yyyy-MM-dd
+    private DateTime? _dateFrom = null;          // bound to <input type="date">
+    private DateTime? _dateTo   = null;          // bound to <input type="date">
     private int    _page         = 1;
     private int    _pageSize     = 20;
     private int    _total        = 0;
@@ -510,11 +510,11 @@
                       $"&category={Uri.EscapeDataString(_categoryFilter)}";
 
             // Date range filter (gửi lên backend nếu có hỗ trợ; vẫn fallback client-side bên dưới)
-            if (!string.IsNullOrEmpty(_dateFrom))
-                url += $"&dateFrom={Uri.EscapeDataString(_dateFrom)}";
-            if (!string.IsNullOrEmpty(_dateTo))
-                url += $"&dateTo={Uri.EscapeDataString(_dateTo)}";
-            if (!string.IsNullOrEmpty(_dateFrom) || !string.IsNullOrEmpty(_dateTo))
+            if (_dateFrom.HasValue)
+                url += $"&dateFrom={_dateFrom.Value:yyyy-MM-dd}";
+            if (_dateTo.HasValue)
+                url += $"&dateTo={_dateTo.Value:yyyy-MM-dd}";
+            if (_dateFrom.HasValue || _dateTo.HasValue)
                 url += $"&dateField={Uri.EscapeDataString(_dateField)}";
 
             // Role-based filter
@@ -569,10 +569,10 @@
                 }
 
                 // Client-side date range filter (backup)
-                if (!string.IsNullOrEmpty(_dateFrom) || !string.IsNullOrEmpty(_dateTo))
+                if (_dateFrom.HasValue || _dateTo.HasValue)
                 {
-                    DateTime? from = DateTime.TryParse(_dateFrom, out var f) ? f.Date : (DateTime?)null;
-                    DateTime? to   = DateTime.TryParse(_dateTo,   out var t) ? t.Date : (DateTime?)null;
+                    DateTime? from = _dateFrom?.Date;
+                    DateTime? to   = _dateTo?.Date;
 
                     items = items.Where(i =>
                     {
@@ -602,8 +602,8 @@
 
     private async Task ClearDateRange()
     {
-        _dateFrom = "";
-        _dateTo   = "";
+        _dateFrom = null;
+        _dateTo   = null;
         await LoadPage(1);
     }
 
