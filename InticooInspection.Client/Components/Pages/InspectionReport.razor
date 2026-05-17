@@ -2077,8 +2077,12 @@ else if (_data != null)
         background: white;
         border-bottom: 1px solid var(--border);
         position: sticky;
-        top: 0;
-        z-index: 100;
+        /* top = chiều cao .top-navbar (60px) để toolbar dán NGAY DƯỚI navbar khi cuộn,
+           không đè lên menu chính. */
+        top: 60px;
+        /* z-index thấp hơn .top-navbar (40) và .nav-dropdown-menu (42)
+           để dropdown menu (Directory) hiển thị đè lên toolbar khi user mở menu. */
+        z-index: 30;
         box-shadow: 0 2px 8px rgba(0,0,0,.07);
     }
 
@@ -2809,6 +2813,8 @@ else if (_data != null)
             padding: 6mm 14mm 20mm !important;
             display: block !important;
             position: relative !important;
+            break-after: avoid !important;
+            page-break-after: avoid !important;
         }
 
         /* Tránh cắt giữa trang.
@@ -3132,6 +3138,8 @@ else if (_data != null)
             padding-right: calc(14px + env(safe-area-inset-right, 0));
             flex-wrap: wrap;
             gap: 8px;
+            /* navbar height vẫn 60px ở breakpoint này */
+            top: 60px;
         }
         .rpt-print-btn { padding: 8px 14px; font-size: 12px; }
         .rpt-back-btn { font-size: 13px; }
@@ -3226,6 +3234,8 @@ else if (_data != null)
         .rpt-main-title { font-size: 16px; letter-spacing: .02em; }
         .rpt-section-title-lg { font-size: 14px; }
         .rpt-info-table tr { grid-template-columns: 45% 55%; }
+        /* navbar mobile thu xuống 52px → toolbar bám theo */
+        .rpt-toolbar { top: 52px; }
     }
 
 </style>

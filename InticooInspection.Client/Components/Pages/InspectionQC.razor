@@ -3122,7 +3122,9 @@ else
     @@keyframes spin { to { transform: rotate(360deg); } }
 
     .qc-progress-wrap {
-        position: sticky; top: 0; z-index: 100;
+        /* Dán dưới .top-navbar (60px) thay vì đè lên menu chính.
+           z-index thấp hơn navbar (40) và dropdown (42) để không che menu. */
+        position: sticky; top: 60px; z-index: 30;
         height: 4px; background: #e8eef8;
     }
     .qc-progress-bar {
@@ -3135,7 +3137,9 @@ else
         padding: 12px 16px 8px;
         background: #fff;
         border-bottom: 1px solid #eef1f8;
-        position: sticky; top: 4px; z-index: 99;
+        /* Dán ngay dưới qc-progress-wrap (60px navbar + 4px progress = 64px).
+           z-index thấp hơn progress (30) để progress luôn nằm trên. */
+        position: sticky; top: 64px; z-index: 29;
     }
     .qc-back-btn {
         background: none; border: none; cursor: pointer;
@@ -3144,6 +3148,12 @@ else
     }
     .qc-back-btn:hover { background: #eef4ff; }
     .qc-header-center { flex: 1; }
+
+    /* Khi navbar mobile thu xuống 52px (max-width:480px) → đẩy 2 element sticky theo */
+    @@media (max-width: 480px) {
+        .qc-progress-wrap { top: 52px; }
+        .qc-header        { top: 56px; } /* 52 navbar + 4 progress */
+    }
     .qc-step-label { font-size: 11px; color: #aab; text-transform: uppercase; letter-spacing: .05em; }
     .qc-step-title { font-size: 15px; font-weight: 700; color: #1a1a2e; margin-top: 1px; }
     .qc-step-counter { font-size: 12px; color: #2D7DD2; font-weight: 700;
