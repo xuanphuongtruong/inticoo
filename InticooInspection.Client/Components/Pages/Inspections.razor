@@ -100,13 +100,14 @@
                         <th class="th-y">Inspector Name</th>
                         <th class="th-y">Inspector ID</th>
                         <th class="th-y">Status</th>
+                        <th class="th-y">View</th>
                         @if (PageAccess.IsAdmin) { <th class="th-y">Action</th> }
                     </tr>
                 </thead>
                 <tbody>
                     @if (_inspections.Count == 0)
                     {
-                        <tr><td colspan="@(PageAccess.IsAdmin ? 14 : 13)" class="td-empty">No inspections found.</td></tr>
+                        <tr><td colspan="@(PageAccess.IsAdmin ? 15 : 14)" class="td-empty">No inspections found.</td></tr>
                     }
                     else
                     {
@@ -137,6 +138,23 @@
                                 <td class="tc">
                                     <span class="@GetBadgeClass(it.Status)">@GetStatusLabel(it.Status)</span>
                                 </td>
+                                <td class="tc">
+                                    @* Cột View: hiển thị cho mọi user khi inspection đã Completed,
+                                       để các user không có quyền Admin (không thấy cột Action) vẫn xem được báo cáo *@
+                                    @if (it.Status == "Completed")
+                                    {
+                                        <button class="bico bview bview-report" @onclick="() => GoToReport(it.Id)" title="View Report">
+                                            <svg width="13" height="13" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8">
+                                                <path d="M2 10s3-6 8-6 8 6 8 6-3 6-8 6-8-6-8-6z" stroke-linecap="round"/>
+                                                <circle cx="10" cy="10" r="2.5"/>
+                                            </svg>
+                                        </button>
+                                    }
+                                    else
+                                    {
+                                        <span class="dash">—</span>
+                                    }
+                                </td>
                                 @if (PageAccess.IsAdmin)
                                 {
                                     <td class="tc">
@@ -162,17 +180,10 @@
                                         }
                                         else
                                         {
-                                            @* Completed → Inspection Report | Cancel → Detail *@
-                                            @if (it.Status == "Completed")
-                                            {
-                                                <button class="bico bview bview-report" @onclick="() => GoToReport(it.Id)" title="View Report">
-                                                    <svg width="13" height="13" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8">
-                                                        <path d="M2 10s3-6 8-6 8 6 8 6-3 6-8 6-8-6-8-6z" stroke-linecap="round"/>
-                                                        <circle cx="10" cy="10" r="2.5"/>
-                                                    </svg>
-                                                </button>
-                                            }
-                                            else
+                                            @* Status khác (Cancel, v.v.) → chỉ còn nút View Detail.
+                                               Nút View Report cho Completed đã được chuyển sang cột "View"
+                                               (luôn hiển thị, không phụ thuộc quyền Admin). *@
+                                            @if (it.Status != "Completed")
                                             {
                                                 <button class="bico bview" @onclick="() => GoToDetail(it.Id)" title="View">
                                                     <svg width="13" height="13" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8">
@@ -382,7 +393,7 @@
     private void GoToNew()          => Navigation.NavigateTo("/inspections/new");
     private void GoToEdit(int id)   => Navigation.NavigateTo($"/inspections/{id}/edit");
     private void GoToDetail(int id) => Navigation.NavigateTo($"/inspections/{id}");
-    private void GoToReport(int id)  => Navigation.NavigateTo($"/inspection-report/{id}");
+    private void GoToReport(int id)  => Navigation.NavigateTo($"/inspection-report/{id}/from/inspections");
     private async Task PrevPage()   => await LoadPage(_page - 1);
     private async Task NextPage()   => await LoadPage(_page + 1);
     private int TotalPages()        => (_total + _pageSize - 1) / _pageSize;

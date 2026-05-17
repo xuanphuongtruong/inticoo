@@ -53,17 +53,64 @@
                     <div class="iss-field"><span class="iss-fl">Product Code</span><span class="iss-fv">@(string.IsNullOrEmpty(_selectedJob.ItemNumber) ? "—" : _selectedJob.ItemNumber)</span></div>
                     <div class="iss-field"><span class="iss-fl">Product Name</span><span class="iss-fv">@(string.IsNullOrEmpty(_selectedJob.ProductName) ? "—" : _selectedJob.ProductName)</span></div>
                     <div class="iss-field"><span class="iss-fl">Vendor Name</span><span class="iss-fv">@_selectedJob.VendorName</span></div>
-                    <div class="iss-field"><span class="iss-fl">Vendor Address</span><span class="iss-fv">@(string.IsNullOrEmpty(_selectedJob.VendorCity) ? "—" : _selectedJob.VendorCity)</span></div>
-                    @if (!string.IsNullOrEmpty(_selectedJob.VendorCountry))
-                    {
-                        <div class="iss-field"><span class="iss-fl">Country</span><span class="iss-fv">@_selectedJob.VendorCountry</span></div>
-                    }
-                    <div class="iss-field"><span class="iss-fl">Contact Name</span><span class="iss-fv">@(string.IsNullOrEmpty(_selectedJob.VendorContactName) ? "—" : _selectedJob.VendorContactName)</span></div>
-                    <div class="iss-field"><span class="iss-fl">Position</span><span class="iss-fv">@(string.IsNullOrEmpty(_selectedJob.VendorContactPosition) ? "—" : _selectedJob.VendorContactPosition)</span></div>
-                    <div class="iss-field"><span class="iss-fl">Mobile</span><span class="iss-fv">@(string.IsNullOrEmpty(_selectedJob.VendorContactMobile) ? "—" : _selectedJob.VendorContactMobile)</span></div>
                 </div>
 
-                @* Vendor Information — Address 1/2, City, State, Country *@
+                @* Vendor Information — Contact Name, Position, Mobile, Office, Email *@
+                @{
+                    bool hasVendorContact = !string.IsNullOrEmpty(_selectedJob.VendorContactName)
+                                         || !string.IsNullOrEmpty(_selectedJob.VendorContactPosition)
+                                         || !string.IsNullOrEmpty(_selectedJob.VendorContactMobile)
+                                         || !string.IsNullOrEmpty(_selectedJob.VendorContactOffice)
+                                         || !string.IsNullOrEmpty(_selectedJob.VendorContactEmail);
+                }
+                @if (hasVendorContact)
+                {
+                    <div class="iss-vendor-section">
+                        <div class="iss-vendor-title">Vendor Information</div>
+                        @if (!string.IsNullOrEmpty(_selectedJob.VendorContactName))
+                        {
+                            <div class="iss-vi-row">
+                                <span class="iss-vi-dot">•</span>
+                                <span class="iss-vi-label">Contact Name</span>
+                                <span class="iss-vi-val">@_selectedJob.VendorContactName</span>
+                            </div>
+                        }
+                        @if (!string.IsNullOrEmpty(_selectedJob.VendorContactPosition))
+                        {
+                            <div class="iss-vi-row">
+                                <span class="iss-vi-dot">•</span>
+                                <span class="iss-vi-label">Position</span>
+                                <span class="iss-vi-val">@_selectedJob.VendorContactPosition</span>
+                            </div>
+                        }
+                        @if (!string.IsNullOrEmpty(_selectedJob.VendorContactMobile))
+                        {
+                            <div class="iss-vi-row">
+                                <span class="iss-vi-dot">•</span>
+                                <span class="iss-vi-label">Mobile</span>
+                                <span class="iss-vi-val">@_selectedJob.VendorContactMobile</span>
+                            </div>
+                        }
+                        @if (!string.IsNullOrEmpty(_selectedJob.VendorContactOffice))
+                        {
+                            <div class="iss-vi-row">
+                                <span class="iss-vi-dot">•</span>
+                                <span class="iss-vi-label">Office</span>
+                                <span class="iss-vi-val">@_selectedJob.VendorContactOffice</span>
+                            </div>
+                        }
+                        @if (!string.IsNullOrEmpty(_selectedJob.VendorContactEmail))
+                        {
+                            <div class="iss-vi-row">
+                                <span class="iss-vi-dot">•</span>
+                                <span class="iss-vi-label">Email</span>
+                                <span class="iss-vi-val">@_selectedJob.VendorContactEmail</span>
+                            </div>
+                        }
+                    </div>
+                }
+
+                @* Vendor Address — Address 1/2, City, State, Country *@
                 @{
                     bool hasVendorAddr = !string.IsNullOrEmpty(_selectedJob.VendorAddress1)
                                       || !string.IsNullOrEmpty(_selectedJob.VendorAddress2)
@@ -73,7 +120,7 @@
                 @if (hasVendorAddr)
                 {
                     <div class="iss-vendor-section">
-                        <div class="iss-vendor-title">Vendor Information</div>
+                        <div class="iss-vendor-title">Vendor Address</div>
                         @if (!string.IsNullOrEmpty(_selectedJob.VendorAddress1))
                         {
                             <div class="iss-vi-row">
@@ -1293,7 +1340,8 @@
     private void ViewReport(JobItem? job)
     {
         if (job == null) return;
-        Navigation.NavigateTo($"/inspection-report/{job.Id}");
+        // Truyền explicit source để nút Back ở InspectionReport biết trả về đâu
+        Navigation.NavigateTo($"/inspection-report/{job.Id}/from/schedule");
     }
 
     private static string GetStatusClass(string status) => status switch
