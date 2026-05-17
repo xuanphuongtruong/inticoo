@@ -1,34 +1,52 @@
-// File này đặt vào wwwroot/js/pdf-download.js
-// Nhớ thêm <script src="js/pdf-download.js"></script> vào index.html / _Host.cshtml
-//
-// Hàm này nhận chuỗi base64 từ Blazor (qua JSInterop) và trigger download
-// trong browser bằng cách tạo Blob → object URL → anchor click.
-window.downloadPdfFromBase64 = function (base64, fileName) {
-    try {
-        // Decode base64 → byte array
-        const binaryString = atob(base64);
-        const len = binaryString.length;
-        const bytes = new Uint8Array(len);
-        for (let i = 0; i < len; i++) {
-            bytes[i] = binaryString.charCodeAt(i);
+/**
+ * PDF / File download helpers.
+ *
+ * Đặt file này ở: wwwroot/js/pdf-download.js
+ * Reference trong index.html (hoặc _Host.cshtml nếu Blazor Server):
+ *
+ *     <script src="js/pdf-download.js"></script>
+ *
+ * Đặt SAU dòng <script src="_framework/blazor.webassembly.js"></script>
+ * (hoặc blazor.server.js) để đảm bảo Blazor JS interop đã sẵn sàng.
+ */
+
+(function () {
+    'use strict';
+
+    /**
+     * Tải file xuống máy user từ byte array do Blazor truyền sang.
+     *
+     * @param {string} fileName    - Tên file (đã sanitize phía C#).
+     * @param {string} contentType - MIME type, vd: "application/pdf".
+     * @param {Uint8Array|number[]} bytes - Mảng byte. Blazor truyền byte[] sẽ tự convert.
+     */
+    window.downloadFileFromBytes = function (fileName, contentType, bytes) {
+        try {
+            // Blazor có thể truyền sang Array hoặc Uint8Array tùy version.
+            // Wrap lại để chắc chắn là binary view, không phải JSON serialized array.
+            const view = bytes instanceof Uint8Array
+                ? bytes
+                : new Uint8Array(bytes);
+
+            const blob = new Blob([view], { type: contentType || 'application/octet-stream' });
+            const url  = URL.createObjectURL(blob);
+
+            // Tạo anchor ẩn để trigger download. Phương pháp này hoạt động ở
+            // tất cả browser hiện đại (Chrome, Edge, Firefox, Safari).
+            const a = document.createElement('a');
+            a.href     = url;
+            a.download = fileName || 'download';
+            a.style.display = 'none';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+
+            // Revoke URL sau khi click để giải phóng memory.
+            // setTimeout vì Safari đôi khi cần delay nhỏ trước khi revoke.
+            setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+        } catch (err) {
+            console.error('[downloadFileFromBytes] Failed:', err);
+            throw err; // re-throw để Blazor catch
         }
-
-        // Tạo Blob PDF
-        const blob = new Blob([bytes], { type: 'application/pdf' });
-        const url = URL.createObjectURL(blob);
-
-        // Trigger download
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = fileName;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-
-        // Giải phóng object URL sau 1s (đủ cho download bắt đầu)
-        setTimeout(() => URL.revokeObjectURL(url), 1000);
-    } catch (err) {
-        console.error('PDF download error:', err);
-        alert('Failed to download PDF: ' + err.message);
-    }
-};
+    };
+})();
