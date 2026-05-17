@@ -37,12 +37,12 @@ else if (_data != null)
                     <svg class="rpt-print-spinner" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
                         <path d="M12 2a10 10 0 0 1 10 10" />
                     </svg>
-                    <span>Generating PDF…</span>
+                    <span>Preparing…</span>
                 }
                 else
                 {
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-                    <span>Download PDF</span>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+                    <span>Print / Save PDF</span>
                 }
             </button>
         </div>
@@ -1601,11 +1601,15 @@ else if (_data != null)
     private bool _isPrinting;
 
     /// <summary>
-    /// Tải PDF từ backend API (/api/pdf/inspection/{id}).
-    /// Backend dùng Puppeteer headless render lại trang Blazor này thành PDF
-    /// đồng nhất giữa mọi user — không phụ thuộc browser của client.
+    /// Trigger trình duyệt mở dialog Print. User chọn "Save as PDF" trong
+    /// dialog để xuất PDF với tên file = "{JobNumber}_{ddMMyyyy}".
     ///
-    /// Tên file: {JobNumber}_{ddMMyyyy}.pdf
+    /// Cách này hoạt động ở mọi môi trường (Local, Azure Windows, Azure Static
+    /// Apps) — không phụ thuộc browser headless / Chromium / Puppeteer.
+    ///
+    /// TODO: Khi chuyển sang VPS Windows on-premise, thay bằng backend
+    /// Puppeteer (GET /api/pdf/inspection/{id}) để PDF đồng nhất giữa
+    /// các user. Xem PdfController.cs đã có sẵn endpoint.
     /// </summary>
     private async Task PrintReport()
     {
@@ -1615,7 +1619,8 @@ else if (_data != null)
 
         try
         {
-            // ── Build filename: {JobNumber}_{ddMMyyyy}.pdf ──
+            // Đặt tên file PDF mặc định = "{JobNumber}_{ddMMyyyy}".
+            // Browser dùng document.title làm tên file mặc định khi Save as PDF.
             var jobNumber = !string.IsNullOrWhiteSpace(_data?.JobNumber)
                 ? _data!.JobNumber!
                 : $"Inspection-{InspectionId}";
@@ -1624,35 +1629,78 @@ else if (_data != null)
             var dateStr  = inspDate.ToString("ddMMyyyy",
                 System.Globalization.CultureInfo.InvariantCulture);
 
-            var rawFileName  = $"{jobNumber}_{dateStr}.pdf";
+            var rawFileName  = $"{jobNumber}_{dateStr}";
             var safeFileName = System.Text.RegularExpressions.Regex.Replace(
                 rawFileName, @"[\\/:*?""<>|]", "_").Trim();
 
-            // ── Call backend API ──
-            // HttpClient đã được DI config với AuthorizationMessageHandler ở
-            // Program.cs nên tự động gắn Bearer token vào header.
-            using var response = await Http.GetAsync(
-                $"api/pdf/inspection/{InspectionId}",
-                HttpCompletionOption.ResponseHeadersRead);
-
-            if (!response.IsSuccessStatusCode)
+            try
             {
-                var errBody = await response.Content.ReadAsStringAsync();
-                throw new Exception(
-                    $"Server returned {(int)response.StatusCode} {response.StatusCode}. {errBody}");
+                // Lưu title hiện tại để restore sau khi in xong
+                var originalTitle = await JS.InvokeAsync<string>("eval", "document.title");
+
+                // Set title = file name → tên file PDF mặc định
+                await JS.InvokeVoidAsync("eval",
+                    $"document.title = {System.Text.Json.JsonSerializer.Serialize(safeFileName)};");
+
+                // Trước khi print: gỡ class page-break-after khỏi section cuối cùng
+                // có class này (tránh trang trắng cuối khi các section sau bị skip
+                // vì IsPass=false).
+                await JS.InvokeVoidAsync("eval", @"
+                    (function(){
+                        var sections = document.querySelectorAll('#rpt-root .rpt-section.page-break-after');
+                        if (!sections.length) return;
+                        var last = sections[sections.length - 1];
+                        var next = last.nextElementSibling;
+                        while (next && !next.classList.contains('rpt-section')) {
+                            next = next.nextElementSibling;
+                        }
+                        if (!next || next.classList.contains('rpt-section-final')) {
+                            last.classList.remove('page-break-after');
+                            last.setAttribute('data-pba-removed', '1');
+                        }
+                    })();
+                ");
+
+                // ★ Sync số trang vào textContent của TỪNG .rpt-footer-page ngay trước khi in.
+                // Đây là nguồn sự thật cuối cùng — đếm DOM thực tế, gán "N / Total".
+                await JS.InvokeVoidAsync("eval", @"
+                    (function(){
+                        var paper = document.querySelector('#rpt-root .rpt-paper');
+                        if (!paper) return;
+                        var sections = paper.querySelectorAll('.rpt-section');
+                        var total = sections.length;
+                        if (total === 0) return;
+                        paper.setAttribute('data-total', total);
+                        sections.forEach(function(sec, idx){
+                            var pn = sec.querySelector('.rpt-footer-page');
+                            if (pn) pn.textContent = (idx + 1) + ' / ' + total;
+                        });
+                    })();
+                ");
+
+                // Trigger print (waitImagesAndPrint đợi ảnh load xong rồi mới in)
+                await JS.InvokeVoidAsync("waitImagesAndPrint", "rpt-root");
+
+                // Sau print: phục hồi class page-break-after đã gỡ tạm thời
+                await JS.InvokeVoidAsync("eval", @"
+                    setTimeout(function(){
+                        var el = document.querySelector('#rpt-root .rpt-section[data-pba-removed]');
+                        if (el) {
+                            el.classList.add('page-break-after');
+                            el.removeAttribute('data-pba-removed');
+                        }
+                    }, 1500);
+                ");
+
+                // Restore title sau 1s (đợi dialog Print hiện hoàn toàn)
+                await JS.InvokeVoidAsync("eval",
+                    $"setTimeout(function(){{ document.title = {System.Text.Json.JsonSerializer.Serialize(originalTitle ?? "Inspection Report")}; }}, 1000);");
             }
-
-            var pdfBytes = await response.Content.ReadAsByteArrayAsync();
-
-            // ── Trigger download trên browser qua JS Blob + anchor click ──
-            await JS.InvokeVoidAsync("downloadFileFromBytes",
-                safeFileName, "application/pdf", pdfBytes);
-        }
-        catch (Exception ex)
-        {
-            // Thông báo lỗi gọn cho user. Chi tiết log ở console qua catch của JS.
-            await JS.InvokeVoidAsync("alert",
-                $"Không thể xuất PDF.\n\nLỗi: {ex.Message}\n\nVui lòng thử lại hoặc liên hệ IT.");
+            catch
+            {
+                // Fallback: print không đổi title
+                await JS.InvokeVoidAsync("waitImagesAndPrint", "rpt-root");
+            }
         }
         finally
         {
