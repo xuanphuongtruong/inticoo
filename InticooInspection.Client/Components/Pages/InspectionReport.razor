@@ -71,7 +71,6 @@ else if (_data != null)
                     {
                         <div class="rpt-overview-photo-cell">
                             <img src="@NormalizeUrl(_data.Photo1Url)" class="rpt-overview-img" alt="Product Photo" loading="eager"/>
-                            <div class="rpt-photo-label">Product Photo</div>
                         </div>
                     }
                     else
@@ -302,7 +301,7 @@ else if (_data != null)
             @foreach (var pageSlots in aRestPages)
             {
                 <div class="rpt-section page-break-after">
-                    <div class="rpt-section-title rpt-section-title-lg">A. Quantity Conformity (cont.)</div>
+                    <div class="rpt-section-title rpt-section-title-lg">A. Quantity Conformity</div>
                     <div class="rpt-qty-photo-grid">
                         @foreach (var slot in pageSlots)
                         {
@@ -442,7 +441,7 @@ else if (_data != null)
                     var _csIsLast = _csPi == _csRestPages.Count - 1;
                     <div class="rpt-section page-break-after">
                         <div class="rpt-section-title rpt-section-title-lg">B. Packaging &amp; Identification@(cartonSuffix)</div>
-                        <div class="rpt-sub-title">i. Carton Size (cont.)</div>
+                        <div class="rpt-sub-title">i. Carton Size</div>
                         <div class="rpt-photo-grid-2">
                             @foreach (var _u in _csPage)
                             {
@@ -552,7 +551,7 @@ else if (_data != null)
                     {
                         var _shipPage = _shipPages[_shipPi];
                         var _shipIsLast = _shipPi == _shipPages.Count - 1;
-                        var _shipSuffix = _shipPages.Count > 1 ? " (cont.)" : "";
+                        var _shipSuffix = _shipPages.Count > 1 ? "" : "";
                         <div class="rpt-section page-break-after">
                             <div class="rpt-section-title rpt-section-title-lg">B. Packaging &amp; Identification@(cartonSuffix)</div>
                             <div class="rpt-sub-title">ii. Shipping Mark / Labeling / Barcode@(_shipPi == 0 ? "" : _shipSuffix)</div>
@@ -586,7 +585,7 @@ else if (_data != null)
                     {
                         var _wgtPage = _wgtPages[_wgtPi];
                         var _wgtIsLast = _wgtPi == _wgtPages.Count - 1;
-                        var _wgtSuffix = _wgtPages.Count > 1 ? " (cont.)" : "";
+                        var _wgtSuffix = _wgtPages.Count > 1 ? "" : "";
                         <div class="rpt-section page-break-after">
                             <div class="rpt-section-title rpt-section-title-lg">B. Packaging &amp; Identification@(cartonSuffix)</div>
                             <div class="rpt-sub-title">iii. Carton Weight@(_wgtPi == 0 ? "" : _wgtSuffix)</div>
@@ -626,7 +625,7 @@ else if (_data != null)
                 {
                     var _plPage = _plPages[_plPi];
                     var _plIsLast = _plPi == _plPages.Count - 1;
-                    var _plSuffix = _plPages.Count > 1 && _plPi > 0 ? " (cont.)" : "";
+                    var _plSuffix = _plPages.Count > 1 && _plPi > 0 ? "" : "";
                     <div class="rpt-section page-break-after">
                         <div class="rpt-section-title rpt-section-title-lg">B. Packaging &amp; Identification@(cartonSuffix)</div>
                         <div class="rpt-sub-title">iv. Packaging &amp; Labeling Specifications@(_plSuffix)</div>
@@ -661,7 +660,7 @@ else if (_data != null)
                 {
                     var _asPage = _asPages[_asPi];
                     var _asIsLast = _asPi == _asPages.Count - 1;
-                    var _asSuffix = _asPages.Count > 1 && _asPi > 0 ? " (cont.)" : "";
+                    var _asSuffix = _asPages.Count > 1 && _asPi > 0 ? "" : "";
                     <div class="rpt-section page-break-after">
                         <div class="rpt-section-title rpt-section-title-lg">B. Packaging &amp; Identification@(cartonSuffix)</div>
                         <div class="rpt-sub-title">v. Assembly Instruction Specifications@(_asSuffix)</div>
@@ -696,7 +695,7 @@ else if (_data != null)
                 {
                     var _hwPage = _hwPages[_hwPi];
                     var _hwIsLast = _hwPi == _hwPages.Count - 1;
-                    var _hwSuffix = _hwPages.Count > 1 && _hwPi > 0 ? " (cont.)" : "";
+                    var _hwSuffix = _hwPages.Count > 1 && _hwPi > 0 ? "" : "";
                     <div class="rpt-section page-break-after">
                         <div class="rpt-section-title rpt-section-title-lg">B. Packaging &amp; Identification@(cartonSuffix)</div>
                         <div class="rpt-sub-title">vi. Hardware Specifications@(_hwSuffix)</div>
@@ -810,7 +809,7 @@ else if (_data != null)
                     {
                         <div class="rpt-section page-break-after">
                             <div class="rpt-section-title rpt-section-title-lg">C. Product Specification Compliance (1/2)</div>
-                            <div class="rpt-sub-title">ii. Golden Sample/Comparison (cont.)</div>
+                            <div class="rpt-sub-title">ii. Golden Sample/Comparison</div>
                             <div class="rpt-photo-grid-2">
                                 @foreach (var _gu in _gpPage)
                                 {
@@ -903,7 +902,7 @@ else if (_data != null)
             {
                 <div class="rpt-section page-break-after">
                     <div class="rpt-section-title rpt-section-title-lg">C. Product Specification Compliance (2/2)</div>
-                    <div class="rpt-sub-title">iii. Colour Swatch Comparison (cont.)</div>
+                    <div class="rpt-sub-title">iii. Colour Swatch Comparison</div>
                     <div class="rpt-photo-grid-2">
                         @foreach (var _sw in _swPage)
                         {
@@ -1014,7 +1013,7 @@ else if (_data != null)
                     @foreach (var _dPage in _dRest)
                     {
                         <div class="rpt-section page-break-after">
-                            <div class="rpt-section-title rpt-section-title-lg">D. Performance Testing@(dSuffix) (cont.)</div>
+                            <div class="rpt-section-title rpt-section-title-lg">D. Performance Testing@(dSuffix)</div>
                             <div class="rpt-photo-grid-2">
                                 @foreach (var _du in _dPage)
                                 {
@@ -1240,7 +1239,7 @@ else if (_data != null)
             @foreach (var _critPage in _critPagesAll)
             {
                 <div class="rpt-section page-break-after">
-                    <div class="rpt-section-title rpt-section-title-lg">F. Details of Defect Found (cont.)</div>
+                    <div class="rpt-section-title rpt-section-title-lg">F. Details of Defect Found</div>
                     <div class="rpt-defect-type-title defect-critical">Critical</div>
                     <div class="rpt-photo-grid-2">
                         @foreach (var slot in _critPage)
@@ -1291,9 +1290,9 @@ else if (_data != null)
                     @for (int _dpPi = 0; _dpPi < defectPages.Count; _dpPi++)
                     {
                         var defectPage = defectPages[_dpPi];
-                        var defSuffix = defectPages.Count > 1 && _dpPi > 0 ? " (cont.)" : "";
+                        var defSuffix = defectPages.Count > 1 && _dpPi > 0 ? "" : "";
                         <div class="rpt-section page-break-after">
-                            <div class="rpt-section-title rpt-section-title-lg">F. Details of Defect Found (cont.)</div>
+                            <div class="rpt-section-title rpt-section-title-lg">F. Details of Defect Found</div>
                             <div class="rpt-defect-type-title defect-@defType.ToLower()">@defType@defSuffix</div>
                             <div class="rpt-photo-grid-2">
                                 @foreach (var slot in defectPage)
@@ -2187,7 +2186,7 @@ else if (_data != null)
         font-size: 13px; font-weight: 700;
         color: var(--text); text-align: center;
         letter-spacing: .08em; text-transform: uppercase;
-        margin: 18px 0 10px;
+        margin: 5px 0 5px;
     }
     .rpt-section-title-lg {
         font-size: 16px; text-align: left;
