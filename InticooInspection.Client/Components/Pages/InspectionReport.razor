@@ -1643,20 +1643,40 @@ else if (_data != null)
 
                 // Trước khi print: gỡ class page-break-after khỏi section cuối cùng
                 // có class này (tránh trang trắng cuối khi các section sau bị skip
-                // vì IsPass=false).
+                // vì IsPass=false). Đồng thời: nếu section ngay trước rpt-section-final
+                // có page-break-after, gỡ luôn — vì rpt-section-final đã có
+                // break-before:page trong CSS, không cần break-after từ section trước.
                 await JS.InvokeVoidAsync("eval", @"
                     (function(){
-                        var sections = document.querySelectorAll('#rpt-root .rpt-section.page-break-after');
+                        var paper = document.querySelector('#rpt-root .rpt-paper');
+                        if (!paper) return;
+                        var sections = paper.querySelectorAll('.rpt-section.page-break-after');
                         if (!sections.length) return;
+
+                        // 1) Section cuối tuyệt đối
                         var last = sections[sections.length - 1];
                         var next = last.nextElementSibling;
                         while (next && !next.classList.contains('rpt-section')) {
                             next = next.nextElementSibling;
                         }
-                        if (!next || next.classList.contains('rpt-section-final')) {
+                        if (!next) {
                             last.classList.remove('page-break-after');
                             last.setAttribute('data-pba-removed', '1');
                         }
+
+                        // 2) Section nào đứng ngay trước rpt-section-final → gỡ page-break-after
+                        //    vì rpt-section-final tự có break-before:page trong CSS.
+                        //    Nếu cả 2 cùng có, browser dễ tạo trang trắng giữa chừng.
+                        sections.forEach(function(sec){
+                            var n = sec.nextElementSibling;
+                            while (n && !n.classList.contains('rpt-section')) {
+                                n = n.nextElementSibling;
+                            }
+                            if (n && n.classList.contains('rpt-section-final')) {
+                                sec.classList.remove('page-break-after');
+                                sec.setAttribute('data-pba-removed', '1');
+                            }
+                        });
                     })();
                 ");
 
@@ -1681,13 +1701,14 @@ else if (_data != null)
                 await JS.InvokeVoidAsync("waitImagesAndPrint", "rpt-root");
 
                 // Sau print: phục hồi class page-break-after đã gỡ tạm thời
+                // (có thể có nhiều section bị gỡ — restore tất cả)
                 await JS.InvokeVoidAsync("eval", @"
                     setTimeout(function(){
-                        var el = document.querySelector('#rpt-root .rpt-section[data-pba-removed]');
-                        if (el) {
+                        var els = document.querySelectorAll('#rpt-root .rpt-section[data-pba-removed]');
+                        els.forEach(function(el){
                             el.classList.add('page-break-after');
                             el.removeAttribute('data-pba-removed');
-                        }
+                        });
                     }, 1500);
                 ");
 
@@ -2694,15 +2715,28 @@ else if (_data != null)
     /* ══════════════════════════════════════════════════════════════
        PRINT STYLES — ★★★ FIX: 6 ẢNH/TRANG ĐOÁN ĐỊNH ★★★
        ═══════════════════════════════════════════════════════════════
-       Chiến lược mới (giải quyết triệt để vấn đề trang trắng):
+       Chiến lược (cập nhật math sau khi phát hiện overflow):
        - Mỗi sub-section được pre-chunked ở Razor: max 6 ảnh/trang.
        - Trang có table phía trên (A, B-i, C, D) → trang đầu max 4 ảnh.
        - Mỗi chunk = 1 .rpt-section riêng → page-break-after: always vừa khít.
        - Layout đoán định 100%, không phụ thuộc browser.
 
-       Math A4: 297mm cao - 12mm top - 14mm bottom = 271mm vùng print
-                Heading lg ~10mm + sub-title ~7mm + 3 hàng ảnh (3 x 75mm + 2 x 6mm gap = 237mm)
-                ~ 254mm — vừa đúng 1 trang.
+       Math A4 (đã sửa):
+         Section height            = 297mm
+         Padding top               =   6mm
+         Padding bottom (chừa footer 14mm + spacing) = 20mm
+         → Content available       = 271mm
+
+         Title lg (margin + padding + text) ≈ 16mm
+         Sub-title (margin + text)           ≈ 10mm
+         Table qty (header + 2 row)          ≈ 32mm
+         Grid 6 ảnh = 3 hàng × 68mm + 2 gap × 6mm + 8mm margin = 224mm
+
+         Worst case: title-lg + sub-title + 6 ảnh
+           16 + 10 + 224 = 250mm < 271mm ✓ (dư 21mm an toàn)
+
+         Trang có table (A trang đầu, B-i, C-i): title-lg + table + 4 ảnh
+           16 + 32 + (2×68 + 6 + 8) = 198mm < 271mm ✓
     ══════════════════════════════════════════════════════════════ */
     @@media print {
         @@page {
@@ -2950,8 +2984,8 @@ else if (_data != null)
             flex: 0 0 calc(50% - 3mm) !important;
             max-width: calc(50% - 3mm) !important;
             box-sizing: border-box !important;
-            height: 75mm !important;
-            max-height: 75mm !important;
+            height: 68mm !important;
+            max-height: 68mm !important;
             min-height: 0 !important;
             break-inside: avoid !important;
             page-break-inside: avoid !important;
@@ -2968,8 +3002,8 @@ else if (_data != null)
             display: block !important;
         }
         .rpt-photo {
-            height: 75mm !important;
-            max-height: 75mm !important;
+            height: 68mm !important;
+            max-height: 68mm !important;
             width: 100% !important;
             object-fit: contain !important;
             object-position: center !important;
@@ -2987,8 +3021,8 @@ else if (_data != null)
             flex: 0 0 calc(50% - 3mm) !important;
             max-width: calc(50% - 3mm) !important;
             box-sizing: border-box !important;
-            height: 75mm !important;
-            max-height: 75mm !important;
+            height: 68mm !important;
+            max-height: 68mm !important;
             min-height: 0 !important;
             break-inside: avoid !important;
             page-break-inside: avoid !important;
@@ -3031,8 +3065,8 @@ else if (_data != null)
             flex: 0 0 calc(50% - 3mm) !important;
             max-width: calc(50% - 3mm) !important;
             box-sizing: border-box !important;
-            height: 75mm !important;
-            max-height: 75mm !important;
+            height: 68mm !important;
+            max-height: 68mm !important;
             min-height: 0 !important;
             break-inside: avoid !important;
             page-break-inside: avoid !important;
