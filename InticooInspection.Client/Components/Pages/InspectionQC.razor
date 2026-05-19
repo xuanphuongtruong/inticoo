@@ -649,9 +649,9 @@ else
                             </div>
                         </div>
                     </div>
-                    <div class="qc-info-row">
-                        <span class="qc-info-lbl">Remark</span>
-                        <input class="qc-info-input" @bind="_data.ProductSpec.SizeRemark" placeholder="Enter remark…"/>
+                    <div class="qc-info-row qc-sub-row" style="flex-direction:column;align-items:flex-start;gap:6px">
+                        <span class="qc-info-lbl" style="padding-top:0">Remark</span>
+                        <textarea class="qc-info-textarea qc-remark-textarea" @bind="_data.ProductSpec.SizeRemark" rows="3" placeholder="Enter remark…"></textarea>
                     </div>
                     <div class="qc-info-row">
                         <span class="qc-info-lbl">Result</span>
@@ -715,9 +715,9 @@ else
             <div class="qc-card">
                 <div class="qc-section-title">C-ii. Golden Sample/Compare</div>
                 <div class="qc-info-table" style="margin-bottom:12px">
-                    <div class="qc-info-row">
-                        <span class="qc-info-lbl">Remark</span>
-                        <input class="qc-info-input" @bind="_data.ProductSpec.GoldenRemark" placeholder="Enter remark…"/>
+                    <div class="qc-info-row qc-sub-row" style="flex-direction:column;align-items:flex-start;gap:6px">
+                        <span class="qc-info-lbl" style="padding-top:0">Remark</span>
+                        <textarea class="qc-info-textarea qc-remark-textarea" @bind="_data.ProductSpec.GoldenRemark" rows="3" placeholder="Enter remark…"></textarea>
                     </div>
                     <div class="qc-info-row">
                         <span class="qc-info-lbl">Result</span>
@@ -787,7 +787,7 @@ else
                                     </span>
                                 </td>
                                 <td>
-                                    <input class="qc-cell-input" @bind="cs.Remark" placeholder="Remark…"/>
+                                    <textarea class="qc-cell-input qc-remark-cell" @bind="cs.Remark" rows="2" placeholder="Remark…"></textarea>
                                 </td>
                                 <td>
                                     <select class="qc-select-sm" @bind="cs.Result">
@@ -3396,6 +3396,27 @@ else
         transition: border-color .2s;
     }
     .qc-info-textarea:focus { border-color: #2D7DD2; }
+
+    /* Textarea Remark — to hơn input thường để dễ nhập */
+    .qc-remark-textarea {
+        width: 100%;
+        box-sizing: border-box;
+        min-height: 70px;
+        font-size: 14px;
+        padding: 10px 12px;
+        line-height: 1.5;
+        font-family: inherit;
+    }
+    .qc-remark-cell {
+        width: 100%;
+        box-sizing: border-box;
+        min-height: 56px;
+        font-size: 13px;
+        padding: 8px 10px;
+        line-height: 1.5;
+        resize: vertical;
+        font-family: inherit;
+    }
 
     .qc-sub-row { flex-wrap: wrap; }
     .qc-split-val { display: flex; gap: 8px; flex-wrap: wrap; flex: 1; }
