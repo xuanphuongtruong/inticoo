@@ -2721,22 +2721,23 @@ else if (_data != null)
        - Mỗi chunk = 1 .rpt-section riêng → page-break-after: always vừa khít.
        - Layout đoán định 100%, không phụ thuộc browser.
 
-       Math A4 (đã sửa):
+       Math A4 (da sua, KHONG dung ky tu mo/dong goc nhon trong comment
+       vi Razor parser hieu nham la HTML tag):
          Section height            = 297mm
          Padding top               =   6mm
-         Padding bottom (chừa footer 14mm + spacing) = 20mm
-         → Content available       = 271mm
+         Padding bottom (chua footer 14mm + spacing) = 20mm
+         => Content available       = 271mm
 
-         Title lg (margin + padding + text) ≈ 16mm
-         Sub-title (margin + text)           ≈ 10mm
-         Table qty (header + 2 row)          ≈ 32mm
-         Grid 6 ảnh = 3 hàng × 68mm + 2 gap × 6mm + 8mm margin = 224mm
+         Title lg (margin + padding + text) ~ 16mm
+         Sub-title (margin + text)           ~ 10mm
+         Table qty (header + 2 row)          ~ 32mm
+         Grid 6 anh = 3 hang x 68mm + 2 gap x 6mm + 8mm margin = 224mm
 
-         Worst case: title-lg + sub-title + 6 ảnh
-           16 + 10 + 224 = 250mm < 271mm ✓ (dư 21mm an toàn)
+         Worst case: title-lg + sub-title + 6 anh
+           16 + 10 + 224 = 250mm, nho hon 271mm (du 21mm an toan)
 
-         Trang có table (A trang đầu, B-i, C-i): title-lg + table + 4 ảnh
-           16 + 32 + (2×68 + 6 + 8) = 198mm < 271mm ✓
+         Trang co table (A trang dau, B-i, C-i): title-lg + table + 4 anh
+           16 + 32 + (2x68 + 6 + 8) = 198mm, nho hon 271mm
     ══════════════════════════════════════════════════════════════ */
     @@media print {
         @@page {
