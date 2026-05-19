@@ -740,11 +740,11 @@ else if (_data != null)
                         <table class="rpt-spec-table">
                             <thead>
                                 <tr>
-                                    <th colspan="3">Product Size (mm)</th>
-                                    <th rowspan="2">Remark</th>
-                                    <th rowspan="2">Result</th>
+                                    <th colspan="3" style="width:30%">Product Size (mm)</th>
+                                    <th rowspan="2" style="width:55%">Remark</th>
+                                    <th rowspan="2" style="width:15%">Result</th>
                                 </tr>
-                                <tr><th>L</th><th>W</th><th>H</th></tr>
+                                <tr><th style="width:10%">L</th><th style="width:10%">W</th><th style="width:10%">H</th></tr>
                             </thead>
                             <tbody>
                                 <tr>
@@ -784,7 +784,7 @@ else if (_data != null)
                     <div class="rpt-sub-title">ii. Golden Sample/Comparison</div>
                     <table class="rpt-spec-table">
                         <thead>
-                            <tr><th style="width:65%">Remark</th><th style="width:35%">Result</th></tr>
+                            <tr><th style="width:85%">Remark</th><th style="width:15%">Result</th></tr>
                         </thead>
                         <tbody>
                             <tr>
@@ -873,9 +873,9 @@ else if (_data != null)
                         <thead>
                             <tr>
                                 <th style="width:8%">No</th>
-                                <th style="width:35%">Material</th>
-                                <th style="width:32%">Remark</th>
-                                <th style="width:25%">Result</th>
+                                <th style="width:30%">Material</th>
+                                <th style="width:47%">Remark</th>
+                                <th style="width:15%">Result</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -981,12 +981,11 @@ else if (_data != null)
                         <table class="rpt-perf-table rpt-perf-table-h">
                             <thead>
                                 <tr>
-                                    <th style="width:48px">NO</th>
-                                    <th>TEST ITEM</th>
-                                    <th>TEST REQUIREMENT</th>
-                                    <th style="width:90px">TEST QUANTITY</th>
-                                    <th>REMARK</th>
-                                    <th style="width:90px">RESULT</th>
+                                    <th style="width:48px">No</th>
+                                    <th>Test Item</th>
+                                    <th>Test Requirement</th>
+                                    <th style="width:90px">Test Quantity</th>
+                                    <th style="width:80px">Result</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -995,7 +994,6 @@ else if (_data != null)
                                     <td>@(test.TestItem ?? "—")</td>
                                     <td>@(dTestReq ?? "—")</td>
                                     <td class="tc">@test.TestQuantity</td>
-                                    <td>@(string.IsNullOrWhiteSpace(test.Remark) ? "—" : test.Remark)</td>
                                     <td class="tc">
                                         @if (!string.IsNullOrEmpty(test.Result))
                                         {
@@ -1018,6 +1016,14 @@ else if (_data != null)
                                 </tbody>
                             </table>
                         }
+                        <table class="rpt-perf-table" style="margin-top:6px">
+                            <tbody>
+                                <tr>
+                                    <td class="rpt-info-label" style="vertical-align:top;width:140px">Remark</td>
+                                    <td class="rpt-info-val" style="white-space:pre-wrap;line-height:1.6">@(string.IsNullOrWhiteSpace(test.Remark) ? "—" : test.Remark)</td>
+                                </tr>
+                            </tbody>
+                        </table>
                         @{
                             // Trang đầu D có table + protocol → chỉ chứa được ~2 ảnh
                             var _dFirst = dPhotos.Take(2).Cast<string?>().ToList();
@@ -1078,12 +1084,11 @@ else if (_data != null)
                         <table class="rpt-perf-table rpt-perf-table-h">
                             <thead>
                                 <tr>
-                                    <th style="width:48px">NO</th>
-                                    <th>TEST ITEM</th>
-                                    <th>TEST REQUIREMENT</th>
-                                    <th style="width:90px">TEST QUANTITY</th>
-                                    <th>REMARK</th>
-                                    <th style="width:90px">RESULT</th>
+                                    <th style="width:48px">No</th>
+                                    <th>Test Item</th>
+                                    <th>Test Requirement</th>
+                                    <th style="width:90px">Test Quantity</th>
+                                    <th style="width:80px">Result</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -1092,7 +1097,6 @@ else if (_data != null)
                                     <td>@(t.TestItem ?? "—")</td>
                                     <td>@(t.TestRequirement ?? "—")</td>
                                     <td class="tc">—</td>
-                                    <td>@(string.IsNullOrWhiteSpace(t.Remark) ? "—" : t.Remark)</td>
                                     <td class="tc">—</td>
                                 </tr>
                             </tbody>
@@ -1108,6 +1112,14 @@ else if (_data != null)
                                 </tbody>
                             </table>
                         }
+                        <table class="rpt-perf-table" style="margin-top:6px">
+                            <tbody>
+                                <tr>
+                                    <td class="rpt-info-label" style="vertical-align:top;width:140px">Remark</td>
+                                    <td class="rpt-info-val" style="white-space:pre-wrap;line-height:1.6">@(string.IsNullOrWhiteSpace(t.Remark) ? "—" : t.Remark)</td>
+                                </tr>
+                            </tbody>
+                        </table>
                         <div class="rpt-footer">
                             <div class="rpt-footer-inner">
                                 <span class="rpt-footer-text">www.inticoo.com<br/>The results presented herein reflect findings at the time and place of inspection. This report does not release the seller or manufacturer from obligations, nor affect the buyer’s right to claim for defects not identified or arising later. It is not shipment evidence, and client approval is required before release.</span>

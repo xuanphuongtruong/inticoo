@@ -1382,7 +1382,7 @@
             x.Category     == PerformanceTests[idx].Category &&
             x.ProtocolName == selected);
         PerformanceTests[idx].MasterId        = master?.Id;
-        PerformanceTests[idx].TestProtocol    = master?.Procedure ?? "";
+        PerformanceTests[idx].TestProtocol    = master?.TestProtocol ?? "";
         PerformanceTests[idx].TestRequirement = master?.Requirements ?? "";
     }
 
