@@ -1209,13 +1209,11 @@ else if (_data != null)
                             <div class="rpt-defect-photo-wrap">
                                 <div class="rpt-defect-no-photo">No Photo</div>
                             </div>
-                            <div class="rpt-defect-remark">Remark: —</div>
                         </div>
                         <div class="rpt-defect-cell">
                             <div class="rpt-defect-photo-wrap">
                                 <div class="rpt-defect-no-photo">No Photo</div>
                             </div>
-                            <div class="rpt-defect-remark">Remark: —</div>
                         </div>
                     </div>
                 }
@@ -1251,7 +1249,6 @@ else if (_data != null)
                                     else
                                     { <div class="rpt-defect-no-photo">No Photo</div> }
                                 </div>
-                                <div class="rpt-defect-remark">Remark: @(string.IsNullOrEmpty(slot.Remark) ? "—" : slot.Remark)</div>
                             </div>
                         }
                     </div>
@@ -1304,7 +1301,6 @@ else if (_data != null)
                                             else
                                             { <div class="rpt-defect-no-photo">No Photo</div> }
                                         </div>
-                                        <div class="rpt-defect-remark">Remark: @(string.IsNullOrEmpty(slot.Remark) ? "—" : slot.Remark)</div>
                                     </div>
                                 }
                             </div>
@@ -1927,7 +1923,9 @@ else if (_data != null)
 
     public class QcProductSpecResultDto
     {
+        public string?                 SizeRemark     { get; set; }
         public string?                 SizeResult     { get; set; }
+        public string?                 GoldenRemark   { get; set; }
         public string?                 GoldenResult   { get; set; }
         public string?                 AdditionalText { get; set; }
         public List<JsonElement>?      SizeRows       { get; set; }
@@ -1940,6 +1938,7 @@ else if (_data != null)
     {
         public int     No       { get; set; }
         public string? Material { get; set; }
+        public string? Remark   { get; set; }
         public string? Result   { get; set; }
     }
 
@@ -1962,6 +1961,7 @@ else if (_data != null)
         public int    CriticalFound      { get; set; }
         public int    MajorFound         { get; set; }
         public int    MinorFound         { get; set; }
+        public string? Result            { get; set; }
     }
 
     public class QcPerformanceTestDto
@@ -2736,6 +2736,7 @@ else if (_data != null)
         nav, header, .navbar, .sidebar,
         .top-bar, .main-nav, .nav-bar, .app-nav,
         .top-menu, .side-menu, .menu-bar,
+        .bottom-footer,
         [class*="nav"], [class*="header"]:not(.rpt-cover-header):not(.rpt-section-header) {
             display: none !important;
         }

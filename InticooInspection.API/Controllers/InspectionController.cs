@@ -1955,7 +1955,9 @@ namespace InticooInspection.API.Controllers
 
     public class QcProductSpecResultDto
     {
+        public string?         SizeRemark      { get; set; }
         public string?         SizeResult      { get; set; }
+        public string?         GoldenRemark    { get; set; }
         public string?         GoldenResult    { get; set; }
         public string?         AdditionalText  { get; set; }
         public List<string>?   SizePhotos      { get; set; }   // ảnh C-i Product Size
@@ -1969,6 +1971,7 @@ namespace InticooInspection.API.Controllers
     {
         public int     No       { get; set; }
         public string? Material { get; set; }
+        public string? Remark   { get; set; }
         public string? Result   { get; set; }  // "Passed"|"Failed"|"NA"
     }
 
@@ -1988,6 +1991,7 @@ namespace InticooInspection.API.Controllers
         public int    CriticalFound      { get; set; }
         public int    MajorFound         { get; set; }
         public int    MinorFound         { get; set; }
+        public string? Result            { get; set; }  // "Pass"|"Fail"
     }
 
     public class QcPerformanceTestDto
