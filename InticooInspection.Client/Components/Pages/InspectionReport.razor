@@ -741,16 +741,27 @@ else if (_data != null)
                             <thead>
                                 <tr>
                                     <th colspan="3">Product Size (mm)</th>
-                                    <th>Additional</th>
+                                    <th rowspan="2">Remark</th>
+                                    <th rowspan="2">Result</th>
                                 </tr>
-                                <tr><th>L</th><th>W</th><th>H</th><th></th></tr>
+                                <tr><th>L</th><th>W</th><th>H</th></tr>
                             </thead>
                             <tbody>
                                 <tr>
                                     <td>@_data.ProductSpec.SizeL</td>
                                     <td>@_data.ProductSpec.SizeW</td>
                                     <td>@_data.ProductSpec.SizeH</td>
-                                    <td>@(_qcData?.ProductSpec?.AdditionalText ?? "")</td>
+                                    <td>@(string.IsNullOrWhiteSpace(_qcData?.ProductSpec?.SizeRemark) ? "—" : _qcData.ProductSpec.SizeRemark)</td>
+                                    <td>
+                                        @if (!string.IsNullOrEmpty(_qcData?.ProductSpec?.SizeResult))
+                                        {
+                                            <span class="rpt-compliance-badge comp-@_qcData.ProductSpec.SizeResult.ToLower()">@_qcData.ProductSpec.SizeResult</span>
+                                        }
+                                        else
+                                        {
+                                            <span style="color:#bbb">—</span>
+                                        }
+                                    </td>
                                 </tr>
                             </tbody>
                         </table>
@@ -771,6 +782,26 @@ else if (_data != null)
 
                     @* ii. Compare Golden Sample (chunked: trang đầu 4 ảnh do có table, sau đó 6/trang) *@
                     <div class="rpt-sub-title">ii. Golden Sample/Comparison</div>
+                    <table class="rpt-spec-table">
+                        <thead>
+                            <tr><th style="width:65%">Remark</th><th style="width:35%">Result</th></tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>@(string.IsNullOrWhiteSpace(_qcData?.ProductSpec?.GoldenRemark) ? "—" : _qcData.ProductSpec.GoldenRemark)</td>
+                                <td>
+                                    @if (!string.IsNullOrEmpty(_qcData?.ProductSpec?.GoldenResult))
+                                    {
+                                        <span class="rpt-compliance-badge comp-@_qcData.ProductSpec.GoldenResult.ToLower()">@_qcData.ProductSpec.GoldenResult</span>
+                                    }
+                                    else
+                                    {
+                                        <span style="color:#bbb">—</span>
+                                    }
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
                     var _gpAll = (_qcData?.ProductSpec?.GoldenPhotos ?? Enumerable.Empty<string>())
                         .Where(p => !string.IsNullOrWhiteSpace(p)).ToList();
                     var _gpFirst = _gpAll.Take(4).Cast<string?>().ToList();
@@ -841,9 +872,10 @@ else if (_data != null)
                     <table class="rpt-swatch-table">
                         <thead>
                             <tr>
-                                <th style="width:10%">No</th>
-                                <th style="width:55%">Material</th>
-                                <th style="width:35%">Result</th>
+                                <th style="width:8%">No</th>
+                                <th style="width:35%">Material</th>
+                                <th style="width:32%">Remark</th>
+                                <th style="width:25%">Result</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -856,6 +888,7 @@ else if (_data != null)
                                 <tr>
                                     <td>@sw.No</td>
                                     <td>@(string.IsNullOrWhiteSpace(_swMat) ? "—" : _swMat)</td>
+                                    <td>@(string.IsNullOrWhiteSpace(sw.Remark) ? "—" : sw.Remark)</td>
                                     <td>
                                         @if (!string.IsNullOrEmpty(sw.Result))
                                         {
@@ -1174,6 +1207,14 @@ else if (_data != null)
                             </tr>
                         </tbody>
                     </table>
+                    var aqlResult = _qcData?.Aql?.Result;
+                    if (!string.IsNullOrEmpty(aqlResult))
+                    {
+                        <div class="rpt-aql-result-row" style="display:flex;align-items:center;gap:14px;margin-top:12px">
+                            <span class="rpt-aql-label" style="margin:0">Result</span>
+                            <span class="rpt-compliance-badge comp-@aqlResult.ToLower()">@aqlResult</span>
+                        </div>
+                    }
                 }
                 else
                 {
@@ -1209,11 +1250,13 @@ else if (_data != null)
                             <div class="rpt-defect-photo-wrap">
                                 <div class="rpt-defect-no-photo">No Photo</div>
                             </div>
+                            <div class="rpt-defect-remark">—</div>
                         </div>
                         <div class="rpt-defect-cell">
                             <div class="rpt-defect-photo-wrap">
                                 <div class="rpt-defect-no-photo">No Photo</div>
                             </div>
+                            <div class="rpt-defect-remark">—</div>
                         </div>
                     </div>
                 }
@@ -1249,6 +1292,7 @@ else if (_data != null)
                                     else
                                     { <div class="rpt-defect-no-photo">No Photo</div> }
                                 </div>
+                                <div class="rpt-defect-remark">@(string.IsNullOrEmpty(slot.Remark) ? "—" : slot.Remark)</div>
                             </div>
                         }
                     </div>
@@ -1301,6 +1345,7 @@ else if (_data != null)
                                             else
                                             { <div class="rpt-defect-no-photo">No Photo</div> }
                                         </div>
+                                        <div class="rpt-defect-remark">@(string.IsNullOrEmpty(slot.Remark) ? "—" : slot.Remark)</div>
                                     </div>
                                 }
                             </div>
