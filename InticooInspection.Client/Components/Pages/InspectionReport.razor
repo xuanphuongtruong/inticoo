@@ -102,18 +102,29 @@ else if (_data != null)
                             <td class="rpt-info-val">@(_data.PoNumber ?? "—")</td>
                         </tr>
                         <tr>
-                            <td class="rpt-info-label">Inspection Date &amp; Time</td>
+                            <td class="rpt-info-label">Start Time</td>
                             <td class="rpt-info-val">
-                                @(_data.InspectionDate.HasValue ? _data.InspectionDate.Value.ToString("d MMM yyyy HH:mm") : "—")
+                                @{
+                                    var inspStart = _qcData?.InspectionStartTime ?? _data.InspectionDate;
+                                }
+                                @(inspStart.HasValue ? inspStart.Value.ToString("d MMM yyyy hh:mm tt", System.Globalization.CultureInfo.InvariantCulture) : "—")
                             </td>
-                            <td class="rpt-info-label">Item Number</td>
-                            <td class="rpt-info-val">@(_data.ItemNumber ?? "—")</td>
+                            <td class="rpt-info-label">End Time</td>
+                            <td class="rpt-info-val">
+                                @(_data.CompletedAt.HasValue ? _data.CompletedAt.Value.ToLocalTime().ToString("d MMM yyyy hh:mm tt", System.Globalization.CultureInfo.InvariantCulture) : "—")
+                            </td>
                         </tr>
                         <tr>
+                            <td class="rpt-info-label">Item Number</td>
+                            <td class="rpt-info-val">@(_data.ItemNumber ?? "—")</td>
                             <td class="rpt-info-label">Inspection Type</td>
                             <td class="rpt-info-val">@(_data.InspectionType ?? "—")</td>
+                        </tr>
+                        <tr>
                             <td class="rpt-info-label">Product Name</td>
                             <td class="rpt-info-val">@(_data.ProductName ?? "—")</td>
+                            <td class="rpt-info-label">Product Category</td>
+                            <td class="rpt-info-val">@(_data.ProductCategory ?? "—")</td>
                         </tr>
                         <tr>
                             <td class="rpt-info-label">AQL Sampling Simulator</td>
@@ -122,10 +133,10 @@ else if (_data != null)
                             <td class="rpt-info-val">@(_data.TotalShipmentQty > 0 ? _data.TotalShipmentQty.ToString() : "—")</td>
                         </tr>
                         <tr>
-                            <td class="rpt-info-label">Product Category</td>
-                            <td class="rpt-info-val">@(_data.ProductCategory ?? "—")</td>
                             <td class="rpt-info-label">Total Carton Boxes</td>
                             <td class="rpt-info-val">@(_data.TotalCartonBoxes > 0 ? _data.TotalCartonBoxes.ToString() : "—")</td>
+                            <td class="rpt-info-label"></td>
+                            <td class="rpt-info-val"></td>
                         </tr>
                         @if (!string.IsNullOrWhiteSpace(_data.GeneralRemark))
                         {
@@ -1201,6 +1212,7 @@ else if (_data != null)
                         </div>
                     </div>
                     <div class="rpt-aql-label" style="margin-top:16px;">RESULT</div>
+                    var aqlResult = _qcData?.Aql?.Result;
                     <table class="rpt-result-table">
                         <thead>
                             <tr>
@@ -1208,6 +1220,7 @@ else if (_data != null)
                                 <th class="rpt-th-comp" style="color:#c0392b">Critical</th>
                                 <th class="rpt-th-comp" style="color:#e67e22">Major</th>
                                 <th class="rpt-th-comp" style="color:#27ae60">Minor</th>
+                                <th class="rpt-th-comp" style="width:90px">Result</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -1216,17 +1229,19 @@ else if (_data != null)
                                 <td class="rpt-td-center">@critFound</td>
                                 <td class="rpt-td-center">@majFound</td>
                                 <td class="rpt-td-center">@minFound</td>
+                                <td class="rpt-td-center">
+                                    @if (!string.IsNullOrEmpty(aqlResult))
+                                    {
+                                        <span class="rpt-compliance-badge comp-@aqlResult.ToLower()">@aqlResult</span>
+                                    }
+                                    else
+                                    {
+                                        <span>—</span>
+                                    }
+                                </td>
                             </tr>
                         </tbody>
                     </table>
-                    var aqlResult = _qcData?.Aql?.Result;
-                    if (!string.IsNullOrEmpty(aqlResult))
-                    {
-                        <div class="rpt-aql-result-row" style="display:flex;align-items:center;gap:14px;margin-top:12px">
-                            <span class="rpt-aql-label" style="margin:0">Result</span>
-                            <span class="rpt-compliance-badge comp-@aqlResult.ToLower()">@aqlResult</span>
-                        </div>
-                    }
                 }
                 else
                 {
@@ -1843,6 +1858,7 @@ else if (_data != null)
         public string?   InspectionLocation  { get; set; }
         public string?   PoNumber            { get; set; }
         public DateTime? InspectionDate      { get; set; }
+        public DateTime? CompletedAt         { get; set; }
         public string?   ItemNumber          { get; set; }
         public string?   InspectionType      { get; set; }
         public string?   InspectionReference { get; set; }
@@ -1933,6 +1949,7 @@ else if (_data != null)
     // ── QC Result (from PUT/GET qc-result endpoint) ──
     public class QcResultDto
     {
+        public DateTime?                   InspectionStartTime { get; set; }
         public List<QcOverallDto>          OverallConclusions { get; set; } = new();
         public QcQuantityConformityDto?    QuantityConformity { get; set; }
         public QcPackagingResultDto?       Packaging          { get; set; }

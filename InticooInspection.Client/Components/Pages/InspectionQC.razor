@@ -103,8 +103,10 @@ else
                     <div class="qc-info-row"><span class="qc-info-lbl">Vendor ID</span><span class="qc-info-val">@(_inspection.VendorId ?? "—")</span></div>
                     <div class="qc-info-row"><span class="qc-info-lbl">Inspection Location</span>
                         <span class="qc-info-val">@(!string.IsNullOrEmpty(_data.InspectionLocation) ? _data.InspectionLocation : "—")</span></div>
-                    <div class="qc-info-row"><span class="qc-info-lbl">Inspection Date &amp; Time</span>
-                        <span class="qc-info-val qc-auto">@DateTime.Now.ToString("dd MMM yyyy HH:mm")</span></div>
+                    <div class="qc-info-row"><span class="qc-info-lbl">Start Time</span>
+                        <span class="qc-info-val qc-auto">@_inspectionStartTime.ToString("dd MMM yyyy hh:mm tt", System.Globalization.CultureInfo.InvariantCulture)</span></div>
+                    <div class="qc-info-row"><span class="qc-info-lbl">End Time</span>
+                        <span class="qc-info-val qc-auto">@(_inspectionEndTime.HasValue ? _inspectionEndTime.Value.ToString("dd MMM yyyy hh:mm tt", System.Globalization.CultureInfo.InvariantCulture) : "—")</span></div>
                     <div class="qc-info-row"><span class="qc-info-lbl">Inspection Type</span><span class="qc-info-val">@_inspection.InspectionType</span></div>
                     <div class="qc-info-row">
                         <span class="qc-info-lbl">AQL Sampling Simulator</span>
@@ -1397,6 +1399,8 @@ else
     string _uploadingKey = "";
     InspectionDetailDto? _inspection;
     QcFormData _data = new();
+    DateTime _inspectionStartTime = DateTime.Now;   // thời điểm bắt đầu kiểm hàng — ghi lại mỗi lần mở màn hình
+    DateTime? _inspectionEndTime;                    // chỉ để hiển thị trên màn hình khi bấm Done; giờ kết thúc thực lưu ở cột Inspection.CompletedAt
     int _currentStepIdx = 0;
     int _cartonCount = 1;       // số carton từ DB (CartonNumber)
 
@@ -1630,6 +1634,7 @@ else
 
     async Task LoadInspection()
     {
+        _inspectionStartTime = DateTime.Now;   // ghi nhận thời điểm bắt đầu kiểm mỗi lần mở/mở lại màn hình
         _loading  = true;
         _saveMsg  = "";
         _saveError = false;
@@ -2695,6 +2700,7 @@ else
         }
         _saving = true;
         _saveMsg = "";
+        _inspectionEndTime = DateTime.Now;   // chốt giờ kết thúc tại thời điểm bấm Done
         try
         {
             var payload = BuildSavePayload();
@@ -2743,6 +2749,7 @@ else
             finalResult         = _data.FinalResult,
             signatureUrl        = _data.SignatureUrl,
             inspectionDate      = DateTime.Now,
+            inspectionStartTime = _inspectionStartTime,
             photo1Url           = _data.Photo1Url,
             photo2Url           = _data.Photo2Url,
             overallConclusions  = _data.OverallConclusions.Select(oc => new

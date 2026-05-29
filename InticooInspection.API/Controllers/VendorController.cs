@@ -671,11 +671,11 @@ namespace InticooInspection.API.Controllers
                     try
                     {
                         var doc = System.Text.Json.JsonDocument.Parse(i.QcResultJson!);
-                        if (doc.RootElement.TryGetProperty("aql", out var aql))
+                        if (TryGetPropertyCI(doc.RootElement, "aql", out var aql))
                         {
-                            if (aql.TryGetProperty("criticalFound", out var cf)) mCritical += cf.GetInt32();
-                            if (aql.TryGetProperty("majorFound",    out var mf)) mMajor    += mf.GetInt32();
-                            if (aql.TryGetProperty("minorFound",    out var nf)) mMinor    += nf.GetInt32();
+                            mCritical += GetIntCI(aql, "criticalFound");
+                            mMajor    += GetIntCI(aql, "majorFound");
+                            mMinor    += GetIntCI(aql, "minorFound");
                         }
                     }
                     catch { }
@@ -704,11 +704,11 @@ namespace InticooInspection.API.Controllers
                     try
                     {
                         var doc = System.Text.Json.JsonDocument.Parse(i.QcResultJson!);
-                        if (doc.RootElement.TryGetProperty("aql", out var aql))
+                        if (TryGetPropertyCI(doc.RootElement, "aql", out var aql))
                         {
-                            if (aql.TryGetProperty("criticalFound", out var cf)) yCritical += cf.GetInt32();
-                            if (aql.TryGetProperty("majorFound",    out var mf)) yMajor    += mf.GetInt32();
-                            if (aql.TryGetProperty("minorFound",    out var nf)) yMinor    += nf.GetInt32();
+                            yCritical += GetIntCI(aql, "criticalFound");
+                            yMajor    += GetIntCI(aql, "majorFound");
+                            yMinor    += GetIntCI(aql, "minorFound");
                         }
                     }
                     catch { }
@@ -748,7 +748,38 @@ namespace InticooInspection.API.Controllers
                 return StatusCode(500, new { error = ex.Message });
             }
         }
-    
+
+        // ── Case-insensitive JSON helpers ───────────────────────────────────
+        // QcResultJson được lưu với property PascalCase ("CriticalFound"), nên
+        // phải tra cứu không phân biệt hoa/thường để đọc đúng dữ liệu đã lưu.
+        private static bool TryGetPropertyCI(System.Text.Json.JsonElement element, string name, out System.Text.Json.JsonElement value)
+        {
+            if (element.ValueKind == System.Text.Json.JsonValueKind.Object)
+            {
+                foreach (var p in element.EnumerateObject())
+                {
+                    if (string.Equals(p.Name, name, StringComparison.OrdinalIgnoreCase))
+                    {
+                        value = p.Value;
+                        return true;
+                    }
+                }
+            }
+            value = default;
+            return false;
+        }
+
+        private static int GetIntCI(System.Text.Json.JsonElement element, string name)
+        {
+            if (TryGetPropertyCI(element, name, out var v) &&
+                v.ValueKind == System.Text.Json.JsonValueKind.Number &&
+                v.TryGetInt32(out var n))
+            {
+                return n;
+            }
+            return 0;
+        }
+
         // ─────────────────────────────────────────────────────────────────
         // GET api/vendors/template
         // ─────────────────────────────────────────────────────────────────

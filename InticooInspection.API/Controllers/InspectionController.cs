@@ -1453,6 +1453,7 @@ namespace InticooInspection.API.Controllers
                 var qcData = new
                 {
                     schemaVersion = request.SchemaVersion,
+                    inspectionStartTime = request.InspectionStartTime,
                     overallConclusions = request.OverallConclusions,
                     quantityConformity = request.QuantityConformity,
                     packaging = request.Packaging,
@@ -1554,8 +1555,9 @@ namespace InticooInspection.API.Controllers
                 // Serialize QcResultJson — giống endpoint chính
                 var qcData = new
                 {
-                    schemaVersion      = request.SchemaVersion,
-                    overallConclusions = request.OverallConclusions,
+                    schemaVersion       = request.SchemaVersion,
+                    inspectionStartTime = request.InspectionStartTime,
+                    overallConclusions  = request.OverallConclusions,
                     quantityConformity = request.QuantityConformity,
                     packaging          = request.Packaging,
                     productSpec        = request.ProductSpec,
@@ -1884,6 +1886,7 @@ namespace InticooInspection.API.Controllers
         public string?   Photo2Url           { get; set; }   // → Inspection.Photo2Url
         // ── Serialize vào QcResultJson ───────────────────────
         public int       SchemaVersion       { get; set; } = 1;
+        public DateTime? InspectionStartTime { get; set; }   // thời điểm bắt đầu kiểm hàng (màn hình QC). Giờ kết thúc dùng cột Inspection.CompletedAt
 
         public List<QcOverallConclusionDto>  OverallConclusions { get; set; } = new();
         public QcQuantityConformityDto?      QuantityConformity { get; set; }
