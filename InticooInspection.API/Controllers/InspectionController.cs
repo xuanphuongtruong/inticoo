@@ -1599,50 +1599,6 @@ namespace InticooInspection.API.Controllers
             }
         }
 
-        // ═══════════════════════════════════════════════════════════════
-        // POST api/inspections/{id}/test-completion-email
-        // TEST: gửi lại email "Done" (báo cáo hoàn thành) của 1 inspection
-        // CÓ THẬT tới 1 email chỉ định, để kiểm tra template/gửi mail.
-        // CHỈ ĐỌC inspection (AsNoTracking) → KHÔNG ghi DB, KHÔNG đổi
-        // Status/CompletedAt, KHÔNG ảnh hưởng báo cáo hiện tại.
-        // ═══════════════════════════════════════════════════════════════
-        [HttpPost("{id}/test-completion-email")]
-        [AllowAnonymous]
-        public async Task<IActionResult> TestCompletionEmail(int id, [FromBody] TestCompletionEmailRequest request)
-        {
-            if (string.IsNullOrWhiteSpace(request?.ToEmail) || !request.ToEmail.Contains('@'))
-                return BadRequest(new { success = false, error = "ToEmail không hợp lệ" });
-
-            var inspection = await _db.Inspections
-                .AsNoTracking()
-                .FirstOrDefaultAsync(i => i.Id == id);
-
-            if (inspection == null)
-                return NotFound(new { success = false, error = "Inspection not found" });
-
-            try
-            {
-                await SendCompletionEmailAsync(inspection, request.ToEmail.Trim());
-                return Ok(new
-                {
-                    success      = true,
-                    message      = $"Đã gửi email báo cáo hoàn thành tới {request.ToEmail.Trim()}",
-                    inspectionId = inspection.Id,
-                    jobNumber    = inspection.JobNumber,
-                    finalResult  = inspection.FinalResult
-                });
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new
-                {
-                    success = false,
-                    error   = ex.Message,
-                    inner   = ex.InnerException?.Message
-                });
-            }
-        }
-
         // ════════════════════════════════════════════════════════
         // Helper: Gửi email hoàn thành inspection cho Customer
         // Dùng chung cấu hình MailSettings:* với mail vendor hàng tuần.
@@ -1778,11 +1734,6 @@ namespace InticooInspection.API.Controllers
             await client.SendMailAsync(msg);
         }
     } // end class InspectionController
-
-    public class TestCompletionEmailRequest
-    {
-        public string ToEmail { get; set; } = "";
-    }
 
     public class CreateInspectionRequest
     {
