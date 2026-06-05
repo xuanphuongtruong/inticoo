@@ -1385,6 +1385,24 @@ else
             </div>
         </div>
     }
+
+    <!-- EXIT CONFIRM DIALOG — nhãn nút cố định OK / Cancel -->
+    @if (_showExitConfirm)
+    {
+        <div class="proto-backdrop" @onclick="CancelExit">
+            <div class="proto-modal qc-exit-modal" @onclick:stopPropagation="true">
+                <div class="proto-modal-header">
+                    <span class="proto-modal-title">Exit Inspection</span>
+                    <button class="proto-close-btn" @onclick="CancelExit">✕</button>
+                </div>
+                <div class="proto-modal-body">Are you sure you want to exit?</div>
+                <div class="proto-modal-footer qc-exit-footer">
+                    <button class="proto-cancel-btn" @onclick="CancelExit">Cancel</button>
+                    <button class="proto-ok-btn" @onclick="ConfirmExit">OK</button>
+                </div>
+            </div>
+        </div>
+    }
 }
 
 <!-- ═══════════════════════ CODE-BEHIND ═══════════════════════ -->
@@ -1919,7 +1937,7 @@ else
     }
 
     // ── Navigation ──
-    async Task HandleBack()
+    void HandleBack()
     {
         if (_currentStepIdx > 0)
         {
@@ -1930,11 +1948,16 @@ else
         }
         else
         {
-            // Đang ở bước đầu → bấm back là thoát màn hình. Hỏi xác nhận trước.
-            var confirmed = await JS.InvokeAsync<bool>("confirm", "Are you sure you want to exit?");
-            if (confirmed) GoBack();
+            // Đang ở bước đầu → bấm back là thoát màn hình. Mở dialog xác nhận tùy biến
+            // (dùng modal riêng để cố định nhãn nút OK / Cancel, không phụ thuộc ngôn ngữ trình duyệt).
+            _showExitConfirm = true;
         }
     }
+
+    // ── Exit confirm dialog (nút OK / Cancel cố định) ──
+    bool _showExitConfirm = false;
+    void ConfirmExit() { _showExitConfirm = false; GoBack(); }
+    void CancelExit()  { _showExitConfirm = false; }
     bool _qtyValidated    = false;
     bool _sizeValidated   = false;
     bool _goldenValidated = false;
@@ -3783,6 +3806,17 @@ else
         transition: background .15s;
     }
     .proto-ok-btn:hover { background: #1565c0; }
+
+    /* ── Exit confirm dialog ── */
+    .qc-exit-modal { max-width: 380px; }
+    .qc-exit-footer { gap: 10px; }
+    .proto-cancel-btn {
+        background: #fff; color: #555; border: 1px solid #d5d8e0;
+        border-radius: 10px; padding: 9px 24px;
+        font-size: 14px; font-weight: 600; cursor: pointer;
+        transition: background .15s, border-color .15s;
+    }
+    .proto-cancel-btn:hover { background: #f3f4f7; border-color: #b9bdc9; }
 
     /* ── Remark row (preview + View button) ── */
     .qc-remark-row {
