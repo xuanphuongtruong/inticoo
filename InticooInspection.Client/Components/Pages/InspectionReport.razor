@@ -737,12 +737,33 @@ else if (_data != null)
             <!-- ══ SECTION C (1/2): Product Specification Compliance — Size + Golden ══ -->
             @if (IsPass("C"))
             {
-            <div class="rpt-section page-break-after">
-                <div class="rpt-section-title rpt-section-title-lg">C. Product Specification Compliance (1/2)</div>
-
-                @if (_data.ProductSpec != null || _qcData?.ProductSpec != null)
+            @if (_data.ProductSpec != null || _qcData?.ProductSpec != null)
+            {
+                // Ảnh Product Size: ưu tiên SizePhotos (List<string>) – đây là field màn QC lưu thực tế.
+                var _spAll = (_qcData?.ProductSpec?.SizePhotos ?? Enumerable.Empty<string>())
+                    .Where(p => !string.IsNullOrWhiteSpace(p)).ToList();
+                // Fallback dữ liệu cũ: lấy photoUrl từ SizeRows nếu chưa có SizePhotos.
+                if (_spAll.Count == 0 && _qcData?.ProductSpec?.SizeRows != null)
                 {
-                    <!-- i. Product Size -->
+                    _spAll = _qcData.ProductSpec.SizeRows
+                        .Select(r => r.TryGetProperty("photoUrl", out var pu) ? pu.GetString() : null)
+                        .Where(p => !string.IsNullOrWhiteSpace(p))
+                        .Select(p => p!)
+                        .ToList();
+                }
+                // Trang đầu Product Size: bảng spec + tối đa 4 ảnh (phần dư sang trang phụ).
+                var _spFirst = _spAll.Take(4).Cast<string?>().ToList();
+                if (_spFirst.Count > 0 && _spFirst.Count % 2 != 0) _spFirst.Add(null);
+
+                var _gpAll = (_qcData?.ProductSpec?.GoldenPhotos ?? Enumerable.Empty<string>())
+                    .Where(p => !string.IsNullOrWhiteSpace(p)).ToList();
+                var _gpFirst = _gpAll.Take(4).Cast<string?>().ToList();
+                if (_gpFirst.Count > 0 && _gpFirst.Count % 2 != 0) _gpFirst.Add(null);
+                if (_gpFirst.Count == 0) _gpFirst = new List<string?> { null, null };
+
+                @* ── i. Product Size — trang đầu: bảng spec + tối đa 4 ảnh ── *@
+                <div class="rpt-section page-break-after">
+                    <div class="rpt-section-title rpt-section-title-lg">C. Product Specification Compliance (1/2)</div>
                     <div class="rpt-sub-title">i. Product Size</div>
                     @if (_data.ProductSpec != null)
                     {
@@ -775,29 +796,56 @@ else if (_data != null)
                             </tbody>
                         </table>
                     }
-                    // Ảnh Product Size: ưu tiên SizePhotos (List<string>) – đây là field màn QC lưu thực tế.
-                    var _spAll = (_qcData?.ProductSpec?.SizePhotos ?? Enumerable.Empty<string>())
-                        .Where(p => !string.IsNullOrWhiteSpace(p)).ToList();
-                    // Fallback dữ liệu cũ: lấy photoUrl từ SizeRows nếu chưa có SizePhotos.
-                    if (_spAll.Count == 0 && _qcData?.ProductSpec?.SizeRows != null)
-                    {
-                        _spAll = _qcData.ProductSpec.SizeRows
-                            .Select(r => r.TryGetProperty("photoUrl", out var pu) ? pu.GetString() : null)
-                            .Where(p => !string.IsNullOrWhiteSpace(p))
-                            .Select(p => p!)
-                            .ToList();
-                    }
-                    @if (_spAll.Count > 0)
+                    @if (_spFirst.Count > 0)
                     {
                         <div class="rpt-photo-grid-2">
-                            @foreach (var _su in _spAll)
+                            @foreach (var _su in _spFirst)
                             {
-                                <div class="rpt-photo-cell"><img src="@NormalizeUrl(_su)" class="rpt-photo" alt="Product size photo" loading="eager"/></div>
+                                <div class="rpt-photo-cell">
+                                    @if (!string.IsNullOrEmpty(_su))
+                                    { <img src="@NormalizeUrl(_su)" class="rpt-photo" alt="Product size photo" loading="eager"/> }
+                                </div>
                             }
                         </div>
                     }
+                    <div class="rpt-footer">
+                        <div class="rpt-footer-inner">
+                            <span class="rpt-footer-text">www.inticoo.com<br/>The results presented herein reflect findings at the time and place of inspection. This report does not release the seller or manufacturer from obligations, nor affect the buyer’s right to claim for defects not identified or arising later. It is not shipment evidence, and client approval is required before release.</span>
+                            <span class="rpt-footer-page"></span>
+                        </div>
+                    </div>
+                </div>
 
-                    @* ii. Compare Golden Sample (chunked: trang đầu 4 ảnh do có table, sau đó 6/trang) *@
+                @* ── i. Product Size — trang phụ khi > 4 ảnh (6 ảnh/trang) ── *@
+                @if (_spAll.Count > 4)
+                {
+                    foreach (var _spPage in ChunkPhotosForPages(_spAll.Skip(4)))
+                    {
+                        <div class="rpt-section page-break-after">
+                            <div class="rpt-section-title rpt-section-title-lg">C. Product Specification Compliance (1/2)</div>
+                            <div class="rpt-sub-title">i. Product Size</div>
+                            <div class="rpt-photo-grid-2">
+                                @foreach (var _su in _spPage)
+                                {
+                                    <div class="rpt-photo-cell">
+                                        @if (!string.IsNullOrEmpty(_su))
+                                        { <img src="@NormalizeUrl(_su)" class="rpt-photo" alt="Product size photo" loading="eager"/> }
+                                    </div>
+                                }
+                            </div>
+                            <div class="rpt-footer">
+                                <div class="rpt-footer-inner">
+                                    <span class="rpt-footer-text">www.inticoo.com<br/>The results presented herein reflect findings at the time and place of inspection. This report does not release the seller or manufacturer from obligations, nor affect the buyer’s right to claim for defects not identified or arising later. It is not shipment evidence, and client approval is required before release.</span>
+                                    <span class="rpt-footer-page"></span>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                }
+
+                @* ── ii. Golden Sample — trang đầu: bảng + tối đa 4 ảnh ── *@
+                <div class="rpt-section page-break-after">
+                    <div class="rpt-section-title rpt-section-title-lg">C. Product Specification Compliance (1/2)</div>
                     <div class="rpt-sub-title">ii. Golden Sample/Comparison</div>
                     <table class="rpt-spec-table">
                         <thead>
@@ -819,11 +867,6 @@ else if (_data != null)
                             </tr>
                         </tbody>
                     </table>
-                    var _gpAll = (_qcData?.ProductSpec?.GoldenPhotos ?? Enumerable.Empty<string>())
-                        .Where(p => !string.IsNullOrWhiteSpace(p)).ToList();
-                    var _gpFirst = _gpAll.Take(4).Cast<string?>().ToList();
-                    if (_gpFirst.Count > 0 && _gpFirst.Count % 2 != 0) _gpFirst.Add(null);
-                    if (_gpFirst.Count == 0) _gpFirst = new List<string?> { null, null };
                     <div class="rpt-photo-grid-2">
                         @foreach (var _gu in _gpFirst)
                         {
@@ -833,19 +876,27 @@ else if (_data != null)
                             </div>
                         }
                     </div>
-                }
-                else
-                {
-                    <div class="rpt-no-data">No product specification data recorded.</div>
-                }
-
-                <div class="rpt-footer">
-                    <div class="rpt-footer-inner">
-                        <span class="rpt-footer-text">www.inticoo.com<br/>The results presented herein reflect findings at the time and place of inspection. This report does not release the seller or manufacturer from obligations, nor affect the buyer’s right to claim for defects not identified or arising later. It is not shipment evidence, and client approval is required before release.</span>
-                        <span class="rpt-footer-page"></span>
+                    <div class="rpt-footer">
+                        <div class="rpt-footer-inner">
+                            <span class="rpt-footer-text">www.inticoo.com<br/>The results presented herein reflect findings at the time and place of inspection. This report does not release the seller or manufacturer from obligations, nor affect the buyer’s right to claim for defects not identified or arising later. It is not shipment evidence, and client approval is required before release.</span>
+                            <span class="rpt-footer-page"></span>
+                        </div>
                     </div>
                 </div>
-            </div>
+            }
+            else
+            {
+                <div class="rpt-section page-break-after">
+                    <div class="rpt-section-title rpt-section-title-lg">C. Product Specification Compliance (1/2)</div>
+                    <div class="rpt-no-data">No product specification data recorded.</div>
+                    <div class="rpt-footer">
+                        <div class="rpt-footer-inner">
+                            <span class="rpt-footer-text">www.inticoo.com<br/>The results presented herein reflect findings at the time and place of inspection. This report does not release the seller or manufacturer from obligations, nor affect the buyer’s right to claim for defects not identified or arising later. It is not shipment evidence, and client approval is required before release.</span>
+                            <span class="rpt-footer-page"></span>
+                        </div>
+                    </div>
+                </div>
+            }
 
             @* Trang Golden Sample tiếp theo (nếu > 4 ảnh) *@
             @if (_qcData?.ProductSpec?.GoldenPhotos != null)
