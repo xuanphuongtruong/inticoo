@@ -1498,7 +1498,7 @@ namespace InticooInspection.API.Controllers
                             var customer = await _db.Customers
                                 .FirstOrDefaultAsync(c => c.CustomerId == inspection.CustomerId);
                             if (customer != null && !string.IsNullOrEmpty(customer.Email))
-                                await SendCompletionEmailAsync(inspection, customer.Email);
+                                await SendCompletionEmailAsync(inspection, customer.Email, customer.AlternateReportEmail);
                         }
                     }
                     catch (Exception emailEx)
@@ -1604,7 +1604,7 @@ namespace InticooInspection.API.Controllers
         // Dùng chung cấu hình MailSettings:* với mail vendor hàng tuần.
         // (KHÔNG đọc section "Email:" cũ nữa để tránh phải cấu hình 2 nơi)
         // ════════════════════════════════════════════════════════
-        private async Task SendCompletionEmailAsync(Inspection inspection, string toEmail)
+        private async Task SendCompletionEmailAsync(Inspection inspection, string toEmail, string? ccEmail = null)
         {
             // Đọc cùng cấu hình SMTP với mail vendor hàng tuần (no-reply@inticoo.com)
             var smtp     = _config["MailSettings:SmtpHost"] ?? "smtp.office365.com";
@@ -1730,6 +1730,14 @@ namespace InticooInspection.API.Controllers
                 SubjectEncoding = System.Text.Encoding.UTF8
             };
             msg.To.Add(toEmail);
+
+            // CC AlternateReportEmail của customer (nếu có dữ liệu, hợp lệ và khác địa chỉ To)
+            if (!string.IsNullOrWhiteSpace(ccEmail)
+                && ccEmail.Contains('@')
+                && !string.Equals(ccEmail.Trim(), toEmail.Trim(), StringComparison.OrdinalIgnoreCase))
+            {
+                msg.CC.Add(ccEmail.Trim());
+            }
 
             await client.SendMailAsync(msg);
         }
