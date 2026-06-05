@@ -1919,7 +1919,7 @@ else
     }
 
     // ── Navigation ──
-    void HandleBack()
+    async Task HandleBack()
     {
         if (_currentStepIdx > 0)
         {
@@ -1928,7 +1928,12 @@ else
             while (_currentStepIdx > 1 && IsStepSkippedByCompliance(_currentStepIdx))
                 _currentStepIdx--;
         }
-        else GoBack();
+        else
+        {
+            // Đang ở bước đầu → bấm back là thoát màn hình. Hỏi xác nhận trước.
+            var confirmed = await JS.InvokeAsync<bool>("confirm", "Are you sure you want to exit?");
+            if (confirmed) GoBack();
+        }
     }
     bool _qtyValidated    = false;
     bool _sizeValidated   = false;

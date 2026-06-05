@@ -102,16 +102,14 @@ else if (_data != null)
                             <td class="rpt-info-val">@(_data.PoNumber ?? "—")</td>
                         </tr>
                         <tr>
-                            <td class="rpt-info-label">Start Time</td>
-                            <td class="rpt-info-val">
+                            <td class="rpt-info-label">Inspection Date &amp; Time</td>
+                            <td class="rpt-info-val" colspan="3">
                                 @{
                                     var inspStart = _qcData?.InspectionStartTime ?? _data.InspectionDate;
+                                    var startStr  = inspStart.HasValue ? inspStart.Value.ToString("d MMM yyyy hh:mm tt", System.Globalization.CultureInfo.InvariantCulture) : "—";
+                                    var endStr    = _data.CompletedAt.HasValue ? _data.CompletedAt.Value.ToLocalTime().ToString("d MMM yyyy hh:mm tt", System.Globalization.CultureInfo.InvariantCulture) : "—";
                                 }
-                                @(inspStart.HasValue ? inspStart.Value.ToString("d MMM yyyy hh:mm tt", System.Globalization.CultureInfo.InvariantCulture) : "—")
-                            </td>
-                            <td class="rpt-info-label">End Time</td>
-                            <td class="rpt-info-val">
-                                @(_data.CompletedAt.HasValue ? _data.CompletedAt.Value.ToLocalTime().ToString("d MMM yyyy hh:mm tt", System.Globalization.CultureInfo.InvariantCulture) : "—")
+                                <strong>Start time:</strong> @startStr &nbsp;&nbsp;|&nbsp;&nbsp; <strong>End time:</strong> @endStr
                             </td>
                         </tr>
                         <tr>
@@ -777,16 +775,24 @@ else if (_data != null)
                             </tbody>
                         </table>
                     }
-                    @if (_qcData?.ProductSpec?.SizeRows?.Any() == true)
+                    // Ảnh Product Size: ưu tiên SizePhotos (List<string>) – đây là field màn QC lưu thực tế.
+                    var _spAll = (_qcData?.ProductSpec?.SizePhotos ?? Enumerable.Empty<string>())
+                        .Where(p => !string.IsNullOrWhiteSpace(p)).ToList();
+                    // Fallback dữ liệu cũ: lấy photoUrl từ SizeRows nếu chưa có SizePhotos.
+                    if (_spAll.Count == 0 && _qcData?.ProductSpec?.SizeRows != null)
+                    {
+                        _spAll = _qcData.ProductSpec.SizeRows
+                            .Select(r => r.TryGetProperty("photoUrl", out var pu) ? pu.GetString() : null)
+                            .Where(p => !string.IsNullOrWhiteSpace(p))
+                            .Select(p => p!)
+                            .ToList();
+                    }
+                    @if (_spAll.Count > 0)
                     {
                         <div class="rpt-photo-grid-2">
-                            @foreach (var row in _qcData.ProductSpec.SizeRows)
+                            @foreach (var _su in _spAll)
                             {
-                                var url = row.GetProperty("photoUrl").GetString();
-                                if (!string.IsNullOrEmpty(url))
-                                {
-                                    <div class="rpt-photo-cell"><img src="@NormalizeUrl(url)" class="rpt-photo" alt="Product size photo" loading="eager"/></div>
-                                }
+                                <div class="rpt-photo-cell"><img src="@NormalizeUrl(_su)" class="rpt-photo" alt="Product size photo" loading="eager"/></div>
                             }
                         </div>
                     }
@@ -2003,6 +2009,7 @@ else if (_data != null)
         public string?                 GoldenResult   { get; set; }
         public string?                 AdditionalText { get; set; }
         public List<JsonElement>?      SizeRows       { get; set; }
+        public List<string>?           SizePhotos     { get; set; }
         public List<string>?           GoldenPhotos   { get; set; }
         public List<string>?           SwatchPhotos   { get; set; }
         public List<QcColourSwatchDto> ColourSwatches { get; set; } = new();
