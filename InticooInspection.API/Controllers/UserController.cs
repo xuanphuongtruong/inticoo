@@ -29,9 +29,16 @@ namespace InticooInspection.API.Controllers
             [FromQuery] string? search,
             [FromQuery] string? roles,
             [FromQuery] int page = 1,
-            [FromQuery] int pageSize = 20)
+            [FromQuery] int pageSize = 20,
+            [FromQuery] bool onlyLoginVisible = false)
         {
             var query = _userManager.Users.AsQueryable();
+
+            // Màn hình Login Account (Users) truyền onlyLoginVisible=true:
+            // chỉ hiện account có ShowInLoginAccount = true (cột được tick).
+            // Inspector Profile không truyền → hiển thị tất cả.
+            if (onlyLoginVisible)
+                query = query.Where(u => u.ShowInLoginAccount);
 
             // ── Filter by roles (comma-separated) ──
             // Identity stores role assignments in AspNetUserRoles + AspNetRoles.
@@ -139,6 +146,7 @@ namespace InticooInspection.API.Controllers
                 Mobile              = request.Mobile,
                 CustomerId          = request.CustomerId,
                 PageAccess          = request.PageAccess,
+                ShowInLoginAccount  = request.ShowInLoginAccount ?? true,
                 CreatedAt           = DateTime.UtcNow,
                 EmailConfirmed      = true,
                 LockoutEnabled      = true
@@ -187,6 +195,10 @@ namespace InticooInspection.API.Controllers
     if (request.Country    != null) user.Country    = request.Country;
     if (request.CustomerId != null) user.CustomerId = request.CustomerId;
     if (request.PageAccess != null) user.PageAccess = request.PageAccess;
+
+    // ShowInLoginAccount: chỉ form Inspector Profile gửi field này (nullable).
+    // Form Users không gửi → giữ nguyên giá trị hiện tại, tránh vô tình ẩn account.
+    if (request.ShowInLoginAccount.HasValue) user.ShowInLoginAccount = request.ShowInLoginAccount.Value;
 
     // ── Các trường KHÔNG có trên form Blazor — CHỈ update nếu client gửi ──
     // Đây chính là nguồn gốc của bug: trước đây gán thẳng = null làm mất data.
@@ -413,7 +425,8 @@ namespace InticooInspection.API.Controllers
             postalCode          = u.PostalCode,
             mobile              = u.Mobile,
             customerId          = u.CustomerId,
-            pageAccess          = u.PageAccess
+            pageAccess          = u.PageAccess,
+            showInLoginAccount  = u.ShowInLoginAccount
         };
     
         // ─────────────────────────────────────────────────────────────────
@@ -640,6 +653,7 @@ namespace InticooInspection.API.Controllers
         public string?  Mobile              { get; set; }
         public string?  CustomerId          { get; set; }
         public string?  PageAccess          { get; set; }
+        public bool?    ShowInLoginAccount  { get; set; }
     }
 
     public class UpdateUserRequest
@@ -672,6 +686,7 @@ namespace InticooInspection.API.Controllers
         public string?  Mobile              { get; set; }
         public string?  CustomerId          { get; set; }
         public string?  PageAccess          { get; set; }
+        public bool?    ShowInLoginAccount  { get; set; }
     }
 
     public class ChangePasswordRequest

@@ -1731,12 +1731,17 @@ namespace InticooInspection.API.Controllers
             };
             msg.To.Add(toEmail);
 
-            // CC AlternateReportEmail của customer (nếu có dữ liệu, hợp lệ và khác địa chỉ To)
-            if (!string.IsNullOrWhiteSpace(ccEmail)
-                && ccEmail.Contains('@')
-                && !string.Equals(ccEmail.Trim(), toEmail.Trim(), StringComparison.OrdinalIgnoreCase))
+            // CC AlternateReportEmail của customer — hỗ trợ NHIỀU email phân tách bằng
+            // ; , khoảng trắng / xuống dòng. Bỏ qua địa chỉ không hợp lệ, trùng To, trùng nhau.
+            if (!string.IsNullOrWhiteSpace(ccEmail))
             {
-                msg.CC.Add(ccEmail.Trim());
+                var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { toEmail.Trim() };
+                var ccAddrs = ccEmail
+                    .Split(new[] { ';', ',', ' ', '\t', '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries)
+                    .Select(a => a.Trim())
+                    .Where(a => a.Contains('@') && seen.Add(a));
+                foreach (var addr in ccAddrs)
+                    msg.CC.Add(addr);
             }
 
             await client.SendMailAsync(msg);

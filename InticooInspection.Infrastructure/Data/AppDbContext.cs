@@ -296,6 +296,7 @@ namespace InticooInspection.Infrastructure.Data
                 e.Property(x => x.Mobile).HasMaxLength(50);
                 e.Property(x => x.CvUrl).HasMaxLength(500);
                 e.Property(x => x.AvatarUrl).HasMaxLength(500);
+                e.Property(x => x.ShowInLoginAccount).HasDefaultValue(true);
             });
 
             builder.Entity<Vendor>(e =>

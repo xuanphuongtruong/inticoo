@@ -170,11 +170,18 @@ else
 
             @* ── Status ── *@
             <div class="frow">
-                <div class="fcell fcell-full">
+                <div class="fcell">
                     <label class="flabel">Status</label>
                     <label class="check-label" style="margin-top:6px;">
                         <input type="checkbox" @bind="_formIsActive" />
                         <span>@(_formIsActive ? "Active" : "Inactive")</span>
+                    </label>
+                </div>
+                <div class="fcell">
+                    <label class="flabel">Login Account</label>
+                    <label class="check-label" style="margin-top:6px;">
+                        <input type="checkbox" @bind="_formShowInLoginAccount" />
+                        <span>Show in Login Account</span>
                     </label>
                 </div>
             </div>
@@ -634,6 +641,7 @@ else
     private bool              _loadingCountries = true;
 
     private bool    _formIsActive = true;
+    private bool    _formShowInLoginAccount = true;
     private string  _formError    = "";
     private bool    _saving       = false;
 
@@ -711,7 +719,7 @@ else
         _formLanguages = new();
         _formAddress1 = ""; _formAddress2 = "";
         _formCity = ""; _formState = ""; _formCountry = ""; _formPostalCode = "";
-        _formIsActive = true; _formError = "";
+        _formIsActive = true; _formShowInLoginAccount = true; _formError = "";
         _cvFile = null; _cvError = ""; _existingCvUrl = null;
         _photoFile = null; _photoError = ""; _existingPhotoUrl = null;
     }
@@ -838,6 +846,7 @@ else
         _formCountry             = u.Country            ?? "";
         _formPostalCode          = u.PostalCode         ?? "";
         _formIsActive            = u.IsActive;
+        _formShowInLoginAccount  = u.ShowInLoginAccount;
         _formError               = "";
         _cvFile                  = null; _cvError = ""; _existingCvUrl   = u.CvUrl;
         _photoFile               = null; _photoError = ""; _existingPhotoUrl = u.PhotoUrl;
@@ -1004,6 +1013,7 @@ else
                     inspectionStartYear = _formInspectionStartYear,
                     language            = string.Join(",", _formLanguages),
                     isActive            = _formIsActive,
+                    showInLoginAccount  = _formShowInLoginAccount,
                     roles               = new[] { INSPECTOR_ROLE },
                     cvUrl               = cvUrl,
                     photoUrl            = photoUrl,
@@ -1035,6 +1045,7 @@ else
                     inspectionStartYear = _formInspectionStartYear,
                     language            = string.Join(",", _formLanguages),
                     isActive            = _formIsActive,
+                    showInLoginAccount  = _formShowInLoginAccount,
                     roles               = new[] { INSPECTOR_ROLE },
                     cvUrl               = cvUrl,
                     photoUrl            = photoUrl,
@@ -1100,6 +1111,7 @@ else
         public int?     InspectionStartYear { get; set; }
         public string?  Language            { get; set; }
         public bool     IsActive            { get; set; }
+        public bool     ShowInLoginAccount  { get; set; } = true;
         public List<string> Roles           { get; set; } = new();
         public DateTime CreatedAt           { get; set; }
         public string?  CvUrl               { get; set; }

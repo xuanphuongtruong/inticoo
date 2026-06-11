@@ -363,9 +363,11 @@ else
                 ? "Customer,Inspector"
                 : _filterRole;
 
+            // onlyLoginVisible=true: chỉ hiển thị account có cột ShowInLoginAccount được tick.
             var url = $"api/users?page={page}&pageSize={_pageSize}" +
                       $"&search={Uri.EscapeDataString(_search)}" +
-                      $"&roles={Uri.EscapeDataString(roleFilter)}";
+                      $"&roles={Uri.EscapeDataString(roleFilter)}" +
+                      $"&onlyLoginVisible=true";
             var result = await Http.GetFromJsonAsync<UserPageResult>(url);
             if (result != null) { _users = result.Items; _total = result.Total; }
         }

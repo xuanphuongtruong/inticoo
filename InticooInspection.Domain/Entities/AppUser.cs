@@ -35,7 +35,11 @@ namespace InticooInspection.Domain.Entities
         public DateTime? LastLoginAt       { get; set; }
         public DateTime? LastLogoutAt      { get; set; }
         public bool      IsActive          { get; set; } = true;
-        public string? PageAccess          { get; set; } 
+        public string? PageAccess          { get; set; }
+
+        // Hiển thị account này trên màn hình Login Account (Users) hay không.
+        // Mặc định true; nếu Admin bỏ tick ở Inspector Profile thì account bị ẩn khỏi list Users.
+        public bool      ShowInLoginAccount { get; set; } = true;
 
         public ICollection<Inspection> Inspections { get; set; } = new List<Inspection>();
     }
