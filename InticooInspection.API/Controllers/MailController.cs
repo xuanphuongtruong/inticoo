@@ -238,6 +238,89 @@ namespace InticooInspection.API.Controllers
         }
 
         // ═════════════════════════════════════════════════════════════════════
+        //  INSPECTION COMPLETION ENDPOINTS (gửi giống nút "Done")
+        // ═════════════════════════════════════════════════════════════════════
+
+        // GET api/mail/completed-inspections
+        // Danh sách inspection ĐÃ HOÀN THÀNH (Completed) để chọn gửi lại mail report.
+        [HttpGet("completed-inspections")]
+        [AllowAnonymous]
+        public async Task<IActionResult> GetCompletedInspections(
+            [FromQuery] string? search = null, [FromQuery] int take = 100)
+        {
+            var inspections = await _db.Inspections.AsNoTracking()
+                .Where(i => i.Status == InspectionStatus.Completed)
+                .OrderByDescending(i => i.CompletedAt)
+                .Select(i => new
+                {
+                    i.Id, i.JobNumber, i.CompletedAt,
+                    i.CustomerId, i.CustomerName,
+                    i.VendorName, i.ProductName,
+                    i.FinalResult
+                })
+                .Take(Math.Min(take, 500))
+                .ToListAsync();
+
+            // Tìm kiếm in-memory (đồng nhất cách filter ở InspectionController.GetAll)
+            if (!string.IsNullOrWhiteSpace(search))
+            {
+                var s = search.Trim().ToLower();
+                inspections = inspections.Where(i =>
+                    (i.JobNumber    != null && i.JobNumber.ToLower().Contains(s)) ||
+                    (i.CustomerName != null && i.CustomerName.ToLower().Contains(s)) ||
+                    (i.VendorName   != null && i.VendorName.ToLower().Contains(s)) ||
+                    (i.ProductName  != null && i.ProductName.ToLower().Contains(s))
+                ).ToList();
+            }
+
+            // Lookup email khách hàng — To = Email, gợi ý CC = AlternateReportEmail
+            var custIds = inspections
+                .Where(i => !string.IsNullOrEmpty(i.CustomerId))
+                .Select(i => i.CustomerId!).Distinct().ToList();
+
+            var customers = await _db.Customers.AsNoTracking()
+                .Where(c => custIds.Contains(c.CustomerId))
+                .Select(c => new { c.CustomerId, c.Email, c.AlternateReportEmail })
+                .ToListAsync();
+
+            var cDict = customers.ToDictionary(c => c.CustomerId);
+
+            var items = inspections.Select(i =>
+            {
+                string? email = null, alt = null;
+                if (!string.IsNullOrEmpty(i.CustomerId) && cDict.TryGetValue(i.CustomerId, out var c))
+                {
+                    email = c.Email;
+                    alt   = c.AlternateReportEmail;
+                }
+                return new
+                {
+                    i.Id, i.JobNumber, i.CompletedAt,
+                    i.CustomerId, i.CustomerName,
+                    i.VendorName, i.ProductName,
+                    i.FinalResult,
+                    customerEmail  = email,
+                    alternateEmail = alt,
+                    canSend        = !string.IsNullOrWhiteSpace(email)
+                };
+            }).ToList();
+
+            return Ok(new { total = items.Count, items });
+        }
+
+        // POST api/mail/send-inspection/{id}
+        // Gửi mail completion (giống nút Done) cho 1 inspection. Body { extraCc } tuỳ chọn.
+        [HttpPost("send-inspection/{id:int}")]
+        [AllowAnonymous]
+        public async Task<IActionResult> SendInspection(
+            int id, [FromBody] SendInspectionRequest? req, CancellationToken ct)
+        {
+            var (ok, error, toEmail) = await _mail.SendForInspectionAsync(id, req?.ExtraCc, ct);
+            if (!ok) return BadRequest(new { success = false, error });
+            return Ok(new { success = true, toEmail });
+        }
+
+        // ═════════════════════════════════════════════════════════════════════
         //  TEST MAIL ENDPOINTS
         // ═════════════════════════════════════════════════════════════════════
 
@@ -435,5 +518,11 @@ namespace InticooInspection.API.Controllers
     {
         public string  ToEmail { get; set; } = "";
         public string? Subject { get; set; }
+    }
+
+    public class SendInspectionRequest
+    {
+        // Email CC nhập thêm (tuỳ chọn) — có thể nhiều, phân tách bằng ; ,
+        public string? ExtraCc { get; set; }
     }
 }

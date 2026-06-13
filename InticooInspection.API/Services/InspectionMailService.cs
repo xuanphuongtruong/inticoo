@@ -20,6 +20,12 @@ namespace InticooInspection.API.Services
         // ── Test mail (preview template thực tế) ──────────────────────
         Task<(bool ok, string? error)> SendTestVendorMailAsync(string toEmail, CancellationToken ct = default);
         Task<(bool ok, string? error)> SendTestCustomerMailAsync(string toEmail, CancellationToken ct = default);
+
+        // ── Completion mail cho TỪNG inspection (giống nút "Done") ─────
+        // Gửi mail "Inspection Report Completed" tới Email khách hàng (To),
+        // CC = AlternateReportEmail của khách + extraCc nhập thêm (nếu có).
+        Task<(bool ok, string? error, string? toEmail)> SendForInspectionAsync(
+            int inspectionId, string? extraCc = null, CancellationToken ct = default);
     }
 
     public class MailRunResult
@@ -37,6 +43,7 @@ namespace InticooInspection.API.Services
         private readonly AppDbContext _db;
         private readonly IMailConfigProvider _configProvider;
         private readonly ILogger<InspectionMailService> _logger;
+        private readonly IConfiguration _config;
 
         // Subject của email (đã đưa từ body lên)
         private const string WEEKLY_SUBJECT = "Summary Schedule : 14 Days Inspection";
@@ -44,11 +51,13 @@ namespace InticooInspection.API.Services
         public InspectionMailService(
             AppDbContext db,
             IMailConfigProvider configProvider,
-            ILogger<InspectionMailService> logger)
+            ILogger<InspectionMailService> logger,
+            IConfiguration config)
         {
             _db             = db;
             _configProvider = configProvider;
             _logger         = logger;
+            _config         = config;
         }
 
         // ═════════════════════════════════════════════════════════════
@@ -351,6 +360,175 @@ namespace InticooInspection.API.Services
         }
 
         // ═════════════════════════════════════════════════════════════
+        //  INSPECTION COMPLETION FLOW (gửi giống nút "Done")
+        //  Gửi mail "Inspection Report Completed" cho 1 inspection cụ thể.
+        //  To  = Email khách hàng; CC = AlternateReportEmail + extraCc.
+        //  LƯU Ý: template HTML phản chiếu InspectionController
+        //  .SendCompletionEmailAsync — sửa nội dung mail Done thì sửa cả 2.
+        // ═════════════════════════════════════════════════════════════
+        public async Task<(bool ok, string? error, string? toEmail)> SendForInspectionAsync(
+            int inspectionId, string? extraCc = null, CancellationToken ct = default)
+        {
+            var cfg = await _configProvider.GetAsync(ct);
+
+            var inspection = await _db.Inspections.AsNoTracking()
+                .FirstOrDefaultAsync(i => i.Id == inspectionId, ct);
+            if (inspection == null)
+                return (false, "Không tìm thấy inspection", null);
+
+            if (string.IsNullOrEmpty(inspection.CustomerId))
+                return (false, "Inspection chưa gắn khách hàng (CustomerId trống)", null);
+
+            var customer = await _db.Customers.AsNoTracking()
+                .FirstOrDefaultAsync(c => c.CustomerId == inspection.CustomerId, ct);
+            if (customer == null)
+                return (false, $"Không tìm thấy khách hàng {inspection.CustomerId}", null);
+            if (string.IsNullOrWhiteSpace(customer.Email))
+                return (false, "Khách hàng chưa có email (Email trống)", null);
+
+            var toEmail = customer.Email.Trim();
+            var baseUrl = _config["Email:ReportBaseUrl"] ?? "https://inticoo.com";
+
+            // CC = AlternateReportEmail của khách + email nhập thêm (extraCc)
+            var cc = SplitEmails(customer.AlternateReportEmail)
+                .Concat(SplitEmails(extraCc))
+                .ToList();
+
+            var subject = $"[Inticoo] Inspection Report Completed - {inspection.JobNumber}";
+            var html    = BuildCompletionEmailHtml(inspection, baseUrl);
+
+            var (ok, error) = await SendMailAsync(cfg,
+                new[] { toEmail },
+                customer.ContactPerson ?? customer.CompanyName ?? "",
+                subject, html, ct, cc);
+
+            // Ghi log kèm cả CC để dễ đối chiếu ở mục Lịch sử
+            var logEmails = cc.Count > 0
+                ? $"{toEmail}  (CC: {string.Join("; ", cc)})"
+                : toEmail;
+
+            _db.MailLogs.Add(new MailLog
+            {
+                VendorId        = null,
+                VendorCode      = $"INS:{inspection.Id}",
+                ToEmail         = logEmails,
+                Subject         = subject,
+                SentAt          = DateTime.UtcNow,
+                IsSuccess       = ok,
+                ErrorMessage    = error,
+                InspectionCount = 1
+            });
+            await _db.SaveChangesAsync(ct);
+
+            return (ok, error, toEmail);
+        }
+
+        /// <summary>Tách chuỗi nhiều email (phân tách ; , khoảng trắng / xuống dòng) thành list hợp lệ.</summary>
+        private static IEnumerable<string> SplitEmails(string? raw)
+        {
+            if (string.IsNullOrWhiteSpace(raw)) yield break;
+            var parts = raw.Split(new[] { ';', ',', ' ', '\t', '\r', '\n' },
+                StringSplitOptions.RemoveEmptyEntries);
+            foreach (var p in parts)
+            {
+                var t = p.Trim();
+                if (t.Contains('@')) yield return t;
+            }
+        }
+
+        // Template mail completion — đồng bộ với InspectionController.SendCompletionEmailAsync
+        private static string BuildCompletionEmailHtml(Inspection inspection, string baseUrl)
+        {
+            var completedDate = (inspection.CompletedAt ?? DateTime.UtcNow).ToString("d MMMM yyyy");
+            var inspType = inspection.InspectionType.ToString() switch
+            {
+                "DPI" => "During-Production Inspection",
+                "PPT" => "Pre-Production Inspection",
+                "PST" => "Pre-Shipment Inspection (Final Inspection)",
+                _     => inspection.InspectionType.ToString()
+            };
+            var result     = inspection.FinalResult ?? "N/A";
+            var reportLink = $"{baseUrl}/inspection-report/{inspection.Id}";
+
+            var resultColor = result.ToUpper() switch
+            {
+                "PASS" or "APPROVED" or "ACCEPTED" => "#28a745",
+                "FAIL" or "REJECTED" => "#dc3545",
+                "PENDING" or "HOLD" => "#ffc107",
+                _ => "#6c757d"
+            };
+
+            return $@"<!DOCTYPE html>
+<html><head><meta charset='utf-8'><title>Inspection Completed</title></head>
+<body style='font-family:Segoe UI,Arial,sans-serif;color:#333;background:#f5f7fb;padding:20px;margin:0;'>
+  <div style='max-width:680px;margin:0 auto;background:#fff;border-radius:8px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);'>
+    <div style='background:linear-gradient(135deg,#1e6091 0%,#2a9d8f 100%);color:#fff;padding:24px;'>
+      <h2 style='margin:0;font-size:22px;'>✅ Inspection Report Completed</h2>
+      <p style='margin:6px 0 0;opacity:.9;font-size:14px;'>Inticoo Inspection System</p>
+    </div>
+    <div style='padding:24px;'>
+      <p>Dear Sir/Madam,</p>
+      <p>This is a notification that the inspection report has been completed on <strong>{completedDate}</strong>.</p>
+      <p>Please find the inspection details below:</p>
+
+      <table style='width:100%;border-collapse:collapse;margin-top:16px;font-size:14px;'>
+        <tr>
+          <td style='padding:8px 12px;background:#f8f9fa;border:1px solid #e9ecef;width:35%;'><strong>Job No</strong></td>
+          <td style='padding:8px 12px;border:1px solid #e9ecef;'>{Esc(inspection.JobNumber)}</td>
+        </tr>
+        <tr>
+          <td style='padding:8px 12px;background:#f8f9fa;border:1px solid #e9ecef;'><strong>Category</strong></td>
+          <td style='padding:8px 12px;border:1px solid #e9ecef;'>{Esc(inspection.ProductCategory)}</td>
+        </tr>
+        <tr>
+          <td style='padding:8px 12px;background:#f8f9fa;border:1px solid #e9ecef;'><strong>Product Name</strong></td>
+          <td style='padding:8px 12px;border:1px solid #e9ecef;'>{Esc(inspection.ProductName)}</td>
+        </tr>
+        <tr>
+          <td style='padding:8px 12px;background:#f8f9fa;border:1px solid #e9ecef;'><strong>Item Number</strong></td>
+          <td style='padding:8px 12px;border:1px solid #e9ecef;'>{Esc(inspection.ItemNumber)}</td>
+        </tr>
+        <tr>
+          <td style='padding:8px 12px;background:#f8f9fa;border:1px solid #e9ecef;'><strong>Inspection Type</strong></td>
+          <td style='padding:8px 12px;border:1px solid #e9ecef;'>{Esc(inspType)}</td>
+        </tr>
+        <tr>
+          <td style='padding:8px 12px;background:#f8f9fa;border:1px solid #e9ecef;'><strong>Vendor Name</strong></td>
+          <td style='padding:8px 12px;border:1px solid #e9ecef;'>{Esc(inspection.VendorName)}</td>
+        </tr>
+        <tr>
+          <td style='padding:8px 12px;background:#f8f9fa;border:1px solid #e9ecef;'><strong>Vendor ID</strong></td>
+          <td style='padding:8px 12px;border:1px solid #e9ecef;'>{Esc(inspection.VendorId)}</td>
+        </tr>
+        <tr>
+          <td style='padding:8px 12px;background:#f8f9fa;border:1px solid #e9ecef;'><strong>Result</strong></td>
+          <td style='padding:8px 12px;border:1px solid #e9ecef;'>
+            <span style='display:inline-block;padding:4px 12px;background:{resultColor};color:#fff;border-radius:4px;font-weight:600;'>{Esc(result)}</span>
+          </td>
+        </tr>
+      </table>
+
+      <div style='margin-top:24px;text-align:center;'>
+        <a href='{reportLink}' style='display:inline-block;padding:12px 28px;background:#1e6091;color:#fff;text-decoration:none;border-radius:6px;font-weight:600;'>
+          📄 Download Inspection Report
+        </a>
+      </div>
+      <p style='margin-top:16px;font-size:13px;color:#666;text-align:center;'>
+        Or copy this link: <br/>
+        <a href='{reportLink}' style='color:#1e6091;word-break:break-all;'>{reportLink}</a>
+      </p>
+
+      <p style='margin-top:24px;'>Should you have any questions or require further clarification, please feel free to contact us.</p>
+      <p>Best regards,<br/><strong>Inticoo Global Services</strong></p>
+    </div>
+    <div style='padding:14px 24px;background:#f5f7fb;color:#888;font-size:12px;text-align:center;border-top:1px solid #eee;'>
+      <a href='https://inticoo.com' style='color:#888;'>www.inticoo.com</a> &nbsp;|&nbsp; This is an automated email from Inticoo Inspection System.
+    </div>
+  </div>
+</body></html>";
+        }
+
+        // ═════════════════════════════════════════════════════════════
         //  TEST MAIL (preview template thực tế bằng dữ liệu mẫu)
         // ═════════════════════════════════════════════════════════════
         public async Task<(bool ok, string? error)> SendTestVendorMailAsync(string toEmail, CancellationToken ct = default)
@@ -497,7 +675,8 @@ namespace InticooInspection.API.Services
             MailConfigSnapshot cfg,
             IReadOnlyCollection<string> toEmails,
             string toDisplayName,
-            string subject, string htmlBody, CancellationToken ct)
+            string subject, string htmlBody, CancellationToken ct,
+            IEnumerable<string>? ccEmails = null)
         {
             try
             {
@@ -519,23 +698,37 @@ namespace InticooInspection.API.Services
                     SubjectEncoding = Encoding.UTF8
                 };
 
+                // Theo dõi các địa chỉ đã thêm (case-insensitive) để CC không trùng To/nhau
+                var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
                 bool first = true;
                 foreach (var addr in toEmails)
                 {
-                    if (string.IsNullOrWhiteSpace(addr)) continue;
+                    if (string.IsNullOrWhiteSpace(addr) || !seen.Add(addr.Trim())) continue;
                     if (first)
                     {
-                        msg.To.Add(new MailAddress(addr, toDisplayName));
+                        msg.To.Add(new MailAddress(addr.Trim(), toDisplayName));
                         first = false;
                     }
                     else
                     {
-                        msg.To.Add(new MailAddress(addr));
+                        msg.To.Add(new MailAddress(addr.Trim()));
                     }
                 }
 
                 if (msg.To.Count == 0)
                     return (false, "Không có địa chỉ email hợp lệ");
+
+                if (ccEmails != null)
+                {
+                    foreach (var addr in ccEmails)
+                    {
+                        if (string.IsNullOrWhiteSpace(addr)) continue;
+                        var trimmed = addr.Trim();
+                        if (trimmed.Contains('@') && seen.Add(trimmed))
+                            msg.CC.Add(new MailAddress(trimmed));
+                    }
+                }
 
                 await smtp.SendMailAsync(msg, ct);
                 return (true, null);
