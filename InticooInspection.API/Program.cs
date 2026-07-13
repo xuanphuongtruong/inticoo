@@ -72,6 +72,7 @@ builder.Services.AddCors(options =>
     options.AddPolicy("BlazorClient", policy =>
         policy
             .WithOrigins(
+                "https://inticoo.thuphuc.com",   // Client production (IIS)
                 "http://localhost:5186",
                 "https://localhost:5186",
                 "https://black-grass-002608310.2.azurestaticapps.net",
@@ -106,6 +107,8 @@ builder.Services.AddSingleton<AzureBlobService>();
 builder.Services.AddSingleton<IMailConfigProvider, MailConfigProvider>();
 builder.Services.AddScoped<IInspectionMailService, InspectionMailService>();
 builder.Services.AddHostedService<WeeklyMailWorker>();
+// Quét mỗi 10 phút: gửi mail completion cho Inspection Done trong ngày có cờ TinhTrangGuiMail = 0
+builder.Services.AddHostedService<InspectionDoneMailWorker>();
 builder.Services.AddScoped<IPdfService, PuppeteerPdfService>();
 
 var app = builder.Build();

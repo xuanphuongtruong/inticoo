@@ -1,4 +1,4 @@
-using InticooInspection.Domain.Entities;
+﻿using InticooInspection.Domain.Entities;
 using InticooInspection.Infrastructure.Data;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -42,7 +42,7 @@ namespace InticooInspection.API.Controllers
 
         // POST api/customers/{customerId}/files
         [HttpPost]
-        public async Task<IActionResult> UploadFiles(int customerId, [FromForm] List<IFormFile> files)
+        public async Task<IActionResult> UploadFiles(int customerId, List<IFormFile> files)
         {
             var customer = await _db.Customers.FindAsync(customerId);
             if (customer == null) return NotFound();

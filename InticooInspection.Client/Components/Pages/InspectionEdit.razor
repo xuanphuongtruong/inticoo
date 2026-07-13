@@ -740,9 +740,7 @@
                                 </div>
                                 <div style="display:@(!refItem.IsUploading && string.IsNullOrEmpty(refItem.UploadError) && !string.IsNullOrEmpty(refItem.FileUrl) ? "flex" : "none");align-items:center;gap:6px;">
                                     @{ var fn = refItem.FileName ?? ""; }
-                                    @{ var absFileUrl = (refItem.FileUrl?.StartsWith("http") == true)
-                                            ? refItem.FileUrl
-                                            : (Http.BaseAddress?.ToString().TrimEnd('/') ?? "") + (refItem.FileUrl?.StartsWith('/') == true ? refItem.FileUrl : "/" + refItem.FileUrl); }
+                                    @{ var absFileUrl = MediaUrl.Resolve(refItem.FileUrl, Http.BaseAddress?.ToString()); }
                                     <a href="@absFileUrl" target="_blank" class="file-link-btn" title="@refItem.FileName">
                                         <svg width="12" height="12" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 17h12M10 3v10M6 13l4 4 4-4" stroke-linecap="round" stroke-linejoin="round"/></svg>
                                         @(fn.Length > 20 ? fn[..20] + "…" : (fn.Length > 0 ? fn : "(file)"))
@@ -1251,9 +1249,7 @@
                 {
                     ReferenceName = r.ReferenceName ?? "",
                     FileName      = r.FileName      ?? "",
-                    FileUrl       = (!string.IsNullOrEmpty(r.FileUrl) && !r.FileUrl.StartsWith("http"))
-                                    ? $"{baseUrlRef}{(r.FileUrl.StartsWith('/') ? r.FileUrl : "/" + r.FileUrl)}"
-                                    : r.FileUrl ?? "",
+                    FileUrl       = MediaUrl.Resolve(r.FileUrl, baseUrlRef),
                     Remark        = r.Remark        ?? "",
                     FromProduct   = true
                 }).ToList();
@@ -1273,17 +1269,8 @@
             if (!string.IsNullOrEmpty(data.Photo1Url))
             {
                 Photo1ServerUrl = data.Photo1Url;
-                // Nếu đã là URL tuyệt đối thì dùng thẳng, ngược lại mới ghép base URL
-                if (data.Photo1Url.StartsWith("http://") || data.Photo1Url.StartsWith("https://"))
-                {
-                    PhotoPreview1 = data.Photo1Url;
-                }
-                else
-                {
-                    var baseUrl = Http.BaseAddress?.ToString().TrimEnd('/') ?? "";
-                    var relUrl  = data.Photo1Url.StartsWith('/') ? data.Photo1Url : "/" + data.Photo1Url;
-                    PhotoPreview1 = baseUrl + relUrl;
-                }
+                // path tương đối → ghép base; host Azure cũ → đổi sang API mới
+                PhotoPreview1   = MediaUrl.Resolve(data.Photo1Url, Http.BaseAddress?.ToString());
             }
 
             // Office Use
@@ -1527,8 +1514,7 @@
         ProductSpec.Weight   = p.Weight  ?? 0;
         if (!string.IsNullOrEmpty(p.PhotoUrl))
         {
-            var baseUrl = Http.BaseAddress?.ToString().TrimEnd('/') ?? "";
-            PhotoPreview1   = p.PhotoUrl.StartsWith("http") ? p.PhotoUrl : $"{baseUrl}{p.PhotoUrl}";
+            PhotoPreview1   = MediaUrl.Resolve(p.PhotoUrl, Http.BaseAddress?.ToString());
             Photo1ServerUrl = PhotoPreview1;
         }
         _ = LoadProductReferences(p.Id);
@@ -1603,8 +1589,7 @@
                 foreach (var r in refsEl.EnumerateArray())
                 {
                     var rawUrl = r.TryGetProperty("fileUrl", out var rfu) ? rfu.GetString() ?? "" : "";
-                    var fullUrl = !string.IsNullOrEmpty(rawUrl) && !rawUrl.StartsWith("http")
-                        ? $"{baseUrl}{rawUrl}" : rawUrl;
+                    var fullUrl = MediaUrl.Resolve(rawUrl, baseUrl);
                     refs.Add(new ReferenceRow
                     {
                         ProductRefId  = r.TryGetProperty("id",       out var rid) ? rid.GetInt32()         : 0,

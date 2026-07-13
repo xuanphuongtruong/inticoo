@@ -220,7 +220,7 @@ namespace InticooInspection.Infrastructure.Migrations
                     b.HasIndex("CountryId", "Name")
                         .IsUnique();
 
-                    b.ToTable("Cities", (string)null);
+                    b.ToTable("Cities");
                 });
 
             modelBuilder.Entity("InticooInspection.Domain.Entities.Country", b =>
@@ -254,7 +254,7 @@ namespace InticooInspection.Infrastructure.Migrations
                     b.HasIndex("Code")
                         .IsUnique();
 
-                    b.ToTable("Countries", (string)null);
+                    b.ToTable("Countries");
                 });
 
             modelBuilder.Entity("InticooInspection.Domain.Entities.Customer", b =>
@@ -272,6 +272,9 @@ namespace InticooInspection.Infrastructure.Migrations
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("Address2")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("AlternateReportEmail")
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("BusinessRefNo")
@@ -327,6 +330,12 @@ namespace InticooInspection.Infrastructure.Migrations
                     b.Property<string>("PostalCode")
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<bool>("ReceiveInspectionReport")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("ReportEmailType")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<string>("ShortName")
                         .HasColumnType("nvarchar(max)");
 
@@ -341,7 +350,7 @@ namespace InticooInspection.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("Customers", (string)null);
+                    b.ToTable("Customers");
                 });
 
             modelBuilder.Entity("InticooInspection.Domain.Entities.CustomerFile", b =>
@@ -381,7 +390,7 @@ namespace InticooInspection.Infrastructure.Migrations
 
                     b.HasIndex("CustomerId");
 
-                    b.ToTable("CustomerFiles", (string)null);
+                    b.ToTable("CustomerFiles");
                 });
 
             modelBuilder.Entity("InticooInspection.Domain.Entities.Inspection", b =>
@@ -515,6 +524,11 @@ namespace InticooInspection.Infrastructure.Migrations
                     b.Property<int>("Status")
                         .HasColumnType("int");
 
+                    b.Property<int>("TinhTrangGuiMail")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0);
+
                     b.Property<string>("Title")
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
@@ -536,7 +550,7 @@ namespace InticooInspection.Infrastructure.Migrations
 
                     b.HasIndex("CreatedById");
 
-                    b.ToTable("Inspections", (string)null);
+                    b.ToTable("Inspections");
                 });
 
             modelBuilder.Entity("InticooInspection.Domain.Entities.InspectionColourSwatch", b =>
@@ -566,7 +580,7 @@ namespace InticooInspection.Infrastructure.Migrations
 
                     b.HasIndex("InspectionId");
 
-                    b.ToTable("InspectionColourSwatches", (string)null);
+                    b.ToTable("InspectionColourSwatches");
                 });
 
             modelBuilder.Entity("InticooInspection.Domain.Entities.InspectionOverallConclusion", b =>
@@ -604,7 +618,7 @@ namespace InticooInspection.Infrastructure.Migrations
 
                     b.HasIndex("InspectionId");
 
-                    b.ToTable("InspectionOverallConclusions", (string)null);
+                    b.ToTable("InspectionOverallConclusions");
                 });
 
             modelBuilder.Entity("InticooInspection.Domain.Entities.InspectionPackaging", b =>
@@ -680,7 +694,7 @@ namespace InticooInspection.Infrastructure.Migrations
                     b.HasIndex("InspectionId")
                         .IsUnique();
 
-                    b.ToTable("InspectionPackagings", (string)null);
+                    b.ToTable("InspectionPackagings");
                 });
 
             modelBuilder.Entity("InticooInspection.Domain.Entities.InspectionPerformanceTest", b =>
@@ -723,7 +737,7 @@ namespace InticooInspection.Infrastructure.Migrations
 
                     b.HasIndex("InspectionId");
 
-                    b.ToTable("InspectionPerformanceTests", (string)null);
+                    b.ToTable("InspectionPerformanceTests");
                 });
 
             modelBuilder.Entity("InticooInspection.Domain.Entities.InspectionProductSpec", b =>
@@ -757,7 +771,7 @@ namespace InticooInspection.Infrastructure.Migrations
                     b.HasIndex("InspectionId")
                         .IsUnique();
 
-                    b.ToTable("InspectionProductSpecs", (string)null);
+                    b.ToTable("InspectionProductSpecs");
                 });
 
             modelBuilder.Entity("InticooInspection.Domain.Entities.InspectionQcAqlResult", b =>
@@ -826,7 +840,7 @@ namespace InticooInspection.Infrastructure.Migrations
                     b.HasIndex("InspectionId")
                         .IsUnique();
 
-                    b.ToTable("InspectionQcAqlResults", (string)null);
+                    b.ToTable("InspectionQcAqlResults");
                 });
 
             modelBuilder.Entity("InticooInspection.Domain.Entities.InspectionQcDefect", b =>
@@ -860,7 +874,7 @@ namespace InticooInspection.Infrastructure.Migrations
 
                     b.HasIndex("InspectionId");
 
-                    b.ToTable("InspectionQcDefects", (string)null);
+                    b.ToTable("InspectionQcDefects");
                 });
 
             modelBuilder.Entity("InticooInspection.Domain.Entities.InspectionQcQuantityConformity", b =>
@@ -901,7 +915,7 @@ namespace InticooInspection.Infrastructure.Migrations
                     b.HasIndex("InspectionId")
                         .IsUnique();
 
-                    b.ToTable("InspectionQcQuantityConformities", (string)null);
+                    b.ToTable("InspectionQcQuantityConformities");
                 });
 
             modelBuilder.Entity("InticooInspection.Domain.Entities.InspectionReference", b =>
@@ -938,7 +952,7 @@ namespace InticooInspection.Infrastructure.Migrations
 
                     b.HasIndex("InspectionId");
 
-                    b.ToTable("InspectionReferences", (string)null);
+                    b.ToTable("InspectionReferences");
                 });
 
             modelBuilder.Entity("InticooInspection.Domain.Entities.InspectionStep", b =>
@@ -976,7 +990,115 @@ namespace InticooInspection.Infrastructure.Migrations
 
                     b.HasIndex("InspectionId");
 
-                    b.ToTable("InspectionSteps", (string)null);
+                    b.ToTable("InspectionSteps");
+                });
+
+            modelBuilder.Entity("InticooInspection.Domain.Entities.MailConfig", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("LookAheadDays")
+                        .HasColumnType("int");
+
+                    b.Property<int>("SendDayOfWeek")
+                        .HasColumnType("int");
+
+                    b.Property<int>("SendHour")
+                        .HasColumnType("int");
+
+                    b.Property<int>("SendMinute")
+                        .HasColumnType("int");
+
+                    b.Property<string>("SenderEmail")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("SenderName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("SmtpHost")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<int>("SmtpPort")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("UpdatedBy")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<bool>("UseSsl")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Username")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<bool>("WeeklyJobEnabled")
+                        .HasColumnType("bit");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("MailConfigs");
+                });
+
+            modelBuilder.Entity("InticooInspection.Domain.Entities.MailLog", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("ErrorMessage")
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.Property<int>("InspectionCount")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("IsSuccess")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTime>("SentAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Subject")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)");
+
+                    b.Property<string>("ToEmail")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("VendorCode")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<int?>("VendorId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SentAt");
+
+                    b.HasIndex("VendorId");
+
+                    b.ToTable("MailLogs");
                 });
 
             modelBuilder.Entity("InticooInspection.Domain.Entities.PerformanceTestMaster", b =>
@@ -1022,7 +1144,55 @@ namespace InticooInspection.Infrastructure.Migrations
 
                     b.HasIndex("Category", "IsActive");
 
-                    b.ToTable("PerformanceTestMasters", (string)null);
+                    b.ToTable("PerformanceTestMasters");
+                });
+
+            modelBuilder.Entity("InticooInspection.Domain.Entities.PerformanceTestReference", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("ContentType")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)")
+                        .HasDefaultValue("application/octet-stream");
+
+                    b.Property<byte[]>("FileData")
+                        .IsRequired()
+                        .HasColumnType("varbinary(max)");
+
+                    b.Property<string>("FileName")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<long>("FileSize")
+                        .HasColumnType("bigint");
+
+                    b.Property<int>("PerformanceTestMasterId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("SortOrder")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0);
+
+                    b.Property<DateTime>("UploadedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasDefaultValueSql("SYSUTCDATETIME()");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PerformanceTestMasterId")
+                        .HasDatabaseName("IX_PerfTestRef_MasterId");
+
+                    b.ToTable("PerformanceTestReferences", (string)null);
                 });
 
             modelBuilder.Entity("InticooInspection.Domain.Entities.Product", b =>
@@ -1104,7 +1274,7 @@ namespace InticooInspection.Infrastructure.Migrations
 
                     b.HasIndex("VendorId");
 
-                    b.ToTable("Products", (string)null);
+                    b.ToTable("Products");
                 });
 
             modelBuilder.Entity("InticooInspection.Domain.Entities.ProductCategory", b =>
@@ -1134,7 +1304,7 @@ namespace InticooInspection.Infrastructure.Migrations
                     b.HasIndex("Name")
                         .IsUnique();
 
-                    b.ToTable("ProductCategories", (string)null);
+                    b.ToTable("ProductCategories");
                 });
 
             modelBuilder.Entity("InticooInspection.Domain.Entities.ProductReference", b =>
@@ -1168,7 +1338,7 @@ namespace InticooInspection.Infrastructure.Migrations
 
                     b.HasIndex("ProductId");
 
-                    b.ToTable("ProductReferences", (string)null);
+                    b.ToTable("ProductReferences");
                 });
 
             modelBuilder.Entity("InticooInspection.Domain.Entities.Vendor", b =>
@@ -1282,7 +1452,7 @@ namespace InticooInspection.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("Vendors", (string)null);
+                    b.ToTable("Vendors");
                 });
 
             modelBuilder.Entity("InticooInspection.Domain.Entities.VendorAttachment", b =>
@@ -1318,7 +1488,7 @@ namespace InticooInspection.Infrastructure.Migrations
 
                     b.HasIndex("VendorId");
 
-                    b.ToTable("VendorAttachment", (string)null);
+                    b.ToTable("VendorAttachment");
                 });
 
             modelBuilder.Entity("InticooInspection.Domain.Entities.VendorFactoryEvalFile", b =>
@@ -1357,7 +1527,7 @@ namespace InticooInspection.Infrastructure.Migrations
 
                     b.HasIndex("VendorId");
 
-                    b.ToTable("VendorFactoryEvalFiles", (string)null);
+                    b.ToTable("VendorFactoryEvalFiles");
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRole", b =>
@@ -1636,6 +1806,17 @@ namespace InticooInspection.Infrastructure.Migrations
                     b.Navigation("Inspection");
                 });
 
+            modelBuilder.Entity("InticooInspection.Domain.Entities.PerformanceTestReference", b =>
+                {
+                    b.HasOne("InticooInspection.Domain.Entities.PerformanceTestMaster", "Master")
+                        .WithMany("References")
+                        .HasForeignKey("PerformanceTestMasterId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Master");
+                });
+
             modelBuilder.Entity("InticooInspection.Domain.Entities.Product", b =>
                 {
                     b.HasOne("InticooInspection.Domain.Entities.Customer", "Customer")
@@ -1768,6 +1949,11 @@ namespace InticooInspection.Infrastructure.Migrations
                     b.Navigation("References");
 
                     b.Navigation("Steps");
+                });
+
+            modelBuilder.Entity("InticooInspection.Domain.Entities.PerformanceTestMaster", b =>
+                {
+                    b.Navigation("References");
                 });
 
             modelBuilder.Entity("InticooInspection.Domain.Entities.Product", b =>

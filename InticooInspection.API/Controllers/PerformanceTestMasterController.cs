@@ -1,4 +1,4 @@
-// ============================================================
+﻿// ============================================================
 //  Đặt tại: InticooInspection.API/Controllers/PerformanceTestMasterController.cs
 //  ----------------------------------------------------------
 //  Đã chuyển từ "1 file/master" sang "N file/master".
@@ -156,7 +156,7 @@ public class PerformanceTestMasterController : ControllerBase
     //   Upload 1 hoặc nhiều file trong cùng 1 request (field name: "files").
     [HttpPost("/api/performance-test-references/by-master/{id:int}")]
     [RequestSizeLimit(200_000_000)] // 200 MB tổng / 1 request
-    public async Task<IActionResult> UploadReferences(int id, [FromForm] List<IFormFile> files)
+    public async Task<IActionResult> UploadReferences(int id, List<IFormFile> files)
     {
         var master = await _db.PerformanceTestMasters.FindAsync(id);
         if (master == null) return NotFound();

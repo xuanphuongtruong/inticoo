@@ -438,7 +438,7 @@
                             <div class="ref-col-file">
                                 @if (!string.IsNullOrEmpty(r.FileUrl))
                                 {
-                                    var fUrl = r.FileUrl.StartsWith("http") ? r.FileUrl : $"{Http.BaseAddress?.ToString().TrimEnd('/')}{r.FileUrl}";
+                                    var fUrl = MediaUrl.Resolve(r.FileUrl, Http.BaseAddress?.ToString());
                                     <a class="ref-fname" href="@fUrl" target="_blank">📎 @r.FileName</a>
                                 }
                             </div>
@@ -450,7 +450,7 @@
             @if (!string.IsNullOrEmpty(d.PhotoUrl))
             {
                 <div class="form-section-title">Product Photo</div>
-                var photoUrl = d.PhotoUrl.StartsWith("http") ? d.PhotoUrl : $"{Http.BaseAddress?.ToString().TrimEnd('/')}{d.PhotoUrl}";
+                var photoUrl = MediaUrl.Resolve(d.PhotoUrl, Http.BaseAddress?.ToString());
                 <div style="text-align:center;padding:8px 0;">
                     <img src="@photoUrl" style="max-width:100%;max-height:280px;border-radius:10px;border:1px solid #dde4ef;" />
                 </div>
@@ -745,7 +745,7 @@
         if (!string.IsNullOrEmpty(item.PhotoUrl))
         {
             var baseUrl = Http.BaseAddress?.ToString().TrimEnd('/') ?? "";
-            _prevUrl = item.PhotoUrl.StartsWith("http") ? item.PhotoUrl : $"{baseUrl}{item.PhotoUrl}";
+            _prevUrl = MediaUrl.Resolve(item.PhotoUrl, baseUrl);
         }
         else
         {
@@ -758,9 +758,7 @@
         {
             Name     = r.Name,
             FileName = r.FileName ?? "",
-            FileUrl  = !string.IsNullOrEmpty(r.FileUrl)
-                       ? (r.FileUrl.StartsWith("http") ? r.FileUrl : $"{baseUrlRef}{r.FileUrl}")
-                       : ""
+            FileUrl  = MediaUrl.Resolve(r.FileUrl, baseUrlRef)
         }).ToList();
         // Luôn có ít nhất 5 rows
         while (_refs.Count < 5) _refs.Add(new RefRow());

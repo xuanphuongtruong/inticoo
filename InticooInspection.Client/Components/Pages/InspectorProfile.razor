@@ -78,8 +78,7 @@ else
                         <td class="tc">
                             @if (!string.IsNullOrEmpty(u.PhotoUrl))
                             {
-                                var fullPhotoUrl = u.PhotoUrl.StartsWith("http") ? u.PhotoUrl
-                                                 : (Http.BaseAddress?.ToString().TrimEnd('/') + "/" + u.PhotoUrl.TrimStart('/'));
+                                var fullPhotoUrl = MediaUrl.Resolve(u.PhotoUrl, Http.BaseAddress?.ToString());
                                 <img class="row-avatar" src="@fullPhotoUrl" alt="@u.FullName" />
                             }
                             else
@@ -115,8 +114,7 @@ else
                         <td class="tc">
                             @if (!string.IsNullOrEmpty(u.CvUrl))
                             {
-                                var fullCvUrl = u.CvUrl.StartsWith("http") ? u.CvUrl
-                                              : (Http.BaseAddress?.ToString().TrimEnd('/') + "/" + u.CvUrl.TrimStart('/'));
+                                var fullCvUrl = MediaUrl.Resolve(u.CvUrl, Http.BaseAddress?.ToString());
                                 <a class="cv-link" href="@fullCvUrl" target="_blank">&#128196; CV</a>
                             }
                             else { <span class="dim sm">—</span> }
@@ -415,8 +413,7 @@ else
                         }
                         else if (_editId != null && !string.IsNullOrEmpty(_existingPhotoUrl))
                         {
-                            var fullPhotoUrl = _existingPhotoUrl.StartsWith("http") ? _existingPhotoUrl
-                                            : (Http.BaseAddress?.ToString().TrimEnd('/') + "/" + _existingPhotoUrl.TrimStart('/'));
+                            var fullPhotoUrl = MediaUrl.Resolve(_existingPhotoUrl, Http.BaseAddress?.ToString());
                             <div class="photo-existing-wrap">
                                 <img class="photo-existing-thumb" src="@fullPhotoUrl" alt="Profile Photo" />
                                 <div class="photo-preview-info">
@@ -470,8 +467,7 @@ else
                     }
                     else if (_editId != null && !string.IsNullOrEmpty(_existingCvUrl))
                     {
-                        var fullExistingUrl = _existingCvUrl.StartsWith("http") ? _existingCvUrl
-                                            : (Http.BaseAddress?.ToString().TrimEnd('/') + "/" + _existingCvUrl.TrimStart('/'));
+                        var fullExistingUrl = MediaUrl.Resolve(_existingCvUrl, Http.BaseAddress?.ToString());
                         <div class="cv-existing">
                             <span class="cv-file-icon">&#128196;</span>
                             <div class="cv-file-info">
@@ -581,14 +577,12 @@ else
                         <div class="detail-section-title">Attachments</div>
                         @if (!string.IsNullOrEmpty(d.PhotoUrl))
                         {
-                            var fullPhoto = d.PhotoUrl.StartsWith("http") ? d.PhotoUrl
-                                          : (Http.BaseAddress?.ToString().TrimEnd('/') + "/" + d.PhotoUrl.TrimStart('/'));
+                            var fullPhoto = MediaUrl.Resolve(d.PhotoUrl, Http.BaseAddress?.ToString());
                             <div class="detail-row"><span>Profile Photo</span><span><a class="detail-link" href="@fullPhoto" target="_blank">View photo &#8599;</a></span></div>
                         }
                         @if (!string.IsNullOrEmpty(d.CvUrl))
                         {
-                            var fullCv = d.CvUrl.StartsWith("http") ? d.CvUrl
-                                       : (Http.BaseAddress?.ToString().TrimEnd('/') + "/" + d.CvUrl.TrimStart('/'));
+                            var fullCv = MediaUrl.Resolve(d.CvUrl, Http.BaseAddress?.ToString());
                             <div class="detail-row"><span>CV</span><span><a class="detail-link" href="@fullCv" target="_blank">Open CV &#8599;</a></span></div>
                         }
                     </div>

@@ -22,6 +22,12 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- KHÔNG publish dữ liệu upload (ảnh/CV/file người dùng) để không đè lên dữ liệu thật trên server.
+         Thư mục này được tạo lại tự động lúc khởi động trong Program.cs. -->
+    <Content Update="wwwroot\uploads\**" CopyToPublishDirectory="Never" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\InticooInspection.Infrastructure\InticooInspection.Infrastructure.csproj" />
     <ProjectReference Include="..\InticooInspection.Application\InticooInspection.Application.csproj" />
   </ItemGroup>

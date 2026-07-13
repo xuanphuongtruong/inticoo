@@ -41,6 +41,7 @@ namespace InticooInspection.Infrastructure.Data
             {
                 e.HasKey(x => x.Id);
                 e.Property(x => x.Title).IsRequired().HasMaxLength(200);
+                e.Property(x => x.TinhTrangGuiMail).HasDefaultValue(0);
                 e.HasOne(x => x.CreatedBy)
                  .WithMany(u => u.Inspections)
                  .HasForeignKey(x => x.CreatedById)

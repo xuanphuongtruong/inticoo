@@ -1709,11 +1709,13 @@ else if (_data != null)
     private string NormalizeUrl(string? url)
     {
         if (string.IsNullOrWhiteSpace(url)) return "";
-        // Full URL hoặc base64 data: → giữ nguyên
-        if (url.StartsWith("http://") || url.StartsWith("https://") || url.StartsWith("data:"))
-            return url;
-        // Relative path → gắn BaseAddress của API (từ ApiBaseUrl trong appsettings)
         var baseUrl = Http.BaseAddress?.ToString().TrimEnd('/') ?? "";
+        // base64 data: → giữ nguyên
+        if (url.StartsWith("data:")) return url;
+        // Full URL: host Azure cũ → đổi sang API mới, còn lại giữ nguyên
+        if (url.StartsWith("http://") || url.StartsWith("https://"))
+            return MediaUrl.RewriteLegacyHost(url, baseUrl);
+        // Relative path → gắn BaseAddress của API (từ ApiBaseUrl trong appsettings)
         // Encode từng segment để xử lý tên file có khoảng trắng/ký tự đặc biệt
         var parts = url.TrimStart('/').Split('/');
         for (int i = 0; i < parts.Length; i++)

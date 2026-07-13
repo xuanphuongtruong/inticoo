@@ -1190,8 +1190,7 @@
         ProductSpec.Weight  = p.Weight  ?? 0;
         if (!string.IsNullOrEmpty(p.PhotoUrl))
         {
-            var baseUrl = Http.BaseAddress?.ToString().TrimEnd('/') ?? "";
-            PhotoPreview1   = p.PhotoUrl.StartsWith("http") ? p.PhotoUrl : $"{baseUrl}{p.PhotoUrl}";
+            PhotoPreview1   = MediaUrl.Resolve(p.PhotoUrl, Http.BaseAddress?.ToString());
             Photo1ServerUrl = PhotoPreview1;
         }
         // Load product references
@@ -1213,9 +1212,8 @@
                 foreach (var r in refsEl.EnumerateArray())
                 {
                     var rawUrl = r.TryGetProperty("fileUrl", out var rfu) ? rfu.GetString() ?? "" : "";
-                    // Thêm base URL nếu là path tương đối
-                    var fullUrl = !string.IsNullOrEmpty(rawUrl) && !rawUrl.StartsWith("http")
-                        ? $"{baseUrl}{rawUrl}" : rawUrl;
+                    // Chuẩn hóa: path tương đối → ghép base; host Azure cũ → đổi sang API mới
+                    var fullUrl = MediaUrl.Resolve(rawUrl, baseUrl);
                     refs.Add(new ReferenceRow
                     {
                         ProductRefId  = r.TryGetProperty("id",        out var rid)  ? rid.GetInt32()         : 0,

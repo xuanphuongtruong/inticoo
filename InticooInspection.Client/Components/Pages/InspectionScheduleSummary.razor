@@ -1075,9 +1075,7 @@
                         foreach (var r in refs.EnumerateArray())
                         {
                             var rawUrl = r.TryGetProperty("fileUrl", out var fu) ? fu.GetString() ?? "" : "";
-                            var fullUrl = (!string.IsNullOrEmpty(rawUrl) && !rawUrl.StartsWith("http"))
-                                          ? $"{baseUrl}{(rawUrl.StartsWith('/') ? rawUrl : "/" + rawUrl)}"
-                                          : rawUrl;
+                            var fullUrl = MediaUrl.Resolve(rawUrl, baseUrl);
                             list.Add(new JobReference
                             {
                                 No            = no++,
@@ -1163,9 +1161,7 @@
             .Select((r, idx) =>
             {
                 var rawUrl  = r.FileUrl ?? "";
-                var fullUrl = (!string.IsNullOrEmpty(rawUrl) && !rawUrl.StartsWith("http"))
-                              ? $"{baseUrl}{(rawUrl.StartsWith('/') ? rawUrl : "/" + rawUrl)}"
-                              : rawUrl;
+                var fullUrl = MediaUrl.Resolve(rawUrl, baseUrl);
                 return new JobReference
                 {
                     No            = idx + 1,
@@ -1305,9 +1301,7 @@
                 {
                     var rawUrl  = r.TryGetProperty("fileUrl",       out var fu) ? fu.GetString() ?? "" : "";
                     var baseUrl = Http.BaseAddress?.ToString().TrimEnd('/') ?? "";
-                    var fullUrl = (!string.IsNullOrEmpty(rawUrl) && !rawUrl.StartsWith("http"))
-                                  ? $"{baseUrl}{(rawUrl.StartsWith('/') ? rawUrl : "/" + rawUrl)}"
-                                  : rawUrl;
+                    var fullUrl = MediaUrl.Resolve(rawUrl, baseUrl);
                     _selectedJobRefs.Add(new JobReference
                     {
                         No            = no++,

@@ -1531,13 +1531,7 @@ else
     // - Nếu đã là full URL (http/https) hoặc base64 data: → giữ nguyên
     // - Nếu là relative path (uploads/photos/xxx.png) → gắn BaseAddress của API
     string GetImageUrl(string? url)
-    {
-        if (string.IsNullOrEmpty(url)) return "";
-        if (url.StartsWith("data:") || url.StartsWith("http://") || url.StartsWith("https://"))
-            return url;
-        var baseUrl = Http.BaseAddress?.ToString().TrimEnd('/') ?? "";
-        return $"{baseUrl}/{url.TrimStart('/')}";
-    }
+        => MediaUrl.Resolve(url, Http.BaseAddress?.ToString());
 
     // Download reference file qua JS interop (tương thích iOS/macOS Safari)
     async Task DownloadReferenceAsync(JobReferenceDto refItem)

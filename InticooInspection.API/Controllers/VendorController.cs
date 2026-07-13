@@ -1,4 +1,4 @@
-using InticooInspection.Domain.Entities;
+﻿using InticooInspection.Domain.Entities;
 using InticooInspection.Infrastructure.Data;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Hosting;
@@ -308,7 +308,7 @@ namespace InticooInspection.API.Controllers
 
         /// <summary>Upload one or more files to a vendor.</summary>
         [HttpPost("{id}/attachments")]
-        public async Task<IActionResult> UploadAttachments(int id, [FromForm] List<IFormFile> files)
+        public async Task<IActionResult> UploadAttachments(int id, List<IFormFile> files)
         {
             var vendor = await _db.Vendors
                                   .Include(v => v.Attachments)
@@ -546,7 +546,7 @@ namespace InticooInspection.API.Controllers
         // ─────────────────────────────────────────────────────────────
 
         [HttpPost("{id}/factory-eval/files")]
-        public async Task<IActionResult> UploadFactoryEvalFiles(int id, [FromForm] List<IFormFile> files)
+        public async Task<IActionResult> UploadFactoryEvalFiles(int id, List<IFormFile> files)
         {
             var vendor = await _db.Vendors.Include(v => v.FactoryEvalFiles).FirstOrDefaultAsync(v => v.Id == id);
             if (vendor == null) return NotFound();
@@ -793,7 +793,7 @@ namespace InticooInspection.API.Controllers
         // ─────────────────────────────────────────────────────────────────
         [HttpPost("import")]
         [RequestSizeLimit(20 * 1024 * 1024)]
-        public async Task<IActionResult> Import([FromForm] IFormFile file)
+        public async Task<IActionResult> Import(IFormFile file)
         {
             var validateError = ImportHelper.ValidateFile(file);
             if (validateError != null) return validateError;

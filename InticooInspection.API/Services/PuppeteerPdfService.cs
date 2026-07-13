@@ -271,6 +271,7 @@ public class PuppeteerPdfService : IPdfService, IAsyncDisposable
                 Args = new[]
                 {
                     "--no-sandbox",
+                    "--ignore-certificate-errors",
                     "--disable-setuid-sandbox",
                     "--disable-dev-shm-usage",
                     "--disable-gpu",

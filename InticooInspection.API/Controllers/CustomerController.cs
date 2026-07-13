@@ -1,4 +1,4 @@
-using InticooInspection.Domain.Entities;
+﻿using InticooInspection.Domain.Entities;
 using InticooInspection.Infrastructure.Data;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -224,7 +224,7 @@ namespace InticooInspection.API.Controllers
         // ─────────────────────────────────────────────────────────────────
         [HttpPost("import")]
         [RequestSizeLimit(20 * 1024 * 1024)]
-        public async Task<IActionResult> Import([FromForm] IFormFile file)
+        public async Task<IActionResult> Import(IFormFile file)
         {
             var validateError = ImportHelper.ValidateFile(file);
             if (validateError != null) return validateError;

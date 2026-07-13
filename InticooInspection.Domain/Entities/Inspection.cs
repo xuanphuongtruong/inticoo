@@ -81,6 +81,11 @@ namespace InticooInspection.Domain.Entities
         public string CreatedById         { get; set; } = "";
         public AppUser? CreatedBy         { get; set; }
 
+        // Tình trạng gửi mail completion: 0 = chưa gửi, 1 = đã gửi.
+        // Job nền (InspectionDoneMailWorker) quét các inspection Completed có cờ = 0
+        // để gửi mail rồi cập nhật cờ = 1. Mặc định 0 cho inspection mới.
+        public int TinhTrangGuiMail { get; set; } = 0;
+
         // ── Office Use ───────────────────────────────────────
         public string?    InspectorName   { get; set; }
         public string?    InspectorId     { get; set; }

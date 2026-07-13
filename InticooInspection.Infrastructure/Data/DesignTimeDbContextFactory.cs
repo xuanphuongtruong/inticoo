@@ -10,7 +10,7 @@ namespace InticooInspection.Infrastructure.Data
         {
             var optionsBuilder = new DbContextOptionsBuilder<AppDbContext>();
             optionsBuilder.UseSqlServer(
-                "Server=IT-SP\\ITSPSERVER;Database=InticooInspection;User Id=phuongtx;Password=Xu@nPhuon9;TrustServerCertificate=True;");
+                "Server=WIN-B082IPHGPOJ\\SQLEXPRESS01;Database=InticooInspection;User Id=sql_inticooConnect;Password=ajdfoiu1309#123@19283KJH@;MultipleActiveResultSets=False;Encrypt=True;TrustServerCertificate=True;Connection Timeout=30;");
 
             return new AppDbContext(optionsBuilder.Options);
         }

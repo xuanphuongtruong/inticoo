@@ -1,4 +1,4 @@
-using InticooInspection.Domain.Entities;
+﻿using InticooInspection.Domain.Entities;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -112,6 +112,8 @@ namespace InticooInspection.API.Controllers
         [HttpPost]
         public async Task<IActionResult> Create([FromBody] CreateUserRequest request)
         {
+          try
+          {
             if (await _userManager.FindByNameAsync(request.Username) != null)
                 return BadRequest(new { success = false, message = "Username already exists." });
 
@@ -162,6 +164,17 @@ namespace InticooInspection.API.Controllers
                     await _userManager.AddToRoleAsync(user, role);
 
             return Ok(new { success = true, id = user.Id });
+          }
+          catch (Exception ex)
+          {
+            // Phơi lỗi chi tiết để chẩn đoán (giống InspectionController)
+            return StatusCode(500, new
+            {
+                error = ex.Message,
+                inner = ex.InnerException?.Message,
+                stack = ex.StackTrace
+            });
+          }
         }
 
         // PUT api/users/{id}
@@ -441,7 +454,7 @@ namespace InticooInspection.API.Controllers
         // ─────────────────────────────────────────────────────────────────
         [HttpPost("import")]
         [RequestSizeLimit(20 * 1024 * 1024)]
-        public async Task<IActionResult> Import([FromForm] IFormFile file)
+        public async Task<IActionResult> Import(IFormFile file)
         {
             var validateError = ImportHelper.ValidateFile(file);
             if (validateError != null) return validateError;

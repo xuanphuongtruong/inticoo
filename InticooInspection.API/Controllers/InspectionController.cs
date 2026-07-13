@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using System.Net;
 using System.Net.Mail;
 
@@ -17,12 +18,14 @@ namespace InticooInspection.API.Controllers
         private readonly AppDbContext _db;
         private readonly UserManager<AppUser> _userManager;
         private readonly IConfiguration _config;
+        private readonly IServiceScopeFactory _scopeFactory;
 
-        public InspectionController(AppDbContext db, UserManager<AppUser> userManager, IConfiguration config)
+        public InspectionController(AppDbContext db, UserManager<AppUser> userManager, IConfiguration config, IServiceScopeFactory scopeFactory)
         {
             _db = db;
             _userManager = userManager;
             _config = config;
+            _scopeFactory = scopeFactory;
         }
 
         // GET api/inspections
@@ -341,6 +344,8 @@ namespace InticooInspection.API.Controllers
         [AllowAnonymous]
         public async Task<IActionResult> GetById(int id)
         {
+          try
+          {
             var inspection = await _db.Inspections
                 .Include(i => i.CreatedBy)
                 .Include(i => i.OverallConclusions.OrderBy(o => o.Order))
@@ -632,6 +637,16 @@ namespace InticooInspection.API.Controllers
                 // QC Result — raw JSON string, client tự parse
                 qcResultJson = inspection.QcResultJson ?? ""
             });
+          }
+          catch (Exception ex)
+          {
+            return StatusCode(500, new
+            {
+                error = ex.Message,
+                inner = ex.InnerException?.Message,
+                stack = ex.StackTrace
+            });
+          }
         }
 
         // POST api/inspections
@@ -639,6 +654,8 @@ namespace InticooInspection.API.Controllers
         [AllowAnonymous]
         public async Task<IActionResult> Create([FromBody] CreateInspectionRequest request)
         {
+          try
+          {
             // Thử nhiều claim type — JWT có thể dùng "sub" hoặc NameIdentifier
             var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
                       ?? User.FindFirst("sub")?.Value;
@@ -853,6 +870,17 @@ namespace InticooInspection.API.Controllers
             _db.Inspections.Add(inspection);
             await _db.SaveChangesAsync();
             return Ok(new { success = true, id = inspection.Id });
+          }
+          catch (Exception ex)
+          {
+            // Phơi lỗi chi tiết để chẩn đoán (giống pattern ở Update/GetAll)
+            return StatusCode(500, new
+            {
+                error = ex.Message,
+                inner = ex.InnerException?.Message,
+                stack = ex.StackTrace
+            });
+          }
         }
 
         // PUT api/inspections/{id}/status
@@ -1487,23 +1515,36 @@ namespace InticooInspection.API.Controllers
                 await _db.SaveChangesAsync();
 
                 // ════════════════════════════════════════════════════════
-                // 4. Gửi email thông báo cho Customer (nếu có email)
+                // 4. Gửi email thông báo cho Customer (nếu có email).
+                //    Chạy nền với scope DI RIÊNG — KHÔNG dùng _db của request vì
+                //    request kết thúc sẽ dispose _db. Gửi thành công thì set
+                //    TinhTrangGuiMail = 1 để InspectionDoneMailWorker không gửi lại.
+                //    Nếu gửi hụt, cờ giữ = 0 và worker 10 phút sẽ gửi lại.
                 // ════════════════════════════════════════════════════════
+                var inspectionId = inspection.Id;
                 _ = Task.Run(async () =>
                 {
                     try
                     {
-                        if (!string.IsNullOrEmpty(inspection.CustomerId))
-                        {
-                            var customer = await _db.Customers
-                                .FirstOrDefaultAsync(c => c.CustomerId == inspection.CustomerId);
-                            if (customer != null && !string.IsNullOrEmpty(customer.Email))
-                                await SendCompletionEmailAsync(inspection, customer.Email, customer.AlternateReportEmail);
-                        }
+                        if (string.IsNullOrEmpty(inspection.CustomerId)) return;
+
+                        using var scope = _scopeFactory.CreateScope();
+                        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+                        var customer = await db.Customers.AsNoTracking()
+                            .FirstOrDefaultAsync(c => c.CustomerId == inspection.CustomerId);
+                        if (customer == null || string.IsNullOrEmpty(customer.Email)) return;
+
+                        await SendCompletionEmailAsync(inspection, customer.Email, customer.AlternateReportEmail);
+
+                        // Đánh dấu đã gửi để worker 10 phút không gửi trùng
+                        await db.Inspections
+                            .Where(x => x.Id == inspectionId)
+                            .ExecuteUpdateAsync(s => s.SetProperty(x => x.TinhTrangGuiMail, 1));
                     }
                     catch (Exception emailEx)
                     {
-                        // Email failure không ảnh hưởng response, nhưng phải log để debug
+                        // Gửi hụt không ảnh hưởng response; worker 10 phút sẽ thử lại (cờ vẫn = 0)
                         Console.WriteLine($"[SendCompletionEmail] Lỗi gửi mail Done: {emailEx.Message}");
                         Console.WriteLine($"[SendCompletionEmail] Stack: {emailEx.StackTrace}");
                     }
