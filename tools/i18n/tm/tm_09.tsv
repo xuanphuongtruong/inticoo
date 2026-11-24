@@ -1,0 +1,170 @@
+Total Inspection Pass Rate (%)	Tổng tỷ lệ kiểm hàng đạt (%)	验货总合格率 (%)	Jumlah kadar lulus pemeriksaan (%)
+Annual Results	Kết quả trong năm	年度结果	Keputusan tahunan
+% of Total Defects	% trên tổng số lỗi	占缺陷总数 %	% daripada jumlah kecacatan
+Annual Defect Breakdown — {0}	Phân tích lỗi trong năm — {0}	年度缺陷分析 — {0}	Pecahan kecacatan tahunan — {0}
+Defect Rate % = Defect Qty ÷ AQL Qty × 100.	Tỷ lệ lỗi % = SL lỗi ÷ SL AQL × 100.	缺陷率 % = 缺陷数量 ÷ AQL 数量 × 100。	Kadar kecacatan % = Kuantiti kecacatan ÷ Kuantiti AQL × 100.
+Top Defect	Lỗi nhiều nhất	主要缺陷	Kecacatan teratas
+Defect Rate %	Tỷ lệ lỗi %	缺陷率 %	Kadar kecacatan %
+Defect Qty	SL lỗi	缺陷数量	Kuantiti kecacatan
+AQL Qty	SL AQL	AQL 数量	Kuantiti AQL
+Shipment Quantity	Số lượng giao hàng	出货数量	Kuantiti penghantaran
+Month	Tháng	月份	Bulan
+Vendor Monthly Defect Performance — {0}	Tình hình lỗi theo tháng của nhà cung cấp — {0}	供应商月度缺陷表现 — {0}	Prestasi kecacatan bulanan pembekal — {0}
+Defect Breakdown — Year {0}	Phân tích lỗi — Năm {0}	缺陷分析 — {0} 年	Pecahan kecacatan — Tahun {0}
+Inspection Result — Year {0}	Kết quả kiểm hàng — Năm {0}	验货结果 — {0} 年	Keputusan pemeriksaan — Tahun {0}
+Defect Breakdown	Phân tích lỗi	缺陷分析	Pecahan kecacatan
+No shipment in {0}.	Không có lô hàng trong {0}.	{0} 没有出货。	Tiada penghantaran pada {0}.
+(Year {0} · completed Pre-Shipment inspections)	(Năm {0} · các lượt kiểm trước giao đã hoàn thành)	（{0} 年 · 已完成的出货前验货）	(Tahun {0} · pemeriksaan pra-penghantaran yang selesai)
+Vendor Name :	Tên nhà cung cấp :	供应商名称：	Nama pembekal :
+Performance Overview	Tổng quan hiệu suất	绩效概览	Gambaran prestasi
+Vendor Review - Inticoo	Đánh giá nhà cung cấp - Inticoo	供应商评估 - Inticoo	Semakan pembekal - Inticoo
+Minor:	Nhỏ:	轻微：	Minor:
+Major:	Lớn:	严重：	Major:
+Critical:	Nghiêm trọng:	致命：	Kritikal:
+Defects	Lỗi	缺陷	Kecacatan
+Total AQL Sampling :	Tổng mẫu AQL :	AQL 抽样总数：	Jumlah persampelan AQL :
+Total Inspection Report :	Tổng số báo cáo kiểm hàng :	验货报告总数：	Jumlah laporan pemeriksaan :
+Performance overview · Vendor quality metrics & inspection results	Tổng quan hiệu suất · Chỉ số chất lượng nhà cung cấp & kết quả kiểm hàng	绩效概览 · 供应商质量指标与验货结果	Gambaran prestasi · Metrik kualiti pembekal & keputusan pemeriksaan
+Vendor Reviews	Đánh giá nhà cung cấp	供应商评估	Semakan pembekal
+Vendor Reviews - Inticoo	Đánh giá nhà cung cấp - Inticoo	供应商评估 - Inticoo	Semakan pembekal - Inticoo
+Vendors	Nhà cung cấp	供应商	Pembekal
+Search vendor name, code, country...	Tìm tên, mã, quốc gia nhà cung cấp...	搜索供应商名称、编号、国家...	Cari nama, kod, negara pembekal...
+Delete Vendor	Xóa nhà cung cấp	删除供应商	Padam pembekal
+Business Ref.	Số ĐKKD	营业执照号	No. rujukan perniagaan
+Vendor Profile	Hồ sơ nhà cung cấp	供应商资料	Profil pembekal
++ {0} file(s)	+ {0} tệp	+ {0} 个文件	+ {0} fail
+choose files	chọn tệp	选择文件	pilih fail
+Uploading {0} file(s)...	Đang tải lên {0} tệp...	正在上传 {0} 个文件...	Sedang memuat naik {0} fail...
+Factory Evaluation Files	Tệp đánh giá nhà máy	工厂评估文件	Fail penilaian kilang
+Factory evaluation summary, audit findings...	Tóm tắt đánh giá nhà máy, kết quả audit...	工厂评估摘要、审核发现...	Ringkasan penilaian kilang, penemuan audit...
+Evaluation Notes	Ghi chú đánh giá	评估备注	Nota penilaian
+Factory Evaluation	Đánh giá nhà máy	工厂评估	Penilaian kilang
+Additional notes...	Ghi chú thêm...	其他备注...	Nota tambahan...
+Email address	Địa chỉ email	邮箱地址	Alamat e-mel
+Mobile number	Số di động	手机号码	Nombor telefon bimbit
+e.g. Sales Manager	vd. Trưởng phòng kinh doanh	例如：销售经理	cth. Pengurus jualan
+Full name	Họ tên	全名	Nama penuh
+Company main phone	Số điện thoại chính của công ty	公司总机	Telefon utama syarikat
+Business Reg. No.	Số ĐKKD	营业执照号	No. pendaftaran perniagaan
+Business Ref. No.	Số ĐKKD	营业执照号	No. rujukan perniagaan
+Tax code	Mã số thuế	税号	Kod cukai
+Abbreviation	Tên viết tắt	简称	Singkatan
+Full company name	Tên đầy đủ của công ty	公司全称	Nama penuh syarikat
+Suspended	Tạm ngưng	已暂停	Digantung
+Factory Eval — {0}	Đánh giá nhà máy — {0}	工厂评估 — {0}	Penilaian kilang — {0}
+{0} file(s) — {1}	{0} tệp — {1}	{0} 个文件 — {1}	{0} fail — {1}
+Upload file	Tải tệp lên	上传文件	Muat naik fail
+Upload factory evaluation file	Tải tệp đánh giá nhà máy	上传工厂评估文件	Muat naik fail penilaian kilang
+No vendors found.	Không tìm thấy nhà cung cấp.	未找到供应商。	Tiada pembekal ditemui.
+New Vendor	Thêm nhà cung cấp	新建供应商	Pembekal baharu
+{0} vendors	{0} nhà cung cấp	{0} 个供应商	{0} pembekal
+Manufacturing	Sản xuất	制造	Pembuatan
+Logistics	Logistics	物流	Logistik
+Service	Dịch vụ	服务	Perkhidmatan
+Accessory	Phụ kiện	配件	Aksesori
+All Types	Tất cả loại	所有类型	Semua jenis
+Search by code, name, tax code, contact...	Tìm theo mã, tên, mã số thuế, người liên hệ...	按编号、名称、税号、联系人搜索...	Cari mengikut kod, nama, kod cukai, hubungan...
+Manage supplier and vendor information	Quản lý thông tin nhà cung cấp	管理供应商信息	Urus maklumat pembekal
+Vendors - Inticoo	Nhà cung cấp - Inticoo	供应商 - Inticoo	Pembekal - Inticoo
+Unknown	Không xác định	未知	Tidak diketahui
+Factory eval upload failed.	Tải tệp đánh giá nhà máy thất bại.	工厂评估文件上传失败。	Gagal memuat naik penilaian kilang.
+Deleting vendor...	Đang xóa nhà cung cấp...	正在删除供应商...	Sedang memadam pembekal...
+Upload failed. Please try again.	Tải lên thất bại. Vui lòng thử lại.	上传失败，请重试。	Gagal memuat naik. Sila cuba lagi.
+Saving vendor...	Đang lưu nhà cung cấp...	正在保存供应商...	Sedang menyimpan pembekal...
+Creating vendor...	Đang tạo nhà cung cấp...	正在创建供应商...	Sedang mencipta pembekal...
+Vendor name is required.	Bắt buộc nhập tên nhà cung cấp.	供应商名称为必填项。	Nama pembekal diperlukan.
+Vendor code is required.	Bắt buộc nhập mã nhà cung cấp.	供应商编号为必填项。	Kod pembekal diperlukan.
+Create Vendor	Tạo nhà cung cấp	创建供应商	Cipta pembekal
+Creating & Uploading...	Đang tạo & tải lên...	正在创建并上传...	Sedang mencipta & memuat naik...
+Edit Vendor	Sửa nhà cung cấp	编辑供应商	Sunting pembekal
+Packing Quantity	Số lượng đóng gói	装箱数量	Kuantiti pembungkusan
+e.g. Carton A	vd. Thùng A	例如：纸箱 A	cth. Karton A
+Outer Packing	Đóng gói ngoài	外包装	Pembungkusan luar
+Carton {0} / {1}	Thùng {0} / {1}	纸箱 {0} / {1}	Karton {0} / {1}
+Errors	Lỗi	错误	Ralat
+Identifier	Định danh	标识	Pengecam
+Row	Dòng	行	Baris
+Error Details ({0})	Chi tiết lỗi ({0})	错误详情 ({0})	Butiran ralat ({0})
+Created	Đã tạo	已创建	Dicipta
+Total Rows	Tổng số dòng	总行数	Jumlah baris
+⚠ Import Completed with Errors	⚠ Nhập xong nhưng có lỗi	⚠ 导入完成但有错误	⚠ Import selesai dengan ralat
+✓ Import Successful	✓ Nhập thành công	✓ 导入成功	✓ Import berjaya
+Template	Tệp mẫu	模板	Templat
+Download Excel template	Tải tệp mẫu Excel	下载 Excel 模板	Muat turun templat Excel
+Import Excel	Nhập Excel	导入 Excel	Import Excel
+Download failed: {0}	Tải xuống thất bại: {0}	下载失败：{0}	Gagal memuat turun: {0}
+Import failed: {0}	Nhập thất bại: {0}	导入失败：{0}	Import gagal: {0}
+Import error: {0}	Lỗi nhập: {0}	导入错误：{0}	Ralat import: {0}
+File is too large. Maximum size is {0}MB.	Tệp quá lớn. Kích thước tối đa là {0}MB.	文件过大，最大 {0}MB。	Fail terlalu besar. Saiz maksimum ialah {0}MB.
+Only .xlsx or .xlsm files are allowed.	Chỉ chấp nhận tệp .xlsx hoặc .xlsm.	仅允许 .xlsx 或 .xlsm 文件。	Hanya fail .xlsx atau .xlsm dibenarkan.
+Cannot download template. Please contact administrator.	Không tải được tệp mẫu. Vui lòng liên hệ quản trị viên.	无法下载模板，请联系管理员。	Tidak dapat memuat turun templat. Sila hubungi pentadbir.
+Inspector Performance	Hiệu suất kiểm hàng viên	验货员绩效	Prestasi pemeriksa
+Vendor Performance	Hiệu suất nhà cung cấp	供应商绩效	Prestasi pembekal
+More	Thêm	更多	Lagi
+Products Profile	Hồ sơ sản phẩm	产品资料	Profil produk
+Vendors Profile	Hồ sơ nhà cung cấp	供应商资料	Profil pembekal
+Summary	Tổng hợp	汇总	Ringkasan
+Dashboard	Tổng quan	仪表板	Papan pemuka
+You don't have permission to view this page. Redirecting...	Bạn không có quyền xem trang này. Đang chuyển hướng...	您无权查看此页面，正在跳转...	Anda tiada kebenaran untuk melihat halaman ini. Sedang mengubah hala...
+Access Denied	Không có quyền truy cập	拒绝访问	Akses ditolak
+Checking permissions...	Đang kiểm tra quyền...	正在检查权限...	Sedang menyemak kebenaran...
+Print or save this report as PDF	In hoặc lưu báo cáo này thành PDF	打印或将此报告保存为 PDF	Cetak atau simpan laporan ini sebagai PDF
+Print / Save Report	In / Lưu báo cáo	打印 / 保存报告	Cetak / Simpan laporan
+No {0} found.	Không tìm thấy {0}.	未找到{0}。	Tiada {0} ditemui.
+Total {0}	Tổng số {0}	{0}总数	Jumlah {0}
+Reset	Đặt lại	重置	Set semula
+All Countries	Tất cả quốc gia	所有国家	Semua negara
+By confirming, you agree this electronic signature is legally binding for this defect closure report. The time of signing is recorded.	Khi xác nhận, bạn đồng ý chữ ký điện tử này có giá trị pháp lý đối với báo cáo đóng lỗi. Thời điểm ký sẽ được lưu lại.	确认即表示您同意此电子签名对本缺陷关闭报告具有法律效力，签署时间将被记录。	Dengan mengesahkan, anda bersetuju tandatangan elektronik ini mengikat dari segi undang-undang untuk laporan penutupan kecacatan ini. Masa tandatangan direkodkan.
+Sign here	Ký tại đây	在此签名	Tandatangan di sini
+Filled from your login account — you can change it before signing. After saving, the name can only be changed by signing again.	Lấy từ tài khoản đăng nhập — bạn có thể sửa trước khi ký. Sau khi lưu, chỉ đổi được tên bằng cách ký lại.	根据您的登录账户填写 — 签名前可修改。保存后，只能通过重新签名来更改姓名。	Diisi daripada akaun log masuk anda — anda boleh mengubahnya sebelum menandatangani. Selepas disimpan, nama hanya boleh diubah dengan menandatangani semula.
+Enter your full name	Nhập họ tên của bạn	输入您的全名	Masukkan nama penuh anda
+Sign inside the box below	Ký trong khung bên dưới	请在下方框内签名	Tandatangan di dalam kotak di bawah
+Please sign inside the box.	Vui lòng ký trong khung.	请在框内签名。	Sila tandatangan di dalam kotak.
+Please enter your full name.	Vui lòng nhập họ tên.	请输入您的全名。	Sila masukkan nama penuh anda.
+✓ Confirm Signature	✓ Xác nhận chữ ký	✓ 确认签名	✓ Sahkan tandatangan
+Alternate email is required when 'Use Alternate Email' is selected.	Cần nhập email thay thế khi chọn 'Dùng email thay thế'.	选择“使用备用邮箱”时必须填写备用邮箱。	E-mel alternatif diperlukan apabila 'Gunakan e-mel alternatif' dipilih.
+Cannot close a defect whose actions are Not Effective.	Không thể đóng lỗi khi hành động chưa hiệu quả.	措施无效的缺陷无法关闭。	Tidak boleh menutup kecacatan yang tindakannya tidak berkesan.
+Cannot delete your own account.	Không thể xóa tài khoản của chính bạn.	不能删除您自己的账户。	Tidak boleh memadam akaun anda sendiri.
+CompanyName is required.	Bắt buộc nhập CompanyName (tên công ty).	CompanyName（公司名称）为必填项。	CompanyName (nama syarikat) diperlukan.
+ContactEmail format is invalid.	Định dạng ContactEmail không hợp lệ.	ContactEmail 格式无效。	Format ContactEmail tidak sah.
+Current password is incorrect.	Mật khẩu hiện tại không đúng.	当前密码不正确。	Kata laluan semasa tidak betul.
+Current password is required.	Bắt buộc nhập mật khẩu hiện tại.	当前密码为必填项。	Kata laluan semasa diperlukan.
+CustomerName is required.	Bắt buộc nhập CustomerName (tên khách hàng).	CustomerName（客户名称）为必填项。	CustomerName (nama pelanggan) diperlukan.
+DB settings cleared. The app will use Environment Variables.	Đã xóa cấu hình DB. Ứng dụng sẽ dùng biến môi trường.	已清除数据库设置，应用将使用环境变量。	Tetapan DB dikosongkan. Aplikasi akan menggunakan pemboleh ubah persekitaran.
+Email already exists.	Email đã tồn tại.	邮箱已存在。	E-mel sudah wujud.
+Email format is invalid.	Định dạng email không hợp lệ.	邮箱格式无效。	Format e-mel tidak sah.
+File size must be under 20MB.	Tệp phải nhỏ hơn 20MB.	文件必须小于 20MB。	Saiz fail mesti kurang daripada 20MB.
+File size must be under 5MB.	Tệp phải nhỏ hơn 5MB.	文件必须小于 5MB。	Saiz fail mesti kurang daripada 5MB.
+FullName is required.	Bắt buộc nhập FullName (họ tên).	FullName（全名）为必填项。	FullName (nama penuh) diperlukan.
+InspectorId is required.	Bắt buộc nhập InspectorId (mã kiểm hàng viên).	InspectorId（验货员编号）为必填项。	InspectorId (ID pemeriksa) diperlukan.
+Invalid signature image.	Ảnh chữ ký không hợp lệ.	签名图片无效。	Imej tandatangan tidak sah.
+Invalid username or password.	Tên đăng nhập hoặc mật khẩu không đúng.	用户名或密码错误。	Nama pengguna atau kata laluan tidak sah.
+Missing required column: CompanyName	Thiếu cột bắt buộc: CompanyName	缺少必填列：CompanyName	Lajur wajib tiada: CompanyName
+Missing required column: Name	Thiếu cột bắt buộc: Name	缺少必填列：Name	Lajur wajib tiada: Name
+Name is required.	Bắt buộc nhập tên.	名称为必填项。	Nama diperlukan.
+New password is required.	Bắt buộc nhập mật khẩu mới.	新密码为必填项。	Kata laluan baharu diperlukan.
+No data rows found.	Không có dòng dữ liệu nào.	未找到数据行。	Tiada baris data ditemui.
+No file provided.	Không có tệp nào được gửi.	未提供文件。	Tiada fail diberikan.
+No file uploaded.	Chưa tải tệp lên.	未上传文件。	Tiada fail dimuat naik.
+No files provided.	Không có tệp nào được gửi.	未提供文件。	Tiada fail diberikan.
+No files uploaded.	Chưa tải tệp lên.	未上传文件。	Tiada fail dimuat naik.
+Only Admin can clear a signature.	Chỉ Quản trị mới được xóa chữ ký.	只有管理员可以清除签名。	Hanya Pentadbir boleh mengosongkan tandatangan.
+Only image files are allowed (jpg, png, webp).	Chỉ chấp nhận tệp ảnh (jpg, png, webp).	仅允许图片文件（jpg、png、webp）。	Hanya fail imej dibenarkan (jpg, png, webp).
+Password changed successfully.	Đổi mật khẩu thành công.	密码修改成功。	Kata laluan berjaya ditukar.
+Password must be at least 6 characters.	Mật khẩu phải có ít nhất 6 ký tự.	密码至少需要 6 个字符。	Kata laluan mesti sekurang-kurangnya 6 aksara.
+Please sign in again.	Vui lòng đăng nhập lại.	请重新登录。	Sila log masuk semula.
+Please sign in to sign.	Vui lòng đăng nhập để ký.	请登录后签名。	Sila log masuk untuk menandatangani.
+Please sign in.	Vui lòng đăng nhập.	请登录。	Sila log masuk.
+Product name is required.	Bắt buộc nhập tên sản phẩm.	产品名称为必填项。	Nama produk diperlukan.
+ProductName is required.	Bắt buộc nhập ProductName (tên sản phẩm).	ProductName（产品名称）为必填项。	ProductName (nama produk) diperlukan.
+Request body is null.	Dữ liệu gửi lên bị trống.	请求内容为空。	Kandungan permintaan kosong.
+Role is required.	Bắt buộc chọn vai trò.	角色为必填项。	Peranan diperlukan.
+Sheet 'Data' not found.	Không tìm thấy sheet 'Data'.	未找到工作表“Data”。	Helaian 'Data' tidak ditemui.
+Sheet 'Inspectors' not found.	Không tìm thấy sheet 'Inspectors'.	未找到工作表“Inspectors”。	Helaian 'Inspectors' tidak ditemui.
+Signature image is too large.	Ảnh chữ ký quá lớn.	签名图片过大。	Imej tandatangan terlalu besar.
+Signature is required.	Bắt buộc có chữ ký.	必须签名。	Tandatangan diperlukan.
+Test email sent successfully	Gửi email thử thành công	测试邮件发送成功	E-mel ujian berjaya dihantar
+This defect belongs to another customer.	Lỗi này thuộc khách hàng khác.	此缺陷属于其他客户。	Kecacatan ini milik pelanggan lain.
+Token expired.	Phiên đăng nhập đã hết hạn.	令牌已过期。	Token telah tamat tempoh.
+Unauthorized.	Không có quyền truy cập.	未授权。	Tidak dibenarkan.
+Unsupported language.	Ngôn ngữ không được hỗ trợ.	不支持该语言。	Bahasa tidak disokong.

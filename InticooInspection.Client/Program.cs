@@ -52,6 +52,14 @@ builder.Services.AddScoped<AuthenticationStateProvider, JwtAuthStateProvider>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<WaitingService>();
 builder.Services.AddScoped<PageAccessService>();
+builder.Services.AddScoped<SettingsClient>();
+// Singleton: Program.cs (root provider) và component phải dùng chung 1 instance
+builder.Services.AddSingleton<LanguageService>();
 
 
-await builder.Build().RunAsync();
+var host = builder.Build();
+
+// Nạp ngôn ngữ đã chọn (localStorage "app_lang") trước khi render → không nháy chữ
+await host.Services.GetRequiredService<LanguageService>().InitializeAsync();
+
+await host.RunAsync();

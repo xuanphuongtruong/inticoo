@@ -1,4 +1,4 @@
-﻿using InticooInspection.Domain.Entities;
+using InticooInspection.Domain.Entities;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -6,6 +6,9 @@ using Microsoft.EntityFrameworkCore;
 
 using ClosedXML.Excel;
 using Microsoft.AspNetCore.Hosting;
+using InticooInspection.API.Services;
+using InticooInspection.Domain.Security;
+using InticooInspection.API.Services.Tenancy;
 namespace InticooInspection.API.Controllers
 {
     [ApiController]
@@ -15,11 +18,53 @@ namespace InticooInspection.API.Controllers
     {
         private readonly UserManager<AppUser> _userManager;
         private readonly RoleManager<IdentityRole> _roleManager;
+        private readonly UserAccess _access;
 
-        public UserController(UserManager<AppUser> userManager, RoleManager<IdentityRole> roleManager)
+        public UserController(UserManager<AppUser> userManager, RoleManager<IdentityRole> roleManager, UserAccess access)
         {
             _userManager = userManager;
             _roleManager = roleManager;
+            _access      = access;
+        }
+
+        /// <summary>
+        /// Chuẩn hoá quyền chi tiết gửi từ màn Create/Edit User: ModulePermissions (JSON) → lưu bản đã chuẩn hoá
+        /// và đồng bộ PageAccess (menu cũ); CustomerIds ("*" hoặc CSV) → CustomerId = mã đầu tiên (tương thích cũ).
+        /// Chỉ áp khi client có gửi field tương ứng.
+        /// </summary>
+        static void ApplyAccess(AppUser user, string? modulePermissions, string? customerIds)
+        {
+            if (modulePermissions != null)
+            {
+                var set = ModulePermissionSet.TryParse(modulePermissions);
+                user.ModulePermissions = set?.ToJson();
+                if (set != null) user.PageAccess = set.ToPageAccessCsv();
+            }
+            if (customerIds != null)
+            {
+                if (CustomerAccess.IsAll(customerIds)) user.CustomerIds = CustomerAccess.All;
+                else
+                {
+                    var list = CustomerAccess.Parse(customerIds);
+                    user.CustomerIds = list.Count == 0 ? null : string.Join(",", list);
+                    if (list.Count > 0) user.CustomerId = list[0];
+                }
+            }
+        }
+
+        // ── Đồng bộ user của công ty khách (DB riêng) lên sup.CompanyUsers của Portal ──
+        // để lần đăng nhập sau API biết email/username này thuộc DB nào. DB gốc thì bỏ qua.
+        // Hạn mức số người dùng đang hoạt động của gói (công ty khách); vượt → PlanLimitException → 403
+        private InticooInspection.API.Services.Usage.PlanLimitService Limits =>
+            HttpContext.RequestServices.GetRequiredService<InticooInspection.API.Services.Usage.PlanLimitService>();
+
+        private TenantInfo? CurrentTenant => HttpContext.RequestServices.GetRequiredService<TenantContext>().Tenant;
+
+        private async Task SyncDirectoryAsync(AppUser user, string? previousEmail = null)
+        {
+            if (CurrentTenant is not { } t) return;
+            var role = (await _userManager.GetRolesAsync(user)).FirstOrDefault();
+            await HttpContext.RequestServices.GetRequiredService<TenantDirectory>().SyncUserAsync(t, user, role, previousEmail);
         }
 
         // GET api/users
@@ -30,9 +75,30 @@ namespace InticooInspection.API.Controllers
             [FromQuery] string? roles,
             [FromQuery] int page = 1,
             [FromQuery] int pageSize = 20,
-            [FromQuery] bool onlyLoginVisible = false)
+            [FromQuery] bool onlyLoginVisible = false,
+            [FromQuery] bool? isActive = null,
+            [FromQuery] string? country = null,
+            [FromQuery] string? category = null)
         {
+            var caller = await _access.GetAsync();
+            if (caller == null) return Unauthorized(new { success = false, message = "Please sign in again." });
             var query = _userManager.Users.AsQueryable();
+
+            // Không phải Admin: chỉ thấy hồ sơ inspector (Directory / Schedule / Performance Review) và chính mình
+            if (!caller.IsAdmin)
+            {
+                var selfId = caller.User.Id;
+                query = query.Where(u => u.InspectorId != null || u.Id == selfId);
+            }
+
+            if (!string.IsNullOrWhiteSpace(country))
+                query = query.Where(u => u.Country == country);
+            if (!string.IsNullOrWhiteSpace(category))
+                query = query.Where(u => u.Category == category);
+
+            // Lọc Active / Inactive (Inspector Profile, danh sách chọn inspector)
+            if (isActive.HasValue)
+                query = query.Where(u => u.IsActive == isActive.Value);
 
             // Màn hình Login Account (Users) truyền onlyLoginVisible=true:
             // chỉ hiện account có ShowInLoginAccount = true (cột được tick).
@@ -92,26 +158,37 @@ namespace InticooInspection.API.Controllers
             foreach (var u in users)
             {
                 var userRoles = await _userManager.GetRolesAsync(u);
-                items.Add(MapToDto(u, userRoles));
+                items.Add(MapToDto(u, userRoles, ShowSecurity(caller, u)));
             }
 
-            return Ok(new { total, page, pageSize, items });
+            // Danh sách giá trị lọc (chỉ tính hồ sơ inspector)
+            var insp = _userManager.Users.Where(u => u.InspectorId != null && u.InspectorId != "");
+            var catList = await insp.Where(u => u.Category != null && u.Category != "").Select(u => u.Category!).Distinct().OrderBy(x => x).ToListAsync();
+            var ctyList = await insp.Where(u => u.Country != null && u.Country != "").Select(u => u.Country!).Distinct().OrderBy(x => x).ToListAsync();
+            return Ok(new { total, page, pageSize, items, categories = catList, countries = ctyList });
         }
 
         // GET api/users/{id}
         [HttpGet("{id}")]
         public async Task<IActionResult> GetById(string id)
         {
+            var caller = await _access.GetAsync();
+            if (caller == null) return Unauthorized(new { success = false, message = "Please sign in again." });
             var user = await _userManager.FindByIdAsync(id);
             if (user == null) return NotFound();
+            if (!caller.IsAdmin && user.InspectorId == null && user.Id != caller.User.Id) return NotFound();
             var roles = await _userManager.GetRolesAsync(user);
-            return Ok(MapToDto(user, roles));
+            return Ok(MapToDto(user, roles, ShowSecurity(caller, user)));
         }
+
+        /// <summary>Trường bảo mật (PageAccess, quyền module, khách hàng) chỉ trả cho Admin hoặc chính chủ.</summary>
+        static bool ShowSecurity(AccessContext caller, AppUser target) => caller.IsAdmin || caller.User.Id == target.Id;
 
         // POST api/users
         [HttpPost]
         public async Task<IActionResult> Create([FromBody] CreateUserRequest request)
         {
+          if (await _access.RequireAdminAsync() is { } denied) return denied;
           try
           {
             if (await _userManager.FindByNameAsync(request.Username) != null)
@@ -148,12 +225,17 @@ namespace InticooInspection.API.Controllers
                 Mobile              = request.Mobile,
                 CustomerId          = request.CustomerId,
                 PageAccess          = request.PageAccess,
+                Department          = request.Department,
+                Position            = request.Position,
                 ShowInLoginAccount  = request.ShowInLoginAccount ?? true,
                 CreatedAt           = DateTime.UtcNow,
                 EmailConfirmed      = true,
                 LockoutEnabled      = true
             };
 
+            ApplyAccess(user, request.ModulePermissions, request.CustomerIds);
+
+            if (user.IsActive) await Limits.EnsureUsersAsync();
             var result = await _userManager.CreateAsync(user, request.Password);
             if (!result.Succeeded)
                 return BadRequest(new { success = false, message = string.Join(", ", result.Errors.Select(e => e.Description)) });
@@ -163,8 +245,10 @@ namespace InticooInspection.API.Controllers
                 if (request.Roles.Contains(role))
                     await _userManager.AddToRoleAsync(user, role);
 
+            await SyncDirectoryAsync(user);
             return Ok(new { success = true, id = user.Id });
           }
+          catch (InticooInspection.API.Services.Usage.PlanLimitException) { throw; }   // → 403 qua PlanLimitMiddleware
           catch (Exception ex)
           {
             // Phơi lỗi chi tiết để chẩn đoán (giống InspectionController)
@@ -181,8 +265,10 @@ namespace InticooInspection.API.Controllers
         [HttpPut("{id}")]
         public async Task<IActionResult> Update(string id, [FromBody] UpdateUserRequest request)
 {
+    if (await _access.RequireAdminAsync() is { } denied) return denied;
     var user = await _userManager.FindByIdAsync(id);
     if (user == null) return NotFound();
+    var previousEmail = user.Email ?? user.UserName;
 
     // Check trùng username (nếu có đổi)
     if (!string.IsNullOrWhiteSpace(request.Username))
@@ -196,7 +282,8 @@ namespace InticooInspection.API.Controllers
     if (!string.IsNullOrWhiteSpace(request.Username)) user.UserName = request.Username;
     if (!string.IsNullOrWhiteSpace(request.FullName)) user.FullName = request.FullName;
 
-    // IsActive là bool, luôn apply (form luôn có)
+    // IsActive là bool, luôn apply (form luôn có). Kích hoạt lại user đang khóa → kiểm hạn mức gói
+    if (request.IsActive && !user.IsActive) await Limits.EnsureUsersAsync();
     user.IsActive = request.IsActive;
 
     // ── Các trường OPTIONAL trên form Blazor ──
@@ -208,6 +295,9 @@ namespace InticooInspection.API.Controllers
     if (request.Country    != null) user.Country    = request.Country;
     if (request.CustomerId != null) user.CustomerId = request.CustomerId;
     if (request.PageAccess != null) user.PageAccess = request.PageAccess;
+    if (request.Department != null) user.Department = request.Department;
+    if (request.Position   != null) user.Position   = request.Position;
+    ApplyAccess(user, request.ModulePermissions, request.CustomerIds);
 
     // ShowInLoginAccount: chỉ form Inspector Profile gửi field này (nullable).
     // Form Users không gửi → giữ nguyên giá trị hiện tại, tránh vô tình ẩn account.
@@ -259,6 +349,7 @@ namespace InticooInspection.API.Controllers
                 await _userManager.AddToRoleAsync(user, role);
     }
 
+    await SyncDirectoryAsync(user, previousEmail);
     return Ok(new { success = true });
 }
 
@@ -266,10 +357,13 @@ namespace InticooInspection.API.Controllers
         [HttpPut("{id}/toggle-active")]
         public async Task<IActionResult> ToggleActive(string id)
         {
+            if (await _access.RequireAdminAsync() is { } denied) return denied;
             var user = await _userManager.FindByIdAsync(id);
             if (user == null) return NotFound();
+            if (!user.IsActive) await Limits.EnsureUsersAsync();   // bật lại → kiểm hạn mức gói
             user.IsActive = !user.IsActive;
             await _userManager.UpdateAsync(user);
+            await SyncDirectoryAsync(user);
             return Ok(new { success = true, isActive = user.IsActive });
         }
 
@@ -277,6 +371,7 @@ namespace InticooInspection.API.Controllers
         [HttpDelete("{id}")]
         public async Task<IActionResult> Delete(string id)
         {
+            if (await _access.RequireAdminAsync() is { } denied) return denied;
             var currentUserId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
             if (id == currentUserId)
                 return BadRequest(new { success = false, message = "Cannot delete your own account." });
@@ -284,6 +379,8 @@ namespace InticooInspection.API.Controllers
             var user = await _userManager.FindByIdAsync(id);
             if (user == null) return NotFound();
             await _userManager.DeleteAsync(user);
+            if (CurrentTenant is { } t)
+                await HttpContext.RequestServices.GetRequiredService<TenantDirectory>().RemoveUserAsync(t, user.Email ?? user.UserName);
             return Ok(new { success = true });
         }
 
@@ -291,6 +388,7 @@ namespace InticooInspection.API.Controllers
         [HttpGet("nextid")]
         public async Task<IActionResult> GetNextId()
         {
+            if (await _access.RequireAdminAsync() is { } denied) return denied;
             var ids = await _userManager.Users
                 .Where(u => u.InspectorId != null && u.InspectorId.StartsWith("IP"))
                 .Select(u => u.InspectorId!)
@@ -310,6 +408,7 @@ namespace InticooInspection.API.Controllers
         [HttpGet("dropdown")]
         public async Task<IActionResult> GetDropdown()
         {
+            if (await _access.GetAsync() == null) return Unauthorized(new { success = false, message = "Please sign in again." });
             var users = await _userManager.Users
                 .Where(u => u.IsActive)
                 .OrderBy(u => u.FullName)
@@ -322,6 +421,7 @@ namespace InticooInspection.API.Controllers
         [HttpGet("all-roles")]
         public async Task<IActionResult> GetRoles()
         {
+            if (await _access.GetAsync() == null) return Unauthorized(new { success = false, message = "Please sign in again." });
             var roles = await _roleManager.Roles.Select(r => r.Name!).ToListAsync();
             return Ok(roles);
         }
@@ -333,6 +433,9 @@ namespace InticooInspection.API.Controllers
         [HttpGet("{inspectorId}/review")]
         public async Task<IActionResult> GetInspectorReview(string inspectorId, [FromQuery] int? year, [FromQuery] int? month)
         {
+            var reviewer = await _access.GetAsync();
+            if (reviewer == null) return Unauthorized(new { success = false, message = "Please sign in again." });
+            if (!reviewer.CanView(ModuleKeys.PerformanceReview)) return StatusCode(403, new { success = false, message = "You do not have permission to view performance reviews." });
             try
             {
                 var now         = DateTime.UtcNow;
@@ -373,10 +476,9 @@ namespace InticooInspection.API.Controllers
         // Mọi role đều được phép gọi endpoint này.
         // ─────────────────────────────────────────────────────────────────
         [HttpPost("change-password")]
+        [Microsoft.AspNetCore.RateLimiting.EnableRateLimiting("auth")]
         public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordRequest request)
         {
-            if (string.IsNullOrWhiteSpace(request.Username))
-                return BadRequest(new { success = false, message = "Username is required." });
             if (string.IsNullOrWhiteSpace(request.CurrentPassword))
                 return BadRequest(new { success = false, message = "Current password is required." });
             if (string.IsNullOrWhiteSpace(request.NewPassword))
@@ -386,14 +488,21 @@ namespace InticooInspection.API.Controllers
             if (request.NewPassword == request.CurrentPassword)
                 return BadRequest(new { success = false, message = "New password must be different from current password." });
 
-            var user = await _userManager.FindByNameAsync(request.Username);
-            if (user == null)
-                return NotFound(new { success = false, message = "User not found." });
+            // Chỉ đổi mật khẩu của CHÍNH người đang đăng nhập (token) — bỏ qua Username trong body
+            var caller = await _access.GetAsync();
+            if (caller == null) return Unauthorized(new { success = false, message = "Please sign in again." });
+            var user = caller.User;
 
-            // Verify current password
+            // Verify current password (sai thì tính vào số lần thử → khóa tạm)
+            if (await _userManager.IsLockedOutAsync(user))
+                return BadRequest(new { success = false, message = "Account is temporarily locked. Please try again later." });
             var ok = await _userManager.CheckPasswordAsync(user, request.CurrentPassword);
             if (!ok)
+            {
+                await _userManager.AccessFailedAsync(user);
                 return BadRequest(new { success = false, message = "Current password is incorrect." });
+            }
+            await _userManager.ResetAccessFailedCountAsync(user);
 
             // Dùng ChangePasswordAsync (Identity tự xử lý hash + validator)
             var result = await _userManager.ChangePasswordAsync(user, request.CurrentPassword, request.NewPassword);
@@ -408,7 +517,7 @@ namespace InticooInspection.API.Controllers
         }
 
         // ── Helper ───────────────────────────────────────────────────────────
-        private static object MapToDto(AppUser u, IList<string> roles) => new
+        private static object MapToDto(AppUser u, IList<string> roles, bool showSecurity = true) => new
         {
             id                  = u.Id,
             username            = u.UserName,
@@ -437,8 +546,12 @@ namespace InticooInspection.API.Controllers
             country             = u.Country,
             postalCode          = u.PostalCode,
             mobile              = u.Mobile,
-            customerId          = u.CustomerId,
-            pageAccess          = u.PageAccess,
+            customerId          = showSecurity ? u.CustomerId : null,
+            pageAccess          = showSecurity ? u.PageAccess : null,
+            department          = u.Department,
+            position            = u.Position,
+            customerIds         = showSecurity ? u.CustomerIds : null,
+            modulePermissions   = showSecurity ? u.ModulePermissions : null,
             showInLoginAccount  = u.ShowInLoginAccount
         };
     
@@ -446,8 +559,11 @@ namespace InticooInspection.API.Controllers
         // GET api/users/template  - download Excel template for Inspector import
         // ─────────────────────────────────────────────────────────────────
         [HttpGet("template")]
-        public IActionResult DownloadImportTemplate([FromServices] IWebHostEnvironment env)
-            => ImportHelper.ServeTemplate(env, "Inspector_Import_Template.xlsx");
+        public async Task<IActionResult> DownloadImportTemplate([FromServices] IWebHostEnvironment env, [FromQuery] string? lang)
+        {
+            if (await _access.RequireAdminAsync() is { } denied) return denied;
+            return ImportHelper.ServeTemplate(env, "Inspector_Import_Template.xlsx", lang, headerRow: 3);
+        }
 
         // ─────────────────────────────────────────────────────────────────
         // POST api/users/import  - import inspectors from Excel
@@ -456,6 +572,7 @@ namespace InticooInspection.API.Controllers
         [RequestSizeLimit(20 * 1024 * 1024)]
         public async Task<IActionResult> Import(IFormFile file)
         {
+            if (await _access.RequireAdminAsync() is { } denied) return denied;
             var validateError = ImportHelper.ValidateFile(file);
             if (validateError != null) return validateError;
 
@@ -510,8 +627,8 @@ namespace InticooInspection.API.Controllers
                 if (string.IsNullOrWhiteSpace(row.Password))    rowErrs.Add("Password is required.");
                 else if (row.Password.Length < 6)               rowErrs.Add("Password must be at least 6 characters.");
                 if (string.IsNullOrWhiteSpace(row.Role))        rowErrs.Add("Role is required.");
-                else if (!new[] { "Admin", "Inspector", "Customer", "Manager" }.Contains(row.Role, StringComparer.OrdinalIgnoreCase))
-                    rowErrs.Add($"Role '{row.Role}' is not valid. Must be: Admin / Inspector / Customer / Manager.");
+                else if (!new[] { "Admin", "Inspector", "Customer", "Manager", "QAQCManager", "Vendor", "Management", "CustomRole" }.Contains(row.Role, StringComparer.OrdinalIgnoreCase))
+                    rowErrs.Add($"Role '{row.Role}' is not valid. Must be: Admin / Inspector / Customer / Manager / QAQCManager / Vendor / Management / CustomRole.");
 
                 if (!string.IsNullOrEmpty(row.InspectorId) && !seenIds.Add(row.InspectorId))
                     rowErrs.Add($"Duplicate InspectorId '{row.InspectorId}' in file.");
@@ -576,6 +693,7 @@ namespace InticooInspection.API.Controllers
                         IsActive            = row.IsActive ?? true,
                         CreatedAt           = DateTime.UtcNow,
                     };
+                    if (user.IsActive) await Limits.EnsureUsersAsync();   // vượt hạn mức gói → dòng này báo lỗi
                     var result = await _userManager.CreateAsync(user, row.Password!);
                     if (!result.Succeeded)
                     {
@@ -587,6 +705,7 @@ namespace InticooInspection.API.Controllers
                     if (!string.IsNullOrWhiteSpace(row.Role) && await _roleManager.RoleExistsAsync(row.Role))
                         await _userManager.AddToRoleAsync(user, row.Role);
 
+                    await SyncDirectoryAsync(user);
                     created++;
                 }
                 catch (Exception ex)
@@ -667,6 +786,10 @@ namespace InticooInspection.API.Controllers
         public string?  CustomerId          { get; set; }
         public string?  PageAccess          { get; set; }
         public bool?    ShowInLoginAccount  { get; set; }
+        public string?  Department          { get; set; }
+        public string?  Position            { get; set; }
+        public string?  CustomerIds         { get; set; }   // "*" hoặc CSV mã KH
+        public string?  ModulePermissions   { get; set; }   // JSON ModulePermissionSet
     }
 
     public class UpdateUserRequest
@@ -700,6 +823,10 @@ namespace InticooInspection.API.Controllers
         public string?  CustomerId          { get; set; }
         public string?  PageAccess          { get; set; }
         public bool?    ShowInLoginAccount  { get; set; }
+        public string?  Department          { get; set; }
+        public string?  Position            { get; set; }
+        public string?  CustomerIds         { get; set; }   // "*" hoặc CSV mã KH
+        public string?  ModulePermissions   { get; set; }   // JSON ModulePermissionSet
     }
 
     public class ChangePasswordRequest

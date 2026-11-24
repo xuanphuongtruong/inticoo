@@ -1,0 +1,22 @@
+@inherits LocalizedComponentBase
+@* Ô chọn ngày cho bộ lọc. Trên desktop dùng ô date gốc. Trên điện thoại (iPhone/Android) ô gốc hiển thị theo ngôn ngữ máy
+   và để trống khi chưa chọn → phủ lên một nhãn: luôn hiện dd/MM/yyyy khi đã chọn, hoặc gợi ý (Placeholder) khi chưa chọn. *@
+
+<div class="dfx @(Value.HasValue ? "has-val" : "")">
+    <input class="filter-date" type="date" value="@(Value?.ToString("yyyy-MM-dd"))" title="@Placeholder" @onchange="OnInput" />
+    <span class="dfx-txt">@(Value.HasValue ? Value.Value.ToString("dd/MM/yyyy") : Placeholder)</span>
+</div>
+
+@code {
+    [Parameter] public DateTime? Value { get; set; }
+    [Parameter] public EventCallback<DateTime?> ValueChanged { get; set; }
+    [Parameter] public string Placeholder { get; set; } = "dd/mm/yyyy";
+
+    private async Task OnInput(ChangeEventArgs e)
+    {
+        DateTime? v = DateTime.TryParse(e.Value?.ToString(), System.Globalization.CultureInfo.InvariantCulture,
+                                        System.Globalization.DateTimeStyles.None, out var d) ? d.Date : null;
+        Value = v;
+        await ValueChanged.InvokeAsync(v);
+    }
+}

@@ -1,0 +1,92 @@
+﻿@inherits LocalizedComponentBase
+@* Bảng người liên hệ của Customer / Vendor: sửa trực tiếp trên dòng, nhận report, contact chính. *@
+
+<div class="pf-contacts">
+    <div class="pf-sec-head">
+        <div>
+            <div class="pf-sec-title">@T("PartyContacts.Title")</div>
+            <div class="pf-sec-sub">@(ShowScheduleEmail ? T("PartyContacts.SubVendor") : T("PartyContacts.SubCustomer"))</div>
+        </div>
+        <button type="button" class="pf-btn pf-btn-primary" @onclick="Add">+ @T("PartyContacts.AddContact")</button>
+    </div>
+
+    @if (Contacts.Count == 0)
+    {
+        <div class="pf-empty">@T("PartyContacts.Empty")</div>
+    }
+    else
+    {
+        var main = Contacts.FirstOrDefault(c => c.IsPrimary);
+        <div class="pf-main-contact">&#9733; @T("PartyContacts.MainContactIs", string.IsNullOrWhiteSpace(main?.Name) ? "—" : main!.Name)</div>
+        <div class="pf-table-scroll">
+            <table class="pf-table">
+                <thead>
+                    <tr>
+                        <th>@T("PartyContacts.Name") <span class="pf-req">*</span></th>
+                        <th>@T("PartyContacts.Position")</th>
+                        <th>@T("PartyContacts.Email")</th>
+                        <th>@T("PartyContacts.Phone")</th>
+                        <th class="pf-c" title="@T("PartyContacts.ReceiveReportsHint")">@T("PartyContacts.ReceiveReports")</th>
+                        @if (ShowScheduleEmail)
+                        {
+                            <th class="pf-c" title="@T("PartyContacts.ScheduleEmailHint")">@T("PartyContacts.ScheduleEmail")</th>
+                        }
+                        <th class="pf-c">@T("PartyContacts.Status")</th>
+                        <th class="pf-c">@T("PartyContacts.Primary")</th>
+                        <th class="pf-c"></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var c in Contacts)
+                    {
+                        var row = c;
+                        <tr class="@(row.IsActive ? "" : "pf-row-off")">
+                            <td data-l="@T("PartyContacts.Name")"><input class="pf-input" value="@row.Name" @onchange="e => row.Name = e.Value?.ToString() ?? string.Empty" placeholder="@T("PartyContacts.Name")" /></td>
+                            <td data-l="@T("PartyContacts.Position")"><input class="pf-input" value="@row.Position" @onchange="e => row.Position = e.Value?.ToString()" /></td>
+                            <td data-l="@T("PartyContacts.Email")"><input class="pf-input" type="email" value="@row.Email" @onchange="e => row.Email = e.Value?.ToString()" /></td>
+                            <td data-l="@T("PartyContacts.Phone")"><input class="pf-input" value="@row.Phone" @onchange="e => row.Phone = e.Value?.ToString()" /></td>
+                            <td class="pf-c" data-l="@T("PartyContacts.ReceiveReports")"><label class="pf-switch"><input type="checkbox" checked="@row.ReceiveReports" @onchange="e => row.ReceiveReports = (bool)(e.Value ?? false)" /><span></span></label></td>
+                            @if (ShowScheduleEmail)
+                            {
+                                <td class="pf-c" data-l="@T("PartyContacts.ScheduleEmail")"><label class="pf-switch"><input type="checkbox" checked="@row.ScheduleEmail" @onchange="e => row.ScheduleEmail = (bool)(e.Value ?? false)" /><span></span></label></td>
+                            }
+                            <td class="pf-c" data-l="@T("PartyContacts.Status")"><label class="pf-switch"><input type="checkbox" checked="@row.IsActive" @onchange="e => row.IsActive = (bool)(e.Value ?? false)" /><span></span></label></td>
+                            <td class="pf-c" data-l="@T("PartyContacts.Primary")"><input type="radio" name="@_group" checked="@row.IsPrimary" @onchange="() => SetPrimary(row)" /></td>
+                            <td class="pf-c"><button type="button" class="pf-icon-btn pf-del" title="@T("Common.Delete")" @onclick="() => Remove(row)">&#10005;</button></td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public List<PartyContactVm> Contacts { get; set; } = new();
+    /// <summary>Vendor: thêm cột "Schedule Email".</summary>
+    [Parameter] public bool ShowScheduleEmail { get; set; }
+
+    private readonly string _group = "pfprimary" + Guid.NewGuid().ToString("N")[..6];
+
+    private void Add()
+    {
+        Contacts.Add(new PartyContactVm
+        {
+            ReceiveReports = true,
+            ScheduleEmail  = ShowScheduleEmail,
+            IsPrimary      = Contacts.Count == 0
+        });
+    }
+
+    private void SetPrimary(PartyContactVm row)
+    {
+        foreach (var c in Contacts) c.IsPrimary = ReferenceEquals(c, row);
+    }
+
+    private void Remove(PartyContactVm row)
+    {
+        var wasPrimary = row.IsPrimary;
+        Contacts.Remove(row);
+        if (wasPrimary && Contacts.Count > 0) Contacts[0].IsPrimary = true;
+    }
+}

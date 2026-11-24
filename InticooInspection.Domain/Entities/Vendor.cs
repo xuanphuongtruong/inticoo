@@ -26,7 +26,8 @@ namespace InticooInspection.Domain.Entities
         public VendorStatus Status         { get; set; } = VendorStatus.Active;
 
         // ── Vendor Profile ────────────────────────────────────────────
-        public string?      Category       { get; set; }             // PRODUCT CATEGORY
+        public string?      Category       { get; set; }             // BUSINESS CATEGORY (nhiều, cách dấu phẩy)
+        public string?      BusinessType   { get; set; }             // Manufacturer / Exporter / Supplier / Trading Company / Other (nhiều, cách dấu phẩy)
         public string?      TaxCode        { get; set; }
         public string?      BusinessRegNo  { get; set; }
         public string?      Phone          { get; set; }             // PHONE (company main phone)

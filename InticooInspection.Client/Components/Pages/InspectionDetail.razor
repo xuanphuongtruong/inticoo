@@ -5,63 +5,64 @@
 @inject NavigationManager Navigation
 @using InticooInspection.Client.Services
 @inject WaitingService Waiting
+@inherits LocalizedComponentBase
 
-<PageTitle>Inspection Detail - Inticoo</PageTitle>
+<PageTitle>@T("InspectionDetail.InspectionDetailInticoo")</PageTitle>
 
 @if (_loading)
 {
     <div class="loading-state">
         <div class="spinner-lg"></div>
-        <p>Loading...</p>
+        <p>@T("Common.Loading")</p>
     </div>
 }
 else if (_inspection == null)
 {
-    <div class="empty-state"><span>⚠️</span><p>Inspection not found.</p></div>
+    <div class="empty-state"><span>⚠️</span><p>@T("InspectionDetail.InspectionNotFound")</p></div>
 }
 else
 {
     <div class="page-header">
-        <button class="btn-back" @onclick="GoBack">← Back</button>
+        <button class="btn-back" @onclick="GoBack">@T("Common.Back2")</button>
         <div class="header-info">
             <h1 class="page-title">@_inspection.Title</h1>
-            <span class="@GetBadgeClass(_inspection.Status)">@_inspection.Status</span>
+            <span class="@GetBadgeClass(_inspection.Status)">@TE("Status", _inspection.Status)</span>
         </div>
         <div class="header-actions">
             @if (_inspection.Status == "Pending")
             {
-                <button class="btn-action btn-start" @onclick="StartInspection">▶ Start</button>
+                <button class="btn-action btn-start" @onclick="StartInspection">@T("InspectionDetail.Start")</button>
             }
             @if (_inspection.Status == "InProgress")
             {
-                <button class="btn-action btn-complete" @onclick="CompleteInspection">✓ Complete</button>
+                <button class="btn-action btn-complete" @onclick="CompleteInspection">@T("InspectionDetail.Complete")</button>
             }
             @if (_inspection.Status != "Cancelled" && _inspection.Status != "Completed")
             {
-                <button class="btn-action btn-cancel-ins" @onclick="CancelInspection">✕ Cancel</button>
+                <button class="btn-action btn-cancel-ins" @onclick="CancelInspection">@T("InspectionDetail.Cancel")</button>
             }
         </div>
     </div>
 
     <div class="detail-grid">
         <div class="info-card">
-            <h2 class="card-title">Details</h2>
+            <h2 class="card-title">@T("InspectionDetail.Details")</h2>
             @if (!string.IsNullOrEmpty(_inspection.Description))
             {
                 <p class="description">@_inspection.Description</p>
             }
             <div class="meta-list">
                 <div class="meta-item">
-                    <span class="meta-label">Created by</span>
+                    <span class="meta-label">@T("InspectionDetail.CreatedBy")</span>
                     <span class="meta-value">@_inspection.CreatedByName</span>
                 </div>
                 <div class="meta-item">
-                    <span class="meta-label">Date</span>
-                    <span class="meta-value">@_inspection.CreatedAt.ToString("MMM dd, yyyy")</span>
+                    <span class="meta-label">@T("Common.Date")</span>
+                    <span class="meta-value">@L.Date(_inspection.CreatedAt, "MMM dd, yyyy")</span>
                 </div>
                 <div class="meta-item">
-                    <span class="meta-label">Progress</span>
-                    <span class="meta-value">@GetDoneCount() / @_inspection.Steps.Count steps</span>
+                    <span class="meta-label">@T("InspectionDetail.Progress")</span>
+                    <span class="meta-value">@T("InspectionDetail.Steps2", GetDoneCount(), _inspection.Steps.Count)</span>
                 </div>
             </div>
             @if (_inspection.Steps.Count > 0)
@@ -76,10 +77,10 @@ else
         </div>
 
         <div class="steps-card">
-            <h2 class="card-title">Steps (@_inspection.Steps.Count)</h2>
+            <h2 class="card-title">@T("InspectionDetail.Steps", _inspection.Steps.Count)</h2>
             @if (_inspection.Steps.Count == 0)
             {
-                <p class="muted-text">No steps defined.</p>
+                <p class="muted-text">@T("InspectionDetail.NoStepsDefined")</p>
             }
             else
             {
@@ -104,7 +105,7 @@ else
                                     </div>
                                 </div>
                                 <div class="step-actions">
-                                    <span class="@GetBadgeClass(step.Status)">@step.Status</span>
+                                    <span class="@GetBadgeClass(step.Status)">@TE("Status", step.Status)</span>
                                     @if (_inspection.Status == "InProgress")
                                     {
                                         <button class="step-btn pass" @onclick="() => UpdateStep(stepId, PassStatus)">✓</button>
@@ -147,7 +148,7 @@ else
 
     private async Task UpdateStatus(string status)
     {
-        Waiting.Show("Updating status...");
+        Waiting.Show(T("InspectionDetail.UpdatingStatus"));
         await Http.PutAsJsonAsync($"api/inspections/{Id}/status", new { status });
         Waiting.Hide();
         await Load();
@@ -155,7 +156,7 @@ else
 
     private async Task UpdateStep(int stepId, string status)
     {
-        Waiting.Show("Updating step...");
+        Waiting.Show(T("InspectionDetail.UpdatingStep"));
         await Http.PutAsJsonAsync($"api/inspections/{Id}/steps/{stepId}", new { status, note = "" });
         Waiting.Hide();
         await Load();

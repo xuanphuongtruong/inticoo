@@ -6,11 +6,19 @@
 obj/
 .svn/
 bin/
+docs/
 
 
 # Chặn tất cả thư mục bin và obj ở bất kỳ đâu trong project
 **/bin/
 **/obj/
+**/wwwroot/
+# Ngoại lệ: wwwroot của Client là mã nguồn giao diện (i18n/*.json, js, css...) — phải được commit để deploy
+!InticooInspection.Client/wwwroot/
+# Ngoại lệ: wwwroot của Website / SuperAdmin / Portal cũ cũng chỉ chứa mã giao diện (css, js, ảnh, cờ) — phải commit
+!InticooInspection.Website/wwwroot/
+!InticooInspection.SuperAdmin/wwwroot/
+!InticooInspection.Portal/wwwroot/
 
 # Các tệp tạm của Visual Studio
 .vs/
@@ -19,3 +27,17 @@ bin/
 *.sln.docstates
 
 appsettings.Development.json
+# Secret cấu hình API — KHÔNG commit (mật khẩu DB, Jwt:Key, mật khẩu SMTP)
+appsettings.Secrets.json
+appsettings.*.Secrets.json
+
+# Portal secrets
+InticooInspection.Portal/appsettings.Secrets.json
+InticooInspection.Portal/appsettings.*.Secrets.json
+InticooInspection.SuperAdmin/appsettings.Secrets.json
+InticooInspection.SuperAdmin/appsettings.*.Secrets.json
+InticooInspection.Website/appsettings.Secrets.json
+InticooInspection.Website/appsettings.*.Secrets.json
+
+# File upload trang Resources (thư mục chung Content:Root khi chạy dev)
+InticooContent/

@@ -1,5 +1,6 @@
-@page "/inspection-schedule"
+﻿@page "/inspection-schedule"
 @using System.Globalization
+@using InticooInspection.Domain.Security
 @using System.Net.Http.Json
 @using System.Text.Json
 @using System.Net.Http.Headers
@@ -9,6 +10,8 @@
 @inject AuthenticationStateProvider AuthStateProvider
 @inject Blazored.SessionStorage.ISessionStorageService SessionStorage
 @inject IJSRuntime JS
+@inject PageAccessService PageAccess
+@inherits LocalizedComponentBase
 
 <div class="iss-page">
 
@@ -17,7 +20,7 @@
     {
         <div class="iss-loading">
             <div class="iss-spinner"></div>
-            <span>Loading schedule…</span>
+            <span>@T("InspectionScheduleSummary.LoadingSchedule")</span>
         </div>
     }
     else if (_view == View.JobDetail && _selectedJob != null)
@@ -29,192 +32,132 @@
                      stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                     <path d="M12 15l-5-5 5-5"/>
                 </svg>
-                Back
+                @T("Common.Back")
             </button>
 
             @if (_detailLoading)
             {
                 <div style="display:flex;align-items:center;justify-content:center;padding:32px;gap:12px;color:#888;font-size:14px;">
                     <div class="iss-spinner"></div>
-                    <span>Loading details…</span>
+                    <span>@T("InspectionScheduleSummary.LoadingDetails")</span>
                 </div>
             }
 
-            <div class="iss-detail-card">
-                <div class="iss-detail-badge @GetStatusClass(_selectedJob.Status)">@_selectedJob.Status</div>
-
-                <div class="iss-field-group">
-                    <div class="iss-field"><span class="iss-fl">Job No</span><span class="iss-fv iss-fv-strong">@(_selectedJob.JobNumber ?? "—")</span></div>
-                    <div class="iss-field"><span class="iss-fl">Customer Name</span><span class="iss-fv">@_selectedJob.CustomerName</span></div>
-                    <div class="iss-field"><span class="iss-fl">Category</span><span class="iss-fv">@(_selectedJob.ProductCategory ?? "—")</span></div>
-                    @* <div class="iss-field"><span class="iss-fl">Product Type</span><span class="iss-fv">@(_selectedJob.ProductType ?? "—")</span></div> *@
-                    <div class="iss-field"><span class="iss-fl">Inspection Type</span><span class="iss-fv">@_selectedJob.InspectionType</span></div>
-                    <div class="iss-field"><span class="iss-fl">PO Number</span><span class="iss-fv">@(string.IsNullOrEmpty(_selectedJob.PoNumber) ? "—" : _selectedJob.PoNumber)</span></div>
-                    <div class="iss-field"><span class="iss-fl">Product Code</span><span class="iss-fv">@(string.IsNullOrEmpty(_selectedJob.ItemNumber) ? "—" : _selectedJob.ItemNumber)</span></div>
-                    <div class="iss-field"><span class="iss-fl">Product Name</span><span class="iss-fv">@(string.IsNullOrEmpty(_selectedJob.ProductName) ? "—" : _selectedJob.ProductName)</span></div>
-                    <div class="iss-field"><span class="iss-fl">Vendor Name</span><span class="iss-fv">@_selectedJob.VendorName</span></div>
+            <div class="dt-card">
+                <div class="dt-crumb">
+                    <button type="button" class="dt-back" @onclick="GoBack">&lsaquo; @T("Common.Back")</button>
+                    <span>@T("Menu.InspectionSchedule") &rsaquo; <b>@(_selectedJob.JobNumber ?? $"#{_selectedJob.Id}")</b></span>
+                </div>
+                <div class="dt-head">
+                    <h2>@(_selectedJob.JobNumber ?? $"#{_selectedJob.Id}")</h2>
+                    <span class="iss-it-badge it-@_selectedJob.InspectionType.ToLower()">@TE("Opt", _selectedJob.InspectionType)</span>
+                    <div class="dt-head-r">
+                        <span class="iss-st-pill @GetStatusClass(_selectedJob.Status)">@TE("Status", _selectedJob.Status)</span>
+                        @if (!_canStartInspection) { <span class="dt-viewonly">&#128065; @T("InspectionScheduleSummary.ViewOnly")</span> }
+                    </div>
+                </div>
+                <div class="dt-facts">
+                    <div class="dt-fact"><span class="dt-fi">@SlIcon("date")</span><span><small>@T("Common.InspectionDate")</small><b>@L.Date(_selectedJob.InspectionDate, "ddd, d MMM yyyy")</b></span></div>
+                    <div class="dt-fact"><span class="dt-fi">@SlIcon("category")</span><span><small>@T("Common.Category")</small><b>@(_selectedJob.ProductCategory ?? "—")</b></span></div>
+                    <div class="dt-fact"><span class="dt-fi">@SlIcon("po")</span><span><small>@T("InspectionScheduleSummary.PONumber")</small><b>@(string.IsNullOrEmpty(_selectedJob.PoNumber) ? "—" : _selectedJob.PoNumber)</b></span></div>
+                    <div class="dt-fact"><span class="dt-fi">@SlIcon("category")</span><span><small>@T("Common.ProductCode")</small><b>@(string.IsNullOrEmpty(_selectedJob.ItemNumber) ? "—" : _selectedJob.ItemNumber)</b></span></div>
                 </div>
 
-                @* Vendor Information — Contact Name, Position, Mobile, Office, Email *@
+                @if (_detailLoading)
+                {
+                    <div class="dt-loading"><div class="iss-spinner"></div><span>@T("InspectionScheduleSummary.LoadingDetails")</span></div>
+                }
+
                 @{
-                    bool hasVendorContact = !string.IsNullOrEmpty(_selectedJob.VendorContactName)
-                                         || !string.IsNullOrEmpty(_selectedJob.VendorContactPosition)
-                                         || !string.IsNullOrEmpty(_selectedJob.VendorContactMobile)
-                                         || !string.IsNullOrEmpty(_selectedJob.VendorContactOffice)
-                                         || !string.IsNullOrEmpty(_selectedJob.VendorContactEmail);
+                    var vParts = new[] { _selectedJob.VendorCity, _selectedJob.VendorCountry }.Where(x => !string.IsNullOrWhiteSpace(x));
+                    bool hasContact = !string.IsNullOrEmpty(_selectedJob.VendorContactName) || !string.IsNullOrEmpty(_selectedJob.VendorContactPosition)
+                                   || !string.IsNullOrEmpty(_selectedJob.VendorContactMobile) || !string.IsNullOrEmpty(_selectedJob.VendorContactEmail);
                 }
-                @if (hasVendorContact)
-                {
-                    <div class="iss-vendor-section">
-                        <div class="iss-vendor-title">Vendor Information</div>
-                        @if (!string.IsNullOrEmpty(_selectedJob.VendorContactName))
+                <div class="dt-grid">
+                    <div class="dt-left">
+                        <div class="dt-prod"><span class="dt-pi">@SlIcon("category")</span><div><small>@T("Common.ProductName")</small><b>@(string.IsNullOrEmpty(_selectedJob.ProductName) ? "—" : _selectedJob.ProductName)</b></div>
+                            @if (_selectedJobPhotos.Count > 0)
+                            {
+                                <a class="dt-pthumb" href="@_selectedJobPhotos[0]" target="_blank" rel="noopener" title="@T("Common.View")">
+                                    <img src="@_selectedJobPhotos[0]" alt="" loading="lazy" />
+                                    @if (_selectedJobPhotos.Count > 1) { <em>+@(_selectedJobPhotos.Count - 1)</em> }
+                                </a>
+                            }
+                        </div>
+                        @if (!_hideCustomer)
                         {
-                            <div class="iss-vi-row">
-                                <span class="iss-vi-dot">•</span>
-                                <span class="iss-vi-label">Contact Name</span>
-                                <span class="iss-vi-val">@_selectedJob.VendorContactName</span>
-                            </div>
+                            <div class="dt-row"><div class="dt-rl">@SlIcon("vendor") @T("Common.Customer")</div><div class="dt-rv"><b>@_selectedJob.CustomerName</b></div></div>
                         }
-                        @if (!string.IsNullOrEmpty(_selectedJob.VendorContactPosition))
-                        {
-                            <div class="iss-vi-row">
-                                <span class="iss-vi-dot">•</span>
-                                <span class="iss-vi-label">Position</span>
-                                <span class="iss-vi-val">@_selectedJob.VendorContactPosition</span>
+                        <div class="dt-row"><div class="dt-rl">@SlIcon("po") @T("Common.InspectionType")</div><div class="dt-rv"><span class="iss-it-badge it-@_selectedJob.InspectionType.ToLower()">@TE("Opt", _selectedJob.InspectionType)</span></div></div>
+                        <div class="dt-row"><div class="dt-rl">@SlIcon("vendor") @T("Common.Vendor")</div>
+                            <div class="dt-rv">
+                                <b>@_selectedJob.VendorName</b>
+                                @if (vParts.Any()) { <div class="dt-sub">@SlIcon("country") @string.Join(", ", vParts)</div> }
+                                @if (hasContact)
+                                {
+                                    <div class="dt-contact">
+                                        @if (!string.IsNullOrEmpty(_selectedJob.VendorContactName)) { <div><span>@T("Common.ContactName")</span><b>@_selectedJob.VendorContactName</b></div> }
+                                        @if (!string.IsNullOrEmpty(_selectedJob.VendorContactPosition)) { <div><span>@T("Common.Position")</span><b>@_selectedJob.VendorContactPosition</b></div> }
+                                        @if (!string.IsNullOrEmpty(_selectedJob.VendorContactMobile)) { <div><span>@T("Common.Mobile")</span><b>@_selectedJob.VendorContactMobile</b></div> }
+                                        @if (!string.IsNullOrEmpty(_selectedJob.VendorContactEmail)) { <div><span>Email</span><b>@_selectedJob.VendorContactEmail</b></div> }
+                                    </div>
+                                }
                             </div>
-                        }
-                        @if (!string.IsNullOrEmpty(_selectedJob.VendorContactMobile))
-                        {
-                            <div class="iss-vi-row">
-                                <span class="iss-vi-dot">•</span>
-                                <span class="iss-vi-label">Mobile</span>
-                                <span class="iss-vi-val">@_selectedJob.VendorContactMobile</span>
+                        </div>
+                        <div class="dt-row"><div class="dt-rl">@SlIcon("inspector") @T("Common.Inspector")</div>
+                            <div class="dt-rv">
+                                <b>@(string.IsNullOrEmpty(_selectedJob.InspectorName) ? T("InspectionScheduleSummary.Unassigned") : _selectedJob.InspectorName)</b>
+                                @if (!string.IsNullOrEmpty(_selectedJob.InspectorId)) { <div class="dt-line"><span>ID</span><b>@_selectedJob.InspectorId</b></div> }
+                                @if (!string.IsNullOrEmpty(_selectedJob.InspectorMobile)) { <div class="dt-line"><span>@T("Common.Mobile")</span><b>@_selectedJob.InspectorMobile</b></div> }
                             </div>
-                        }
-                        @if (!string.IsNullOrEmpty(_selectedJob.VendorContactOffice))
-                        {
-                            <div class="iss-vi-row">
-                                <span class="iss-vi-dot">•</span>
-                                <span class="iss-vi-label">Office</span>
-                                <span class="iss-vi-val">@_selectedJob.VendorContactOffice</span>
-                            </div>
-                        }
-                        @if (!string.IsNullOrEmpty(_selectedJob.VendorContactEmail))
-                        {
-                            <div class="iss-vi-row">
-                                <span class="iss-vi-dot">•</span>
-                                <span class="iss-vi-label">Email</span>
-                                <span class="iss-vi-val">@_selectedJob.VendorContactEmail</span>
-                            </div>
-                        }
-                    </div>
-                }
-
-                @* Vendor Address — Address 1/2, City, State, Country *@
-                @{
-                    bool hasVendorAddr = !string.IsNullOrEmpty(_selectedJob.VendorAddress1)
-                                      || !string.IsNullOrEmpty(_selectedJob.VendorAddress2)
-                                      || !string.IsNullOrEmpty(_selectedJob.VendorCity)
-                                      || !string.IsNullOrEmpty(_selectedJob.VendorCountry);
-                }
-                @if (hasVendorAddr)
-                {
-                    <div class="iss-vendor-section">
-                        <div class="iss-vendor-title">Vendor Address</div>
-                        @if (!string.IsNullOrEmpty(_selectedJob.VendorAddress1))
-                        {
-                            <div class="iss-vi-row">
-                                <span class="iss-vi-dot">•</span>
-                                <span class="iss-vi-label">Address 1</span>
-                                <span class="iss-vi-val">@_selectedJob.VendorAddress1</span>
-                            </div>
-                        }
-                        @if (!string.IsNullOrEmpty(_selectedJob.VendorAddress2))
-                        {
-                            <div class="iss-vi-row">
-                                <span class="iss-vi-dot">•</span>
-                                <span class="iss-vi-label">Address 2</span>
-                                <span class="iss-vi-val">@_selectedJob.VendorAddress2</span>
-                            </div>
-                        }
-                        @if (!string.IsNullOrEmpty(_selectedJob.VendorCity))
-                        {
-                            <div class="iss-vi-row">
-                                <span class="iss-vi-dot">•</span>
-                                <span class="iss-vi-label">City</span>
-                                <span class="iss-vi-val">@_selectedJob.VendorCity</span>
-                            </div>
-                        }
-                        @if (!string.IsNullOrEmpty(_selectedJob.VendorCountry))
-                        {
-                            <div class="iss-vi-row">
-                                <span class="iss-vi-dot">•</span>
-                                <span class="iss-vi-label">Country</span>
-                                <span class="iss-vi-val">@_selectedJob.VendorCountry</span>
-                            </div>
-                        }
-                    </div>
-                }
-
-                @* Inspector Information *@
-                @if (!string.IsNullOrEmpty(_selectedJob.InspectorName)
-                     || !string.IsNullOrEmpty(_selectedJob.InspectorId)
-                     || !string.IsNullOrEmpty(_selectedJob.InspectorMobile))
-                {
-                    <div class="iss-vendor-section">
-                        <div class="iss-vendor-title">Inspector Information</div>
-                        @if (!string.IsNullOrEmpty(_selectedJob.InspectorName))
-                        {
-                            <div class="iss-vi-row">
-                                <span class="iss-vi-dot">•</span>
-                                <span class="iss-vi-label">Name</span>
-                                <span class="iss-vi-val">@_selectedJob.InspectorName</span>
-                            </div>
-                        }
-                        @if (!string.IsNullOrEmpty(_selectedJob.InspectorId))
-                        {
-                            <div class="iss-vi-row">
-                                <span class="iss-vi-dot">•</span>
-                                <span class="iss-vi-label">ID</span>
-                                <span class="iss-vi-val">@_selectedJob.InspectorId</span>
-                            </div>
-                        }
-                        @if (!string.IsNullOrEmpty(_selectedJob.InspectorMobile))
-                        {
-                            <div class="iss-vi-row">
-                                <span class="iss-vi-dot">•</span>
-                                <span class="iss-vi-label">Mobile</span>
-                                <span class="iss-vi-val">@_selectedJob.InspectorMobile</span>
-                            </div>
-                        }
-                    </div>
-                }
-
-                @* Reference List — gộp thành 1 nút View, popup hiển thị toàn bộ *@
-                @if (_selectedJobRefs.Count > 0)
-                {
-                    <div class="iss-vendor-section iss-refs-collapsed">
-                        <div class="iss-refs-header">
-                            <span class="iss-vendor-title" style="margin:0">Product References</span>
-                            <span class="iss-refs-count">@_selectedJobRefs.Count file@(_selectedJobRefs.Count > 1 ? "s" : "")</span>
-                            <button type="button" class="iss-refs-view-all-btn" @onclick="() => _showRefsPopup = true">
-                                <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2">
-                                    <path d="M1 10s3.5-7 9-7 9 7 9 7-3.5 7-9 7-9-7-9-7z"/><circle cx="10" cy="10" r="3"/>
-                                </svg>
-                                View
-                            </button>
                         </div>
                     </div>
-                }
-            </div>
 
-            @if (_canStartInspection)
-            {
-                <button class="iss-start-btn" @onclick="() => StartInspection(_selectedJob)">
-                    <svg width="18" height="18" viewBox="0 0 20 20" fill="currentColor"><path d="M6 4l12 6-12 6V4z"/></svg>
-                    Start Inspection
-                </button>
-            }
+                    <div class="dt-right">
+                        <div class="dt-refs">
+                            <div class="dt-refs-h">
+                                <span class="dt-ri">@SlIcon("po")</span>
+                                <div><b>@T("InspectionScheduleSummary.ProductReferences") <em>(@_selectedJobRefs.Count)</em></b></div>
+                                @if (_selectedJobRefs.Count > 0)
+                                {
+                                    <button type="button" class="dt-dlall" @onclick="DownloadAllRefs">
+                                        <svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3v10M6 9l4 4 4-4"/><path d="M3 17h14"/></svg>
+                                        @T("InspectionScheduleSummary.DownloadAll")
+                                    </button>
+                                }
+                            </div>
+                            @foreach (var ref_ in _selectedJobRefs)
+                            {
+                                var ext = RefExt(ref_);
+                                <div class="dt-ref">
+                                    <span class="dt-ext ext-@ext.ToLower()">@ext</span>
+                                    <div class="dt-ref-n"><b>@(string.IsNullOrEmpty(ref_.FileName) ? ref_.ReferenceName : ref_.FileName)</b>@if (!string.IsNullOrEmpty(ref_.FileName) && !string.IsNullOrEmpty(ref_.ReferenceName)) { <small>@ref_.ReferenceName</small> }</div>
+                                    @if (!string.IsNullOrEmpty(ref_.FileUrl))
+                                    {
+                                        @if (PageAccess.CanDownload)
+                                        {
+                                            <a href="@ref_.FileUrl" download="@ref_.FileName" class="dt-ico" title="@T("Common.Download")"><svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 3v10M6 9l4 4 4-4" stroke-linecap="round" stroke-linejoin="round"/><path d="M3 17h14" stroke-linecap="round"/></svg></a>
+                                        }
+                                        <a href="@ref_.FileUrl" target="_blank" rel="noopener" class="dt-ico" title="@T("Common.View")"><svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 10s3.5-7 9-7 9 7 9 7-3.5 7-9 7-9-7-9-7z"/><circle cx="10" cy="10" r="3"/></svg></a>
+                                    }
+                                    else { <span class="dt-nofile">@T("Common.NoFile")</span> }
+                                </div>
+                            }
+                        </div>
+                    </div>
+                </div>
+
+                <div class="dt-foot">
+                    <span class="dt-state">@TE("Status", _selectedJob.Status)</span>
+                    @if (_canStartInspection)
+                    {
+                        <button class="dt-start" @onclick="() => StartInspection(_selectedJob)">
+                            <svg width="18" height="18" viewBox="0 0 20 20" fill="currentColor"><path d="M6 4l12 6-12 6V4z"/></svg>
+                            @T("InspectionScheduleSummary.StartInspection")
+                        </button>
+                    }
+                </div>
+            </div>
 
             @* Popup hiển thị toàn bộ Product References *@
             @if (_showRefsPopup && _selectedJobRefs.Count > 0)
@@ -222,15 +165,15 @@
                 <div class="iss-refs-backdrop" @onclick="() => _showRefsPopup = false">
                     <div class="iss-refs-modal" @onclick:stopPropagation="true">
                         <div class="iss-refs-modal-header">
-                            <div class="iss-refs-modal-title">Product References</div>
-                            <button type="button" class="iss-refs-modal-close" @onclick="() => _showRefsPopup = false" aria-label="Close">✕</button>
+                            <div class="iss-refs-modal-title">@T("InspectionScheduleSummary.ProductReferences")</div>
+                            <button type="button" class="iss-refs-modal-close" @onclick="() => _showRefsPopup = false" aria-label="@T("Common.Close")">✕</button>
                         </div>
                         <div class="iss-refs-modal-body">
                             <div class="iss-ref-table">
                                 <div class="iss-ref-header">
                                     <span class="iss-ref-no">No</span>
-                                    <span class="iss-ref-name">Reference</span>
-                                    <span class="iss-ref-file">File</span>
+                                    <span class="iss-ref-name">@T("Common.Reference")</span>
+                                    <span class="iss-ref-file">@T("InspectionScheduleSummary.File")</span>
                                 </div>
                                 @foreach (var ref_ in _selectedJobRefs)
                                 {
@@ -240,23 +183,26 @@
                                         <span class="iss-ref-file">
                                             @if (!string.IsNullOrEmpty(ref_.FileUrl))
                                             {
-                                                <a href="@ref_.FileUrl" target="_blank" rel="noopener" class="iss-ref-view-btn" title="View">
+                                                <a href="@ref_.FileUrl" target="_blank" rel="noopener" class="iss-ref-view-btn" title="@T("Common.View")">
                                                     <svg width="13" height="13" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2">
                                                         <path d="M1 10s3.5-7 9-7 9 7 9 7-3.5 7-9 7-9-7-9-7z"/><circle cx="10" cy="10" r="3"/>
                                                     </svg>
-                                                    View
+                                                    @T("Common.View")
                                                 </a>
-                                                <a href="@ref_.FileUrl" download="@ref_.FileName" class="iss-ref-dl-btn" title="Download">
+                                                @if (PageAccess.CanDownload)
+                                                {
+                                                <a href="@ref_.FileUrl" download="@ref_.FileName" class="iss-ref-dl-btn" title="@T("Common.Download")">
                                                     <svg width="13" height="13" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2">
                                                         <path d="M10 3v10M6 9l4 4 4-4" stroke-linecap="round" stroke-linejoin="round"/>
                                                         <path d="M3 17h14" stroke-linecap="round"/>
                                                     </svg>
-                                                    Download
+                                                    @T("Common.Download")
                                                 </a>
+                                                }
                                             }
                                             else
                                             {
-                                                <span style="color:#bbb;font-size:12px;">No file</span>
+                                                <span style="color:#bbb;font-size:12px;">@T("Common.NoFile")</span>
                                             }
                                         </span>
                                     </div>
@@ -264,35 +210,230 @@
                             </div>
                         </div>
                         <div class="iss-refs-modal-footer">
-                            <button type="button" class="iss-refs-modal-ok" @onclick="() => _showRefsPopup = false">Close</button>
+                            <button type="button" class="iss-refs-modal-ok" @onclick="() => _showRefsPopup = false">@T("Common.Close")</button>
                         </div>
                     </div>
                 </div>
             }
         </div>
     }
+    else if (_view == View.ClcDetail && _clcSel != null)
+    {
+        <!-- ═══════════════════════ CLC DETAIL ═══════════════════════ -->
+        <div class="iss-detail-wrap">
+            @{
+                var cm = _clcSel;
+                var cinsp = _inspectors.FirstOrDefault(i => string.Equals(i.FullName, cm.InspectorName, StringComparison.OrdinalIgnoreCase));
+                var canGo = _canStartInspection && (cm.Status == "Pending" || cm.Status == "InProgress");
+                var pointKeys = new[] { "P1", "P2", "P3", "P4", "P5", "P6", "P7" };
+                var totalCartons = cm.Products.Sum(x => x.PlannedCartons);
+            }
+            <div class="dt-card">
+                <div class="dt-crumb">
+                    <button type="button" class="dt-back" @onclick="GoBack">&lsaquo; @T("Common.Back")</button>
+                    <span>@T("Menu.InspectionSchedule") &rsaquo; <b>@cm.JobNumber</b></span>
+                </div>
+                <div class="dt-head">
+                    <h2>@cm.JobNumber</h2>
+                    <span class="iss-it-badge it-clc">@T("InspectionScheduleSummary.CLC")</span>
+                    <div class="dt-head-r">
+                        <span class="iss-st-pill st-pending">@(cm.PlannedLoadingDate.HasValue && cm.PlannedLoadingDate.Value.Date < DateTime.Today && cm.Status is "Pending" or "Draft" ? T("Status.Delay") : cm.Status)</span>
+                        @if (!_canStartInspection) { <span class="dt-viewonly">&#128065; @T("InspectionScheduleSummary.ViewOnly")</span> }
+                    </div>
+                </div>
+                <div class="dt-facts">
+                    <div class="dt-fact"><span class="dt-fi">@SlIcon("date")</span><span><small>@T("Common.InspectionDate")</small><b>@(cm.PlannedLoadingDate.HasValue ? L.Date(cm.PlannedLoadingDate.Value, "ddd, d MMM yyyy") : "—")</b></span></div>
+                    <div class="dt-fact"><span class="dt-fi">@SlIcon("po")</span><span><small>@T("Clc.ContainerNo")</small><b>@(string.IsNullOrEmpty(cm.ContainerNo) ? "—" : cm.ContainerNo)</b></span></div>
+                    <div class="dt-fact"><span class="dt-fi">@SlIcon("category")</span><span><small>@T("InspectionScheduleSummary.ContainerSize")</small><b>@(string.IsNullOrEmpty(cm.ContainerType) ? "—" : cm.ContainerType)</b></span></div>
+                    <div class="dt-fact"><span class="dt-fi">@SlIcon("country")</span><span><small>@T("Clc.LoadingLocation")</small><b>@(string.IsNullOrEmpty(cm.LoadingLocation) ? "—" : cm.LoadingLocation)</b></span></div>
+                </div>
+
+                @if (_clcLoading)
+                {
+                    <div class="dt-loading"><div class="iss-spinner"></div><span>@T("InspectionScheduleSummary.LoadingDetails")</span></div>
+                }
+
+                <div class="dt-banner">
+                    <img class="dt-cimg" src="images/container-40ft.png" alt="" />
+                    <div class="dt-banner-t"><b>@T("Clc.Title")</b><small>@T("InspectionScheduleSummary.ClcSub")</small></div>
+                    <button type="button" class="sl-btn" @onclick='() => Navigation.NavigateTo($"/clc/{cm.Id}")'>@T("InspectionScheduleSummary.ViewChecklist")</button>
+                </div>
+
+                <div class="dt-grid">
+                    <div class="dt-left">
+                        @if (!_hideCustomer)
+                        {
+                            <div class="dt-row"><div class="dt-rl">@SlIcon("vendor") @T("Common.Customer")</div><div class="dt-rv"><b>@cm.CustomerName</b></div></div>
+                        }
+                        <div class="dt-row"><div class="dt-rl">@SlIcon("vendor") @T("Common.Vendor")</div>
+                            <div class="dt-rv">
+                                <b>@cm.VendorName</b>
+                                @if (!string.IsNullOrWhiteSpace(cm.VendorAddress)) { <div class="dt-sub">@SlIcon("country") @cm.VendorAddress</div> }
+                                @if (!string.IsNullOrEmpty(cm.VendorContact) || !string.IsNullOrEmpty(cm.VendorPhone) || !string.IsNullOrEmpty(cm.VendorEmail))
+                                {
+                                    <div class="dt-contact">
+                                        @if (!string.IsNullOrEmpty(cm.VendorContact)) { <div><span>@T("Common.ContactName")</span><b>@cm.VendorContact</b></div> }
+                                        @if (!string.IsNullOrEmpty(cm.VendorPhone)) { <div><span>@T("Common.Mobile")</span><b>@cm.VendorPhone</b></div> }
+                                        @if (!string.IsNullOrEmpty(cm.VendorEmail)) { <div><span>Email</span><b>@cm.VendorEmail</b></div> }
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                        <div class="dt-row"><div class="dt-rl">@SlIcon("inspector") @T("Common.Inspector")</div>
+                            <div class="dt-rv">
+                                <b>@(string.IsNullOrEmpty(cm.InspectorName) ? T("InspectionScheduleSummary.Unassigned") : cm.InspectorName)</b>
+                                @if (!string.IsNullOrEmpty(cinsp?.InspectorId)) { <div class="dt-line"><span>ID</span><b>@cinsp!.InspectorId</b></div> }
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="dt-right">
+                        <div class="dt-refs">
+                            <div class="dt-refs-h">
+                                <span class="dt-ri">@SlIcon("category")</span>
+                                <div><b>@T("Clc.Products") <em>(@cm.Products.Count)</em></b></div>
+                            </div>
+                            <div style="overflow-x:auto">
+                                <table class="dt-table">
+                                    <thead><tr><th>@T("Common.No")</th><th>@T("Common.ProductCode")</th><th>@T("Common.ProductName")</th><th class="r">@T("Clc.Cartons")</th></tr></thead>
+                                    <tbody>
+                                        @{ int pn = 0; }
+                                        @foreach (var pr in cm.Products)
+                                        {
+                                            pn++;
+                                            <tr><td>@pn</td><td>@pr.ProductCode</td><td>@pr.Description</td><td class="r">@pr.PlannedCartons.ToString("N0")</td></tr>
+                                        }
+                                        <tr class="tot"><td colspan="3">@T("Clc.TotalQuantity")</td><td class="r">@totalCartons.ToString("N0")</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="dt-points">
+                    <div class="dt-points-h">@SlIcon("po") @T("InspectionScheduleSummary.Clc7Points")</div>
+                    <div class="dt-points-row">
+                        <div class="dt-points-list">
+                            @foreach (var pk in pointKeys) { <span class="dt-point">@T("InspectionScheduleSummary." + pk)</span> }
+                        </div>
+                        @if (canGo)
+                        {
+                            <button class="dt-start" @onclick='() => Navigation.NavigateTo($"/clc/{cm.Id}")'>
+                                <svg width="18" height="18" viewBox="0 0 20 20" fill="currentColor"><path d="M6 4l12 6-12 6V4z"/></svg>
+                                @T("InspectionScheduleSummary.StartClcInspection")
+                            </button>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
     else
     {
         <!-- ═══════════════════════ SUMMARY ═══════════════════════ -->
 
+        <!-- PAGE HEADER -->
+        <div class="iss-page-head">
+            <div>
+                <h1 class="iss-page-title">@T("InspectionScheduleSummary.InspectorSchedule")</h1>
+                <div class="iss-page-sub">@T("InspectionScheduleSummary.ViewAndManageInspectionAssignments")</div>
+            </div>
+            @if (_isAdmin)
+            {
+                <div class="iss-insp-picker">
+                    @if (!string.IsNullOrEmpty(_selInspectorId))
+                    {
+                        <button class="iss-clear-filter" @onclick='() => SelectInspector("")'>@T("InspectionScheduleSummary.ClearFilter")</button>
+                    }
+                    <div class="iss-dd-wrap">
+                        <div class="iss-dd-label">@T("InspectionScheduleSummary.SelectInspector")</div>
+                        <button class="iss-dd-btn @(_ddOpen ? "open" : "")" @onclick="() => { _ddOpen = !_ddOpen; _ddSearch = string.Empty; }">
+                            @if (SelectedInspector is { } si)
+                            {
+                                @Avatar(si.FullName, si.PhotoUrl, 30)
+                                <span class="iss-dd-text"><b>@si.FullName</b> · <b>@si.InspectorId</b></span>
+                            }
+                            else
+                            {
+                                <span class="iss-dd-allico">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="9" cy="8" r="3.5"/><path d="M2 20c0-3.6 3.1-6 7-6s7 2.4 7 6"/><circle cx="17" cy="7" r="2.5"/><path d="M17 13c2.8 0 5 1.8 5 4.5"/></svg>
+                                </span>
+                                <span class="iss-dd-text"><b>@T("InspectionScheduleSummary.AllInspectors")</b></span>
+                            }
+                            <svg class="iss-dd-caret" width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="@(_ddOpen ? "M5 12l5-5 5 5" : "M5 8l5 5 5-5")"/></svg>
+                        </button>
+                        @if (_ddOpen)
+                        {
+                            <div class="iss-dd-backdrop" @onclick="() => _ddOpen = false"></div>
+                            <div class="iss-dd-menu">
+                                <div class="iss-dd-search">
+                                    <svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="9" r="6"/><path d="M14 14l4 4" stroke-linecap="round"/></svg>
+                                    <input placeholder="@T("InspectionScheduleSummary.SearchNameOrInspectorID")" @bind="_ddSearch" @bind:event="oninput" />
+                                </div>
+                                <div class="iss-dd-list">
+                                    <div class="iss-dd-item @(string.IsNullOrEmpty(_selInspectorId) ? "sel" : "")" @onclick='() => SelectInspector("")'>
+                                        <span class="iss-dd-check">@(string.IsNullOrEmpty(_selInspectorId) ? "✓" : "")</span>
+                                        <span class="iss-dd-allico sm"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="9" cy="8" r="3.5"/><path d="M2 20c0-3.6 3.1-6 7-6s7 2.4 7 6"/><circle cx="17" cy="7" r="2.5"/><path d="M17 13c2.8 0 5 1.8 5 4.5"/></svg></span>
+                                        <span>@T("InspectionScheduleSummary.AllInspectors")</span>
+                                    </div>
+                                    @foreach (var ins in FilteredInspectorOptions())
+                                    {
+                                        var id = ins.InspectorId!;
+                                        <div class="iss-dd-item @(_selInspectorId == id ? "sel" : "")" @onclick="() => SelectInspector(id)">
+                                            <span class="iss-dd-check">@(_selInspectorId == id ? "✓" : "")</span>
+                                            @Avatar(ins.FullName, ins.PhotoUrl, 28)
+                                            <span class="iss-dd-name">@ins.FullName · <b>@ins.InspectorId</b></span>
+                                            <span class="iss-dd-cnt">@_allJobsRaw.Count(j => IsTodo(j) && string.Equals(j.InspectorId, id, StringComparison.OrdinalIgnoreCase))</span>
+                                        </div>
+                                    }
+                                    @if (!FilteredInspectorOptions().Any())
+                                    {
+                                        <div class="iss-dd-empty">@T("InspectionScheduleSummary.NoInspectorFound")</div>
+                                    }
+                                </div>
+                            </div>
+                        }
+                    </div>
+                </div>
+            }
+            else if (_me != null)
+            {
+                @ScheduleChip(_me.FullName ?? _me.Username, _me.InspectorId, _me.PhotoUrl)
+            }
+        </div>
+
+        <!-- KPI: job chưa hoàn thành của năm hiện tại (New/Delay; không tính Completed, Cancel), theo inspector đang chọn — khách chốt 17/11/2026 -->
+        <div class="iss-kpis">
+            <div class="iss-kpi iss-kpi-total">
+                <span class="iss-kpi-l">@T("InspectionScheduleSummary.TotalJobs")</span>
+                <span class="iss-kpi-v">@(OpenJobs().Count() + ClcOpenCount())</span>
+            </div>
+            <div class="iss-kpi iss-kpi-ppi"><span class="iss-kpi-l">@T("InspectionScheduleSummary.PPI")</span><span class="iss-kpi-v">@CountOpenType("PPT")</span></div>
+            <div class="iss-kpi iss-kpi-dpi"><span class="iss-kpi-l">@T("InspectionScheduleSummary.DPI")</span><span class="iss-kpi-v">@CountOpenType("DPI")</span></div>
+            <div class="iss-kpi iss-kpi-psi"><span class="iss-kpi-l">@T("InspectionScheduleSummary.PSI")</span><span class="iss-kpi-v">@CountOpenType("PST")</span></div>
+            <div class="iss-kpi iss-kpi-clc"><span class="iss-kpi-l">@T("InspectionScheduleSummary.CLC")</span><span class="iss-kpi-v">@ClcOpenCount()</span></div>
+        </div>
+
         <!-- HEADER -->
         <div class="iss-header-card">
             <div class="iss-header-top">
+                <div class="iss-sel-title">@(_isAdmin ? (SelectedInspector != null ? T("InspectionScheduleSummary.SelectedInspector") : T("InspectionScheduleSummary.AllInspectors")) : _me != null ? T("InspectionScheduleSummary.MySchedule") : T("InspectionScheduleSummary.Schedule")) · @DateTime.Now.Year</div>
                 <div class="iss-year-badge">@DateTime.Now.Year</div>
             </div>
 
             <div class="iss-month-header">
-                <span class="iss-month-title">Total Job</span>
-                <span class="iss-month-total">@_completedCount completed</span>
+                <span class="iss-month-title">@T("InspectionScheduleSummary.TotalJob")</span>
+                <span class="iss-month-total">@T("InspectionScheduleSummary.Job", YearJobs().Count() + ClcCount(), YearJobs().Count() + ClcCount() != 1 ? "s" : "")</span>
             </div>
             <div class="iss-month-grid">
                 @foreach (var m in _monthSummary)
                 {
-                    <div class="iss-month-cell @(m.Count > 0 ? "has-jobs" : "")">
-                        <span class="iss-m-name">@m.ShortName</span>
-                        @if (m.Count > 0)
+                    <div class="iss-month-cell @(m.Count + ClcMonth(m.Month) > 0 ? "has-jobs" : "")">
+                        <span class="iss-m-name">@L.MonthShort(m.Month)</span>
+                        @if (m.Count + ClcMonth(m.Month) > 0)
                         {
-                            <span class="iss-m-count">@m.Count</span>
+                            <span class="iss-m-count">@(m.Count + ClcMonth(m.Month))</span>
                         }
                     </div>
                 }
@@ -300,12 +441,12 @@
 
             <div class="iss-user-strip">
                 <div class="iss-user-info">
-                    <span class="iss-u-label">Completed</span>
-                    <span class="iss-u-val iss-u-done">@_completedCount</span>
+                    <span class="iss-u-label">@T("InspectionScheduleSummary.Waiting")</span>
+                    <span class="iss-u-val iss-u-todo">@(_waitingCount + ClcScoped().Count(c => c.Date >= DateTime.Today))</span>
                 </div>
                 <div class="iss-user-info">
-                    <span class="iss-u-label">To Do</span>
-                    <span class="iss-u-val iss-u-todo">@_todoCount</span>
+                    <span class="iss-u-label">@T("InspectionScheduleSummary.Delayed")</span>
+                    <span class="iss-u-val iss-u-delay">@(_delayCount + ClcScoped().Count(c => c.Date < DateTime.Today))</span>
                 </div>
             </div>
         </div>
@@ -316,15 +457,16 @@
                     @onclick='() => _statusFilter = "todo"'>
                 <svg width="13" height="13" viewBox="0 0 20 20" fill="none" stroke="currentColor"
                      stroke-width="2" stroke-linecap="round"><circle cx="10" cy="10" r="8"/><path d="M10 6v4l3 3"/></svg>
-                To Do
-                @if (_todoCount > 0) { <span class="iss-cnt-badge">@_todoCount</span> }
+                @T("InspectionScheduleSummary.ToDo")
+                @if (_todoCount + ClcScoped().Count() > 0) { <span class="iss-cnt-badge">@(_todoCount + ClcScoped().Count())</span> }
             </button>
             <button class="iss-status-btn @(_statusFilter == "completed" ? "s-active s-done" : "s-idle")"
                     @onclick='() => _statusFilter = "completed"'>
                 <svg width="13" height="13" viewBox="0 0 20 20" fill="none" stroke="currentColor"
                      stroke-width="2" stroke-linecap="round"><path d="M4 10l5 5 7-8"/></svg>
-                Completed
-                @if (_completedCount > 0) { <span class="iss-cnt-badge">@_completedCount</span> }
+                @T("Common.Completed")
+                @{ var doneCnt = _completedCount + ClcAllScoped().Count(c => c.Status == "Submitted" && c.Date.Year == _currentYear); }
+                @if (doneCnt > 0) { <span class="iss-cnt-badge">@doneCnt</span> }
             </button>
         </div>
 
@@ -333,11 +475,17 @@
         {
         <div class="iss-time-bar">
             <button class="iss-time-btn @(_timeFilter == "today" ? "t-active" : "")"
-                    @onclick='() => SetTimeFilter("today")'>Today</button>
+                    @onclick='() => SetTimeFilter("today")'>@T("InspectionScheduleSummary.Today")</button>
             <button class="iss-time-btn @(_timeFilter == "7days" ? "t-active" : "")"
-                    @onclick='() => SetTimeFilter("7days")'>7 days</button>
+                    @onclick='() => SetTimeFilter("7days")'>@T("InspectionScheduleSummary.N7Days")</button>
             <button class="iss-time-btn @(_timeFilter == "14days" ? "t-active" : "")"
-                    @onclick='() => SetTimeFilter("14days")'>14 days</button>
+                    @onclick='() => SetTimeFilter("14days")'>@T("InspectionScheduleSummary.N14Days")</button>
+            @{ var odCnt = _allJobs.Count(j => IsTodo(j) && j.InspectionDate != DateTime.MinValue && j.InspectionDate.Year == _currentYear && j.InspectionDate.Date < DateTime.Today) + ClcScoped().Count(c => c.Date < DateTime.Today); }
+            @if (odCnt > 0)
+            {
+                <button class="iss-time-btn iss-time-od @(_timeFilter == "overdue" ? "t-active" : "")"
+                        @onclick='() => SetTimeFilter("overdue")'>@T("InspectionScheduleSummary.OverdueTab", odCnt)</button>
+            }
         </div>
         }
 
@@ -348,8 +496,8 @@
             @if (_statusFilter == "completed")
             {
                 <div class="iss-section-title">
-                    Completed
-                    <span class="iss-section-count">@filtered.Count job@(filtered.Count != 1 ? "s" : "")</span>
+                    @T("Common.Completed")
+                    <span class="iss-section-count">@T("InspectionScheduleSummary.Job", filtered.Count, filtered.Count != 1 ? "s" : "")</span>
                 </div>
                 @if (!filtered.Any())
                 {
@@ -359,7 +507,7 @@
                             <path d="M16 10V6M32 10V6M8 20h32" stroke-linecap="round"/>
                             <circle cx="24" cy="32" r="4"/>
                         </svg>
-                        <p>No completed inspections this year</p>
+                        <p>@T("InspectionScheduleSummary.NoCompletedInspectionsThisYear")</p>
                     </div>
                 }
                 @foreach (var job in filtered.OrderByDescending(j => j.CompletedAt ?? j.InspectionDate))
@@ -369,7 +517,7 @@
                         <div class="iss-comp-card-header">
                             <div class="iss-comp-card-left">
                                 <span class="iss-comp-jobno">@(job.JobNumber ?? $"#{job.Id}")</span>
-                                <span class="iss-it-badge it-@job.InspectionType.ToLower()">@job.InspectionType</span>
+                                <span class="iss-it-badge it-@job.InspectionType.ToLower()">@TE("Opt", job.InspectionType)</span>
                             </div>
                             <div class="iss-comp-card-right">
                                 @{
@@ -405,41 +553,44 @@
                             <div class="iss-comp-field">
                                 <span class="iss-comp-label">
                                     <svg width="11" height="11" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="4" width="14" height="14" rx="2"/><path d="M3 9h14M7 4V2M13 4V2"/></svg>
-                                    Completed Date
+                                    @T("InspectionScheduleSummary.CompletedDate")
                                 </span>
                                 <span class="iss-comp-val">
                                     @(job.CompletedAt.HasValue
-                                        ? job.CompletedAt.Value.ToString("d MMM yyyy", EnUs)
+                                        ? L.Date(job.CompletedAt.Value, "d MMM yyyy")
                                         : job.InspectionDate != DateTime.MinValue
-                                            ? job.InspectionDate.ToString("d MMM yyyy", EnUs)
+                                            ? L.Date(job.InspectionDate, "d MMM yyyy")
                                             : "—")
                                 </span>
                             </div>
+                            @if (!_hideCustomer)
+                            {
                             <div class="iss-comp-field">
                                 <span class="iss-comp-label">
                                     <svg width="11" height="11" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="10" cy="7" r="4"/><path d="M3 17c0-3.3 3.1-6 7-6s7 2.7 7 6"/></svg>
-                                    Customer
+                                    @T("Common.Customer")
                                 </span>
                                 <span class="iss-comp-val">@job.CustomerName</span>
                             </div>
+                            }
                             <div class="iss-comp-field">
                                 <span class="iss-comp-label">
                                     <svg width="11" height="11" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="2" y="7" width="16" height="11" rx="2"/><path d="M6 7V5a4 4 0 018 0v2"/></svg>
-                                    Vendor
+                                    @T("Common.Vendor")
                                 </span>
                                 <span class="iss-comp-val">@job.VendorName</span>
                             </div>
                             <div class="iss-comp-field">
                                 <span class="iss-comp-label">
                                     <svg width="11" height="11" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 3h14v14H3z"/><path d="M3 8h14M8 3v14"/></svg>
-                                    Category
+                                    @T("Common.Category")
                                 </span>
                                 <span class="iss-comp-val">@(job.ProductCategory ?? "—")</span>
                             </div>
                             <div class="iss-comp-field">
                                 <span class="iss-comp-label">
                                     <svg width="11" height="11" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 4h12v12H4z"/><circle cx="10" cy="10" r="3"/></svg>
-                                    PO Number
+                                    @T("InspectionScheduleSummary.PONumber")
                                 </span>
                                 <span class="iss-comp-val">@(job.PoNumber ?? "—")</span>
                             </div>
@@ -455,271 +606,15 @@
                                     <line x1="8" y1="13" x2="12" y2="13"/>
                                     <line x1="8" y1="10" x2="12" y2="10"/>
                                 </svg>
-                                View Report
+                                @T("Common.ViewReport")
                             </button>
                         </div>
                     </div>
                 }
             }
-            else if (!filtered.Any())
+            else
             {
-                <div class="iss-empty">
-                    <svg width="48" height="48" viewBox="0 0 48 48" fill="none" stroke="#ccc" stroke-width="1.5">
-                        <rect x="8" y="10" width="32" height="32" rx="4"/>
-                        <path d="M16 10V6M32 10V6M8 20h32" stroke-linecap="round"/>
-                        <circle cx="24" cy="32" r="4"/>
-                    </svg>
-                    <p>No inspections for this period</p>
-                </div>
-            }
-            else if (_timeFilter == "today")
-            {
-                var today = DateTime.Today;
-                // Overdue (InspectionDate < today) hiển thị trước, sau đó đến hôm nay
-                var sortedJobs = filtered
-                    .OrderBy(j => j.InspectionDate.Date >= today)   // false (overdue) trước, true (today) sau
-                    .ThenBy(j => j.InspectionDate.Date)              // overdue cũ nhất lên đầu
-                    .ToList();
-
-                var overdueCount = sortedJobs.Count(j => j.InspectionDate.Date < today);
-
-                <div class="iss-section-title">
-                    Today — @today.ToString("dddd, d MMMM yyyy", EnUs)
-                    @if (overdueCount > 0)
-                    {
-                        <span class="iss-overdue-count">@overdueCount OVERDUE</span>
-                    }
-                </div>
-                <div class="iss-card-grid">
-                    @foreach (var job in sortedJobs)
-                    {
-                        var isOverdue = job.InspectionDate.Date < today;
-                        var daysLate  = isOverdue ? (today - job.InspectionDate.Date).Days : 0;
-                        <div class="iss-job-card @(isOverdue ? "iss-job-card-overdue" : "")"
-                             @onclick="async () => await OpenJobDetail(job)">
-                            <div class="iss-jc-top">
-                                <span class="iss-job-no">@(job.JobNumber ?? $"#{job.Id}")</span>
-                                <div class="iss-jc-top-right">
-                                    @if (isOverdue)
-                                    {
-                                        <span class="iss-overdue-badge" title="Scheduled on @job.InspectionDate.ToString("d MMM yyyy", EnUs)">
-                                            <svg width="11" height="11" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.2">
-                                                <circle cx="10" cy="10" r="8"/>
-                                                <path d="M10 6v5M10 14h.01" stroke-linecap="round"/>
-                                            </svg>
-                                            @(daysLate == 1 ? "1 day late" : $"{daysLate} days late")
-                                        </span>
-                                    }
-                                    <span class="iss-it-badge it-@job.InspectionType.ToLower()">@job.InspectionType</span>
-                                </div>
-                            </div>
-                            <div class="iss-jc-body">
-                                @if (isOverdue)
-                                {
-                                    <div class="iss-jf"><span class="iss-jl">Scheduled Date</span><span class="iss-jv iss-jv-overdue">@job.InspectionDate.ToString("d MMM yyyy", EnUs)</span></div>
-                                }
-                                <div class="iss-jf"><span class="iss-jl">Customer Name</span><span class="iss-jv">@job.CustomerName</span></div>
-                                <div class="iss-jf"><span class="iss-jl">Category</span><span class="iss-jv">@(job.ProductCategory ?? "—")</span></div>
-                                @* <div class="iss-jf"><span class="iss-jl">Product Type</span><span class="iss-jv">@(job.ProductType ?? "—")</span></div> *@
-                                <div class="iss-jf"><span class="iss-jl">Inspection Type</span><span class="iss-jv">@job.InspectionType</span></div>
-                                <div class="iss-jf"><span class="iss-jl">PO Number</span><span class="iss-jv">@(string.IsNullOrEmpty(job.PoNumber) ? "—" : job.PoNumber)</span></div>
-                                <div class="iss-jf"><span class="iss-jl">Product Code</span><span class="iss-jv">@(string.IsNullOrEmpty(job.ItemNumber) ? "—" : job.ItemNumber)</span></div>
-                                <div class="iss-jf"><span class="iss-jl">Product Name</span><span class="iss-jv">@(string.IsNullOrEmpty(job.ProductName) ? "—" : job.ProductName)</span></div>
-                                <div class="iss-jf"><span class="iss-jl">Vendor Name</span><span class="iss-jv">@job.VendorName</span></div>
-                                <div class="iss-jf"><span class="iss-jl">Vendor Address</span><span class="iss-jv">@(string.IsNullOrEmpty(job.VendorCity) ? "—" : job.VendorCity)</span></div>
-                                @if (!string.IsNullOrEmpty(job.VendorContactName) || !string.IsNullOrEmpty(job.VendorContactMobile))
-                                {
-                                    <div class="iss-jf iss-jf-section"><span class="iss-jl iss-jl-section">Vendor Information</span></div>
-                                    @if (!string.IsNullOrEmpty(job.VendorContactName))
-                                    { <div class="iss-jf iss-jf-sub"><span class="iss-jl">• Name</span><span class="iss-jv">@job.VendorContactName</span></div> }
-                                    @if (!string.IsNullOrEmpty(job.VendorContactPosition))
-                                    { <div class="iss-jf iss-jf-sub"><span class="iss-jl">• Position</span><span class="iss-jv">@job.VendorContactPosition</span></div> }
-                                    @if (!string.IsNullOrEmpty(job.VendorContactMobile))
-                                    { <div class="iss-jf iss-jf-sub"><span class="iss-jl">• Mobile</span><span class="iss-jv">@job.VendorContactMobile</span></div> }
-                                    @if (!string.IsNullOrEmpty(job.VendorContactOffice))
-                                    { <div class="iss-jf iss-jf-sub"><span class="iss-jl">• Office</span><span class="iss-jv">@job.VendorContactOffice</span></div> }
-                                    @if (!string.IsNullOrEmpty(job.VendorContactEmail))
-                                    { <div class="iss-jf iss-jf-sub"><span class="iss-jl">• Email</span><span class="iss-jv">@job.VendorContactEmail</span></div> }
-                                }
-                                @if (!string.IsNullOrEmpty(job.InspectorName) || !string.IsNullOrEmpty(job.InspectorId) || !string.IsNullOrEmpty(job.InspectorMobile))
-                                {
-                                    <div class="iss-jf iss-jf-section"><span class="iss-jl iss-jl-section">Inspector Information</span></div>
-                                    @if (!string.IsNullOrEmpty(job.InspectorName))
-                                    { <div class="iss-jf iss-jf-sub"><span class="iss-jl">• Name</span><span class="iss-jv">@job.InspectorName</span></div> }
-                                    @if (!string.IsNullOrEmpty(job.InspectorId))
-                                    { <div class="iss-jf iss-jf-sub"><span class="iss-jl">• ID</span><span class="iss-jv">@job.InspectorId</span></div> }
-                                    @if (!string.IsNullOrEmpty(job.InspectorMobile))
-                                    { <div class="iss-jf iss-jf-sub"><span class="iss-jl">• Mobile</span><span class="iss-jv">@job.InspectorMobile</span></div> }
-                                }
-                                @if (job.References.Count > 0)
-                                {
-                                    <div class="iss-jf iss-jf-inline" @onclick:stopPropagation="true">
-                                        <span class="iss-jl">Product Reference</span>
-                                        <button type="button" class="iss-refs-view-all-btn iss-refs-view-inline"
-                                                @onclick="() => OpenJobRefsPopup(job)">
-                                            <svg width="13" height="13" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2">
-                                                <path d="M1 10s3.5-7 9-7 9 7 9 7-3.5 7-9 7-9-7-9-7z"/><circle cx="10" cy="10" r="3"/>
-                                            </svg>
-                                            View
-                                        </button>
-                                    </div>
-                                }
-                            </div>
-                            <div class="iss-jc-foot">
-                                <span class="iss-st-pill @GetStatusClass(job.Status)">@job.Status</span>
-                                @if (_canStartInspection)
-                                {
-                                    <button class="iss-start-sm" @onclick:stopPropagation="true"
-                                            @onclick="() => StartInspection(job)">Start</button>
-                                }
-                            </div>
-                        </div>
-                    }
-                </div>
-            }
-            else if (_timeFilter == "7days")
-            {
-                var byDay = filtered
-                    .GroupBy(j => j.InspectionDate.Date)
-                    .OrderBy(g => g.Key).ToList();
-                <div class="iss-section-title">Next 7 days</div>
-                foreach (var grp in byDay)
-                {
-                    <div class="iss-day-group">
-                        <div class="iss-day-hdr">
-                            <span class="iss-day-date">@grp.Key.ToString("ddd, d MMM yyyy", EnUs)</span>
-                            <span class="iss-day-cnt">@grp.Count() job@(grp.Count() > 1 ? "s" : "")</span>
-                        </div>
-                        @foreach (var job in grp)
-                        {
-                            <div class="iss-list-item" @onclick="async () => await OpenJobDetail(job)">
-                                <div class="iss-li-body">
-                                    <div class="iss-li-row"><span class="iss-ll">Job Number</span><span class="iss-lv iss-lv-strong">@(string.IsNullOrEmpty(job.JobNumber) ? "—" : job.JobNumber)</span></div>
-                                    <div class="iss-li-row"><span class="iss-ll">Date</span><span class="iss-lv">@job.InspectionDate.ToString("d MMM yyyy", EnUs)</span></div>
-                                    <div class="iss-li-row"><span class="iss-ll">Category</span><span class="iss-lv">@(job.ProductCategory ?? "—")</span></div>
-                                    @* <div class="iss-li-row"><span class="iss-ll">Product Type</span><span class="iss-lv">@(job.ProductType ?? "—")</span></div> *@
-                                    <div class="iss-li-row"><span class="iss-ll">Inspection Type</span><span class="iss-lv">@job.InspectionType</span></div>
-                                    <div class="iss-li-row"><span class="iss-ll">PO Number</span><span class="iss-lv">@(string.IsNullOrEmpty(job.PoNumber) ? "—" : job.PoNumber)</span></div>
-                                    <div class="iss-li-row"><span class="iss-ll">Vendor Name</span><span class="iss-lv">@job.VendorName</span></div>
-                                    <div class="iss-li-row"><span class="iss-ll">Vendor Address</span><span class="iss-lv">@(string.IsNullOrEmpty(job.VendorCity) ? "—" : job.VendorCity)</span></div>
-                                    @if (!string.IsNullOrEmpty(job.VendorContactName) || !string.IsNullOrEmpty(job.VendorContactMobile))
-                                    {
-                                        <div class="iss-li-row"><span class="iss-ll iss-jl-section">Vendor Information</span></div>
-                                        @if (!string.IsNullOrEmpty(job.VendorContactName))
-                                        { <div class="iss-li-row iss-li-sub"><span class="iss-ll">• Name</span><span class="iss-lv">@job.VendorContactName</span></div> }
-                                        @if (!string.IsNullOrEmpty(job.VendorContactPosition))
-                                        { <div class="iss-li-row iss-li-sub"><span class="iss-ll">• Position</span><span class="iss-lv">@job.VendorContactPosition</span></div> }
-                                        @if (!string.IsNullOrEmpty(job.VendorContactMobile))
-                                        { <div class="iss-li-row iss-li-sub"><span class="iss-ll">• Mobile</span><span class="iss-lv">@job.VendorContactMobile</span></div> }
-                                        @if (!string.IsNullOrEmpty(job.VendorContactOffice))
-                                        { <div class="iss-li-row iss-li-sub"><span class="iss-ll">• Office</span><span class="iss-lv">@job.VendorContactOffice</span></div> }
-                                        @if (!string.IsNullOrEmpty(job.VendorContactEmail))
-                                        { <div class="iss-li-row iss-li-sub"><span class="iss-ll">• Email</span><span class="iss-lv">@job.VendorContactEmail</span></div> }
-                                    }
-                                </div>
-                                <svg class="iss-chevron" width="16" height="16" viewBox="0 0 20 20"
-                                     fill="none" stroke="#ccc" stroke-width="2" stroke-linecap="round">
-                                    <path d="M7 5l5 5-5 5"/>
-                                </svg>
-                            </div>
-                        }
-                    </div>
-                }
-            }
-            else if (_timeFilter == "14days")
-            {
-                var days14 = Enumerable.Range(0, 14).Select(i => DateTime.Today.AddDays(i)).ToList();
-                <div class="iss-14days-header no-print">
-                    <div class="iss-section-title">Next 14 days</div>
-                    <button class="iss-export-btn" @onclick="ExportPdf14Days" title="Export to PDF">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-                        Export PDF
-                    </button>
-                </div>
-
-                <div id="iss-print-area-14days" class="iss-print-area">
-                    <div class="iss-print-header print-only">
-                        <h2>Inspection Schedule — Next 14 Days</h2>
-                        <div class="iss-print-sub">@DateTime.Today.ToString("d MMM yyyy", EnUs) — @DateTime.Today.AddDays(13).ToString("d MMM yyyy", EnUs)</div>
-                    </div>
-
-                <div class="iss-cal-table-wrap">
-                    <table class="iss-cal-table">
-                        <tbody>
-                        @for (int idx = 0; idx < days14.Count; idx += 2)
-                        {
-                            var d1 = days14[idx];
-                            var d2 = idx + 1 < days14.Count ? days14[idx + 1] : (DateTime?)null;
-                            var j1 = filtered.Where(j => j.InspectionDate.Date == d1.Date).ToList();
-                            var j2 = d2.HasValue
-                                ? filtered.Where(j => j.InspectionDate.Date == d2.Value.Date).ToList()
-                                : new List<JobItem>();
-                            <tr>
-                                <td class="iss-cal-cell @(j1.Any() ? "cell-has" : "")">
-                                    <div class="iss-cal-date">@d1.ToString("d MMM yyyy", EnUs)</div>
-                                    @foreach (var j in j1)
-                                    {
-                                        <div class="iss-cal-job" @onclick="async () => await OpenJobDetail(j)">
-                                            <span class="iss-it-badge it-@j.InspectionType.ToLower()">@j.InspectionType</span>
-                                            <div class="iss-cj-cat">@(j.ProductCategory ?? "—")</div>
-                                            <div class="iss-cj-vendor">@j.VendorName</div>
-                                        </div>
-                                    }
-                                </td>
-                                @if (d2.HasValue)
-                                {
-                                    <td class="iss-cal-cell @(j2.Any() ? "cell-has" : "")">
-                                        <div class="iss-cal-date">@d2.Value.ToString("d MMM yyyy", EnUs)</div>
-                                        @foreach (var j in j2)
-                                        {
-                                            <div class="iss-cal-job" @onclick="async () => await OpenJobDetail(j)">
-                                                <span class="iss-it-badge it-@j.InspectionType.ToLower()">@j.InspectionType</span>
-                                                <div class="iss-cj-cat">@(j.ProductCategory ?? "—")</div>
-                                                <div class="iss-cj-vendor">@j.VendorName</div>
-                                            </div>
-                                        }
-                                    </td>
-                                }
-                            </tr>
-                        }
-                        </tbody>
-                    </table>
-                </div>
-
-                <div class="iss-cal-mobile">
-                    @foreach (var day in days14)
-                    {
-                        var dj = filtered.Where(j => j.InspectionDate.Date == day.Date).ToList();
-                        <div class="iss-cal-day @(dj.Any() ? "cday-has" : "cday-empty")">
-                            <div class="iss-cal-day-hdr">
-                                <span class="iss-cal-day-name">@day.ToString("ddd, d MMM", EnUs)</span>
-                                @if (dj.Any())
-                                {
-                                    <span class="iss-cal-day-cnt">@dj.Count</span>
-                                }
-                            </div>
-                            @if (dj.Any())
-                            {
-                                @foreach (var j in dj)
-                                {
-                                    <div class="iss-cal-row" @onclick="async () => await OpenJobDetail(j)">
-                                        <span class="iss-it-badge it-@j.InspectionType.ToLower()">@j.InspectionType</span>
-                                        <span class="iss-cal-info">@(j.ProductCategory ?? "—") · @j.VendorName</span>
-                                        <svg width="14" height="14" viewBox="0 0 20 20" fill="none"
-                                             stroke="#ccc" stroke-width="2" stroke-linecap="round">
-                                            <path d="M7 5l5 5-5 5"/>
-                                        </svg>
-                                    </div>
-                                }
-                            }
-                            else
-                            {
-                                <div class="iss-cal-day-empty">No jobs</div>
-                            }
-                        </div>
-                    }
-                </div>
-                </div>
+                @ScheduleListFrag(filtered)
             }
         </div>
     }
@@ -730,15 +625,15 @@
         <div class="iss-refs-backdrop" @onclick="() => _showJobRefsPopup = false">
             <div class="iss-refs-modal" @onclick:stopPropagation="true">
                 <div class="iss-refs-modal-header">
-                    <div class="iss-refs-modal-title">Product References</div>
-                    <button type="button" class="iss-refs-modal-close" @onclick="() => _showJobRefsPopup = false" aria-label="Close">✕</button>
+                    <div class="iss-refs-modal-title">@T("InspectionScheduleSummary.ProductReferences")</div>
+                    <button type="button" class="iss-refs-modal-close" @onclick="() => _showJobRefsPopup = false" aria-label="@T("Common.Close")">✕</button>
                 </div>
                 <div class="iss-refs-modal-body">
                     <div class="iss-ref-table">
                         <div class="iss-ref-header">
                             <span class="iss-ref-no">No</span>
-                            <span class="iss-ref-name">Reference</span>
-                            <span class="iss-ref-file">File</span>
+                            <span class="iss-ref-name">@T("Common.Reference")</span>
+                            <span class="iss-ref-file">@T("InspectionScheduleSummary.File")</span>
                         </div>
                         @foreach (var ref_ in _popupJob.References)
                         {
@@ -748,23 +643,26 @@
                                 <span class="iss-ref-file">
                                     @if (!string.IsNullOrEmpty(ref_.FileUrl))
                                     {
-                                        <a href="@ref_.FileUrl" target="_blank" rel="noopener" class="iss-ref-view-btn" title="View">
+                                        <a href="@ref_.FileUrl" target="_blank" rel="noopener" class="iss-ref-view-btn" title="@T("Common.View")">
                                             <svg width="13" height="13" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2">
                                                 <path d="M1 10s3.5-7 9-7 9 7 9 7-3.5 7-9 7-9-7-9-7z"/><circle cx="10" cy="10" r="3"/>
                                             </svg>
-                                            View
+                                            @T("Common.View")
                                         </a>
-                                        <a href="@ref_.FileUrl" download="@ref_.FileName" class="iss-ref-dl-btn" title="Download">
+                                        @if (PageAccess.CanDownload)
+                                        {
+                                        <a href="@ref_.FileUrl" download="@ref_.FileName" class="iss-ref-dl-btn" title="@T("Common.Download")">
                                             <svg width="13" height="13" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2">
                                                 <path d="M10 3v10M6 9l4 4 4-4" stroke-linecap="round" stroke-linejoin="round"/>
                                                 <path d="M3 17h14" stroke-linecap="round"/>
                                             </svg>
-                                            Download
+                                            @T("Common.Download")
                                         </a>
+                                        }
                                     }
                                     else
                                     {
-                                        <span style="color:#bbb;font-size:12px;">No file</span>
+                                        <span style="color:#bbb;font-size:12px;">@T("Common.NoFile")</span>
                                     }
                                 </span>
                             </div>
@@ -772,7 +670,7 @@
                     </div>
                 </div>
                 <div class="iss-refs-modal-footer">
-                    <button type="button" class="iss-refs-modal-ok" @onclick="() => _showJobRefsPopup = false">Close</button>
+                    <button type="button" class="iss-refs-modal-ok" @onclick="() => _showJobRefsPopup = false">@T("Common.Close")</button>
                 </div>
             </div>
         </div>
@@ -783,7 +681,7 @@
     // ────────────────────────────────────────────
     //  STATE
     // ────────────────────────────────────────────
-    private enum View { Summary, JobDetail }
+    private enum View { Summary, JobDetail, ClcDetail }
     private View    _view           = View.Summary;
     private string  _timeFilter     = "today";
     private string  _statusFilter   = "todo";
@@ -795,6 +693,96 @@
 
     // Role-based filter
     private string _filterInspectorId = "";
+
+    // Admin: chọn inspector để lập kế hoạch / QC: hiển thị thông tin của chính mình
+    private bool   _isAdmin;
+    private CurrentUserDto? _me;
+    private List<JobItem> _allJobsRaw = new();
+    private List<InspectorOption> _inspectors = new();
+    private string _selInspectorId = "";
+    private bool   _ddOpen;
+    private string _ddSearch = "";
+
+    private InspectorOption? SelectedInspector =>
+        string.IsNullOrEmpty(_selInspectorId) ? null
+        : _inspectors.FirstOrDefault(i => string.Equals(i.InspectorId, _selInspectorId, StringComparison.OrdinalIgnoreCase));
+
+    /// <summary>Lịch đang xem là của ai (QC đăng nhập, hoặc inspector Admin đang chọn).</summary>
+    private CurrentUserDto? CurrentScheduleOwner =>
+        _isAdmin
+            ? (SelectedInspector is { } s ? new CurrentUserDto { FullName = s.FullName, InspectorId = s.InspectorId, PhotoUrl = s.PhotoUrl } : null)
+            : _me;
+
+    private IEnumerable<InspectorOption> FilteredInspectorOptions()
+    {
+        var q = _ddSearch.Trim();
+        return _inspectors.Where(i => q == "" ||
+            (i.FullName ?? "").Contains(q, StringComparison.OrdinalIgnoreCase) ||
+            (i.InspectorId ?? "").Contains(q, StringComparison.OrdinalIgnoreCase));
+    }
+
+    private string? InspectorPhoto(string? inspectorId)
+    {
+        if (string.IsNullOrEmpty(inspectorId)) return null;
+        if (_me != null && string.Equals(_me.InspectorId, inspectorId, StringComparison.OrdinalIgnoreCase)) return _me.PhotoUrl;
+        return _inspectors.FirstOrDefault(i => string.Equals(i.InspectorId, inspectorId, StringComparison.OrdinalIgnoreCase))?.PhotoUrl;
+    }
+
+    private async Task SelectInspector(string inspectorId)
+    {
+        _selInspectorId = inspectorId;
+        _ddOpen = false;
+        _allJobs = string.IsNullOrEmpty(inspectorId)
+            ? _allJobsRaw.ToList()
+            : _allJobsRaw.Where(j => string.Equals(j.InspectorId, inspectorId, StringComparison.OrdinalIgnoreCase)).ToList();
+        BuildMonthSummary();
+    }
+
+    private async Task LoadInspectorOptions(Task<InspectorPageResult?>? prefetched = null)
+    {
+        try
+        {
+            var opts = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+            // Không lọc theo vai trò: người có InspectorId (kể cả vai trò Management) vẫn được giao job
+            var res = prefetched != null ? await prefetched
+                    : await Http.GetFromJsonAsync<InspectorPageResult>("api/users?isActive=true&pageSize=500", opts);
+            var list = (res?.Items ?? new())
+                .Where(i => !string.IsNullOrWhiteSpace(i.InspectorId))
+                .ToList();
+            // Gộp thêm người đang có job nhưng chưa có trong danh sách (user không active / không trả về)
+            foreach (var j in _allJobsRaw.Where(j => !string.IsNullOrWhiteSpace(j.InspectorId)))
+                if (!list.Any(i => string.Equals(i.InspectorId, j.InspectorId, StringComparison.OrdinalIgnoreCase)))
+                    list.Add(new InspectorOption { InspectorId = j.InspectorId, FullName = string.IsNullOrWhiteSpace(j.InspectorName) ? j.InspectorId : j.InspectorName });
+            _inspectors = list.OrderBy(i => i.FullName).ToList();
+        }
+        catch (Exception ex) { Console.WriteLine($"[Schedule] Load inspectors error: {ex.Message}"); }
+    }
+
+    private string Img(string? url) => MediaUrl.Resolve(url, Http.BaseAddress?.ToString());
+
+    private static string Initials(string? name) =>
+        string.Concat((name ?? "").Split(' ', StringSplitOptions.RemoveEmptyEntries).Take(2).Select(w => char.ToUpper(w[0])));
+
+    private RenderFragment Avatar(string? name, string? photoUrl, int size) => __builder =>
+    {
+        <span class="iss-avatar" style="width:@(size)px;height:@(size)px;font-size:@(size * 0.38)px">
+            @if (!string.IsNullOrEmpty(photoUrl)) { <img src="@Img(photoUrl)" alt="" /> }
+            else { @Initials(name) }
+        </span>
+    };
+
+    private RenderFragment ScheduleChip(string? name, string? inspectorId, string? photoUrl) => __builder =>
+    {
+        <div class="iss-sched-chip">
+            @Avatar(name, photoUrl, 36)
+            <span class="iss-sc-txt">@T("InspectionScheduleSummary.ScheduleFor") <b>@name</b></span>
+            @if (!string.IsNullOrEmpty(inspectorId))
+            {
+                <span class="iss-sc-sep"></span>
+                <span class="iss-sc-id">@inspectorId</span>
+            }
+        </div>
+    };
     // Only users in Inspector or Admin role can start/execute inspections
     private bool   _canStartInspection = false;
     private string _filterCustomerId  = "";
@@ -802,6 +790,7 @@
     // Job detail state
     private bool               _detailLoading = false;
     private List<JobReference> _selectedJobRefs = new();
+    private List<string>       _selectedJobPhotos = new();   // ảnh sản phẩm (ảnh chính đứng đầu)
     private bool               _showRefsPopup = false;
 
     // Popup references cho danh sách (tab Today / 7days)
@@ -868,7 +857,7 @@
         public string? FileUrl       { get; set; }
     }
 
-    public record MonthStat(string ShortName, int Count);
+    public record MonthStat(int Month, int Count);   // tên tháng hiển thị qua L.MonthShort
 
     // ────────────────────────────────────────────
     //  STATUS HELPERS
@@ -894,6 +883,11 @@
     private int _todoCount =>
         _allJobs.Count(j => IsTodo(j) && j.InspectionDate.Year == _currentYear);
 
+    private int _delayCount =>
+        _allJobs.Count(j => string.Equals(j.Status, "Delay", StringComparison.OrdinalIgnoreCase) && j.InspectionDate.Year == _currentYear);
+
+    private int _waitingCount => _todoCount - _delayCount;
+
     private int _completedCount =>
         _allJobs.Count(j => IsCompleted(j) && j.InspectionDate.Year == _currentYear);
 
@@ -902,6 +896,464 @@
     //  - Tab "To Do"       → New | OnGoing, lọc theo ngày
     //  - Tab "Completed"   → Completed, lọc theo ngày
     //  - Chỉ job trong năm hiện tại
+    // ── KPI "Next 14 days" (Total · PPI · DPI · PSI · CLC) ─────────────
+    private int _clcNext14;
+    private List<ClcRow> _clcRows = new();
+    private class ClcRow { public int Id; public string JobNumber = "", Status = "", Customer = "", Vendor = "", ContainerNo = "", ContainerType = "", Inspector = ""; public DateTime Date; }
+
+    private IEnumerable<ClcRow> ClcForFilter()
+    {
+        var t = DateTime.Today;
+        return (_timeFilter switch
+        {
+            "today"   => _clcRows.Where(c => c.Date == t),
+            "7days"   => _clcRows.Where(c => c.Date >= t && c.Date < t.AddDays(7)),
+            "14days"  => _clcRows.Where(c => c.Date >= t && c.Date < t.AddDays(14)),
+            "overdue" => _clcRows.Where(c => c.Date < t),
+            _         => Enumerable.Empty<ClcRow>()
+        }).OrderBy(c => c.Date);
+    }
+
+    private RenderFragment ClcBlock() => @<text>
+        @{ var rows = ClcForFilter().ToList(); }
+        @if (rows.Count > 0)
+        {
+            <div class="iss-section-title" style="margin-top:18px">@T("Menu.ContainerLoadingCheck")
+                <span class="iss-section-count">@rows.Count</span></div>
+            <div class="iss-card-grid">
+                @foreach (var c in rows)
+                {
+                    var row = c;
+                    <div class="iss-job-card iss-clc-card" @onclick='() => Navigation.NavigateTo($"/clc/{row.Id}")'>
+                        <div class="iss-jc-top">
+                            <span class="iss-job-no">@row.JobNumber</span>
+                            <div class="iss-jc-top-right"><span class="iss-it-badge it-clc">CLC</span></div>
+                        </div>
+                        <div class="iss-jc-body">
+                            <div class="iss-jf"><span class="iss-jl">@T("Clc.PlannedLoadingDate")</span><span class="iss-jv">@L.Date(row.Date, "d MMM yyyy")</span></div>
+                            <div class="iss-jf"><span class="iss-jl">@T("Common.CustomerName")</span><span class="iss-jv">@row.Customer</span></div>
+                            <div class="iss-jf"><span class="iss-jl">@T("Common.VendorName")</span><span class="iss-jv">@row.Vendor</span></div>
+                            <div class="iss-jf"><span class="iss-jl">@T("Clc.ContainerNo")</span><span class="iss-jv">@row.ContainerNo @row.ContainerType</span></div>
+                            <div class="iss-jf"><span class="iss-jl">@T("Clc.Inspector")</span><span class="iss-jv">@(string.IsNullOrEmpty(row.Inspector) ? "—" : row.Inspector)</span></div>
+                        </div>
+                        <div class="iss-jc-foot">
+                            <span class="iss-st-pill st-pending">@row.Status</span>
+                            @if (_canStartInspection && (row.Status == "Pending" || row.Status == "InProgress"))
+                            {
+                                <button class="iss-start-sm" @onclick:stopPropagation="true" @onclick='() => Navigation.NavigateTo($"/clc/{row.Id}")'>@T("InspectionScheduleSummary.Start")</button>
+                            }
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+    </text>;
+
+    private async Task LoadClcNext14()
+    {
+        try
+        {
+            var json = await Http.GetStringAsync("api/clc?page=1&pageSize=200");
+            using var doc = JsonDocument.Parse(json);
+            if (!doc.RootElement.TryGetProperty("items", out var items)) return;
+            var today = DateTime.Today; var end = today.AddDays(14);
+            int n = 0;
+            var list = new List<ClcRow>();
+            var allInsp = new List<string>();
+            var done = new List<ClcRow>();
+            string S(JsonElement e, string k) => e.TryGetProperty(k, out var v) && v.ValueKind == JsonValueKind.String ? v.GetString() ?? "" : "";
+            foreach (var it in items.EnumerateArray())
+            {
+                var st = S(it, "status");
+                if (st == "Submitted")
+                {
+                    // Đã hoàn thành: không vào danh sách lịch, nhưng vẫn được đếm trong Total và lưới tháng
+                    DateTime dd = default;
+                    var okDate = (it.TryGetProperty("plannedLoadingDate", out var pd2) && pd2.ValueKind == JsonValueKind.String && DateTime.TryParse(pd2.GetString(), out dd))
+                              || (it.TryGetProperty("inspectionDate", out var id2) && id2.ValueKind == JsonValueKind.String && DateTime.TryParse(id2.GetString(), out dd));
+                    if (okDate) done.Add(new ClcRow { Id = it.GetProperty("id").GetInt32(), JobNumber = S(it, "jobNumber"), Status = st,
+                        Inspector = S(it, "inspectorName"), Date = dd.Date });
+                    continue;
+                }
+                allInsp.Add(S(it, "inspectorName"));
+                if (!(it.TryGetProperty("plannedLoadingDate", out var pd) && pd.ValueKind == JsonValueKind.String
+                      && DateTime.TryParse(pd.GetString(), out var d))) continue;
+                list.Add(new ClcRow { Id = it.GetProperty("id").GetInt32(), JobNumber = S(it, "jobNumber"), Status = st,
+                    Customer = S(it, "customerName"), Vendor = S(it, "vendorName"), ContainerNo = S(it, "containerNo"),
+                    ContainerType = S(it, "containerType"), Inspector = S(it, "inspectorName"), Date = d.Date });
+                if (d.Date >= today && d.Date < end) n++;
+            }
+            _clcRows = list;
+            _clcDone = done;
+            _clcAllInspectors = allInsp;
+            _clcNext14 = n;
+        }
+        catch { _clcNext14 = 0; }
+    }
+
+    // KPI tính trên toàn bộ job (đã lọc theo QC đang chọn), không giới hạn 14 ngày
+    private int ClcCount() => ClcAllScoped().Count(c => c.Date.Year == _currentYear);
+    private List<ClcRow> _clcDone = new();
+    private List<string> _clcAllInspectors = new();
+
+    /// <summary>Mọi job của năm hiện tại (chờ + trễ + hoàn thành) — nguồn số liệu chung cho Total, PPI/DPI/PSI và lưới tháng.</summary>
+    private IEnumerable<JobItem> YearJobs() =>
+        _allJobs.Where(j => j.InspectionDate != DateTime.MinValue && j.InspectionDate.Year == _currentYear);
+
+    /// <summary>Job năm hiện tại chưa hoàn thành (New/Delay; không tính Completed, Cancel) — dùng cho hàng KPI trên cùng.</summary>
+    private IEnumerable<JobItem> OpenJobs() => YearJobs().Where(IsTodo);
+
+    private int CountOpenType(string t) => OpenJobs().Count(j => string.Equals(j.InspectionType, t, StringComparison.OrdinalIgnoreCase));
+
+    /// <summary>CLC chưa Submitted của năm hiện tại.</summary>
+    private int ClcOpenCount() => ClcScoped().Count(c => c.Date.Year == _currentYear);
+
+    private int CountType(string t) => YearJobs().Count(j => string.Equals(j.InspectionType, t, StringComparison.OrdinalIgnoreCase));
+
+    private int ClcMonth(int month) => ClcAllScoped().Count(c => c.Date.Year == _currentYear && c.Date.Month == month);
+
+    /// <summary>CLC còn chờ (chưa Submitted, có ngày), theo inspector đang chọn.</summary>
+    private IEnumerable<ClcRow> ClcAllScoped() =>
+        string.IsNullOrEmpty(_selInspectorId) || SelectedInspector is null
+            ? _clcRows.Concat(_clcDone)
+            : _clcRows.Concat(_clcDone).Where(c => string.Equals(c.Inspector, SelectedInspector.FullName, StringComparison.OrdinalIgnoreCase));
+
+    private IEnumerable<ClcRow> ClcScoped() =>
+        string.IsNullOrEmpty(_selInspectorId) || SelectedInspector is null
+            ? _clcRows
+            : _clcRows.Where(c => string.Equals(c.Inspector, SelectedInspector.FullName, StringComparison.OrdinalIgnoreCase));
+
+    private RenderFragment JobCardFrag(JobItem job, DateTime today) => @<text>
+        @{
+        var isOverdue = job.InspectionDate.Date < today;
+        var daysLate  = isOverdue ? (today - job.InspectionDate.Date).Days : 0;
+        }
+                        <div class="iss-job-card @(isOverdue ? "iss-job-card-overdue" : "")"
+                             @onclick="async () => await OpenJobDetail(job)">
+                            <div class="iss-jc-top">
+                                <span class="iss-job-no">@(job.JobNumber ?? $"#{job.Id}")</span>
+                                <div class="iss-jc-top-right">
+                                    @if (isOverdue)
+                                    {
+                                        <span class="iss-overdue-badge" title="@T("InspectionScheduleSummary.ScheduledOn", L.Date(job.InspectionDate, "d MMM yyyy"))">
+                                            <svg width="11" height="11" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.2">
+                                                <circle cx="10" cy="10" r="8"/>
+                                                <path d="M10 6v5M10 14h.01" stroke-linecap="round"/>
+                                            </svg>
+                                            @(daysLate == 1 ? T("InspectionScheduleSummary.N1DayLate") : T("InspectionScheduleSummary.DaysLate", daysLate))
+                                        </span>
+                                    }
+                                    <span class="iss-it-badge it-@job.InspectionType.ToLower()">@TE("Opt", job.InspectionType)</span>
+                                </div>
+                            </div>
+                            <div class="iss-jc-body">
+                                @if (isOverdue)
+                                {
+                                    <div class="iss-jf"><span class="iss-jl">@T("InspectionScheduleSummary.ScheduledDate")</span><span class="iss-jv iss-jv-overdue">@L.Date(job.InspectionDate, "d MMM yyyy")</span></div>
+                                }
+                                <div class="iss-jf"><span class="iss-jl">@T("Common.CustomerName")</span><span class="iss-jv">@job.CustomerName</span></div>
+                                <div class="iss-jf"><span class="iss-jl">@T("Common.Category")</span><span class="iss-jv">@(job.ProductCategory ?? "—")</span></div>
+                                @* <div class="iss-jf"><span class="iss-jl">Product Type</span><span class="iss-jv">@(job.ProductType ?? "—")</span></div> *@
+                                <div class="iss-jf"><span class="iss-jl">@T("Common.InspectionType")</span><span class="iss-jv">@TE("Opt", job.InspectionType)</span></div>
+                                <div class="iss-jf"><span class="iss-jl">@T("InspectionScheduleSummary.PONumber")</span><span class="iss-jv">@(string.IsNullOrEmpty(job.PoNumber) ? "—" : job.PoNumber)</span></div>
+                                <div class="iss-jf"><span class="iss-jl">@T("Common.ProductCode")</span><span class="iss-jv">@(string.IsNullOrEmpty(job.ItemNumber) ? "—" : job.ItemNumber)</span></div>
+                                <div class="iss-jf"><span class="iss-jl">@T("Common.ProductName")</span><span class="iss-jv">@(string.IsNullOrEmpty(job.ProductName) ? "—" : job.ProductName)</span></div>
+                                <div class="iss-jf"><span class="iss-jl">@T("Common.VendorName")</span><span class="iss-jv">@job.VendorName</span></div>
+                                <div class="iss-jf"><span class="iss-jl">@T("InspectionScheduleSummary.VendorAddress")</span><span class="iss-jv">@(string.IsNullOrEmpty(job.VendorCity) ? "—" : job.VendorCity)</span></div>
+                                @if (!string.IsNullOrEmpty(job.VendorContactName) || !string.IsNullOrEmpty(job.VendorContactMobile))
+                                {
+                                    <div class="iss-jf iss-jf-section"><span class="iss-jl iss-jl-section">@T("InspectionScheduleSummary.VendorInformation")</span></div>
+                                    @if (!string.IsNullOrEmpty(job.VendorContactName))
+                                    { <div class="iss-jf iss-jf-sub"><span class="iss-jl">@T("InspectionScheduleSummary.Name")</span><span class="iss-jv">@job.VendorContactName</span></div> }
+                                    @if (!string.IsNullOrEmpty(job.VendorContactPosition))
+                                    { <div class="iss-jf iss-jf-sub"><span class="iss-jl">@T("InspectionScheduleSummary.Position")</span><span class="iss-jv">@job.VendorContactPosition</span></div> }
+                                    @if (!string.IsNullOrEmpty(job.VendorContactMobile))
+                                    { <div class="iss-jf iss-jf-sub"><span class="iss-jl">@T("InspectionScheduleSummary.Mobile")</span><span class="iss-jv">@job.VendorContactMobile</span></div> }
+                                    @if (!string.IsNullOrEmpty(job.VendorContactOffice))
+                                    { <div class="iss-jf iss-jf-sub"><span class="iss-jl">@T("InspectionScheduleSummary.Office")</span><span class="iss-jv">@job.VendorContactOffice</span></div> }
+                                    @if (!string.IsNullOrEmpty(job.VendorContactEmail))
+                                    { <div class="iss-jf iss-jf-sub"><span class="iss-jl">@T("InspectionScheduleSummary.Email")</span><span class="iss-jv">@job.VendorContactEmail</span></div> }
+                                }
+                                @if (!string.IsNullOrEmpty(job.InspectorName) || !string.IsNullOrEmpty(job.InspectorId) || !string.IsNullOrEmpty(job.InspectorMobile))
+                                {
+                                    <div class="iss-jf iss-jf-section"><span class="iss-jl iss-jl-section">@T("InspectionScheduleSummary.InspectorInformation")</span></div>
+                                    @if (!string.IsNullOrEmpty(job.InspectorName))
+                                    { <div class="iss-jf iss-jf-sub"><span class="iss-jl">@T("InspectionScheduleSummary.Name")</span><span class="iss-jv">@job.InspectorName</span></div> }
+                                    @if (!string.IsNullOrEmpty(job.InspectorId))
+                                    { <div class="iss-jf iss-jf-sub"><span class="iss-jl">@T("InspectionScheduleSummary.ID")</span><span class="iss-jv">@job.InspectorId</span></div> }
+                                    @if (!string.IsNullOrEmpty(job.InspectorMobile))
+                                    { <div class="iss-jf iss-jf-sub"><span class="iss-jl">@T("InspectionScheduleSummary.Mobile")</span><span class="iss-jv">@job.InspectorMobile</span></div> }
+                                }
+                                @if (job.References.Count > 0)
+                                {
+                                    <div class="iss-jf iss-jf-inline" @onclick:stopPropagation="true">
+                                        <span class="iss-jl">@T("InspectionScheduleSummary.ProductReference")</span>
+                                        <button type="button" class="iss-refs-view-all-btn iss-refs-view-inline"
+                                                @onclick="() => OpenJobRefsPopup(job)">
+                                            <svg width="13" height="13" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2">
+                                                <path d="M1 10s3.5-7 9-7 9 7 9 7-3.5 7-9 7-9-7-9-7z"/><circle cx="10" cy="10" r="3"/>
+                                            </svg>
+                                            @T("Common.View")
+                                        </button>
+                                    </div>
+                                }
+                            </div>
+                            @if (!string.IsNullOrEmpty(job.InspectorName) || !string.IsNullOrEmpty(job.InspectorId))
+                            {
+                                var jp = InspectorPhoto(job.InspectorId);
+                                <div class="iss-jc-insp">
+                                    @Avatar(job.InspectorName ?? job.InspectorId ?? "", jp, 26)
+                                    <span><b>@(job.InspectorName ?? "—")</b> · @(job.InspectorId ?? "—")</span>
+                                </div>
+                            }
+                            <div class="iss-jc-foot">
+                                <span class="iss-st-pill @GetStatusClass(job.Status)">@TE("Status", job.Status)</span>
+                                @if (_canStartInspection)
+                                {
+                                    <button class="iss-start-sm" @onclick:stopPropagation="true"
+                                            @onclick="() => StartInspection(job)">@T("InspectionScheduleSummary.Start")</button>
+                                }
+                            </div>
+                        </div>
+    </text>;
+
+    // ────────────────────────────────────────────
+    //  DANH SÁCH LỊCH DÙNG CHUNG: Today / 7 days / 14 days (cùng một format, gộp cả CLC)
+    // ────────────────────────────────────────────
+    private class SchedItem
+    {
+        public JobItem? Job; public ClcRow? Clc; public DateTime Date;
+        public string No = "", Type = "", Customer = "", Category = "", Vendor = "", Country = "", Inspector = "", Status = "", Po = "";
+    }
+    private string _slSearch = "", _slVendor = "", _slCategory = "", _slCountry = "", _slStatus = "";
+    private int _slPage = 1, _slSize = 10;
+    private bool _slFOpen;
+    private bool _hideCustomer;   // Inspector không được xem thông tin khách hàng
+
+    private List<SchedItem> BuildSchedItems(List<JobItem> jobs)
+    {
+        var today = DateTime.Today;
+        var list = jobs.Select(j => new SchedItem
+        {
+            Job = j, Date = j.InspectionDate.Date, No = j.JobNumber ?? $"#{j.Id}", Type = j.InspectionType,
+            Customer = _hideCustomer ? "" : j.CustomerName, Category = j.ProductCategory ?? "", Vendor = j.VendorName,
+            Country = j.VendorCountry ?? "", Inspector = j.InspectorName ?? "", Status = j.Status, Po = j.PoNumber ?? ""
+        }).ToList();
+        if (_statusFilter == "todo")
+            list.AddRange(ClcForFilter().Select(c => new SchedItem
+            {
+                Clc = c, Date = c.Date, No = c.JobNumber, Type = "CLC", Customer = _hideCustomer ? "" : c.Customer,
+                Category = T("Menu.ContainerLoadingCheck"), Vendor = c.Vendor, Country = "", Inspector = c.Inspector,
+                Status = c.Date < today ? "Delay" : "New", Po = ""
+            }));
+        return list.OrderBy(i => i.Date).ThenBy(i => i.No).ToList();
+    }
+
+    private void SlResetPage() => _slPage = 1;
+    private void SlSetPage(int p) => _slPage = p;
+    private void SlSetSize(int n) { _slSize = n; _slPage = 1; }
+
+    private static MarkupString SlIcon(string key)
+    {
+        const string a = "<svg width=\"18\" height=\"18\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\" stroke-linejoin=\"round\">";
+        var p = key switch
+        {
+            "date"     => "<rect x=\"3\" y=\"5\" width=\"18\" height=\"16\" rx=\"2\"/><path d=\"M3 10h18M8 3v4M16 3v4\"/>",
+            "po"       => "<path d=\"M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z\"/><path d=\"M14 3v5h5M9 13h6M9 17h4\"/>",
+            "customer" => "<circle cx=\"12\" cy=\"8\" r=\"4\"/><path d=\"M4 21a8 8 0 0 1 16 0\"/>",
+            "category" => "<path d=\"M12 3l9 5-9 5-9-5z\"/><path d=\"M3 13l9 5 9-5\"/>",
+            "vendor"   => "<path d=\"M4 21V8l8-5 8 5v13\"/><path d=\"M9 21v-6h6v6M9 11h.01M15 11h.01\"/>",
+            "country"  => "<path d=\"M12 21s7-6.2 7-11a7 7 0 1 0-14 0c0 4.8 7 11 7 11z\"/><circle cx=\"12\" cy=\"10\" r=\"2.5\"/>",
+            _          => "<circle cx=\"12\" cy=\"8\" r=\"4\"/><path d=\"M4 21a8 8 0 0 1 16 0\"/>"
+        };
+        return new MarkupString(a + p + "</svg>");
+    }
+
+    // Ô Inspector trong thẻ lịch: ảnh đại diện (hoặc chữ cái đầu) thay cho icon người
+    private RenderFragment SlInspectorField(string label, string value, SchedItem item) => __builder =>
+    {
+        var photo = InspectorPhoto(item.Job?.InspectorId)
+                    ?? _inspectors.FirstOrDefault(i => !string.IsNullOrEmpty(item.Inspector) && string.Equals(i.FullName, item.Inspector, StringComparison.OrdinalIgnoreCase))?.PhotoUrl;
+        <div class="sl-f sl-f-insp">
+            @Avatar(item.Inspector, photo, 34)
+            <span class="sl-ft"><small>@label</small><b>@(string.IsNullOrWhiteSpace(value) ? "—" : value)</b></span>
+        </div>
+    };
+
+    private RenderFragment SlField(string icon, string label, string value) => @<text>
+        <div class="sl-f">
+            <span class="sl-ic">@SlIcon(icon)</span>
+            <span class="sl-ft"><small>@label</small><b>@(string.IsNullOrWhiteSpace(value) ? "—" : value)</b></span>
+        </div>
+    </text>;
+
+    private IEnumerable<int> SlPageNumbers(int pages, int cur)
+    {
+        for (int i = 1; i <= pages; i++)
+            if (i == 1 || i == pages || Math.Abs(i - cur) <= 1) yield return i;
+            else if (i == 2 || i == pages - 1) yield return 0;
+    }
+
+    private RenderFragment ScheduleListFrag(List<JobItem> jobs) => @<text>
+        @{
+            var today = DateTime.Today;
+            var all = BuildSchedItems(jobs);
+            var q = all.AsEnumerable();
+            if (!string.IsNullOrWhiteSpace(_slSearch))
+            {
+                var t = _slSearch.Trim();
+                q = q.Where(i => i.No.Contains(t, StringComparison.OrdinalIgnoreCase) || i.Po.Contains(t, StringComparison.OrdinalIgnoreCase)
+                              || i.Vendor.Contains(t, StringComparison.OrdinalIgnoreCase) || i.Customer.Contains(t, StringComparison.OrdinalIgnoreCase)
+                              || i.Inspector.Contains(t, StringComparison.OrdinalIgnoreCase)
+                              || (i.Job != null && ((i.Job.ProductName ?? "").Contains(t, StringComparison.OrdinalIgnoreCase) || (i.Job.ItemNumber ?? "").Contains(t, StringComparison.OrdinalIgnoreCase))));
+            }
+            if (_slVendor != "")   q = q.Where(i => i.Vendor == _slVendor);
+            if (_slCategory != "") q = q.Where(i => i.Category == _slCategory);
+            if (_slCountry != "")  q = q.Where(i => i.Country == _slCountry);
+            if (_slStatus != "")   q = q.Where(i => i.Status == _slStatus);
+            var rows = q.ToList();
+            var pages = Math.Max(1, (rows.Count + _slSize - 1) / _slSize);
+            if (_slPage > pages) _slPage = pages;
+            var pageRows = rows.Skip((_slPage - 1) * _slSize).Take(_slSize).ToList();
+            var periodLabel = _timeFilter switch
+            {
+                "today"  => T("InspectionScheduleSummary.Today"),
+                "7days"  => T("InspectionScheduleSummary.N7Days"),
+                "14days" => T("InspectionScheduleSummary.N14Days"),
+                _        => T("InspectionScheduleSummary.OverdueInspections")
+            };
+        }
+        <div class="iss-14days-header no-print">
+            <div class="iss-section-title" style="margin-bottom:0">@periodLabel <span class="iss-section-count">@all.Count</span></div>
+            <div style="display:flex;gap:10px;align-items:center">
+                @if (CurrentScheduleOwner is { } owner) { @ScheduleChip(owner.FullName ?? owner.Username, owner.InspectorId, owner.PhotoUrl) }
+                @if (_timeFilter == "14days" && PageAccess.CanExport)
+                {
+                    <button class="iss-export-btn" @onclick="ExportPdf14Days" title="@T("InspectionScheduleSummary.ExportToPDF")">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                        @T("InspectionScheduleSummary.ExportPDF")
+                    </button>
+                }
+            </div>
+        </div>
+
+        <div class="sl-bar no-print">
+            <div class="sl-search">
+                <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="9" r="6"/><path d="M15 15l-3.5-3.5" stroke-linecap="round"/></svg>
+                <input type="text" placeholder="@T("InspectionScheduleSummary.SearchSchedule")" @bind="_slSearch" @bind:event="oninput" @bind:after="SlResetPage" />
+            </div>
+            <button type="button" class="sl-ftoggle @(_slFOpen ? "on" : "")" @onclick="() => _slFOpen = !_slFOpen" aria-label="@T("Common.Filters")"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5h18l-7 8v6l-4 2v-8z"/></svg></button>
+            <div class="sl-filters @(_slFOpen ? "open" : "")">
+                <select @bind="_slVendor" @bind:after="SlResetPage">
+                    <option value="">@T("InspectionScheduleSummary.AllVendors")</option>
+                    @foreach (var v in all.Select(i => i.Vendor).Where(x => x != "").Distinct().OrderBy(x => x)) { <option value="@v">@v</option> }
+                </select>
+                <select @bind="_slCategory" @bind:after="SlResetPage">
+                    <option value="">@T("Common.AllCategories")</option>
+                    @foreach (var v in all.Select(i => i.Category).Where(x => x != "").Distinct().OrderBy(x => x)) { <option value="@v">@v</option> }
+                </select>
+                <select @bind="_slCountry" @bind:after="SlResetPage">
+                    <option value="">@T("Common.AllCountries")</option>
+                    @foreach (var v in all.Select(i => i.Country).Where(x => x != "").Distinct().OrderBy(x => x)) { <option value="@v">@v</option> }
+                </select>
+                <select @bind="_slStatus" @bind:after="SlResetPage">
+                    <option value="">@T("Common.AllStatus")</option>
+                    <option value="New">@T("Status.New")</option>
+                    <option value="OnGoing">@TE("Status", "OnGoing")</option>
+                    <option value="Delay">@T("Status.Delay")</option>
+                </select>
+            </div>
+        </div>
+
+        @if (rows.Count == 0)
+        {
+            <div class="iss-empty"><p>@T("InspectionScheduleSummary.NoInspectionsForThisPeriod")</p></div>
+        }
+        else
+        {
+            <div id="iss-print-area-14days" class="iss-print-area sl-list">
+                @foreach (var it in pageRows)
+                {
+                    var item = it;
+                    var late = item.Date < today;
+                    <div class="sl-item @(late ? "late" : "")" @onclick="async () => await SlOpen(item)">
+                        <div class="sl-top">
+                            <span class="iss-it-badge it-@item.Type.ToLower() sl-type">@TE("Opt", item.Type)</span>
+                            <span class="sl-no">@item.No</span>
+                            <span class="iss-st-pill @GetStatusClass(item.Status) sl-status">@TE("Status", item.Status)</span>
+                        </div>
+                        <div class="sl-c1">
+                            @SlField("date", T("InspectionScheduleSummary.ScheduledDate"), L.Date(item.Date, "ddd, d MMM yyyy"))
+                            @SlField("po", T("InspectionScheduleSummary.PONumber"), item.Po)
+                        </div>
+                        <div class="sl-mid">
+                            <div class="sl-c2">
+                                @if (!_hideCustomer) { @SlField("customer", T("Common.Customer"), item.Customer) }
+                                @SlField("category", T("Common.Category"), item.Category)
+                            </div>
+                            <div class="sl-c3">
+                                @SlField("vendor", T("Common.Vendor"), item.Vendor)
+                                @SlField("country", T("Common.Country"), item.Country)
+                            </div>
+                        </div>
+                        <div class="sl-ci">
+                            @SlInspectorField(T("Common.Inspector"), item.Inspector == "" ? T("InspectionScheduleSummary.Unassigned") : item.Inspector, item)
+                        </div>
+                        <div class="sl-act no-print" @onclick:stopPropagation="true">
+                            <button type="button" class="sl-btn" @onclick="async () => await SlOpen(item)">
+                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h4"/></svg>
+                                @T("InspectionScheduleSummary.ViewDetails")
+                            </button>
+                            @if (_canStartInspection)
+                            {
+                                <button type="button" class="sl-btn primary" @onclick="() => SlStart(item)">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="6 4 20 12 6 20 6 4"/></svg>
+                                    @T("InspectionScheduleSummary.Start")
+                                </button>
+                            }
+                        </div>
+                    </div>
+                }
+            </div>
+            <div class="sl-foot no-print">
+                <span class="sl-total">@T("InspectionScheduleSummary.TotalSchedules", rows.Count, periodLabel)</span>
+                <div class="sl-pager">
+                    <label class="sl-perpage">@T("InspectionScheduleSummary.RowsPerPage")
+                        <select value="@_slSize" @onchange="e => SlSetSize(int.TryParse(e.Value?.ToString(), out var n) ? n : 10)">
+                            @foreach (var n in new[] { 10, 20, 50, 100 }) { <option value="@n">@n</option> }
+                        </select>
+                    </label>
+                    <button type="button" class="sl-pg" disabled="@(_slPage <= 1)" @onclick="() => SlSetPage(_slPage - 1)">&lsaquo;</button>
+                    <span class="sl-pg-nums">
+                        @foreach (var n in SlPageNumbers(pages, _slPage))
+                        {
+                            var pn = n;
+                            @if (pn == 0) { <span class="sl-dots">…</span> }
+                            else { <button type="button" class="sl-pg @(pn == _slPage ? "on" : "")" @onclick="() => SlSetPage(pn)">@pn</button> }
+                        }
+                    </span>
+                    <span class="sl-pg-compact">@_slPage / @pages</span>
+                    <button type="button" class="sl-pg" disabled="@(_slPage >= pages)" @onclick="() => SlSetPage(_slPage + 1)">&rsaquo;</button>
+                </div>
+            </div>
+        }
+    </text>;
+
+    private Task SlSetPageAsync(int p) { SlSetPage(p); return Task.CompletedTask; }
+    private Task SlSetSizeAsync(int n) { SlSetSize(n); return Task.CompletedTask; }
+
+    private async Task SlOpen(SchedItem i)
+    {
+        if (i.Job != null) await OpenJobDetail(i.Job);
+        else if (i.Clc != null) await OpenClcDetail(i.Clc.Id);
+    }
+
+    private void SlStart(SchedItem i)
+    {
+        if (i.Job != null) StartInspection(i.Job);
+        else if (i.Clc != null) Navigation.NavigateTo($"/clc/{i.Clc.Id}");
+    }
+
     // ────────────────────────────────────────────
     private List<JobItem> FilteredJobs()
     {
@@ -926,9 +1378,9 @@
 
         return _timeFilter switch
         {
-            // "today" now includes all overdue inspections (date <= today) so users can see
-            // jobs that are past due and need attention. Overdue items are highlighted in UI.
-            "today"  => q.Where(j => j.InspectionDate.Date <= today).ToList(),
+            // "today" chỉ gồm job đúng hôm nay (yêu cầu khách 2/11); job quá hạn có tab "Overdue" riêng.
+            "today"   => q.Where(j => j.InspectionDate.Date == today).ToList(),
+            "overdue" => q.Where(j => j.InspectionDate.Date < today).ToList(),
             "7days"  => q.Where(j => j.InspectionDate.Date >= today &&
                                      j.InspectionDate.Date <  today.AddDays(7)).ToList(),
             "14days" => q.Where(j => j.InspectionDate.Date >= today &&
@@ -945,8 +1397,17 @@
         var authState = await AuthStateProvider.GetAuthenticationStateAsync();
         var user      = authState.User;
 
-        // Only Inspector and Admin can start/execute an inspection
-        _canStartInspection = user.IsInRole("Inspector") || user.IsInRole("Admin");
+        // Only Inspector and Admin can start/execute an inspection — và phải có quyền Create/Edit của Inspection Summary
+        await PageAccess.EnsureLoadedAsync();
+        // Bắt đầu kiểm hàng: Admin, hoặc tài khoản (không phải Customer) có mức "Edit (Use Module)" ở Inspection Schedule
+        // — hoặc quyền Create/Edit của Inspection Summary như trước.
+        _canStartInspection = user.IsInRole("Admin")
+            || (!user.IsInRole("Customer")
+                && (PageAccess.Level("InspectionSchedule") >= PermLevel.Edit
+                    || ((user.IsInRole("Inspector"))
+                        && (PageAccess.Can("SummaryInspections", "Create") || PageAccess.Can("SummaryInspections", "Edit")))));
+        _isAdmin = user.IsInRole("Admin");
+        _hideCustomer = !_isAdmin && user.IsInRole("Inspector");   // Inspector không được xem thông tin khách hàng
 
         if (user.IsInRole("Inspector") || user.IsInRole("Customer"))
         {
@@ -981,9 +1442,12 @@
                     if (me != null)
                     {
                         if (user.IsInRole("Inspector"))
+                        {
                             _filterInspectorId = me.InspectorId ?? "";
+                            _me = me;
+                        }
                         else if (user.IsInRole("Customer"))
-                            _filterCustomerId = me.CustomerId ?? "";
+                            _filterCustomerId = ""; // khách hàng: API lọc theo danh sách KH được phép (PageAccess.CustomerScope)
                     }
 
                     Console.WriteLine($"[Schedule] _filterInspectorId={_filterInspectorId}, _filterCustomerId={_filterCustomerId}");
@@ -996,16 +1460,16 @@
         }
         // Admin: không filter, load hết
 
+        // Tải song song: CLC và danh sách inspector không phụ thuộc danh sách job
+        var clcTask   = LoadClcNext14();
+        var usersTask = FetchInspectorUsers();
         await LoadAllJobs();
 
         // Fallback: nếu backend không filter được, filter client-side theo customerId/inspectorId
-        if (!string.IsNullOrEmpty(_filterCustomerId))
+        if (PageAccess.CustomerScope != null)
         {
-            _allJobs = _allJobs.Where(j =>
-                !string.IsNullOrEmpty(j.CustomerId) &&
-                j.CustomerId.Equals(_filterCustomerId, StringComparison.OrdinalIgnoreCase)
-            ).ToList();
-            Console.WriteLine($"[Schedule] After client filter by customerId={_filterCustomerId}: {_allJobs.Count} jobs");
+            _allJobs = _allJobs.Where(j => PageAccess.AllowsCustomer(j.CustomerId)).ToList();
+            Console.WriteLine($"[Schedule] After client filter by customer scope: {_allJobs.Count} jobs");
         }
         else if (!string.IsNullOrEmpty(_filterInspectorId))
         {
@@ -1016,12 +1480,15 @@
             Console.WriteLine($"[Schedule] After client filter by inspectorId={_filterInspectorId}: {_allJobs.Count} jobs");
         }
 
+        _allJobsRaw = _allJobs.ToList();
+        await LoadInspectorOptions(usersTask);   // Admin: danh sách chọn; mọi role: ảnh QC trên thẻ job
+
         BuildMonthSummary();
 
-        // Fallback: nếu backend chưa trả về references trong list endpoint,
-        // tự động fetch chi tiết cho các job hiển thị trong Today + 7 days
-        // (gọi GET api/inspections/{id} đã có sẵn references)
-        await EnsureReferencesForUpcomingJobs();
+        // Không gọi chi tiết từng job để lấy References nữa: api/inspections (danh sách) đã trả đúng
+        // ProductReferences như api/inspections/{id}; trước đây job nào sản phẩm không có reference
+        // sẽ bị gọi chi tiết (tối đa 50 request nặng) → màn Inspection Schedule mở rất chậm.
+        await clcTask;
 
         _loading = false;
     }
@@ -1036,9 +1503,9 @@
         try
         {
             var today = DateTime.Today;
-            var horizon = today.AddDays(7);
+            var horizon = today.AddDays(14);
 
-            // Chỉ load cho các job trong tab "Today" + "7 days" để tránh tốn request
+            // Chỉ load cho các job trong 14 ngày tới (+ quá hạn) để tránh tốn request
             var targets = _allJobs
                 .Where(j => IsTodo(j) &&
                             j.InspectionDate != DateTime.MinValue &&
@@ -1105,6 +1572,16 @@
         }
     }
 
+    private async Task<InspectorPageResult?> FetchInspectorUsers()
+    {
+        try
+        {
+            var opts = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+            return await Http.GetFromJsonAsync<InspectorPageResult>("api/users?isActive=true&pageSize=500", opts);
+        }
+        catch (Exception ex) { Console.WriteLine($"[Schedule] Load inspectors error: {ex.Message}"); return null; }
+    }
+
     private async Task LoadAllJobs()
     {
         try
@@ -1119,8 +1596,8 @@
             var opts = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
 
             // DEBUG: lấy raw JSON để xem chính xác API trả về cái gì
-            var rawJson = await Http.GetStringAsync($"api/inspections?page=1&pageSize=200{filterSuffix}");
-            Console.WriteLine($"[Schedule] Raw API response (first 2000 chars): {rawJson.Substring(0, Math.Min(2000, rawJson.Length))}");
+            const int PageSize = 1000;   // ít vòng gọi hơn (mỗi lần gọi API đều nạp lại toàn bộ bảng lookup)
+            var rawJson = await Http.GetStringAsync($"api/inspections?page=1&pageSize={PageSize}{filterSuffix}");
 
             var r1 = JsonSerializer.Deserialize<ApiPageResponse>(rawJson, opts);
 
@@ -1134,14 +1611,17 @@
                 Console.WriteLine($"[Schedule] First item: id={first.Id}, jobNumber={first.JobNumber}, References={(first.References == null ? "NULL" : first.References.Count.ToString())}");
             }
 
-            int totalPages = (int)Math.Ceiling((double)r1.Total / 200);
+            int totalPages = (int)Math.Ceiling((double)r1.Total / PageSize);
             for (int p = 2; p <= totalPages; p++)
             {
                 var rp = await Http.GetFromJsonAsync<ApiPageResponse>(
-                    $"api/inspections?page={p}&pageSize=200{filterSuffix}", opts);
+                    $"api/inspections?page={p}&pageSize={PageSize}{filterSuffix}", opts);
                 if (rp?.Items != null)
                     _allJobs.AddRange(rp.Items.Select(MapToJobItem));
             }
+
+            // Job request còn nháp (Draft) chưa giao inspector → không hiện trên lịch
+            _allJobs.RemoveAll(j => string.Equals(j.Status, "Draft", StringComparison.OrdinalIgnoreCase));
 
             // Debug: kiểm tra references có được API trả về không
             var jobsWithRefs = _allJobs.Count(j => j.References.Count > 0);
@@ -1177,7 +1657,7 @@
             Id              = i.Id,
             JobNumber       = i.JobNumber ?? i.Title,
             Title           = i.Title      ?? "",
-            CustomerName    = i.CustomerName ?? "",
+            CustomerName    = _hideCustomer ? "" : (i.CustomerName ?? ""),
             CustomerId      = i.CustomerId,
             ProductCategory = string.IsNullOrEmpty(i.ProductCategory) ? null : i.ProductCategory,
             ProductType     = string.IsNullOrEmpty(i.ProductType)     ? null : i.ProductType,
@@ -1213,17 +1693,15 @@
 
     private void BuildMonthSummary()
     {
-        // Monthly grid: đếm job Completed theo từng tháng trong năm hiện tại
+        // Monthly grid: đếm job chờ + trễ (không đếm Completed) theo từng tháng trong năm hiện tại
         var year = _currentYear;
         _monthSummary = Enumerable.Range(1, 12).Select(m =>
         {
-            var abbr = CultureInfo.InvariantCulture.DateTimeFormat.AbbreviatedMonthNames[m - 1];
             var cnt  = _allJobs.Count(j =>
-                IsCompleted(j) &&
                 j.InspectionDate != DateTime.MinValue &&
                 j.InspectionDate.Year  == year &&
                 j.InspectionDate.Month == m);
-            return new MonthStat(abbr, cnt);
+            return new MonthStat(m, cnt);
         }).ToList();
     }
 
@@ -1248,6 +1726,7 @@
         _selectedJob     = job;
         _prevTimeFilter  = _timeFilter;
         _selectedJobRefs = new();
+        _selectedJobPhotos = new();
         _showRefsPopup   = false;
         _view            = View.JobDetail;
         _detailLoading   = true;
@@ -1292,6 +1771,17 @@
             if (root.TryGetProperty("contactEmail",    out var ce) && ce.ValueKind != JsonValueKind.Null)
                 _selectedJob.VendorContactEmail    = ce.GetString();
 
+            // Ảnh sản phẩm
+            if (root.TryGetProperty("productPhotoUrls", out var pph) && pph.ValueKind == JsonValueKind.Array)
+            {
+                var pbase = Http.BaseAddress?.ToString().TrimEnd('/') ?? "";
+                foreach (var pu in pph.EnumerateArray())
+                {
+                    var u = MediaUrl.Resolve(pu.GetString() ?? "", pbase);
+                    if (!string.IsNullOrEmpty(u)) _selectedJobPhotos.Add(u);
+                }
+            }
+
             // References
             if (root.TryGetProperty("references", out var refs) &&
                 refs.ValueKind == JsonValueKind.Array)
@@ -1324,6 +1814,42 @@
     }
 
     private void GoBack() { _view = View.Summary; _timeFilter = _prevTimeFilter; }
+
+    private ClcModel? _clcSel;
+    private bool _clcLoading;
+
+    private async Task OpenClcDetail(int id)
+    {
+        _prevTimeFilter = _timeFilter;
+        _clcSel = new ClcModel { Id = id };
+        _clcLoading = true;
+        _view = View.ClcDetail;
+        StateHasChanged();
+        try
+        {
+            var token = await SessionStorage.GetItemAsync<string>("auth_token");
+            if (!string.IsNullOrEmpty(token))
+                Http.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+            var m = await Http.GetFromJsonAsync<ClcModel>($"api/clc/{id}", new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+            if (m != null) _clcSel = m;
+        }
+        catch (Exception ex) { Console.WriteLine($"[InspectionSchedule] CLC detail load error: {ex.Message}"); }
+        finally { _clcLoading = false; StateHasChanged(); }
+    }
+
+    private static string RefExt(JobReference r)
+    {
+        var n = string.IsNullOrEmpty(r.FileName) ? r.FileUrl ?? "" : r.FileName;
+        var e = System.IO.Path.GetExtension(n).TrimStart('.').ToUpperInvariant();
+        return e switch { "PDF" => "PDF", "XLS" or "XLSX" or "CSV" => "XLS", "DOC" or "DOCX" => "DOC", "" => "FILE", _ => e.Length > 4 ? "FILE" : e };
+    }
+
+    private async Task DownloadAllRefs()
+    {
+        var files = _selectedJobRefs.Where(r => !string.IsNullOrEmpty(r.FileUrl))
+            .Select(r => new { url = r.FileUrl, name = string.IsNullOrEmpty(r.FileName) ? r.ReferenceName : r.FileName }).ToList();
+        if (files.Count > 0) await JS.InvokeVoidAsync("issDownloadAll", files);
+    }
 
     private void StartInspection(JobItem? job)
     {
@@ -1367,9 +1893,19 @@
     private class CurrentUserDto
     {
         public string  Username    { get; set; } = "";
+        public string? FullName    { get; set; }
+        public string? PhotoUrl    { get; set; }
         public string? InspectorId { get; set; }
         public string? CustomerId  { get; set; }
     }
+
+    private class InspectorOption
+    {
+        public string? FullName    { get; set; }
+        public string? InspectorId { get; set; }
+        public string? PhotoUrl    { get; set; }
+    }
+    private class InspectorPageResult { public List<InspectorOption> Items { get; set; } = new(); }
 
     private class ApiItem
     {
@@ -1587,6 +2123,7 @@
     .iss-u-val   { font-size: 12px; font-weight: 700; color: #333; }
     .iss-u-todo  { color: #f08c5a; }
     .iss-u-done  { color: #27ae60; }
+    .iss-u-delay { color: #dc2626; }
 
     @@media (min-width: 640px)  { .iss-header-card { padding: 20px 32px 14px; } }
     @@media (min-width: 1024px) { .iss-header-card { padding: 22px 40px 14px; } }
@@ -1652,8 +2189,10 @@
 
     /* ══════════ CONTENT WRAPPER ══════════ */
     .iss-content {
-        max-width: 1200px;
-        margin: 0 auto;
+        max-width: none;       /* trải hết bề ngang vùng nội dung */
+        width: 100%;
+        box-sizing: border-box;
+        margin: 0;
         padding: 16px;
     }
     @@media (min-width: 640px)  { .iss-content { padding: 20px 32px; } }
@@ -1739,6 +2278,7 @@
         text-transform: uppercase; white-space: nowrap;
     }
     .it-dpi { background: #e8f0fe; color: #1565c0; }
+    .it-clc { background: #ede9fe; color: #6d28d9; }
     .it-ppt { background: #fff3e0; color: #e65100; }
     .it-pst { background: #f3e5f5; color: #7b1fa2; }
 
@@ -1834,10 +2374,6 @@
 
     /* ══════════ 14-DAY TABLE (≥ 600px) ══════════ */
     .iss-cal-table-wrap { display: none; }
-    @@media (min-width: 600px) {
-        .iss-cal-table-wrap { display: block; }
-        .iss-cal-mobile     { display: none; }
-    }
 
     .iss-cal-table {
         width: 100%;
@@ -1870,7 +2406,6 @@
 
     /* ══════════ 14-DAY MOBILE CARDS ══════════ */
     .iss-cal-mobile { display: block; }
-    @@media (min-width: 600px) { .iss-cal-mobile { display: none; } }
 
     .iss-cal-day {
         background: white;
@@ -1904,11 +2439,11 @@
 
     /* ══════════ DETAIL PAGE ══════════ */
     .iss-detail-wrap {
-        max-width: 680px; margin: 0 auto;
+        max-width: none; width: 100%; margin: 0;   /* trải hết bề ngang vùng nội dung (mẫu của khách là bố cục 2 cột) */
         padding: 20px 16px;
     }
-    @@media (min-width: 640px)  { .iss-detail-wrap { padding: 28px 32px; } }
-    @@media (min-width: 1024px) { .iss-detail-wrap { padding: 32px 40px; } }
+    @@media (min-width: 640px)  { .iss-detail-wrap { padding: 24px 24px; } }
+    @@media (min-width: 1024px) { .iss-detail-wrap { padding: 24px 28px; } }
 
     .iss-back-btn {
         display: flex; align-items: center; gap: 4px;
@@ -2276,5 +2811,248 @@
         .iss-refs-collapsed .iss-refs-header { gap: 8px; }
         .iss-refs-count { width: 100%; margin: 0; order: 3; }
         .iss-refs-view-all-btn { padding: 6px 14px; }
+    }
+
+    /* ── Inspector Schedule header / chọn inspector ── */
+    .iss-page-head { display:flex; justify-content:space-between; align-items:flex-end; gap:16px; flex-wrap:wrap; padding:20px 16px 14px; }
+    @@media (min-width:640px) { .iss-page-head { padding:24px 32px 16px; } }
+    @@media (min-width:1024px) { .iss-page-head { padding:26px 40px 16px; } }
+    .iss-page-title { font-size:30px; font-weight:800; color:#0f1f47; margin:0; letter-spacing:-.01em; }
+    .iss-page-sub { font-size:14px; color:#64748b; margin-top:2px; }
+    .iss-insp-picker { display:flex; align-items:flex-end; gap:14px; }
+    .iss-clear-filter { background:none; border:none; color:#1d4ed8; text-decoration:underline; font-size:13.5px; font-weight:600; cursor:pointer; padding:10px 0; font-family:inherit; }
+    .iss-dd-wrap { position:relative; }
+    .iss-dd-label { font-size:12.5px; font-weight:600; color:#1a2d5a; margin-bottom:4px; }
+    .iss-dd-btn { display:flex; align-items:center; gap:10px; min-width:300px; background:#fff; border:2px solid #dbe5f3; border-radius:12px;
+        padding:6px 12px; cursor:pointer; font-family:inherit; color:#1a2d5a; font-size:14px; }
+    .iss-dd-btn.open { border-color:#2563eb; box-shadow:0 0 0 3px rgba(37,99,235,.15); }
+    .iss-dd-text { flex:1; text-align:left; white-space:normal; overflow-wrap:anywhere; }
+    .iss-dd-caret { color:#1a2d5a; flex-shrink:0; }
+    .iss-dd-allico { width:30px; height:30px; border-radius:50%; background:#eef4ff; color:#1d4ed8; display:inline-flex; align-items:center; justify-content:center; flex-shrink:0; }
+    .iss-dd-allico.sm { width:28px; height:28px; background:none; color:#1a2d5a; }
+    .iss-dd-backdrop { position:fixed; inset:0; z-index:40; }
+    .iss-dd-menu { position:absolute; right:0; top:calc(100% + 6px); width:100%; min-width:300px; z-index:50; background:#fff; border-radius:12px;
+        box-shadow:0 12px 32px rgba(15,40,90,.22); padding:8px; }
+    .iss-dd-search { display:flex; align-items:center; gap:8px; background:#f5f7fb; border:1px solid #e5eaf2; border-radius:9px; padding:8px 10px; color:#64748b; margin-bottom:6px; }
+    .iss-dd-search input { border:none; background:none; outline:none; flex:1; font-size:13.5px; font-family:inherit; color:#1a2d5a; }
+    .iss-dd-list { max-height:320px; overflow-y:auto; }
+    .iss-dd-item { display:flex; align-items:center; gap:10px; padding:8px 10px; border-radius:8px; cursor:pointer; font-size:14px; color:#1a2d5a; }
+    .iss-dd-item:hover { background:#f5f8ff; }
+    .iss-dd-item.sel { background:#eaf2ff; }
+    .iss-dd-item.sel .iss-dd-name b { color:#1d4ed8; }
+    .iss-dd-check { width:16px; color:#1d4ed8; font-weight:800; flex-shrink:0; }
+    .iss-dd-name { flex:1; min-width:0; white-space:normal; overflow-wrap:anywhere; }
+    .iss-dd-cnt { font-size:11px; font-weight:700; background:#fff3e6; color:#c2410c; border-radius:10px; padding:1px 8px; }
+    .iss-dd-empty { text-align:center; color:#94a3b8; font-size:13px; padding:12px; }
+    .iss-avatar { border-radius:50%; background:linear-gradient(135deg,#60a5fa,#2563eb); color:#fff; font-weight:800; display:inline-flex;
+        align-items:center; justify-content:center; overflow:hidden; flex-shrink:0; box-shadow:0 0 0 2px #fff; }
+    .iss-avatar img { width:100%; height:100%; object-fit:cover; }
+    .iss-sched-chip { display:inline-flex; align-items:center; gap:12px; background:#eaf2ff; border-radius:14px; padding:8px 18px 8px 10px; color:#1a2d5a; font-size:14px; }
+    .iss-sched-chip b { color:#1d4ed8; font-size:16px; }
+    .iss-sc-sep { width:1px; height:24px; background:#c7d7f0; }
+    .iss-sc-id { font-weight:600; color:#334155; }
+    .iss-sel-title { font-size:17px; font-weight:800; color:#1a2d5a; }
+    .iss-today-head { display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:12px; }
+    .iss-today-cnt { font-size:13px; color:#64748b; }
+    .iss-jc-insp { display:flex; align-items:center; gap:8px; font-size:12.5px; color:#334155; padding:8px 14px; border-top:1px dashed #e5eaf2; }
+    .iss-cj-insp { font-size:10.5px; color:#1d4ed8; font-weight:600; margin-top:2px; }
+    @@media (max-width:700px) {
+        .iss-page-title { font-size:22px; }
+        .iss-insp-picker { width:100%; flex-direction:column-reverse; align-items:stretch; gap:4px; }
+        .iss-clear-filter { padding:2px 0; text-align:right; }
+        .iss-dd-btn, .iss-dd-menu { min-width:0; width:100%; }
+        .iss-sched-chip { font-size:13px; padding:6px 12px 6px 8px; }
+        .iss-sched-chip b { font-size:14px; }
+    }
+
+    /* ── KPI Next 14 days ── */
+    /* KPI theo bố cục cũ khách thích (17/11/2026): desktop 5 thẻ đều nhau trải hết hàng;
+       điện thoại Total Jobs một hàng riêng, 4 thẻ PPI/DPI/PSI/CLC chia đều 1 hàng — thu nhỏ để không tràn khung. */
+    .iss-kpis { display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:10px; margin:0 0 14px; padding:0 16px; }
+    @@media (min-width:640px) { .iss-kpis { padding:0 32px; } }
+    @@media (min-width:1024px) { .iss-kpis { padding:0 40px; } }
+    .iss-kpi { min-width:0; background:#fff; border-radius:12px; padding:7px 12px 8px; gap:2px; box-shadow:0 2px 8px rgba(15,37,82,.10); display:flex; flex-direction:column; border-top:3px solid #cbd5e1; box-sizing:border-box; }
+    .iss-kpi-l { font-size:11px; font-weight:800; color:#51638a; letter-spacing:.04em; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .iss-kpi-v { font-size:20px; font-weight:800; color:#1a2d5a; line-height:1.1; }
+    .iss-kpi-s { font-size:11px; color:#6b7c9c; }
+    .iss-kpi-total { border-top-color:#1d4ed8; } .iss-kpi-ppi { border-top-color:#2563eb; } .iss-kpi-ppi .iss-kpi-v,.iss-kpi-ppi .iss-kpi-l { color:#1d4ed8; }
+    .iss-kpi-dpi { border-top-color:#16a34a; } .iss-kpi-dpi .iss-kpi-v,.iss-kpi-dpi .iss-kpi-l { color:#15803d; }
+    .iss-kpi-psi { border-top-color:#f59e0b; } .iss-kpi-psi .iss-kpi-v,.iss-kpi-psi .iss-kpi-l { color:#d97706; }
+    .iss-kpi-clc { border-top-color:#8b5cf6; } .iss-kpi-clc .iss-kpi-v,.iss-kpi-clc .iss-kpi-l { color:#7c3aed; }
+    @@media (max-width: 700px) {
+        .iss-kpis { grid-template-columns:repeat(4,minmax(0,1fr)); gap:6px; }
+        .iss-kpi-total { grid-column:1 / -1; flex-direction:row; align-items:center; gap:10px; padding:6px 12px; }
+        .iss-kpi-total .iss-kpi-v { font-size:20px; }
+        .iss-kpi { padding:5px 8px 6px; border-radius:10px; }
+        .iss-kpi-v { font-size:17px; }
+        .iss-kpi-l { font-size:10.5px; letter-spacing:.02em; }
+    }
+    .iss-time-od { color:#b91c1c; border-color:#fecaca; }
+    .iss-day-group-cards { background:transparent; box-shadow:none; padding:0; }
+    .iss-day-group-cards .iss-day-hdr { margin-bottom:8px; }
+    /* ── Header chi tiết job ── */
+    .iss-dh { display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:10px; }
+    .iss-dh-no { font-size:20px; font-weight:800; color:#1a2d5a; overflow-wrap:anywhere; }
+    .iss-viewonly { margin-left:auto; background:#eef2f9; color:#51638a; border-radius:20px; padding:4px 12px; font-size:12px; font-weight:700; }
+    .iss-facts { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:10px; background:#f6f9ff; border:1px solid #e1e9f6; border-radius:12px; padding:10px 14px; margin-bottom:14px; }
+    .iss-facts small { display:block; font-size:11px; color:#6b7c9c; } .iss-facts b { font-size:13px; color:#1a2d5a; overflow-wrap:anywhere; }
+    @@media (max-width: 600px) { .iss-facts { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+
+    /* ── Danh sách lịch dùng chung (Today / 7 days / 14 days) — theo mẫu của khách ── */
+    .sl-bar { display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin:6px 0 12px; }
+    .sl-search { position:relative; flex:0 1 260px; min-width:0; order:2; margin-left:auto; }
+    .sl-search svg { position:absolute; left:11px; top:50%; transform:translateY(-50%); color:#8a9bb8; }
+    .sl-search input { width:100%; height:40px; padding:0 12px 0 32px; border:1.5px solid #dbe4f3; border-radius:10px; background:#fff; font-size:13.5px; color:#1a2d5a; }
+    .sl-ftoggle { display:none; order:3; width:40px; height:40px; border:1.5px solid #dbe4f3; border-radius:10px; background:#fff; color:#42557f; align-items:center; justify-content:center; }
+    .sl-ftoggle.on { background:#1d4ed8; color:#fff; border-color:#1d4ed8; }
+    .sl-filters { display:flex; gap:10px; flex-wrap:wrap; order:1; flex:1 1 auto; }
+    .sl-filters select, .sl-perpage select { height:40px; padding:0 28px 0 10px; border:1.5px solid #dbe4f3; border-radius:10px; background-color:#fff; font-size:13px; color:#1a2d5a; -webkit-appearance:none; appearance:none;
+        background-image:url("data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%231a2d5a' stroke-width='1.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+        background-repeat:no-repeat; background-position:right 10px center; background-size:10px 6px; }
+    .sl-filters select { min-width:130px; max-width:210px; }
+    .sl-list { display:flex; flex-direction:column; gap:10px; }
+    .sl-item { background:#fff; border:1px solid #dbe6f5; border-radius:12px; padding:10px 14px 12px; display:grid;
+        grid-template-columns:minmax(0,1.15fr) minmax(0,1.3fr) minmax(0,1.3fr) minmax(0,1fr) auto;
+        grid-template-areas:"top top top top act" "c1 c2 c3 ci act"; gap:8px 18px; cursor:pointer; box-shadow:0 1px 5px rgba(15,37,82,.06); }
+    .sl-item:hover { border-color:#b9cff2; }
+    .sl-item.late { border-left:4px solid #dc2626; }
+    .sl-mid { display:contents; }
+    .sl-top { grid-area:top; display:flex; align-items:center; gap:10px; background:#eef4fd; margin:-10px -14px 0; padding:8px 14px; border-radius:12px 12px 0 0; }
+    .sl-no { font-weight:800; color:#1d4ed8; font-size:15px; }
+    .sl-status { margin-left:auto; }
+    .sl-c1 { grid-area:c1; } .sl-c2 { grid-area:c2; } .sl-c3 { grid-area:c3; } .sl-ci { grid-area:ci; }
+    .sl-c1, .sl-c2, .sl-c3, .sl-ci { display:flex; flex-direction:column; gap:8px; min-width:0; }
+    .sl-f { display:flex; gap:9px; align-items:flex-start; min-width:0; }
+    .sl-ic { color:#51638a; flex-shrink:0; margin-top:1px; }
+    .sl-ft { display:flex; flex-direction:column; min-width:0; }
+    .sl-ft small { font-size:11px; color:#6b7c9c; line-height:1.2; }
+    .sl-ft b { font-size:13.5px; color:#14275a; font-weight:700; line-height:1.3; overflow-wrap:anywhere; }
+    .sl-item.late .sl-c1 .sl-f:first-child .sl-ft b { color:#dc2626; }
+    .sl-act { grid-area:act; display:flex; gap:8px; align-items:center; align-self:center; }
+    .sl-btn { display:inline-flex; align-items:center; gap:6px; height:38px; padding:0 16px; border:1.5px solid #cbd8ee; background:#fff; color:#1d4ed8; border-radius:10px; font-weight:700; font-size:13px; cursor:pointer; white-space:nowrap; }
+    .sl-btn.primary { background:#1d4ed8; border-color:#1d4ed8; color:#fff; }
+    .sl-foot { display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; margin:12px 0 4px; padding:10px 14px; background:#eef4fd; border-radius:12px; }
+    .sl-total { font-size:13px; font-weight:700; color:#1a2d5a; }
+    .sl-pager { display:flex; align-items:center; gap:6px; }
+    .sl-perpage { display:flex; align-items:center; gap:8px; font-size:13px; color:#51638a; margin-right:10px; }
+    .sl-perpage select { height:34px; min-width:64px; }
+    .sl-pg { min-width:34px; height:34px; border:1.5px solid #cbd8ee; background:#fff; color:#1a2d5a; border-radius:8px; font-weight:700; cursor:pointer; }
+    .sl-pg.on { background:#1d4ed8; border-color:#1d4ed8; color:#fff; }
+    .sl-pg:disabled { opacity:.45; cursor:default; }
+    .sl-pg-nums { display:inline-flex; gap:6px; align-items:center; } .sl-dots { color:#8a9bb8; }
+    .sl-pg-compact { display:none; font-size:13px; font-weight:700; color:#1a2d5a; padding:0 4px; }
+    @@media (max-width:1100px) {
+        .sl-item { grid-template-columns:minmax(0,1fr) minmax(0,1fr) auto; grid-template-areas:"top top top" "c1 c2 act" "c3 ci act"; }
+    }
+    @@media (max-width:760px) {
+        .sl-search { flex:1 1 0; margin-left:0; order:1; }
+        .sl-ftoggle { display:inline-flex; order:2; }
+        .sl-filters { display:none; width:100%; order:3; }
+        .sl-filters.open { display:grid; grid-template-columns:1fr 1fr; }
+        .sl-filters select { min-width:0; max-width:none; width:100%; }
+        /* Inspector nằm riêng một hàng (đủ chỗ hiện tên), 2 nút xuống hàng dưới chia đều */
+        .sl-item { grid-template-columns:minmax(0,1fr) minmax(0,1.25fr); grid-template-areas:"top top" "c1 mid" "ci ci" "act act"; gap:10px 12px; }
+        .sl-mid { display:flex; flex-direction:column; gap:8px; grid-area:mid; min-width:0; }
+        .sl-c2, .sl-c3 { gap:8px; }
+        .sl-act { justify-content:stretch; }
+        .sl-act .sl-btn { height:38px; padding:0 12px; flex:1; justify-content:center; }
+        .sl-perpage, .sl-pg-nums { display:none; }
+        .sl-pg-compact { display:inline; }
+        .sl-foot { background:transparent; padding:6px 2px; }
+    }
+
+    /* ── Trang chi tiết job / CLC (theo mẫu của khách) ── */
+    .dt-card { container-type:inline-size; background:#fff; border:1px solid #dbe6f5; border-radius:16px; padding:14px 18px 18px; box-shadow:0 2px 12px rgba(15,37,82,.08); }
+    .dt-crumb { display:flex; align-items:center; gap:14px; font-size:13px; color:#51638a; margin-bottom:10px; }
+    .dt-crumb b { color:#14275a; }
+    .dt-back { border:none; background:#eef4fd; color:#1d4ed8; font-weight:700; border-radius:8px; padding:6px 12px; cursor:pointer; }
+    .dt-head { display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:12px; }
+    .dt-head h2 { margin:0; font-size:24px; font-weight:800; color:#14275a; }
+    .dt-head-r { margin-left:auto; display:flex; gap:8px; align-items:center; }
+    .dt-viewonly { background:#eef1f6; color:#42557f; border-radius:10px; padding:6px 12px; font-weight:700; font-size:13px; }
+    .dt-facts { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:10px; padding:12px 0; border-top:1px solid #e8eff9; border-bottom:1px solid #e8eff9; margin-bottom:14px; }
+    .dt-fact { display:flex; gap:10px; align-items:center; min-width:0; }
+    .dt-fi { color:#42557f; flex-shrink:0; } .dt-fi svg { width:26px; height:26px; }
+    .dt-fact small { display:block; font-size:12px; color:#6b7c9c; } .dt-fact b { font-size:15px; color:#14275a; overflow-wrap:anywhere; }
+    .dt-loading { display:flex; align-items:center; gap:10px; padding:10px; color:#6b7c9c; font-size:13px; }
+    .dt-grid { display:grid; grid-template-columns:minmax(0,1.05fr) minmax(0,1fr); gap:14px; align-items:start; }
+    .dt-left { display:flex; flex-direction:column; gap:8px; min-width:0; }
+    .dt-prod { display:flex; gap:12px; align-items:center; background:#f6f9fe; border:1px solid #e1e9f6; border-radius:12px; padding:10px 12px; }
+    .dt-pi { color:#1d4ed8; background:#e6effb; border-radius:10px; padding:8px; display:inline-flex; }
+    .dt-prod small { display:block; color:#1d4ed8; font-weight:700; font-size:12px; } .dt-prod b { font-size:16px; color:#14275a; }
+    .dt-row { display:grid; grid-template-columns:130px minmax(0,1fr); border:1px solid #e1e9f6; border-radius:12px; overflow:hidden; background:#fff; }
+    .dt-rl { display:flex; gap:8px; align-items:flex-start; background:#eef4fd; color:#1d4ed8; font-weight:700; font-size:13.5px; padding:10px 12px; }
+    .dt-rl svg { width:18px; height:18px; flex-shrink:0; }
+    .dt-rv { padding:10px 12px; min-width:0; display:flex; flex-direction:column; gap:4px; }
+    .dt-rv > b { color:#14275a; font-size:14px; overflow-wrap:anywhere; }
+    .dt-sub { display:flex; gap:6px; align-items:center; color:#51638a; font-size:13px; } .dt-sub svg { width:15px; height:15px; }
+    .dt-contact { background:#f6f9fe; border-radius:10px; padding:8px 10px; display:flex; flex-direction:column; gap:3px; margin-top:4px; }
+    .dt-contact div, .dt-line { display:grid; grid-template-columns:minmax(60px,110px) minmax(0,1fr); gap:8px; font-size:13px; min-width:0; }
+    .dt-line { grid-template-columns:70px minmax(0,1fr); }
+    .dt-contact span, .dt-line span { color:#6b7c9c; } .dt-contact b, .dt-line b { color:#14275a; overflow-wrap:anywhere; }
+    .dt-refs { border:1px solid #e1e9f6; border-radius:14px; padding:12px; background:#fff; }
+    .dt-refs-h { display:flex; align-items:center; gap:10px; margin-bottom:8px; }
+    .dt-refs-h > div { flex:1; } .dt-refs-h b { font-size:16px; color:#14275a; } .dt-refs-h em { font-style:normal; color:#7c3aed; }
+    .sl-f-insp { align-items:center; }
+    .dt-ri { color:#1d4ed8; display:inline-flex; } .dt-ri svg { width:26px; height:26px; }
+    .dt-refs-h { flex-wrap:wrap; }
+    .dt-dlall { display:inline-flex; align-items:center; justify-content:center; gap:7px; height:36px; padding:0 16px; border:none; border-radius:999px; background:linear-gradient(135deg,#2563eb,#1d4ed8); color:#fff; font-weight:700; font-size:13px; white-space:nowrap; cursor:pointer; box-shadow:0 3px 8px rgba(29,78,216,.28); }
+    .dt-dlall:active { transform:translateY(1px); box-shadow:none; }
+    @@container (max-width:560px) {
+        .dt-refs-h > div { flex:1 1 calc(100% - 44px); }
+        .dt-dlall { flex:1 1 100%; order:3; }
+    }
+    .dt-pthumb { margin-left:auto; flex-shrink:0; position:relative; width:72px; height:72px; border-radius:10px; overflow:hidden; background:#fff; border:1px solid #dbe6f5; display:block; }
+    .dt-pthumb img { width:100%; height:100%; object-fit:cover; display:block; }
+    .dt-pthumb em { position:absolute; right:3px; bottom:3px; background:rgba(20,39,90,.8); color:#fff; font-style:normal; font-size:10.5px; font-weight:700; border-radius:8px; padding:1px 6px; }
+    .dt-prod > div:not(.dt-pthumb) { min-width:0; flex:1; } .dt-prod b { overflow-wrap:anywhere; }
+    .dt-ref { display:flex; align-items:center; gap:12px; padding:9px 4px; border-top:1px solid #edf2f9; }
+    .dt-ext { min-width:46px; text-align:center; font-size:11px; font-weight:800; color:#fff; background:#6b7c9c; border-radius:6px; padding:8px 4px; }
+    .dt-ext.ext-pdf { background:#e0342b; } .dt-ext.ext-xls { background:#1f9d55; } .dt-ext.ext-doc { background:#2b6cb0; }
+    .dt-ref-n { flex:1; min-width:0; display:flex; flex-direction:column; } .dt-ref-n b { font-size:14px; color:#14275a; overflow-wrap:anywhere; } .dt-ref-n small { color:#6b7c9c; font-size:12px; }
+    .dt-ico { width:38px; height:38px; display:inline-flex; align-items:center; justify-content:center; border:1.5px solid #cbd8ee; border-radius:10px; color:#1d4ed8; background:#f6f9fe; }
+    .dt-nofile { color:#9aa7bd; font-size:12px; }
+    /* Điện thoại / khung hẹp: mỗi tài liệu là một khối như bảng Performance Testing — loại file + tên file xếp trên, 2 nút to chia đều ở dưới */
+    @@container (max-width:560px) {
+        .dt-refs .dt-ref { display:grid; grid-template-columns:52px minmax(0,1fr) minmax(0,1fr); gap:10px 10px; align-items:center; padding:12px 4px; }
+        .dt-refs .dt-ref .dt-ext { grid-column:1; grid-row:1; align-self:start; margin-top:2px; }
+        .dt-refs .dt-ref .dt-ref-n { grid-column:2 / -1; grid-row:1; }
+        .dt-refs .dt-ref .dt-ico { grid-row:2; width:auto; height:40px; }
+        .dt-refs .dt-ref .dt-ico:nth-of-type(1) { grid-column:2; }
+        .dt-refs .dt-ref .dt-ico:nth-of-type(2) { grid-column:3; }
+        .dt-refs .dt-ref .dt-nofile { grid-column:2 / -1; grid-row:2; }
+        .dt-refs .dt-ref-n b { font-size:14.5px; line-height:1.35; }
+    }
+    .dt-foot { display:flex; justify-content:space-between; align-items:center; margin-top:16px; padding-top:12px; border-top:1px solid #e8eff9; }
+    .dt-state { background:#eef4fd; color:#1d4ed8; font-weight:800; border-radius:10px; padding:10px 22px; }
+    .dt-start { display:inline-flex; align-items:center; gap:8px; background:#16a34a; color:#fff; border:none; border-radius:10px; padding:12px 26px; font-weight:800; font-size:15px; cursor:pointer; box-shadow:0 4px 12px rgba(22,163,74,.3); }
+    .dt-banner { display:flex; align-items:center; gap:14px; margin-bottom:14px; }
+    .dt-cimg { width:150px; height:94px; object-fit:contain; flex-shrink:0; border-radius:10px; background:#fff; }
+    @@container (max-width:560px) { .dt-cimg { width:110px; height:70px; } }
+    .dt-bi { color:#1d4ed8; background:#e6effb; border-radius:12px; padding:14px; display:inline-flex; } .dt-bi svg { width:44px; height:44px; }
+    .dt-banner-t { flex:1; display:flex; flex-direction:column; } .dt-banner-t b { font-size:20px; color:#14275a; } .dt-banner-t small { color:#51638a; font-size:14px; }
+    .dt-table { width:100%; border-collapse:collapse; font-size:13.5px; }
+    .dt-table th { text-align:left; color:#14275a; padding:8px 6px; border-bottom:1px solid #dbe6f5; font-size:12.5px; }
+    .dt-table td { padding:9px 6px; border-bottom:1px solid #edf2f9; color:#14275a; }
+    .dt-table .r { text-align:right; } .dt-table tr.tot td { background:#e8f0fc; font-weight:800; border-bottom:none; }
+    .dt-points { margin-top:16px; border:1px solid #e1e9f6; border-radius:14px; background:#f6f9fe; padding:10px 14px 14px; }
+    .dt-points-h { display:flex; align-items:center; gap:8px; font-weight:800; color:#14275a; margin-bottom:10px; } .dt-points-h svg { width:20px; height:20px; color:#7c3aed; }
+    .dt-points-row { display:flex; align-items:center; gap:14px; flex-wrap:wrap; }
+    .dt-points-list { display:flex; gap:8px; flex-wrap:wrap; flex:1 1 420px; }
+    .dt-point { flex:1 1 110px; text-align:center; background:#fff; border:1px solid #dbe6f5; border-radius:10px; padding:10px 6px; font-size:12.5px; font-weight:700; color:#14275a; }
+    /* Điểm gãy theo bề rộng của thẻ (không phải cửa sổ) vì thẻ còn bị sidebar/lề thu hẹp */
+    @@container (max-width:820px) {
+        .dt-grid { grid-template-columns:minmax(0,1fr); }
+        .dt-facts { grid-template-columns:repeat(2,minmax(0,1fr)); }
+    }
+    @@container (max-width:560px) {
+        .dt-row { grid-template-columns:minmax(0,1fr); }
+        .dt-rl { padding:8px 12px; }
+        .dt-head h2 { font-size:20px; }
+        .dt-contact div { grid-template-columns:minmax(0,1fr); gap:0; }
+        .dt-foot, .dt-points-row { flex-direction:column; align-items:stretch; }
+        .dt-start { justify-content:center; width:100%; }
+        .dt-state { text-align:center; }
+        .dt-banner { flex-wrap:wrap; }
     }
 </style>

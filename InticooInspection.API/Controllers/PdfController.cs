@@ -27,7 +27,7 @@ public class PdfController : ControllerBase
     }
 
     [HttpGet("inspection/{id:int}")]
-    public async Task<IActionResult> GenerateInspectionPdf(int id, CancellationToken ct)
+    public async Task<IActionResult> GenerateInspectionPdf(int id, [FromQuery] string? lang, CancellationToken ct)
     {
         try
         {
@@ -40,7 +40,7 @@ public class PdfController : ControllerBase
                 "PDF request for inspection {Id}. Auth token forwarded: {HasToken} (length={Len})",
                 id, !string.IsNullOrEmpty(authToken), authToken?.Length ?? 0);
 
-            var pdfBytes = await _pdfService.GenerateInspectionReportPdfAsync(id, authToken, ct);
+            var pdfBytes = await _pdfService.GenerateInspectionReportPdfAsync(id, authToken, ct, AuthController.NormalizeUiLanguage(lang));
 
             // Trả về binary PDF. Frontend đọc bytes và dùng JS Blob để trigger
             // download với filename mong muốn.

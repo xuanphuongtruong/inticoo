@@ -1,4 +1,6 @@
-﻿using InticooInspection.Domain.Entities;
+﻿using InticooInspection.Domain.Security;
+using InticooInspection.API.Services;
+using InticooInspection.Domain.Entities;
 using InticooInspection.Infrastructure.Data;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -21,9 +23,27 @@ namespace InticooInspection.API.Controllers
         public async Task<IActionResult> GetAll(
             [FromQuery] string? search,
             [FromQuery] int page = 1,
-            [FromQuery] int pageSize = 20)
+            [FromQuery] int pageSize = 20,
+            [FromQuery] string? status = null,
+            [FromQuery] string? category = null,
+            [FromQuery] string? country = null,
+            [FromQuery] DateTime? dateFrom = null,
+            [FromQuery] DateTime? dateTo = null)
         {
+            var activeCount   = await _db.Customers.CountAsync(c => c.IsActive);
+            var inactiveCount = await _db.Customers.CountAsync(c => !c.IsActive);
+            var countries  = (await _db.Customers.Select(c => c.Country).Where(x => x != null && x != "").Distinct().ToListAsync())
+                             .OrderBy(x => x).ToList();
+            var categories = (await _db.Customers.Select(c => c.Category).Where(x => x != null && x != "").ToListAsync())
+                             .SelectMany(x => x!.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+                             .Distinct().OrderBy(x => x).ToList();
             var query = _db.Customers.AsQueryable();
+            if (!string.IsNullOrWhiteSpace(category)) query = query.Where(c => c.Category != null && c.Category.Contains(category));
+            if (!string.IsNullOrWhiteSpace(country))  query = query.Where(c => c.Country == country);
+            if (dateFrom.HasValue) query = query.Where(c => c.CreatedAt >= dateFrom.Value.Date);
+            if (dateTo.HasValue)   query = query.Where(c => c.CreatedAt < dateTo.Value.Date.AddDays(1));
+            if (string.Equals(status, "active", StringComparison.OrdinalIgnoreCase)) query = query.Where(c => c.IsActive);
+            else if (string.Equals(status, "inactive", StringComparison.OrdinalIgnoreCase)) query = query.Where(c => !c.IsActive);
             if (!string.IsNullOrWhiteSpace(search))
                 query = query.Where(c =>
                     c.CompanyName.Contains(search) ||
@@ -58,7 +78,7 @@ namespace InticooInspection.API.Controllers
                 })
                 .ToListAsync();
 
-            return Ok(new { total, page, pageSize, items });
+            return Ok(new { total, page, pageSize, items, activeCount, inactiveCount, countryCount = countries.Count, countries, categories });
         }
 
         // GET api/customers/dropdown
@@ -87,6 +107,7 @@ namespace InticooInspection.API.Controllers
         [HttpPost]
         public async Task<IActionResult> Create([FromBody] CustomerRequest request)
         {
+            if (await HttpContext.RequestServices.GetRequiredService<UserAccess>().RequireAdminAsync() is { } denied) return denied;
             if (string.IsNullOrWhiteSpace(request.CompanyName))
                 return BadRequest(new { message = "Company name is required." });
 
@@ -152,6 +173,7 @@ namespace InticooInspection.API.Controllers
         [HttpPut("{id}")]
         public async Task<IActionResult> Update(int id, [FromBody] CustomerRequest request)
         {
+            if (await HttpContext.RequestServices.GetRequiredService<UserAccess>().RequireAdminAsync() is { } denied) return denied;
             var customer = await _db.Customers.FindAsync(id);
             if (customer == null) return NotFound();
 
@@ -204,6 +226,7 @@ namespace InticooInspection.API.Controllers
         [HttpDelete("{id}")]
         public async Task<IActionResult> Delete(int id)
         {
+            if (await HttpContext.RequestServices.GetRequiredService<UserAccess>().RequireAdminAsync() is { } denied) return denied;
             var customer = await _db.Customers.FindAsync(id);
             if (customer == null) return NotFound();
             _db.Customers.Remove(customer);
@@ -216,8 +239,8 @@ namespace InticooInspection.API.Controllers
         // ─────────────────────────────────────────────────────────────────
         [HttpGet("template")]
         [AllowAnonymous]
-        public IActionResult DownloadImportTemplate([FromServices] IWebHostEnvironment env)
-            => ImportHelper.ServeTemplate(env, "Customers_Import_Template.xlsx");
+        public IActionResult DownloadImportTemplate([FromServices] IWebHostEnvironment env, [FromQuery] string? lang)
+            => ImportHelper.ServeTemplate(env, "Customers_Import_Template.xlsx", lang);
 
         // ─────────────────────────────────────────────────────────────────
         // POST api/customers/import
@@ -226,6 +249,7 @@ namespace InticooInspection.API.Controllers
         [RequestSizeLimit(20 * 1024 * 1024)]
         public async Task<IActionResult> Import(IFormFile file)
         {
+            if (await HttpContext.RequestServices.GetRequiredService<UserAccess>().RequireAdminAsync() is { } denied) return denied;
             var validateError = ImportHelper.ValidateFile(file);
             if (validateError != null) return validateError;
 

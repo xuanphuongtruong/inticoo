@@ -1,4 +1,5 @@
 @using Microsoft.AspNetCore.Components.Routing
+@inherits LocalizedComponentBase
 
 <CascadingAuthenticationState>
     <Router AppAssembly="typeof(App).Assembly">
@@ -8,7 +9,7 @@
                     <RedirectToLogin />
                 </NotAuthorized>
                 <Authorizing>
-                    <p>Loading...</p>
+                    <p>@T("Common.Loading")</p>
                 </Authorizing>
             </AuthorizeRouteView>
         </Found>

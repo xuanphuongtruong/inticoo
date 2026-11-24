@@ -1,0 +1,170 @@
+Inspection	Kiểm hàng	验货	Pemeriksaan
+Overdue · Due {0}	Quá hạn · Hạn {0}	已逾期 · 到期 {0}	Tertunggak · Tarikh akhir {0}
+All Years	Tất cả các năm	所有年份	Semua tahun
+Filter by open date year	Lọc theo năm mở	按开立年份筛选	Tapis mengikut tahun dibuka
+Search defect, CAR, inspection, product, factory…	Tìm lỗi, CAR, kiểm hàng, sản phẩm, nhà máy…	搜索缺陷、CAR、验货、产品、工厂…	Cari kecacatan, CAR, pemeriksaan, produk, kilang…
+Closed	Đã đóng	已关闭	Ditutup
+Open	Đang mở	未关闭	Terbuka
+Reset all	Đặt lại tất cả	全部重置	Set semula semua
+Year (Open Date)	Năm (ngày mở)	年份（开立日期）	Tahun (tarikh dibuka)
+More filters	Thêm bộ lọc	更多筛选	Lagi penapis
+Overdue	Quá hạn	已逾期	Tertunggak
+New Defect	Thêm lỗi	新建缺陷	Kecacatan baharu
+CAPA is opened automatically when an inspection is completed: Critical ≥ 1 pc · Major ≥ 3 pcs · Minor ≥ 10 pcs of the same defect.	CAPA được mở tự động khi lượt kiểm hoàn thành: Nghiêm trọng ≥ 1 cái · Lớn ≥ 3 cái · Nhỏ ≥ 10 cái cùng một lỗi.	验货完成时自动开立 CAPA：同一缺陷致命 ≥ 1 件 · 严重 ≥ 3 件 · 轻微 ≥ 10 件。	CAPA dibuka secara automatik apabila pemeriksaan selesai: Kritikal ≥ 1 pc · Major ≥ 3 pcs · Minor ≥ 10 pcs bagi kecacatan yang sama.
+Defect Management - Inticoo	Quản lý lỗi - Inticoo	缺陷管理 - Inticoo	Pengurusan kecacatan - Inticoo
+{0} CAPA opened.	Đã mở {0} CAPA.	已开立 {0} 个 CAPA。	{0} CAPA dibuka.
+Only Admin can delete a defect.	Chỉ Quản trị mới được xóa lỗi.	只有管理员可以删除缺陷。	Hanya Pentadbir boleh memadam kecacatan.
+Defect {0} deleted.	Đã xóa lỗi {0}.	缺陷 {0} 已删除。	Kecacatan {0} dipadam.
+Deleting…	Đang xóa…	正在删除…	Sedang memadam…
+Scan Inspections	Quét lượt kiểm	扫描验货	Imbas pemeriksaan
+Scanning…	Đang quét…	正在扫描…	Sedang mengimbas…
+No steps defined.	Chưa có bước nào.	未定义步骤。	Tiada langkah ditetapkan.
+Steps ({0})	Các bước ({0})	步骤 ({0})	Langkah ({0})
+{0} / {1} steps	{0} / {1} bước	{0} / {1} 个步骤	{0} / {1} langkah
+Progress	Tiến độ	进度	Kemajuan
+Created by	Người tạo	创建人	Dicipta oleh
+✕ Cancel	✕ Hủy	✕ 取消	✕ Batal
+✓ Complete	✓ Hoàn thành	✓ 完成	✓ Selesai
+▶ Start	▶ Bắt đầu	▶ 开始	▶ Mula
+Inspection not found.	Không tìm thấy lượt kiểm.	未找到验货记录。	Pemeriksaan tidak ditemui.
+Inspection Detail - Inticoo	Chi tiết kiểm hàng - Inticoo	验货详情 - Inticoo	Butiran pemeriksaan - Inticoo
+Updating step...	Đang cập nhật bước...	正在更新步骤...	Sedang mengemas kini langkah...
+Updating status...	Đang cập nhật trạng thái...	正在更新状态...	Sedang mengemas kini status...
+Add remark...	Thêm ghi chú...	添加备注...	Tambah catatan...
+Remark (editable)	Ghi chú (sửa được)	备注（可编辑）	Catatan (boleh disunting)
+Performance Test — Row {0} Details	Thử nghiệm tính năng — Chi tiết dòng {0}	性能测试 — 第 {0} 行详情	Ujian prestasi — Butiran baris {0}
+Please fix the following errors:	Vui lòng sửa các lỗi sau:	请修正以下错误：	Sila betulkan ralat berikut:
+-- Select Inspector --	-- Chọn kiểm hàng viên --	-- 选择验货员 --	-- Pilih pemeriksa --
+Office Use	Dành cho văn phòng	办公室专用	Kegunaan pejabat
+Remark...	Ghi chú...	备注...	Catatan...
+Attach File	Đính kèm tệp	附加文件	Lampirkan fail
+Change file	Đổi tệp	更换文件	Tukar fail
+Requirement auto-filled...	Yêu cầu tự điền...	要求自动填写...	Keperluan diisi automatik...
+Protocol auto-filled...	Quy trình tự điền...	规程自动填写...	Protokol diisi automatik...
+View full details	Xem đầy đủ chi tiết	查看完整详情	Lihat butiran penuh
+Test item...	Hạng mục thử nghiệm...	测试项目...	Item ujian...
+Select category first...	Chọn danh mục trước...	请先选择类别...	Pilih kategori dahulu...
+Category...	Danh mục...	类别...	Kategori...
+Full Details	Chi tiết đầy đủ	完整详情	Butiran penuh
+Requirement...	Yêu cầu...	要求...	Keperluan...
+Protocol...	Quy trình...	规程...	Protokol...
+Loading test master data...	Đang tải dữ liệu thử nghiệm...	正在加载测试主数据...	Sedang memuatkan data induk ujian...
+Performance Testing	Thử nghiệm tính năng	性能测试	Ujian prestasi
+Enter material...	Nhập chất liệu...	输入材质...	Masukkan bahan...
+ii. Compare Golden Sample	ii. So sánh mẫu chuẩn	ii. 与标准样品比对	ii. Bandingkan sampel emas
+Product Specification	Thông số sản phẩm	产品规格	Spesifikasi produk
+Double Wall	2 lớp sóng	双瓦楞	Dinding berganda
+Single Wall	1 lớp sóng	单瓦楞	Dinding tunggal
+Single face	Một mặt	单面	Muka tunggal
+Brown	Nâu	棕色	Coklat
+White	Trắng	白色	Putih
+Non-FSC Carton	Thùng không FSC	非 FSC 纸箱	Karton bukan FSC
+FSC Carton	Thùng FSC	FSC 纸箱	Karton FSC
+FSC Carton Type	Loại thùng FSC	FSC 纸箱类型	Jenis karton FSC
+Assembly Instruction	Hướng dẫn lắp ráp	组装说明	Arahan pemasangan
+Printing	In trực tiếp	印刷	Cetakan
+Color Label	Nhãn màu	彩色标签	Label berwarna
+Carton Box	Thùng carton	纸箱	Kotak karton
+Enter item number	Nhập mã hàng	输入货号	Masukkan nombor item
+Quantity Conformity	Số lượng phù hợp	数量符合性	Pematuhan kuantiti
+Level III	Mức III	III 级	Tahap III
+Level II	Mức II	II 级	Tahap II
+Level I	Mức I	I 级	Tahap I
+Enter quantity	Nhập số lượng	输入数量	Masukkan kuantiti
+→ Code Letter:	→ Mã chữ:	→ 字码：	→ Huruf kod:
+· Level	· Mức	· 级别	· Tahap
+Lot Size	Cỡ lô	批量	Saiz lot
+NO	KHÔNG	否	TIDAK
+YES	CÓ	是	YA
+Enter remark (e.g. Combine SKU number xxx, xxx or Color xxxx)	Nhập ghi chú (vd. Gộp mã SKU xxx, xxx hoặc màu xxxx)	输入备注（例如：合并 SKU 编号 xxx, xxx 或颜色 xxxx）	Masukkan catatan (cth. Gabung nombor SKU xxx, xxx atau warna xxxx)
+Inspection Reference	Tài liệu kiểm hàng	验货参考资料	Rujukan pemeriksaan
+Product Type	Loại sản phẩm	产品类型	Jenis produk
+-- Select Product --	-- Chọn sản phẩm --	-- 选择产品 --	-- Pilih produk --
+PST: Pre-Shipment Inspection	PST: Kiểm hàng trước khi giao	PST：出货前验货	PST: Pemeriksaan pra-penghantaran
+DPI: During-Production Inspection	DPI: Kiểm hàng trong sản xuất	DPI：生产中验货	DPI: Pemeriksaan semasa pengeluaran
+PPI: Pre-Production Inspection	PPI: Kiểm hàng trước sản xuất	PPI：产前验货	PPI: Pemeriksaan pra-pengeluaran
+Enter PO number	Nhập số PO	输入订单号	Masukkan nombor PO
+Loading countries...	Đang tải danh sách quốc gia...	正在加载国家...	Sedang memuatkan negara...
+-- Select Vendor --	-- Chọn nhà cung cấp --	-- 选择供应商 --	-- Pilih pembekal --
+-- Select Customer --	-- Chọn khách hàng --	-- 选择客户 --	-- Pilih pelanggan --
+JPG, PNG, WEBP · max 5 MB	JPG, PNG, WEBP · tối đa 5 MB	JPG, PNG, WEBP · 最大 5 MB	JPG, PNG, WEBP · maks 5 MB
+Photo	Ảnh	照片	Foto
+Edit Inspection	Sửa đơn kiểm hàng	编辑验货	Sunting pemeriksaan
+Inspections / {0}	Kiểm hàng / {0}	验货 / {0}	Pemeriksaan / {0}
+← Back to List	← Về danh sách	← 返回列表	← Kembali ke senarai
+Current status:	Trạng thái hiện tại:	当前状态：	Status semasa:
+can be edited.	mới được sửa.	才能编辑。	boleh disunting.
+, or	, hoặc	，或	, atau
+On Going	Đang thực hiện	进行中	Sedang berjalan
+New	Mới	新建	Baharu
+Only inspections with status	Chỉ đơn kiểm có trạng thái	只有状态为	Hanya pemeriksaan berstatus
+Cannot Edit This Inspection	Không thể sửa đơn kiểm này	无法编辑此验货	Tidak boleh menyunting pemeriksaan ini
+Inspections	Kiểm hàng	验货	Pemeriksaan
+Loading inspection...	Đang tải đơn kiểm...	正在加载验货...	Sedang memuatkan pemeriksaan...
+Edit Inspection - Inticoo	Sửa đơn kiểm hàng - Inticoo	编辑验货 - Inticoo	Sunting pemeriksaan - Inticoo
+Save failed ({0}): {1}	Lưu thất bại ({0}): {1}	保存失败 ({0})：{1}	Gagal menyimpan ({0}): {1}
+Session expired. Please log in again.	Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại.	会话已过期，请重新登录。	Sesi telah tamat. Sila log masuk semula.
+Saving inspection...	Đang lưu đơn kiểm...	正在保存验货...	Sedang menyimpan pemeriksaan...
+Photo not uploaded yet: {0}. Please retry or remove the photo.	Ảnh chưa tải lên được: {0}. Vui lòng thử lại hoặc xóa ảnh.	照片尚未上传：{0}。请重试或删除该照片。	Foto belum dimuat naik: {0}. Sila cuba lagi atau buang foto.
+Photos are uploading, please wait...	Ảnh đang được tải lên, vui lòng chờ...	照片正在上传，请稍候...	Foto sedang dimuat naik, sila tunggu...
+Parse error: {0}	Lỗi phân tích dữ liệu: {0}	解析错误：{0}	Ralat penghuraian: {0}
+Upload OK but the server did not return a URL. Body: {0}	Tải lên xong nhưng server không trả về URL. Body: {0}	上传成功，但服务器未返回 URL。内容：{0}	Muat naik berjaya tetapi pelayan tidak memulangkan URL. Kandungan: {0}
+Uploading: {0}	Đang tải lên: {0}	正在上传：{0}	Sedang memuat naik: {0}
+Cannot read file: {0}	Không đọc được tệp: {0}	无法读取文件：{0}	Tidak dapat membaca fail: {0}
+Connection error: {0}	Lỗi kết nối: {0}	连接错误：{0}	Ralat sambungan: {0}
+Upload failed ({0}): {1}	Tải lên thất bại ({0}): {1}	上传失败 ({0})：{1}	Gagal memuat naik ({0}): {1}
+Upload OK but the server did not return a URL.	Tải lên xong nhưng server không trả về URL.	上传成功，但服务器未返回 URL。	Muat naik berjaya tetapi pelayan tidak memulangkan URL.
+Uploading photo...	Đang tải ảnh lên...	正在上传照片...	Sedang memuat naik foto...
+File too large or unreadable: {0}	Tệp quá lớn hoặc không đọc được: {0}	文件过大或无法读取：{0}	Fail terlalu besar atau tidak boleh dibaca: {0}
+Cannot connect to API: {0}	Không kết nối được API: {0}	无法连接 API：{0}	Tidak dapat menyambung ke API: {0}
+API error {0}: {1}	Lỗi API {0}: {1}	API 错误 {0}：{1}	Ralat API {0}: {1}
+Save failed: {0}	Lưu thất bại: {0}	保存失败：{0}	Gagal menyimpan: {0}
+Product not found.	Không tìm thấy sản phẩm.	未找到产品。	Produk tidak ditemui.
+Invalid response from server.	Phản hồi từ server không hợp lệ.	服务器响应无效。	Respons pelayan tidak sah.
+Cannot load inspection ({0}).	Không tải được đơn kiểm ({0}).	无法加载验货 ({0})。	Tidak dapat memuatkan pemeriksaan ({0}).
+Auto-filled from ID	Tự điền theo mã	根据编号自动填写	Diisi automatik daripada ID
+(file)	(tệp)	（文件）	(fail)
+Auto-filled from Product ID	Tự điền theo mã sản phẩm	根据产品编号自动填写	Diisi automatik daripada ID produk
+Auto-filled from Product	Tự điền theo sản phẩm	根据产品自动填写	Diisi automatik daripada produk
+Auto-filled when selecting ID	Tự điền khi chọn mã	选择编号后自动填写	Diisi automatik apabila ID dipilih
+Save Inspection	Lưu đơn kiểm	保存验货	Simpan pemeriksaan
+Auto	Tự động	自动	Auto
+New Inspection - Inticoo	Tạo yêu cầu kiểm hàng - Inticoo	新建验货 - Inticoo	Pemeriksaan baharu - Inticoo
+Creating inspection...	Đang tạo đơn kiểm...	正在创建验货...	Sedang mencipta pemeriksaan...
+Auto-filled from General Information	Tự điền từ Thông tin chung	根据基本信息自动填写	Diisi automatik daripada Maklumat am
+Are you sure you want to exit?	Bạn có chắc muốn thoát?	确定要退出吗？	Adakah anda pasti mahu keluar?
+Exit Inspection	Thoát kiểm hàng	退出验货	Keluar pemeriksaan
+Inspection Report Preview	Xem trước báo cáo kiểm hàng	验货报告预览	Pratonton laporan pemeriksaan
+✕ Close	✕ Đóng	✕ 关闭	✕ Tutup
+Preview Report (Draft)	Xem trước báo cáo (nháp)	预览报告（草稿）	Pratonton laporan (draf)
+Preview	Xem trước	预览	Pratonton
+Skip	Bỏ qua	跳过	Langkau
+Save your progress and continue later	Lưu tiến độ và tiếp tục sau	保存进度，稍后继续	Simpan kemajuan dan teruskan kemudian
+↺ Clear	↺ Xóa	↺ 清除	↺ Kosongkan
+✔ Save Signature	✔ Lưu chữ ký	✔ 保存签名	✔ Simpan tandatangan
+Add Signature	Thêm chữ ký	添加签名	Tambah tandatangan
+⚠ Signature is required	⚠ Bắt buộc có chữ ký	⚠ 必须签名	⚠ Tandatangan diperlukan
+↺ Re-sign	↺ Ký lại	↺ 重新签名	↺ Tandatangan semula
+Confirmed by	Xác nhận bởi	确认人	Disahkan oleh
+Inspection by	Kiểm hàng bởi	验货人	Diperiksa oleh
+All inspections follow the customer protocol, and any attempt to bribe, pressure, or threaten the inspector will render the inspection invalid and may lead to termination of the agreement and legal consequences.	Mọi lượt kiểm hàng đều tuân theo quy trình của khách hàng. Mọi hành vi hối lộ, gây áp lực hoặc đe dọa kiểm hàng viên sẽ khiến kết quả kiểm hàng bị vô hiệu và có thể dẫn đến chấm dứt hợp đồng cùng các hậu quả pháp lý.	所有验货均遵循客户规程，任何贿赂、施压或威胁验货员的行为都将导致验货无效，并可能导致终止合作及承担法律后果。	Semua pemeriksaan mematuhi protokol pelanggan, dan sebarang cubaan merasuah, menekan atau mengugut pemeriksa akan menjadikan pemeriksaan tidak sah dan boleh membawa kepada penamatan perjanjian serta akibat undang-undang.
+⚠ Please select a result	⚠ Vui lòng chọn kết quả	⚠ 请选择结果	⚠ Sila pilih keputusan
+FINAL RESULT	KẾT QUẢ CUỐI	最终结果	KEPUTUSAN AKHIR
+Enter comments…	Nhập nhận xét…	输入意见…	Masukkan ulasan…
+Comments	Nhận xét	意见	Ulasan
+No defects added yet. Use the form above to add one.	Chưa có lỗi nào. Dùng biểu mẫu phía trên để thêm.	尚未添加缺陷，请使用上方表单添加。	Belum ada kecacatan ditambah. Gunakan borang di atas untuk menambah.
+Defect photo	Ảnh lỗi	缺陷照片	Foto kecacatan
+Photos	Ảnh	照片	Foto
+AQL Sampling	Lấy mẫu AQL	AQL 抽样	Persampelan AQL
++ Add	+ Thêm	+ 添加	+ Tambah
+Defect remark…	Ghi chú lỗi…	缺陷备注…	Catatan kecacatan…
+Capture	Chụp	拍摄	Tangkap
+Type	Loại	类型	Jenis
+F. Details of Defect Found	F. Chi tiết lỗi phát hiện	F. 发现的缺陷详情	F. Butiran kecacatan ditemui
+Fail	Không đạt	不合格	Gagal
+Pass	Đạt	合格	Lulus
+Total Found	Tổng số phát hiện	发现总数	Jumlah ditemui
+Details of Defect Found	Chi tiết lỗi phát hiện	发现的缺陷详情	Butiran kecacatan ditemui
+RESULT	KẾT QUẢ	结果	KEPUTUSAN
+Reject Point:	Điểm loại:	拒收数：	Had tolak:
+Accept Point:	Điểm chấp nhận:	接收数：	Had terima:

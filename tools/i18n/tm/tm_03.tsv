@@ -1,0 +1,170 @@
+DEFECT CLOSURE REPORT	BÁO CÁO ĐÓNG LỖI	缺陷关闭报告	LAPORAN PENUTUPAN KECACATAN
+A Safer Tomorrow	Một ngày mai an toàn hơn	更安全的明天	Hari esok yang lebih selamat
+Better Quality	Chất lượng tốt hơn	更好的品质	Kualiti yang lebih baik
+INSPECT · IMPROVE · TOGETHER	KIỂM TRA · CẢI TIẾN · CÙNG NHAU	检验 · 改进 · 携手	PERIKSA · TAMBAH BAIK · BERSAMA
+🖨 Print / Save PDF	🖨 In / Lưu PDF	🖨 打印 / 保存 PDF	🖨 Cetak / Simpan PDF
+‹ Back	‹ Quay lại	‹ 返回	‹ Kembali
+{0} - Defect Closure Report	{0} - Báo cáo đóng lỗi	{0} - 缺陷关闭报告	{0} - Laporan penutupan kecacatan
+Page {0} of 4	Trang {0} / 4	第 {0} 页，共 4 页	Halaman {0} daripada 4
+A Better Tomorrow	Một ngày mai tốt đẹp hơn	更美好的明天	Hari esok yang lebih baik
+Quality Today	Chất lượng hôm nay	今日品质	Kualiti hari ini
+Defect Closure Report	Báo cáo đóng lỗi	缺陷关闭报告	Laporan penutupan kecacatan
+Low	Thấp	低	Rendah
+Medium	Trung bình	中	Sederhana
+High	Cao	高	Tinggi
+Customer Approval	Khách hàng phê duyệt	客户审批	Kelulusan pelanggan
+QA Verification	QA xác minh	QA 验证	Pengesahan QA
+Factory Representative	Đại diện nhà máy	工厂代表	Wakil kilang
+File	Tệp	文件	Fail
+Pending	Đang chờ	待处理	Belum selesai
+✓ Completed	✓ Hoàn thành	✓ 已完成	✓ Selesai
+Due date: {0}	Hạn: {0}	到期日期：{0}	Tarikh akhir: {0}
+CAPA OPEN	CAPA ĐANG MỞ	CAPA 未关闭	CAPA TERBUKA
+CAPA IN PROGRESS	CAPA ĐANG XỬ LÝ	CAPA 处理中	CAPA DALAM PROSES
+Loading…	Đang tải…	加载中…	Sedang memuatkan…
+Next	Tiếp	下一步	Seterusnya
+✓ Close Defect	✓ Đóng lỗi	✓ 关闭缺陷	✓ Tutup kecacatan
+Reopen Defect	Mở lại lỗi	重新打开缺陷	Buka semula kecacatan
+Each person signs with their own account (phone or computer). Signature and time of signing are recorded separately.	Mỗi người ký bằng tài khoản của mình (điện thoại hoặc máy tính). Chữ ký và thời điểm ký được lưu riêng.	每人使用自己的账户签名（手机或电脑），签名及签署时间分别记录。	Setiap orang menandatangani dengan akaun sendiri (telefon atau komputer). Tandatangan dan masa ditandatangani direkodkan secara berasingan.
+Delete row	Xóa dòng	删除行	Padam baris
+Remove file	Gỡ tệp	移除文件	Buang fail
+e.g. New Structure	vd. Kết cấu mới	例如：新结构	cth. Struktur baharu
+Attach	Đính kèm	附加	Lampirkan
+Uploading…	Đang tải lên…	正在上传…	Sedang memuat naik…
+e.g. Photos / SOP	vd. Ảnh / SOP	例如：照片 / SOP	cth. Foto / SOP
+Edit/Delete	Sửa/Xóa	编辑/删除	Sunting/Padam
+Please add attached file/photos for reference.	Vui lòng đính kèm tệp/ảnh để tham chiếu.	请添加附件/照片作为参考。	Sila tambah fail/foto lampiran sebagai rujukan.
+e.g. No recurrence found during re-inspection.	vd. Không phát hiện tái diễn khi tái kiểm.	例如：复检未发现问题再次发生。	cth. Tiada pengulangan ditemui semasa pemeriksaan semula.
+Verification Comments	Nhận xét xác minh	验证意见	Ulasan pengesahan
+e.g. QA Manager	vd. Trưởng phòng QA	例如：QA 经理	cth. Pengurus QA
+Add Photo	Thêm ảnh	添加照片	Tambah foto
+Photos After Corrective Action (Re-inspection)	Ảnh sau khắc phục (tái kiểm)	纠正后照片（复检）	Foto selepas tindakan pembetulan (pemeriksaan semula)
+e.g. Actions in progress. Re-inspection scheduled next week.	vd. Đang thực hiện. Tái kiểm vào tuần sau.	例如：措施进行中，下周安排复检。	cth. Tindakan sedang dijalankan. Pemeriksaan semula dijadualkan minggu depan.
+Remarks	Ghi chú	备注	Catatan
+Completion Progress	Tiến độ hoàn thành	完成进度	Kemajuan penyiapan
++ Add Preventive Action	+ Thêm hành động phòng ngừa	+ 添加预防措施	+ Tambah tindakan pencegahan
+e.g. Monthly packaging audit	vd. Đánh giá đóng gói hằng tháng	例如：每月包装审核	cth. Audit pembungkusan bulanan
++ Add Corrective Action	+ Thêm hành động khắc phục	+ 添加纠正措施	+ Tambah tindakan pembetulan
+e.g. Foam separator installed	vd. Đã lắp tấm xốp ngăn cách	例如：已安装泡棉隔板	cth. Pemisah busa dipasang
+Corrective Actions	Hành động khắc phục	纠正措施	Tindakan pembetulan
+e.g. Install foam sheets between chairs and retrain operators.	vd. Lót xốp giữa các ghế và đào tạo lại công nhân.	例如：在椅子之间放置泡棉片并重新培训操作员。	cth. Pasang kepingan busa di antara kerusi dan latih semula operator.
+Enter person name	Nhập tên người	输入人员姓名	Masukkan nama orang
+Auto generated	Tự động tạo	自动生成	Dijana secara automatik
+Corrective Action Request	Yêu cầu hành động khắc phục	纠正措施要求	Permintaan tindakan pembetulan
+Summarise the final root cause	Tóm tắt nguyên nhân gốc cuối cùng	总结最终根本原因	Ringkaskan punca akar muktamad
+Why {0} {1}	Tại sao {0} {1}	为什么 {0} {1}	Mengapa {0} {1}
+5. Root Cause Analysis	5. Phân tích nguyên nhân gốc	5. 根本原因分析	5. Analisis punca akar
+e.g. Visible surface scratch.	vd. Trầy xước bề mặt nhìn thấy được.	例如：表面可见划痕。	cth. Calar permukaan yang kelihatan.
+Photo Notes	Ghi chú ảnh	照片备注	Nota foto
+{0} photos added	Đã thêm {0} ảnh	已添加 {0} 张照片	{0} foto ditambah
+4. Photo Evidence	4. Ảnh minh chứng	4. 照片证据	4. Bukti foto
+Enter the Inspection Area in step 1 to label the points.	Nhập Khu vực kiểm tra ở bước 1 để gán nhãn cho các điểm.	请在第 1 步填写检验区域，以便标注各点。	Masukkan Kawasan Pemeriksaan di langkah 1 untuk melabel titik.
+Remove point	Xóa điểm	删除标记点	Buang titik
+📷 Upload	📷 Tải lên	📷 上传	📷 Muat naik
+Defect photo {0}	Ảnh lỗi {0}	缺陷照片 {0}	Foto kecacatan {0}
+Product photo	Ảnh sản phẩm	产品照片	Foto produk
+Tap on the image to add a defect point (1, 2, 3…). Tap a point to select it, then choose its location below. Use the product photo, a defect photo, or upload a new one.	Chạm vào ảnh để thêm điểm lỗi (1, 2, 3…). Chạm vào một điểm để chọn, rồi chọn vị trí bên dưới. Dùng ảnh sản phẩm, ảnh lỗi hoặc tải ảnh mới lên.	点击图片添加缺陷点（1、2、3…）。点击某个点将其选中，然后在下方选择位置。可使用产品照片、缺陷照片或上传新照片。	Ketik pada imej untuk menambah titik kecacatan (1, 2, 3…). Ketik titik untuk memilihnya, kemudian pilih lokasinya di bawah. Gunakan foto produk, foto kecacatan atau muat naik yang baharu.
+3. Product Location	3. Vị trí trên sản phẩm	3. 产品位置	3. Lokasi pada produk
+e.g. Scratch observed on front chair leg. Length approx. 25 mm.	vd. Trầy xước ở chân ghế trước, dài khoảng 25 mm.	例如：前椅腿有划痕，长约 25 mm。	cth. Calar pada kaki kerusi hadapan. Panjang lebih kurang 25 mm.
+2. Defect Description	2. Mô tả lỗi	2. 缺陷描述	2. Penerangan kecacatan
+· Product:	· Sản phẩm:	· 产品：	· Produk:
+Factory:	Nhà máy:	工厂：	Kilang:
+Written by QA. Separate several areas with commas.	Do QA nhập. Nhiều khu vực cách nhau bằng dấu phẩy.	由 QA 填写，多个区域用逗号分隔。	Ditulis oleh QA. Pisahkan beberapa kawasan dengan koma.
+e.g. Front Leg, Seat	vd. Chân trước, Mặt ngồi	例如：前腿, 座面	cth. Kaki hadapan, Tempat duduk
+Inspection Area	Khu vực kiểm tra	检验区域	Kawasan pemeriksaan
+Quantity Defective	Số lượng lỗi	不良数量	Kuantiti cacat
+Other	Khác	其他	Lain-lain
+— Select defect —	— Chọn lỗi —	— 选择缺陷 —	— Pilih kecacatan —
+1. Defect Information	1. Thông tin lỗi	1. 缺陷信息	1. Maklumat kecacatan
+Delete defect	Xóa lỗi	删除缺陷	Padam kecacatan
+Waiting for: {0}	Đang chờ: {0}	等待：{0}	Menunggu: {0}
+✍ Sign now	✍ Ký ngay	✍ 立即签名	✍ Tandatangan sekarang
+Clear signature	Xóa chữ ký	清除签名	Kosongkan tandatangan
+↻ Re-sign	↻ Ký lại	↻ 重新签名	↻ Tandatangan semula
+Signed by account: {0}	Ký bởi tài khoản: {0}	签名账户：{0}	Ditandatangani oleh akaun: {0}
+Name	Họ tên	姓名	Nama
+No signature yet	Chưa có chữ ký	尚未签名	Belum ditandatangani
+Signature	Chữ ký	签名	Tandatangan
+✓ Signed	✓ Đã ký	✓ 已签名	✓ Ditandatangani
+Could not clear the signature.	Không xóa được chữ ký.	无法清除签名。	Tidak dapat mengosongkan tandatangan.
+Signing failed: 	Ký thất bại: 	签名失败：	Tandatangan gagal:
+{0} signed.	{0} đã ký.	{0} 已签名。	{0} telah ditandatangani.
+This approval has already been signed.	Mục phê duyệt này đã được ký.	此审批已签名。	Kelulusan ini telah ditandatangani.
+Your account is not allowed to sign this approval.	Tài khoản của bạn không được phép ký mục này.	您的账户无权签署此审批。	Akaun anda tidak dibenarkan menandatangani kelulusan ini.
+Your session has expired. Please sign in again.	Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.	会话已过期，请重新登录。	Sesi anda telah tamat. Sila log masuk semula.
+Please save the defect before signing.	Vui lòng lưu lỗi trước khi ký.	请先保存缺陷再签名。	Sila simpan kecacatan sebelum menandatangani.
+Delete failed ({0}).	Xóa thất bại ({0}).	删除失败 ({0})。	Gagal memadam ({0}).
+You do not have permission to delete this defect.	Bạn không có quyền xóa lỗi này.	您无权删除此缺陷。	Anda tiada kebenaran untuk memadam kecacatan ini.
+Maximum 30 points.	Tối đa 30 điểm.	最多 30 个标记点。	Maksimum 30 titik.
+Upload failed ({0}).	Tải lên thất bại ({0}).	上传失败 ({0})。	Gagal memuat naik ({0}).
+Defect reopened.	Đã mở lại lỗi.	缺陷已重新打开。	Kecacatan dibuka semula.
+Close failed: 	Đóng thất bại: 	关闭失败：	Gagal menutup:
+Defect closed. You can now print the Defect Closure Report.	Đã đóng lỗi. Bạn có thể in Báo cáo đóng lỗi.	缺陷已关闭，现在可以打印缺陷关闭报告。	Kecacatan ditutup. Anda kini boleh mencetak Laporan Penutupan Kecacatan.
+Actions are Not Effective — update the CAPA before closing.	Hành động chưa hiệu quả — cập nhật CAPA trước khi đóng.	措施无效 — 请先更新 CAPA 再关闭。	Tindakan tidak berkesan — kemas kini CAPA sebelum menutup.
+Verification Date, Verified By and Effectiveness Result are required to close.	Cần nhập Ngày xác minh, Người xác minh và Kết quả hiệu quả để đóng.	关闭前必须填写验证日期、验证人和有效性结果。	Tarikh pengesahan, Disahkan oleh dan Keputusan keberkesanan diperlukan untuk menutup.
+Save failed: 	Lưu thất bại: 	保存失败：	Gagal menyimpan:
+Please complete all required fields of the Corrective Action Request.	Vui lòng điền đủ các trường bắt buộc của Yêu cầu hành động khắc phục.	请填写纠正措施要求的所有必填项。	Sila lengkapkan semua medan wajib Permintaan Tindakan Pembetulan.
+Why 1 is required.	Bắt buộc nhập Tại sao 1.	“为什么 1”为必填项。	Mengapa 1 diperlukan.
+Please select the Root Cause Type.	Vui lòng chọn Loại nguyên nhân gốc.	请选择根本原因类型。	Sila pilih Jenis punca akar.
+Description is required.	Bắt buộc nhập mô tả.	描述为必填项。	Penerangan diperlukan.
+Please enter the Inspection Area.	Vui lòng nhập Khu vực kiểm tra.	请输入检验区域。	Sila masukkan Kawasan pemeriksaan.
+Quantity Defective must be greater than 0.	Số lượng lỗi phải lớn hơn 0.	不良数量必须大于 0。	Kuantiti cacat mesti lebih daripada 0.
+Please select the Defect Category.	Vui lòng chọn Nhóm lỗi.	请选择缺陷类别。	Sila pilih Kategori kecacatan.
+Please select the Defect Type.	Vui lòng chọn Loại lỗi.	请选择缺陷类型。	Sila pilih Jenis kecacatan.
+Verification & Closure	Xác minh & Đóng	验证与关闭	Pengesahan & Penutupan
+Photo & Root Cause	Ảnh & Nguyên nhân gốc	照片与根本原因	Foto & Punca akar
+Description & Location	Mô tả & Vị trí	描述与位置	Penerangan & Lokasi
+Defect Information	Thông tin lỗi	缺陷信息	Maklumat kecacatan
+Saving…	Đang lưu…	正在保存…	Sedang menyimpan…
+View only — your account cannot edit defects.	Chỉ xem — tài khoản của bạn không được sửa lỗi.	仅可查看 — 您的账户无法编辑缺陷。	Lihat sahaja — akaun anda tidak boleh menyunting kecacatan.
+Defect status is managed by the QC team.	Trạng thái lỗi do đội QC quản lý.	缺陷状态由 QC 团队管理。	Status kecacatan diuruskan oleh pasukan QC.
+· closed {0:dd MMM yyyy}	· đóng ngày {0:dd/MM/yyyy}	· 关闭于 {0:yyyy-MM-dd}	· ditutup {0:dd MMM yyyy}
+Customer account	Tài khoản khách hàng	客户账户	Akaun pelanggan
+QC Inspector or Admin	Kiểm hàng viên QC hoặc Quản trị	QC 验货员或管理员	Pemeriksa QC atau Pentadbir
+Signed on the QC / Admin device	Ký trên thiết bị của QC / Quản trị	在 QC / 管理员设备上签名	Ditandatangani pada peranti QC / Pentadbir
+Set point {0} to {1}	Gán điểm {0} là {1}	将点 {0} 设为 {1}	Tetapkan titik {0} kepada {1}
+Tap the image to add a point first	Chạm vào ảnh để thêm điểm trước	请先点击图片添加标记点	Ketik imej untuk menambah titik dahulu
+Select location below…	Chọn vị trí bên dưới…	请在下方选择位置…	Pilih lokasi di bawah…
+Point {0}	Điểm {0}	点 {0}	Titik {0}
+Voice Input	Nhập bằng giọng nói	语音输入	Input suara
+Listening…	Đang nghe…	正在聆听…	Sedang mendengar…
+Add Defect	Thêm lỗi	添加缺陷	Tambah kecacatan
+Defect	Lỗi	缺陷	Kecacatan
+Re-sign	Ký lại	重新签名	Tandatangan semula
+Sign	Ký	签名	Tandatangan
+Inspection:	Kiểm hàng:	验货：	Pemeriksaan:
+Clear the {0} signature? The person will need to sign again.	Xóa chữ ký {0}? Người này sẽ phải ký lại.	清除 {0} 的签名？该人员需要重新签名。	Kosongkan tandatangan {0}? Orang tersebut perlu menandatangani semula.
+Delete defect {0}? This permanently deletes the CAPA record and signatures.	Xóa lỗi {0}? Thao tác này xóa vĩnh viễn hồ sơ CAPA và các chữ ký.	删除缺陷 {0}？这将永久删除 CAPA 记录和签名。	Padam kecacatan {0}? Ini akan memadam rekod CAPA dan tandatangan secara kekal.
+· Due {0}	· Hạn {0}	· 到期 {0}	· Tarikh akhir {0}
+Qty: {0} pcs · Status:	SL: {0} cái · Trạng thái:	数量：{0} 件 · 状态：	Kuantiti: {0} pcs · Status:
+Defects are opened automatically when the quantity reaches the threshold, or add one manually.	Lỗi được mở tự động khi số lượng đạt ngưỡng, hoặc bạn có thể thêm thủ công.	数量达到阈值时会自动开立缺陷，也可手动添加。	Kecacatan dibuka secara automatik apabila kuantiti mencapai had, atau tambah secara manual.
+No CAPA defect for this inspection yet.	Chưa có lỗi CAPA cho lượt kiểm này.	此验货尚无 CAPA 缺陷。	Belum ada kecacatan CAPA untuk pemeriksaan ini.
+Search defects…	Tìm lỗi…	搜索缺陷…	Cari kecacatan…
++ Add Defect	+ Thêm lỗi	+ 添加缺陷	+ Tambah kecacatan
+Final Result	Kết quả cuối	最终结果	Keputusan akhir
+Defect Management	Quản lý lỗi	缺陷管理	Pengurusan kecacatan
+Inspection Defects - Inticoo	Lỗi kiểm hàng - Inticoo	验货缺陷 - Inticoo	Kecacatan pemeriksaan - Inticoo
+In Progress	Đang xử lý	处理中	Dalam proses
+Open {0} CAPA	Mở {0} CAPA	开立 {0} 个 CAPA	Buka {0} CAPA
+new CAPA will be opened:	CAPA mới sẽ được mở:	个新 CAPA 将被开立：	CAPA baharu akan dibuka:
+inspections.	lượt kiểm.	次验货。	pemeriksaan.
+Scanned	Đã quét	已扫描	Diimbas
+Scan completed inspections	Quét các lượt kiểm đã hoàn thành	扫描已完成的验货	Imbas pemeriksaan yang selesai
+This permanently deletes the defect, its CAPA record and signatures. This cannot be undone.	Thao tác này xóa vĩnh viễn lỗi, hồ sơ CAPA và các chữ ký. Không thể hoàn tác.	这将永久删除该缺陷及其 CAPA 记录和签名，且无法撤销。	Ini akan memadam kecacatan, rekod CAPA dan tandatangannya secara kekal. Tindakan ini tidak boleh dibatalkan.
+Delete defect {0}?	Xóa lỗi {0}?	删除缺陷 {0}？	Padam kecacatan {0}?
+No completed inspection.	Không có lượt kiểm đã hoàn thành.	没有已完成的验货。	Tiada pemeriksaan yang selesai.
+Search job number / product / factory…	Tìm số đơn kiểm / sản phẩm / nhà máy…	搜索任务编号 / 产品 / 工厂…	Cari nombor tugasan / produk / kilang…
+New Defect — select inspection	Thêm lỗi — chọn lượt kiểm	新建缺陷 — 选择验货	Kecacatan baharu — pilih pemeriksaan
+{0} / {1} record(s)	{0} / {1} bản ghi	{0} / {1} 条记录	{0} / {1} rekod
+Details	Chi tiết	详情	Butiran
+Continue	Tiếp tục	继续	Teruskan
+Start	Bắt đầu	开始	Mula
+View / print defect closure report	Xem / in báo cáo đóng lỗi	查看 / 打印缺陷关闭报告	Lihat / cetak laporan penutupan kecacatan
+Signatures collected	Chữ ký đã thu	已收集签名	Tandatangan dikumpul
+No defects found.	Không tìm thấy lỗi.	未找到缺陷。	Tiada kecacatan ditemui.
+Close Date	Ngày đóng	关闭日期	Tarikh tutup
+CAPA Status	Trạng thái CAPA	CAPA 状态	Status CAPA
+Responsible Name	Người phụ trách	负责人姓名	Nama bertanggungjawab
+Due Date	Hạn hoàn thành	到期日期	Tarikh akhir
+Open Date	Ngày mở	开立日期	Tarikh dibuka
+Qty	SL	数量	Kuantiti

@@ -43,27 +43,28 @@
 @using Microsoft.AspNetCore.Components.Forms
 @inject HttpClient Http
 @inject IJSRuntime JS
+@inherits LocalizedComponentBase
 
 <div class="ie-wrap">
-    <button class="ie-btn ie-btn-dl" @onclick="DownloadTemplate" disabled="@_uploading" title="Download Excel template">
+    <button class="ie-btn ie-btn-dl" @onclick="DownloadTemplate" disabled="@_uploading" title="@T("ImportExcelButton.DownloadExcelTemplate")">
         <svg width="13" height="13" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M10 3v10m0 0l-4-4m4 4l4-4M4 17h12"/>
         </svg>
-        Template
+        @T("ImportExcelButton.Template")
     </button>
 
     <label class="ie-btn ie-btn-up @(_uploading ? "disabled" : "")">
         @if (_uploading)
         {
             <span class="ie-spinner"></span>
-            <span>Uploading...</span>
+            <span>@T("Common.Uploading2")</span>
         }
         else
         {
             <svg width="13" height="13" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M10 17V7m0 0l-4 4m4-4l4 4M4 3h12"/>
             </svg>
-            <span>@ButtonLabel</span>
+            <span>@(ButtonLabel ?? T("ImportExcelButton.ImportExcel"))</span>
         }
         <InputFile OnChange="OnFileSelected" accept=".xlsx,.xlsm" style="display:none" disabled="@_uploading" />
     </label>
@@ -77,11 +78,11 @@
                 <h3>
                     @if (_result.Success)
                     {
-                        <span class="ie-ok">✓ Import Successful</span>
+                        <span class="ie-ok">@T("ImportExcelButton.ImportSuccessful")</span>
                     }
                     else
                     {
-                        <span class="ie-warn">⚠ Import Completed with Errors</span>
+                        <span class="ie-warn">@T("ImportExcelButton.ImportCompletedWithErrors")</span>
                     }
                 </h3>
                 <button class="ie-close-x" @onclick="CloseResult">×</button>
@@ -90,29 +91,29 @@
             <div class="ie-summary">
                 <div class="ie-stat-card">
                     <div class="ie-stat-num">@_result.TotalRows</div>
-                    <div class="ie-stat-lbl">Total Rows</div>
+                    <div class="ie-stat-lbl">@T("ImportExcelButton.TotalRows")</div>
                 </div>
                 <div class="ie-stat-card ie-stat-ok-card">
                     <div class="ie-stat-num">@_result.Created</div>
-                    <div class="ie-stat-lbl">Created</div>
+                    <div class="ie-stat-lbl">@T("ImportExcelButton.Created")</div>
                 </div>
                 <div class="ie-stat-card ie-stat-fail-card">
                     <div class="ie-stat-num">@_result.Failed</div>
-                    <div class="ie-stat-lbl">Failed</div>
+                    <div class="ie-stat-lbl">@T("Common.Failed")</div>
                 </div>
             </div>
 
             @if (_result.Errors != null && _result.Errors.Count > 0)
             {
                 <div class="ie-err-list">
-                    <div class="ie-err-title">Error Details (@_result.Errors.Count)</div>
+                    <div class="ie-err-title">@T("ImportExcelButton.ErrorDetails", _result.Errors.Count)</div>
                     <div class="ie-err-table-wrap">
                         <table>
                             <thead>
                                 <tr>
-                                    <th class="ie-col-row">Row</th>
-                                    <th class="ie-col-key">Identifier</th>
-                                    <th class="ie-col-msg">Errors</th>
+                                    <th class="ie-col-row">@T("ImportExcelButton.Row")</th>
+                                    <th class="ie-col-key">@T("ImportExcelButton.Identifier")</th>
+                                    <th class="ie-col-msg">@T("ImportExcelButton.Errors")</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -123,7 +124,7 @@
                                         <td class="ie-col-key">@(string.IsNullOrEmpty(e.Key) ? "—" : e.Key)</td>
                                         <td class="ie-col-msg">
                                             <ul>
-                                                @foreach (var msg in e.Errors) { <li>@msg</li> }
+                                                @foreach (var msg in e.Errors) { <li>@TA(msg)</li> }
                                             </ul>
                                         </td>
                                     </tr>
@@ -135,7 +136,7 @@
             }
 
             <div class="ie-actions">
-                <button class="ie-close" @onclick="CloseResult">Close</button>
+                <button class="ie-close" @onclick="CloseResult">@T("Common.Close")</button>
             </div>
         </div>
     </div>
@@ -143,7 +144,7 @@
 
 @code {
     [Parameter, EditorRequired] public string ApiBase     { get; set; } = "";
-    [Parameter] public string                 ButtonLabel { get; set; } = "Import Excel";
+    [Parameter] public string?                ButtonLabel { get; set; }   // null → "Import Excel" theo ngôn ngữ
     [Parameter] public string?                TemplateName { get; set; }
     [Parameter] public EventCallback          OnImported  { get; set; }
 
@@ -156,10 +157,10 @@
     {
         try
         {
-            var response = await Http.GetAsync($"{ApiBase}/template");
+            var response = await Http.GetAsync($"{ApiBase}/template?lang={L.CurrentCode}");   // tiêu đề cột theo ngôn ngữ
             if (!response.IsSuccessStatusCode)
             {
-                await JS.InvokeVoidAsync("alert", "Cannot download template. Please contact administrator.");
+                await JS.InvokeVoidAsync("alert", T("ImportExcelButton.CannotDownloadTemplatePleaseContactAdministrator"));
                 return;
             }
             var bytes  = await response.Content.ReadAsByteArrayAsync();
@@ -174,7 +175,7 @@
         }
         catch (Exception ex)
         {
-            await JS.InvokeVoidAsync("alert", "Download failed: " + ex.Message);
+            await JS.InvokeVoidAsync("alert", T("ImportExcelButton.DownloadFailed", ex.Message));
         }
     }
 
@@ -186,12 +187,12 @@
         var ext = Path.GetExtension(file.Name).ToLowerInvariant();
         if (ext != ".xlsx" && ext != ".xlsm")
         {
-            await JS.InvokeVoidAsync("alert", "Only .xlsx or .xlsm files are allowed.");
+            await JS.InvokeVoidAsync("alert", T("ImportExcelButton.OnlyXlsxOrXlsmFilesAre"));
             return;
         }
         if (file.Size > MaxBytes)
         {
-            await JS.InvokeVoidAsync("alert", $"File is too large. Maximum size is {MaxBytes / (1024 * 1024)}MB.");
+            await JS.InvokeVoidAsync("alert", T("ImportExcelButton.FileIsTooLargeMaximumSize", MaxBytes / (1024 * 1024)));
             return;
         }
 
@@ -216,7 +217,7 @@
             if (!res.IsSuccessStatusCode)
             {
                 var msg = parsed?.Message ?? await res.Content.ReadAsStringAsync();
-                await JS.InvokeVoidAsync("alert", "Import failed: " + msg);
+                await JS.InvokeVoidAsync("alert", T("ImportExcelButton.ImportFailed", TA(msg)));
                 return;
             }
 
@@ -226,7 +227,7 @@
         }
         catch (Exception ex)
         {
-            await JS.InvokeVoidAsync("alert", "Import error: " + ex.Message);
+            await JS.InvokeVoidAsync("alert", T("ImportExcelButton.ImportError", ex.Message));
         }
         finally
         {

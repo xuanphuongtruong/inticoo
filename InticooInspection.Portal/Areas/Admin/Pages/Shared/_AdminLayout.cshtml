@@ -1,0 +1,66 @@
+@inject PortalDbContext Db
+@{
+    var path = ViewContext.HttpContext.Request.Path.Value?.ToLowerInvariant().TrimEnd('/') ?? "/admin";
+    string On(string seg) => seg == "/admin" ? (path == "/admin" ? "on" : "") : (path.StartsWith(seg) ? "on" : "");
+    var title = ViewData["Title"] as string ?? "Super Admin";
+    var sub = ViewData["Sub"] as string ?? "";
+    var crumb = ViewData["Crumb"] as string ?? title;
+    var name = User.FindFirst("fullname")?.Value ?? User.Identity?.Name ?? "";
+    var role = User.FindFirst("title")?.Value ?? "Super Admin";
+    var pendingCompanies = await Db.Companies.CountAsync(c => c.Status == CompanyStatus.PendingPayment || c.Status == CompanyStatus.PendingReview);
+    var unread = await Db.ContactMessages.CountAsync(m => !m.IsRead);
+    var bell = pendingCompanies + unread;
+    (string Href, string Icon, string Text)[] items =
+    {
+        ("/admin", "home", "Dashboard"), ("/admin/companies", "building", "Companies"), ("/admin/subscriptions", "card", "Subscriptions"),
+        ("/admin/payments", "wallet", "Payments"), ("/admin/invoices", "receipt", "Invoices"), ("/admin/users", "users", "Users"),
+        ("/admin/modules", "grid", "Modules"), ("/admin/languages", "globe", "Languages"), ("/admin/storage", "cloud", "Storage"),
+        ("/admin/reports", "chart", "Reports"), ("/admin/auditlog", "log", "Audit Log"), ("/admin/messages", "mail", "Messages"), ("/admin/settings", "settings", "Settings")
+    };
+}
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="robots" content="noindex,nofollow" />
+<title>@title — Inticoo Super Admin</title>
+<link rel="icon" href="/img/favicon.png" />
+<link rel="stylesheet" href="/css/admin.css?v=1" />
+</head>
+<body class="adm">
+<div class="shell">
+  <aside class="side">
+    <div class="logo"><b>INTICOO</b><small>GLOBAL SERVICES</small></div>
+    <nav>
+      <div class="role">@Icons.Svg("crown", 20) Super Admin</div>
+      @foreach (var it in items) { <a href="@it.Href" class="@On(it.Href)">@Icons.Svg(it.Icon, 19) @it.Text</a> }
+    </nav>
+    <div class="foot">
+      <a href="mailto:@(Cfg("Portal:SupportEmail"))">@Icons.Svg("headset", 19) Support</a>
+      <form method="post" action="/admin/logout"><button type="submit">@Icons.Svg("logout", 19) Logout</button></form>
+    </div>
+  </aside>
+  <div class="main">
+    <header class="top">
+      <div class="ttl">
+        <div class="crumb">Super Admin @if (crumb != "Dashboard") { <text> › @crumb</text> }</div>
+        <h1>@title</h1>
+        @if (sub != "") { <p>@sub</p> }
+      </div>
+      <div class="tools">
+        <form class="search" method="get" action="/admin/companies" role="search">@Icons.Svg("search", 17)<input type="search" name="q" placeholder="Search companies, contact, email..." maxlength="100" /></form>
+        <a class="bell" href="/admin/companies?status=PendingPayment" title="@pendingCompanies pending, @unread unread messages">@Icons.Svg("bell", 19)@if (bell > 0) { <i>@bell</i> }</a>
+        <a class="me" href="/admin/account" style="text-decoration:none"><span class="av">@AdminUi.Initials(name)</span><span><b>@name</b><small>@role</small></span></a>
+      </div>
+    </header>
+    @if (TempData["flash"] is string f) { <div class="alert ok">@f</div> }
+    @if (TempData["flashErr"] is string fe) { <div class="alert err">@fe</div> }
+    @RenderBody()
+  </div>
+</div>
+<script src="/js/admin.js?v=1"></script>
+</body>
+</html>
+@functions {
+    string Cfg(string key) => ViewContext.HttpContext.RequestServices.GetRequiredService<IConfiguration>()[key] ?? "support@inticoo.com";
+}

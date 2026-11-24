@@ -1,6 +1,7 @@
 using InticooInspection.Domain.Entities;
 using InticooInspection.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
+using InticooInspection.API.Services.Tenancy;
 
 namespace InticooInspection.API.Services
 {
@@ -55,9 +56,20 @@ namespace InticooInspection.API.Services
             while (await timer.WaitForNextTickAsync(stoppingToken));
         }
 
+        // Mỗi công ty khách có DB riêng → chạy lần lượt cho DB gốc + từng công ty đang hoạt động.
         private async Task TickAsync(CancellationToken ct)
         {
-            await using var scope = _sp.CreateAsyncScope();
+            foreach (var tenant in await TenantMaintenance.AllAsync(_sp, ct))
+            {
+                try { await TickTenantAsync(tenant, ct); }
+                catch (OperationCanceledException) { throw; }
+                catch (Exception ex) { _logger.LogError(ex, "Lỗi InspectionDoneMailWorker ở công ty {Tenant}", tenant?.Code ?? "(DB gốc)"); }
+            }
+        }
+
+        private async Task TickTenantAsync(TenantInfo? tenant, CancellationToken ct)
+        {
+            await using var scope = TenantMaintenance.CreateScope(_sp, tenant);
             var db   = scope.ServiceProvider.GetRequiredService<AppDbContext>();
             var mail = scope.ServiceProvider.GetRequiredService<IInspectionMailService>();
 
@@ -97,7 +109,7 @@ namespace InticooInspection.API.Services
 
                 try
                 {
-                    var (ok, error, toEmail) = await mail.SendForInspectionAsync(insp.Id, null, ct);
+                    var (ok, error, toEmail) = await mail.SendForInspectionAsync(insp.Id, null, ct, automatic: true);
 
                     if (ok)
                     {

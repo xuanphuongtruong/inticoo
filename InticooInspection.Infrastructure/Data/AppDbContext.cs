@@ -26,12 +26,22 @@ namespace InticooInspection.Infrastructure.Data
         public DbSet<InspectionQcDefect>             InspectionQcDefects              => Set<InspectionQcDefect>();
         public DbSet<ProductCategory>               ProductCategories               => Set<ProductCategory>();
         public DbSet<ProductReference>              ProductReferences               => Set<ProductReference>();
+        public DbSet<ProductCarton>                 ProductCartons                  => Set<ProductCarton>();
+        public DbSet<InspectionCarton>              InspectionCartons               => Set<InspectionCarton>();
+        public DbSet<DefectCapa>                    DefectCapas                     => Set<DefectCapa>();
         public DbSet<Country>                       Countries                       => Set<Country>();
         public DbSet<City>                          Cities                          => Set<City>();
         public DbSet<PerformanceTestMaster>         PerformanceTestMasters          => Set<PerformanceTestMaster>();
         public DbSet<PerformanceTestReference>      PerformanceTestReferences       => Set<PerformanceTestReference>();
         public DbSet<MailLog>                       MailLogs                        => Set<MailLog>();
         public DbSet<MailConfig>                    MailConfigs                     => Set<MailConfig>();
+        public DbSet<AppSetting>                    AppSettings                     => Set<AppSetting>();
+        public DbSet<ContainerCheck>                ContainerChecks                 => Set<ContainerCheck>();
+        public DbSet<ContainerCheckPoint>           ContainerCheckPoints            => Set<ContainerCheckPoint>();
+        public DbSet<ContainerCheckProduct>         ContainerCheckProducts          => Set<ContainerCheckProduct>();
+        public DbSet<ContainerCheckPhoto>           ContainerCheckPhotos            => Set<ContainerCheckPhoto>();
+        public DbSet<PartyContact>                  PartyContacts                   => Set<PartyContact>();
+        public DbSet<PartyReportSetting>            PartyReportSettings             => Set<PartyReportSetting>();
 
         protected override void OnModelCreating(ModelBuilder builder)
         {
@@ -97,6 +107,46 @@ namespace InticooInspection.Infrastructure.Data
                 e.HasMany(x => x.References)
                  .WithOne(r => r.Product)
                  .HasForeignKey(r => r.ProductId)
+                 .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            builder.Entity<DefectCapa>(e =>
+            {
+                e.HasKey(x => x.Id);
+                e.Property(x => x.DefectNo).HasMaxLength(30);
+                e.Property(x => x.CarNo).HasMaxLength(30);
+                e.Property(x => x.Severity).HasMaxLength(20);
+                e.Property(x => x.Status).HasMaxLength(20);
+                e.Property(x => x.DefectCode).HasMaxLength(10);
+                e.HasIndex(x => x.InspectionId);
+                e.HasIndex(x => x.DefectNo);
+            });
+
+            builder.Entity<ProductCarton>(e =>
+            {
+                e.HasKey(x => x.Id);
+                e.Property(x => x.CartonVariant).HasMaxLength(100);
+                e.Property(x => x.Description).HasMaxLength(300);
+                e.Property(x => x.PackagingQuantity).HasMaxLength(100);
+                e.Property(x => x.SizeL).HasColumnType("decimal(10,2)");
+                e.Property(x => x.SizeW).HasColumnType("decimal(10,2)");
+                e.Property(x => x.SizeH).HasColumnType("decimal(10,2)");
+                e.Property(x => x.Weight).HasColumnType("decimal(10,3)");
+                e.HasOne(x => x.Product)
+                 .WithMany(p => p.Cartons)
+                 .HasForeignKey(x => x.ProductId)
+                 .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            builder.Entity<InspectionCarton>(e =>
+            {
+                e.HasKey(x => x.Id);
+                e.Property(x => x.CartonVariant).HasMaxLength(100);
+                e.Property(x => x.Description).HasMaxLength(300);
+                e.Property(x => x.PackingQuantity).HasMaxLength(100);
+                e.HasOne(x => x.Inspection)
+                 .WithMany(i => i.Cartons)
+                 .HasForeignKey(x => x.InspectionId)
                  .OnDelete(DeleteBehavior.Cascade);
             });
 
@@ -298,6 +348,7 @@ namespace InticooInspection.Infrastructure.Data
                 e.Property(x => x.CvUrl).HasMaxLength(500);
                 e.Property(x => x.AvatarUrl).HasMaxLength(500);
                 e.Property(x => x.ShowInLoginAccount).HasDefaultValue(true);
+                e.Property(x => x.UiLanguage).HasMaxLength(10);
             });
 
             builder.Entity<Vendor>(e =>
@@ -353,6 +404,137 @@ namespace InticooInspection.Infrastructure.Data
                 e.HasIndex(x => x.VendorId);
             });
             
+            builder.Entity<ContainerCheck>(e =>
+            {
+                e.HasKey(x => x.Id);
+                e.Property(x => x.JobNumber).IsRequired().HasMaxLength(30);
+                e.HasIndex(x => x.JobNumber).IsUnique();
+                e.Property(x => x.Status).IsRequired().HasMaxLength(20);
+                e.HasIndex(x => x.Status);
+                e.HasIndex(x => x.InspectionDate);
+                e.Property(x => x.CustomerCode).HasMaxLength(50);
+                e.Property(x => x.CustomerName).HasMaxLength(200);
+                e.Property(x => x.CustomerContact).HasMaxLength(150);
+                e.Property(x => x.CustomerPhone).HasMaxLength(50);
+                e.Property(x => x.CustomerEmail).HasMaxLength(200);
+                e.Property(x => x.CustomerAddress).HasMaxLength(500);
+                e.Property(x => x.VendorCode).HasMaxLength(50);
+                e.Property(x => x.VendorName).HasMaxLength(200);
+                e.Property(x => x.VendorContact).HasMaxLength(150);
+                e.Property(x => x.VendorPhone).HasMaxLength(50);
+                e.Property(x => x.VendorEmail).HasMaxLength(200);
+                e.Property(x => x.VendorAddress).HasMaxLength(500);
+                e.Property(x => x.ContainerNo).HasMaxLength(30);
+                e.HasIndex(x => x.ContainerNo);
+                e.Property(x => x.ContainerType).HasMaxLength(20);
+                e.Property(x => x.PoNumber).HasMaxLength(100);
+                e.Property(x => x.ShipmentReference).HasMaxLength(100);
+                e.Property(x => x.Destination).HasMaxLength(200);
+                e.Property(x => x.PlannedStartTime).HasMaxLength(10);
+                e.Property(x => x.PlannedEndTime).HasMaxLength(10);
+                e.Property(x => x.LoadingMethod).HasMaxLength(60);
+                e.Property(x => x.TruckNo).HasMaxLength(50);
+                e.Property(x => x.LoadingLocation).HasMaxLength(60);
+                e.Property(x => x.LoadingAddress).HasMaxLength(500);
+                e.Property(x => x.CargoDescription).HasMaxLength(500);
+                e.Property(x => x.InspectorId).HasMaxLength(450);
+                e.Property(x => x.InspectorName).HasMaxLength(150);
+                e.Property(x => x.InspectionStartTime).HasMaxLength(10);
+                e.Property(x => x.InspectionEndTime).HasMaxLength(10);
+                e.Property(x => x.JobRemarks).HasMaxLength(500);
+                e.Property(x => x.SevenPointResult).HasMaxLength(10);
+                e.Property(x => x.AdditionalResult).HasMaxLength(10);
+                e.Property(x => x.LoadingResult).HasMaxLength(10);
+                e.Property(x => x.SealResult).HasMaxLength(10);
+                e.Property(x => x.OverallResult).HasMaxLength(10);
+                e.Property(x => x.AdditionalRemarks).HasMaxLength(500);
+                e.Property(x => x.SealNumber).HasMaxLength(60);
+                e.Property(x => x.SealCondition).HasMaxLength(20);
+                e.Property(x => x.SealAppliedBy).HasMaxLength(30);
+                e.Property(x => x.SealPhotoUrl).HasMaxLength(500);
+                e.Property(x => x.SealRemarks).HasMaxLength(500);
+                e.Property(x => x.LoadingStartTime).HasMaxLength(10);
+                e.Property(x => x.LoadingEndTime).HasMaxLength(10);
+                e.Property(x => x.LoadingMethodActual).HasMaxLength(60);
+                e.Property(x => x.CartonCondition).HasMaxLength(10);
+                e.Property(x => x.MarkingLabel).HasMaxLength(10);
+                e.Property(x => x.PackagingProtection).HasMaxLength(10);
+                e.Property(x => x.PalletCondition).HasMaxLength(10);
+                e.Property(x => x.LoadingRemarks).HasMaxLength(500);
+                e.Property(x => x.FinalRemarks).HasMaxLength(500);
+                e.Property(x => x.InspectorSignatureUrl).HasMaxLength(500);
+                e.Property(x => x.InspectorSignName).HasMaxLength(150);
+                e.Property(x => x.InspectorSignPosition).HasMaxLength(100);
+                e.Property(x => x.ReviewerSignatureUrl).HasMaxLength(500);
+                e.Property(x => x.ReviewerSignName).HasMaxLength(150);
+                e.Property(x => x.ReviewerSignPosition).HasMaxLength(100);
+                e.Property(x => x.CreatedById).HasMaxLength(450);
+                e.HasMany(x => x.Points).WithOne(p => p.Check).HasForeignKey(p => p.CheckId).OnDelete(DeleteBehavior.Cascade);
+                e.HasMany(x => x.Products).WithOne(p => p.Check).HasForeignKey(p => p.CheckId).OnDelete(DeleteBehavior.Cascade);
+                e.HasMany(x => x.Photos).WithOne(p => p.Check).HasForeignKey(p => p.CheckId).OnDelete(DeleteBehavior.Cascade);
+            });
+
+            builder.Entity<ContainerCheckPoint>(e =>
+            {
+                e.HasKey(x => x.Id);
+                e.Property(x => x.Result).HasMaxLength(10);
+                e.Property(x => x.Findings).HasMaxLength(300);
+                e.Property(x => x.Remarks).HasMaxLength(500);
+                e.Property(x => x.PhotosJson).HasColumnType("nvarchar(max)");
+                e.HasIndex(x => new { x.CheckId, x.PointNo }).IsUnique();
+            });
+
+            builder.Entity<ContainerCheckProduct>(e =>
+            {
+                e.HasKey(x => x.Id);
+                e.Property(x => x.ProductCode).IsRequired().HasMaxLength(100);
+                e.Property(x => x.Description).HasMaxLength(300);
+                e.Property(x => x.Unit).HasMaxLength(20);
+                e.Property(x => x.Result).HasMaxLength(10);
+            });
+
+            builder.Entity<ContainerCheckPhoto>(e =>
+            {
+                e.HasKey(x => x.Id);
+                e.Property(x => x.Category).IsRequired().HasMaxLength(20);
+                e.Property(x => x.Url).IsRequired().HasMaxLength(500);
+                e.Property(x => x.Caption).HasMaxLength(200);
+            });
+
+            builder.Entity<PartyContact>(e =>
+            {
+                e.HasKey(x => x.Id);
+                e.Property(x => x.PartyType).IsRequired().HasMaxLength(20);
+                e.Property(x => x.Name).IsRequired().HasMaxLength(150);
+                e.Property(x => x.Position).HasMaxLength(100);
+                e.Property(x => x.Email).HasMaxLength(200);
+                e.Property(x => x.Phone).HasMaxLength(50);
+                e.HasIndex(x => new { x.PartyType, x.PartyId });
+            });
+
+            builder.Entity<PartyReportSetting>(e =>
+            {
+                e.HasKey(x => x.Id);
+                e.Property(x => x.PartyType).IsRequired().HasMaxLength(20);
+                e.Property(x => x.Kind).IsRequired().HasMaxLength(20);
+                e.Property(x => x.DeliveryMode).IsRequired().HasMaxLength(20);
+                e.Property(x => x.Language).IsRequired().HasMaxLength(10);
+                e.Property(x => x.Subject).HasMaxLength(300);
+                e.Property(x => x.Body).HasColumnType("nvarchar(max)");
+                e.Property(x => x.SendDays).HasMaxLength(60);
+                e.Property(x => x.SendTime).HasMaxLength(10);
+                e.Property(x => x.TimeZone).HasMaxLength(100);
+                e.HasIndex(x => new { x.PartyType, x.PartyId, x.Kind }).IsUnique();
+            });
+
+            // ── AppSetting (cài đặt toàn hệ thống theo nhóm, JSON) ──
+            builder.Entity<AppSetting>(e =>
+            {
+                e.HasKey(x => x.Section);
+                e.Property(x => x.Section).HasMaxLength(64);
+                e.Property(x => x.UpdatedBy).HasMaxLength(200);
+            });
+
             // ── MailConfig (cấu hình mail singleton, Id luôn = 1) ──
             builder.Entity<MailConfig>(e =>
             {

@@ -1,0 +1,65 @@
+@page
+@{ ViewData["Title"] = L["Resources"]; }
+<section class="hero small">
+  <div class="wrap">
+    <div>
+      <span class="eyebrow">@L["Resources"]</span>
+      <h1>@L["Knowledge and Tools for Better Quality"]</h1>
+      <p class="lead">@L["Practical resources to help you improve inspection processes, meet international standards and build a stronger supply chain."]</p>
+      <div class="badges">
+        <div class="badge-i"><span class="ico">@Icons.Svg("book")</span><b>@L["Inspection Guides"]</b>@L["Step-by-step guidance"]</div>
+        <div class="badge-i"><span class="ico">@Icons.Svg("doc")</span><b>@L["AQL Standards"]</b>@L["Reference tables"]</div>
+        <div class="badge-i"><span class="ico">@Icons.Svg("clipboard")</span><b>@L["Checklists"]</b>@L["Ready-to-use lists"]</div>
+        <div class="badge-i"><span class="ico">@Icons.Svg("cap")</span><b>@L["Learning Center"]</b>@L["Articles, videos and tips"]</div>
+      </div>
+    </div>
+  </div>
+</section>
+<section class="sec" id="guides">
+  <div class="wrap">
+    <div class="sec-head"><h2>@L["Featured Resources"]</h2><p>@L["Start with our most popular resources for quality inspection and supply chain management."]</p></div>
+    <div class="grid g4">
+      <div class="card res-card"><div class="thumb">🔍</div><h3>@L["AQL Standards Guide"]</h3><p>@L["Understand AQL levels, sampling plans and defect classifications."]</p></div>
+      <div class="card res-card" id="checklists"><div class="thumb">✅</div><h3>@L["Inspection Checklists"]</h3><p>@L["Sample checklists for PPI, DPI, PST and Loading Container Check (CLC)."]</p></div>
+      <div class="card res-card"><div class="thumb">🚢</div><h3>@L["Container Loading Check (CLC) Guide"]</h3><p>@L["How to conduct container loading inspections and common check points."]</p></div>
+      <div class="card res-card"><div class="thumb">📚</div><h3>@L["Quality Management Articles"]</h3><p>@L["Practical insights on quality, suppliers, CAPA and continuous improvement."]</p></div>
+    </div>
+  </div>
+</section>
+<section class="sec alt" id="standards">
+  <div class="wrap">
+    <div class="sec-head"><h2>@L["Inspection Standards & References"]</h2><p>@L["Useful reference materials to support your inspection process."]</p></div>
+    <div class="grid g5">
+      <div class="card"><span class="ico">@Icons.Svg("grid")</span><h3>@L["AQL Tables"]</h3><p>@L["Sampling plans for normal, tightened and reduced inspection."]</p></div>
+      <div class="card"><span class="ico">@Icons.Svg("alert")</span><h3>@L["Defect Classification"]</h3><p>@L["Definition and examples of critical, major and minor defects."]</p></div>
+      <div class="card"><span class="ico">@Icons.Svg("doc")</span><h3>@L["Inspection Terms"]</h3><p>@L["Common quality inspection terms and abbreviations."]</p></div>
+      <div class="card"><span class="ico">@Icons.Svg("box")</span><h3>@L["Packaging Guidelines"]</h3><p>@L["Guidelines for carton marking, labelling and packaging checks."]</p></div>
+      <div class="card"><span class="ico">@Icons.Svg("ruler")</span><h3>@L["Measurement Guide"]</h3><p>@L["How to measure product dimensions, tolerance and weight."]</p></div>
+    </div>
+    <p class="center muted" style="margin-top:18px">@L["Downloadable PDFs are coming soon. Contact us to receive them now."]</p>
+  </div>
+</section>
+<section class="sec" id="learning">
+  <div class="wrap">
+    <div class="sec-head"><h2>@L["Learning Center"]</h2><p>@L["Articles, guides and videos to help you build better quality processes."]</p></div>
+    <div class="grid g4">
+      <div class="card"><span class="tag">@L["ARTICLE"]</span><h3 style="margin-top:10px">@L["How to Plan an Effective Product Inspection"]</h3><p>@L["Step-by-step guide for PPI, DPI and PST."]</p></div>
+      <div class="card"><span class="tag">@L["VIDEO"]</span><h3 style="margin-top:10px">@L["Conducting a Container Loading Check (CLC)"]</h3><p>@L["Key check points and best practices."]</p></div>
+      <div class="card"><span class="tag">@L["ARTICLE"]</span><h3 style="margin-top:10px">@L["Common Defects in Furniture and Hardline Products"]</h3><p>@L["Examples and how to prevent them."]</p></div>
+      <div class="card"><span class="tag">@L["VIDEO"]</span><h3 style="margin-top:10px">@L["Using Quality Analytics to Improve Supplier Performance"]</h3><p>@L["Turn inspection data into action."]</p></div>
+    </div>
+  </div>
+</section>
+<section class="sec alt" id="faq">
+  <div class="wrap" style="max-width:820px">
+    <div class="sec-head"><h2>@L["Support & FAQ"]</h2><p>@L["Find answers to common questions or get in touch with our team."]</p></div>
+    <div class="faq">
+      <details><summary>@L["Which plan should I choose?"]</summary><p>@L["Basic fits small teams that run product inspections. Business adds CAPA, supplier management and analytics. Professional adds Loading Container Check and API integration."]</p></details>
+      <details><summary>@L["Is my data separated from other companies?"]</summary><p>@L["Yes. Every company gets its own independent database and access credentials, so data is never mixed with other customers."]</p></details>
+      <details><summary>@L["Which languages are supported?"]</summary><p>@L["English, Chinese, Vietnamese and Bahasa Melayu. Each user can pick their own language."]</p></details>
+      <details><summary>@L["How do I pay?"]</summary><p>@L["By credit or debit card, or by bank transfer — an invoice with bank details is generated for you."]</p></details>
+      <details><summary>@L["Can I change or cancel my plan?"]</summary><p>@L["Yes. Contact our team to upgrade, downgrade or cancel at the end of your billing period."]</p></details>
+    </div>
+    <div class="center" style="margin-top:24px"><a class="btn" href="/contact">@L["Contact Support"] →</a></div>
+  </div>
+</section>

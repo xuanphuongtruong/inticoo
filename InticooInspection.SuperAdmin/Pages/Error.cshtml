@@ -1,0 +1,16 @@
+@page "/error"
+@{
+    Layout = null;
+    var code = ViewContext.HttpContext.Request.Query["code"].ToString();
+    var notFound = code == "404";
+}
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" /><meta name="robots" content="noindex" />
+<title>@(notFound ? "Not found" : "Error") — Inticoo Super Admin</title><link rel="icon" href="/img/favicon.png" /><link rel="stylesheet" href="/css/admin.css?v=1" /></head>
+<body class="adm login">
+  <div class="card f" style="text-align:center">
+    <h1>@(notFound ? "404" : "Something went wrong")</h1>
+    <p class="muted">@(notFound ? "This page could not be found." : "Please try again later.")</p>
+    <a class="btn pri" href="/">← Dashboard</a>
+  </div>
+</body></html>

@@ -1,42 +1,63 @@
-@page "/products"
+﻿@page "/products"
+@attribute [Microsoft.AspNetCore.Authorization.Authorize]
 @using System.Net.Http.Json
 @using System.Net.Http.Headers
 @inject HttpClient Http
+@inject NavigationManager Navigation
 @inject IJSRuntime JS
 @using InticooInspection.Client.Services
 @inject WaitingService Waiting
 @inject PageAccessService PageAccess
 @using InticooInspection.Client.Shared
+@inherits LocalizedComponentBase
 
-<PageTitle>Product Information - Inticoo</PageTitle>
+<PageTitle>@T("Products.ProductInformationInticoo")</PageTitle>
 
 <div class="page-container">
 
     <!-- ── Top bar: title + search + filter + add (single row) ── -->
-    <div class="top-bar">
+    <div class="lp-head">
         <div class="title-block">
-            <h1 class="page-title">Product Information</h1>
-            <span class="page-sub">Manage product master data</span>
+            <h1 class="page-title">@T("Products.ProductInformation")</h1>
+            <span class="page-sub">@T("Products.ManageProductMasterData")</span>
         </div>
+    </div>
+    <div class="top-bar lp-filters @(_fOpen ? "fopen" : "")">
         <div class="search-wrap">
             <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5">
                 <circle cx="9" cy="9" r="6"/><path d="M15 15l3 3" stroke-linecap="round"/>
             </svg>
-            <input class="search-input" type="text" placeholder="Search name, code, customer, category..."
+            <input class="search-input" type="text" placeholder="@T("Products.SearchNameCodeCustomerCategory")"
                    @bind="_search" @bind:event="oninput" @bind:after="ApplyFilter" />
         </div>
+    <button type="button" class="lp-filter-toggle @(_fOpen ? "on" : "")" @onclick="() => _fOpen = !_fOpen" aria-label="@T("Common.Filters")"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5h18l-7 8v6l-4 2v-8z"/></svg></button>
         <select class="filter-select" @bind="_filterCat" @bind:after="ApplyFilter">
-            <option value="">All Categories</option>
-            @foreach (var c in _categories)
+            <option value="">@T("Common.AllType")</option>
+            @foreach (var c in _categories.Where(c => _all.Any(p => p.Category == c.Name)))
             { <option value="@c.Name">@c.Name</option> }
         </select>
+        <select class="filter-select" @bind="_filterVendor" @bind:after="ApplyFilter">
+            <option value="">@T("Products.AllVendors")</option>
+            @foreach (var v in _vends)
+            { <option value="@v.Code">@v.Name</option> }
+        </select>
+        <select class="filter-select" @bind="_filterStatus" @bind:after="ApplyFilter">
+            <option value="">@T("Common.AllStatus")</option>
+            <option value="valid">@T("Products.Valid")</option>
+            <option value="invalid">@T("Products.Invalid")</option>
+        </select>
+        <button type="button" class="lp-btn-reset" @onclick="ClearFilters">@T("Common.Clear")</button>
+        @* Directory chỉ Admin được thêm/sửa (người khác: View Only) *@
+        @if (PageAccess.IsAdmin)
+        {
         <ImportExcelButton ApiBase="api/products" OnImported="ApplyFilter" />
         <button class="btn-add" @onclick="async () => await OpenAddModal()">
             <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
                 <path d="M10 4v12M4 10h12"/>
             </svg>
-            Add Product
+            @T("Products.AddProduct")
         </button>
+        }
     </div>
 
     <!-- ── Alerts ── -->
@@ -49,95 +70,141 @@
         <div class="alert-box alert-ok">@_pageOk <button class="alert-x" @onclick="ClearOk">✕</button></div>
     }
 
+    <div class="m-kpis">
+        <div class="m-kpi"><span class="m-kpi-ico k-blue"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M16 4.5a3.5 3.5 0 0 1 0 7M18 14a6 6 0 0 1 3.5 5.5"/></svg></span><b>@(_all.Count)</b><small>@T("Customers.KpiTotal")</small></div>
+        <div class="m-kpi"><span class="m-kpi-ico k-green"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M8 12l3 3 5-6"/></svg></span><b>@(_all.Count(p => p.IsActive))</b><small>@T("Products.Valid")</small></div>
+        <div class="m-kpi"><span class="m-kpi-ico k-orange"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M10 9v6M14 9v6"/></svg></span><b class="red">@(_all.Count(p => !p.IsActive))</b><small>@T("Products.Invalid")</small></div>
+        <div class="m-kpi lp-kpi-extra"><span class="m-kpi-ico k-blue"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M20 12l-8 8-9-9V3h8z"/><circle cx="7.5" cy="7.5" r="1.2"/></svg></span><b>@_all.Where(p => !string.IsNullOrEmpty(p.Category)).Select(p => p.Category).Distinct().Count()</b><small>@T("Vendors.Categories")</small></div>
+    </div>
+    <div class="m-chips">
+        <button type="button" class="@(_filterStatus == "" ? "on" : "")" @onclick='() => SetStatusChip("")'>@T("Customers.ChipAll") (@_all.Count)</button>
+        <button type="button" class="@(_filterStatus == "valid" ? "on" : "")" @onclick='() => SetStatusChip("valid")'>@T("Products.Valid") (@_all.Count(p => p.IsActive))</button>
+        <button type="button" class="@(_filterStatus == "invalid" ? "on" : "")" @onclick='() => SetStatusChip("invalid")'>@T("Products.Invalid") (@_all.Count(p => !p.IsActive))</button>
+    </div>
+
     <!-- ── Table ── -->
     @if (_loading)
     {
-        <div class="loading-wrap"><div class="spinner"></div><span>Loading...</span></div>
+        <div class="loading-wrap"><div class="spinner"></div><span>@T("Common.Loading")</span></div>
     }
     else
     {
+        <div class="m-cards">
+            @foreach (var mp in _filtered)
+            {
+                var item = mp;
+                var thumb = !string.IsNullOrEmpty(item.PhotoUrl) ? item.PhotoUrl : item.PhotoUrls.FirstOrDefault();
+                <div class="m-card">
+                    <div class="m-card-top">
+                        @if (!string.IsNullOrEmpty(thumb))
+                        {
+                            <img class="m-thumb" src="@MediaUrl.Resolve(thumb, Http.BaseAddress?.ToString())" alt="@item.ProductName" />
+                        }
+                        else
+                        {
+                            <div class="m-thumb m-initials"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><path d="M12 3l8 4.5v9L12 21l-8-4.5v-9z"/><path d="M4 7.5l8 4.5 8-4.5M12 12v9"/></svg></div>
+                        }
+                        <div class="m-card-main">
+                            <div class="m-card-head">
+                                <div class="m-card-name">@(string.IsNullOrEmpty(item.ProductCode) ? "—" : item.ProductCode)</div>
+                                <span class="m-status @(item.IsActive ? "ok" : "off")">@(item.IsActive ? T("Products.Valid") : T("Products.Invalid"))</span>
+                            </div>
+                            <div class="m-card-sub">@item.ProductName</div>
+                            <div class="m-card-code">@(string.IsNullOrEmpty(item.ItemNumber) ? "" : item.ItemNumber + " · ")@item.Category</div>
+                        </div>
+                    </div>
+                    <div class="m-card-rows">
+                        @if (!string.IsNullOrEmpty(item.VendorName))
+                        {
+                            <div><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>@item.VendorName</div>
+                        }
+                        <div><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>@(item.EstablishDate.HasValue ? L.Date(item.EstablishDate.Value, "d MMM yyyy") : "—")</div>
+                    </div>
+                    <div class="m-card-actions">
+                        <button type="button" class="m-btn-outline" @onclick="() => OpenDetail(item)">@T("Common.View")</button>
+                        @if (PageAccess.IsAdmin)
+                        {
+                            <button type="button" class="m-btn-fill" @onclick="() => OpenEdit(item)">@T("Common.Edit")</button>
+                        }
+                    </div>
+                </div>
+            }
+        </div>
+
         <div class="table-wrap">
             <table class="ptable">
                 <thead>
-                    <tr class="thead-group">
+                    <tr>
+                        <th class="th-y tc th-chk"><input type="checkbox" checked="@(_pageItems.Count > 0 && _pageItems.All(x => _sel.Contains(x.Id)))" @onchange="e => ToggleAll((bool)(e.Value ?? false))" /></th>
                         <th class="th-y tc th-no">No</th>
-                        <th class="th-y tc">Product ID</th>
-                        <th class="th-y tc">Vendor Name</th>
-                        <th class="th-y tc">Vendor ID</th>
-                        <th class="th-y tc">Category</th>
-                        <th class="th-y tc">Product Name</th>
-                        <th class="th-y tc">Product Code</th>
-                        <th class="th-y tc">Establish Date</th>
-                        <th class="th-y tc">Status</th>
-                        <th class="th-y tc">Full Detail</th>
-                        @if (PageAccess.IsAdmin)
-                        {
-                            <th class="th-y tc">Action</th>
-                        }
+                        <th class="th-y tc">@T("Products.Photo")</th>
+                        <th class="th-y tc">@T("Products.ProductID")</th>
+                        <th class="th-y tc">@T("Common.ProductName")</th>
+                        <th class="th-y tc">@T("Common.Category")</th>
+                        <th class="th-y tc">@T("Common.ProductCode")</th>
+                        <th class="th-y tc">@T("Common.VendorName")</th>
+                        <th class="th-y tc">@T("Products.EstablishDate")</th>
+                        <th class="th-y tc">@T("Common.Status")</th>
+                        <th class="th-y tc">@T("Common.Actions")</th>
                     </tr>
                 </thead>
                 <tbody>
                     @if (!_filtered.Any())
                     {
-                        <tr><td colspan="@(PageAccess.IsAdmin ? 11 : 10)" class="td-empty">No products found.</td></tr>
+                        <tr><td colspan="11" class="td-empty">@T("Products.NoProductsFound")</td></tr>
                     }
                     else
                     {
-                        @for (int i = 0; i < _filtered.Count; i++)
+                        @for (int i = 0; i < _pageItems.Count; i++)
                         {
-                            var item = _filtered[i];
+                            var item = _pageItems[i];
                             <tr class="@(i % 2 == 1 ? "tr-alt" : "")">
-                                <td class="tc muted">@(i + 1)</td>
-                                <td class="tc mono">@(string.IsNullOrEmpty(item.ProductCode) ? "—" : item.ProductCode)</td>
+                                <td class="tc"><input type="checkbox" checked="@_sel.Contains(item.Id)" @onchange="e => ToggleOne(item.Id, (bool)(e.Value ?? false))" /></td>
+                                <td class="tc muted">@((_pageIdx - 1) * _pageSz + i + 1)</td>
                                 <td class="tc">
-                                    @if (!string.IsNullOrEmpty(item.VendorName))
-                                    {
-                                        <div class="company-cell" style="justify-content:center;">
-                                            <span class="company-name">@item.VendorName</span>
-                                        </div>
-                                    }
-                                    else { <span class="muted">—</span> }
+                                    @{ var th = !string.IsNullOrEmpty(item.PhotoUrl) ? item.PhotoUrl : item.PhotoUrls.FirstOrDefault(); }
+                                    @if (!string.IsNullOrEmpty(th))
+                                    { <img class="row-thumb" src="@MediaUrl.Resolve(th, Http.BaseAddress?.ToString())" alt="@item.ProductName" /> }
+                                    else { <div class="row-thumb row-thumb-ph"></div> }
                                 </td>
-                                <td class="mono tc">@(string.IsNullOrEmpty(item.VendorId) ? "—" : item.VendorId)</td>
+                                <td class="tc mono">@(string.IsNullOrEmpty(item.ProductCode) ? "—" : item.ProductCode)</td>
+                                <td class="tc fw">@item.ProductName</td>
                                 <td class="tc">
                                     @if (!string.IsNullOrEmpty(item.Category))
-                                    { <span class="cat-badge">@item.Category</span> }
+                                    { <span class="cat-badge">@TE("Opt", item.Category)</span> }
                                     else { <span class="muted">—</span> }
                                 </td>
-                                <td class="tc fw">@item.ProductName</td>
                                 <td class="tc mono">@(string.IsNullOrEmpty(item.ItemNumber) ? "—" : item.ItemNumber)</td>
-                                <td class="tc muted">@(item.EstablishDate.HasValue ? item.EstablishDate.Value.ToString("dd MMM yyyy") : "—")</td>
+                                <td class="tc">@(string.IsNullOrEmpty(item.VendorName) ? "—" : item.VendorName)</td>
+                                <td class="tc muted">@(item.EstablishDate.HasValue ? L.Date(item.EstablishDate.Value, "dd MMM yyyy") : "—")</td>
                                 <td class="tc">
                                     <span class="status-badge @(item.IsActive ? "active" : "inactive")">
-                                        @(item.IsActive ? "Valid" : "Invalid")
+                                        @(item.IsActive ? T("Products.Valid") : T("Products.Invalid"))
                                     </span>
                                 </td>
                                 <td class="tc">
-                                    <button class="action-btn view" @onclick="() => OpenDetail(item)">
-                                        <svg width="13" height="13" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 10s3.5-6 8-6 8 6 8 6-3.5 6-8 6-8-6-8-6Z"/><circle cx="10" cy="10" r="2.5"/></svg>
-                                        View
-                                    </button>
-                                </td>
-                                @if (PageAccess.IsAdmin)
-                                {
-                                    <td class="tc">
-                                        <div class="action-btns">
-                                            <button class="bico bedit" @onclick="() => OpenEdit(item)" title="Edit">
+                                    <div class="action-btns">
+                                        <button class="bico bview" @onclick="() => OpenDetail(item)" title="@T("Common.View")">
+                                            <svg width="13" height="13" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 10s3.5-6 8-6 8 6 8 6-3.5 6-8 6-8-6-8-6Z"/><circle cx="10" cy="10" r="2.5"/></svg>
+                                        </button>
+                                        @if (PageAccess.IsAdmin)
+                                        {
+                                            <button class="bico bedit" @onclick="() => OpenEdit(item)" title="@T("Common.Edit")">
                                                 <svg width="13" height="13" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 2l4 4-10 10H4v-4L14 2z" stroke-linecap="round" stroke-linejoin="round"/></svg>
                                             </button>
-                                            <button class="bico bdel" @onclick="() => AskDelete(item)" title="Delete">
+                                            <button class="bico bdel" @onclick="() => AskDelete(item)" title="@T("Common.Delete")">
                                                 <svg width="13" height="13" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 6h14M8 6V4h4v2M5 6l1 11h8l1-11" stroke-linecap="round" stroke-linejoin="round"/></svg>
                                             </button>
-                                        </div>
-                                    </td>
-                                }
+                                        }
+                                    </div>
+                                </td>
                             </tr>
                         }
                     }
                 </tbody>
             </table>
         </div>
-        <div class="tfoot">@_filtered.Count / @_all.Count record(s)</div>
+        <ListPager Total="_filtered.Count" Page="_pageIdx" PageSize="_pageSz" Noun="@T("Pager.Products")" OnPage="GoPage" OnPageSize="SetPageSz" />
     }
 </div>
 
@@ -147,17 +214,19 @@
     <div class="modal-overlay" @onclick="CloseModal">
         <div class="modal-card" @onclick:stopPropagation="true">
             <div class="modal-header">
-                <h2>@(_isEdit ? "Edit Product" : "New Product")</h2>
+                <h2>@(_isEdit ? T("Products.EditProduct") : T("Products.NewProduct"))</h2>
                 <button class="modal-close" @onclick="CloseModal">✕</button>
             </div>
 
             @if (!string.IsNullOrEmpty(_mErr))
             { <div class="error-alert">@_mErr</div> }
 
+            <div class="pf-cols">
+            <div class="pf-card2">
             <!-- Product ID + Establish Date + Status -->
             <div class="form-grid form-grid-3">
                 <div class="form-group">
-                    <label>Product ID</label>
+                    <label>@T("Products.ProductID")</label>
                     @if (_isEdit)
                     {
                         <input class="form-input" @bind="_f.ProductCode" />
@@ -168,74 +237,71 @@
                     }
                 </div>
                 <div class="form-group">
-                    <label>Establish Date</label>
+                    <label>@T("Products.EstablishDate")</label>
                     <input class="form-input"
                            type="date"
                            value="@(_f.EstablishDate?.ToString("yyyy-MM-dd"))"
                            @onchange="e => _f.EstablishDate = DateTime.TryParse(e.Value?.ToString(), out var d) ? d : null" />
                 </div>
-                <div class="form-group">
-                    <label>Status</label>
-                    <div class="btype-group" style="padding-top:8px;">
-                        <label class="btype-label @(_f.IsActive ? "btype-active" : "")" @onclick="() => _f.IsActive = true">Valid</label>
-                        <label class="btype-label @(!_f.IsActive ? "btype-active btype-invalid" : "")" @onclick="() => _f.IsActive = false">Invalid</label>
-                    </div>
-                </div>
             </div>
 
             <!-- Customer -->
-            <div class="form-section-title">Customer</div>
+            <div class="form-section-title">@T("Common.Customer")</div>
             <div class="form-grid">
                 <div class="form-group">
-                    <label>Customer ID</label>
+                    <label>@T("Common.CustomerID")</label>
                     <select class="form-input" @bind="_f.CustomerId" @bind:after="OnCustChanged">
-                        <option value="">— Select Customer —</option>
+                        <option value="">@T("Products.SelectCustomer")</option>
                         @foreach (var c in _custs)
                         { <option value="@c.CustomerId">@c.CustomerId — @c.CompanyName</option> }
                     </select>
                 </div>
                 <div class="form-group">
-                    <label>Customer Name</label>
+                    <label>@T("Common.CustomerName")</label>
                     <input class="form-input form-input-disabled" readonly value="@_f.CustomerName" />
                 </div>
             </div>
 
             <!-- Vendor -->
-            <div class="form-section-title">Vendor</div>
+            <div class="form-section-title">@T("Common.Vendor")</div>
             <div class="form-grid">
                 <div class="form-group">
-                    <label>Vendor ID</label>
+                    <label>@T("Common.VendorID")</label>
                     <select class="form-input" @bind="_f.VendorId" @bind:after="OnVendChanged">
-                        <option value="">— Select Vendor —</option>
+                        <option value="">@T("Products.SelectVendor")</option>
                         @foreach (var v in _vends)
                         { <option value="@v.Code">@v.Code — @v.Name</option> }
                     </select>
                 </div>
                 <div class="form-group">
-                    <label>Vendor Name</label>
+                    <label>@T("Common.VendorName")</label>
                     <input class="form-input form-input-disabled" readonly value="@_f.VendorName" />
                 </div>
             </div>
-            <div class="form-section-title">Product Details</div>
+            <div class="form-section-title">@T("Products.ProductDetails")</div>
             <div class="form-grid">
                 <div class="form-group">
-                    <label>Product Category <span class="required">*</span></label>
+                    <label>@T("Common.ProductCategory") <span class="required">*</span></label>
                     <select class="form-input" @bind="_f.Category">
-                        <option value="">-- Select Category --</option>
-                        @foreach (var c in _categories)
-                        { <option value="@c.Name">@c.Name</option> }
+                        <option value="">@T("Products.SelectCategory")</option>
+                        @foreach (var c in Taxonomy.MainCategories)
+                        { <option value="@c">@TE("Opt", c)</option> }
                     </select>
                 </div>
                 <div class="form-group">
-                    <label>Product Name <span class="required">*</span></label>
-                    <input class="form-input" @bind="_f.ProductName" placeholder="e.g. 55-inch OLED" />
+                    <label>@T("Common.ProductName") <span class="required">*</span></label>
+                    <input class="form-input" @bind="_f.ProductName" placeholder="@T("Products.EG55InchOLED")" />
                 </div>
                 <div class="form-group">
-                    <label>Product Code</label>
-                    <input class="form-input" @bind="_f.ItemNumber" placeholder="e.g. ITM-001" />
+                    <label>@T("Common.ProductCode")</label>
+                    <input class="form-input" @bind="_f.ItemNumber" placeholder="@T("Products.EGITM001")" />
+                </div>
+                <div class="form-group">
+                    <label>@T("Products.CartonQuantity")</label>
+                    <input class="form-input" @bind="_f.CartonQuantity" type="number" min="0" placeholder="@T("Products.EG2")" />
                 </div>
                 <div class="form-group full-width">
-                    <label>Product Size (MM/Inch)</label>
+                    <label>@T("Products.ProductSizeMMInch")</label>
                     <div class="size-grid">
                         <div class="form-group">
                             <label>L</label>
@@ -250,84 +316,151 @@
                             <input class="form-input" @bind="_f.SizeH" type="number" min="0" placeholder="0" />
                         </div>
                         <div class="form-group">
-                            <label>Net Weight (KGS)</label>
+                            <label>@T("Products.NetWeightKGS")</label>
                             <input class="form-input" @bind="_f.Weight" type="number" min="0" step="0.01" placeholder="0" />
                         </div>
                     </div>
                 </div>
                 <div class="form-group full-width">
-                    <label>Remark</label>
-                    <textarea class="form-input form-textarea" @bind="_f.Remark" placeholder="Optional notes..."></textarea>
+                    <label>@T("Common.Remark")</label>
+                    <textarea class="form-input form-textarea" @bind="_f.Remark" placeholder="@T("Products.OptionalNotes")"></textarea>
                 </div>
             </div>
 
+            <!-- Carton Size -->
+            <div class="form-section-title">@T("Products.CartonSizeMMInch")</div>
+            <div class="ctn-wrap">
+                <table class="ctn-table">
+                    <thead>
+                        <tr>
+                            <th rowspan="2">@T("Common.CartonVariant")</th>
+                            <th rowspan="2">@T("Common.Description")</th>
+                            <th rowspan="2">@T("Products.PackagingQuantity")</th>
+                            <th colspan="3">@T("Products.CartonSizeMMInch")</th>
+                            <th rowspan="2">@T("Products.WeightKGS")</th>
+                            <th rowspan="2"></th>
+                        </tr>
+                        <tr><th>L</th><th>W</th><th>H</th></tr>
+                    </thead>
+                    <tbody>
+                        @for (int ci = 0; ci < _cartons.Count; ci++)
+                        {
+                            var cIdx = ci;
+                            <tr>
+                                <td><input class="form-input" @bind="_cartons[cIdx].CartonVariant" placeholder="@T("Products.Carton")" /></td>
+                                <td><input class="form-input" @bind="_cartons[cIdx].Description" placeholder="@T("Products.DiningChair")" /></td>
+                                <td><input class="form-input" @bind="_cartons[cIdx].PackagingQuantity" placeholder="2pcs/ctn" /></td>
+                                <td><input class="form-input" type="number" min="0" @bind="_cartons[cIdx].SizeL" /></td>
+                                <td><input class="form-input" type="number" min="0" @bind="_cartons[cIdx].SizeW" /></td>
+                                <td><input class="form-input" type="number" min="0" @bind="_cartons[cIdx].SizeH" /></td>
+                                <td><input class="form-input" type="number" min="0" step="0.01" @bind="_cartons[cIdx].Weight" /></td>
+                                <td><button class="ctn-del" title="@T("Products.RemoveRow")" @onclick="() => _cartons.RemoveAt(cIdx)">✕</button></td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+                <div class="ref-addrow">
+                    <button class="btn-addrow" @onclick="() => _cartons.Add(new PCartonDto())">@T("Common.AddRow")</button>
+                </div>
+            </div>
+
+            </div>
+            <div class="pf-card2">
+            <!-- Product Photo (tối đa 8 ảnh, chọn 1 ảnh dùng trong báo cáo) -->
+            <div class="form-section-title">@T("Products.ProductPhoto")</div>
+            <div class="pp-sub">@T("Products.UploadProductPhotos")</div>
+            <div class="pp-grid">
+                @for (int i = 0; i < _f.PhotoUrls.Count; i++)
+                {
+                    var idx = i; var url = _f.PhotoUrls[i]; var isMain = url == _f.PhotoUrl;
+                    <div class="pp-card @(isMain ? "main" : "")">
+                        <span class="pp-no">@(idx + 1)</span>
+                        <button type="button" class="pp-del" @onclick="() => RemovePhoto(idx)" title="@T("Common.Delete")">✕</button>
+                        <img src="@MediaUrl.Resolve(url, Http.BaseAddress?.ToString())" class="pp-img" @onclick="() => _lightbox = MediaUrl.Resolve(url, Http.BaseAddress?.ToString())" />
+                        <label class="pp-radio">
+                            <input type="radio" name="mainPhoto" checked="@isMain" @onchange="() => _f.PhotoUrl = url" />
+                            <span>@(isMain ? T("Products.UseInReportMain") : T("Products.DoNotUseInReport"))</span>
+                        </label>
+                    </div>
+                }
+            </div>
+            @if (_f.PhotoUrls.Count < 8)
+            {
+                <label class="upload-zone">
+                    <div class="upload-label">
+                        @if (_uploading)
+                        {
+                            <div class="spinner"></div>
+                            <span class="upload-text">@T("Common.Uploading2")</span>
+                        }
+                        else
+                        {
+                            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="rgba(30,144,214,0.5)" stroke-width="1.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                            <span class="upload-text">@T("Common.ClickToUploadPhoto")</span>
+                            <span class="upload-hint">@T("Products.JPGPNGWEBPMax5MB")</span>
+                        }
+                    </div>
+                    <InputFile OnChange="OnPhoto" accept="image/*" multiple style="display:none" />
+                </label>
+            }
+            <div class="pp-info">@T("Products.OnlySelectedPhotoInReport")</div>
+
+            </div>
+            </div>
+
+            <div class="pf-cols">
+            <div class="pf-card2">
             <!-- Reference -->
-            <div class="form-section-title">Reference</div>
+            <div class="form-section-title">@T("Common.Reference")</div>
             <div class="ref-table">
                 <div class="ref-thead">
                     <span class="ref-col-no">No</span>
-                    <span class="ref-col-name">Reference</span>
-                    <span class="ref-col-file">Attached File</span>
+                    <span class="ref-col-name">@T("Common.Reference")</span>
+                    <span class="ref-col-file">@T("Common.AttachedFile")</span>
                 </div>
                 @for (int ri = 0; ri < _refs.Count; ri++)
                 {
                     var idx = ri;
                     <div class="ref-row">
                         <span class="ref-col-no ref-num">@(idx + 1)</span>
-                        <input class="form-input ref-col-name ref-input" @bind="_refs[idx].Name" placeholder="Reference name..." />
+                        <input class="form-input ref-col-name ref-input" @bind="_refs[idx].Name" placeholder="@T("Common.ReferenceName")" />
                         <div class="ref-col-file">
                             @if (_refs[idx].Uploading)
-                            { <span class="ref-uploading">⏳ Uploading...</span> }
+                            { <span class="ref-uploading">@T("Common.Uploading")</span> }
                             else if (!string.IsNullOrEmpty(_refs[idx].FileUrl))
                             { <a class="ref-fname" href="@_refs[idx].FileUrl" target="_blank" title="@_refs[idx].FileName">📎 @_refs[idx].FileName</a> }
                             else if (!string.IsNullOrEmpty(_refs[idx].FileName))
                             { <span class="ref-fname ref-err">❌ @_refs[idx].FileName</span> }
                             <label class="btn-attach">
                                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg>
-                                @(_refs[idx].Uploading ? "..." : "Attach File")
+                                @(_refs[idx].Uploading ? "..." : T("Products.AttachFile"))
                                 <InputFile OnChange="e => OnRefFile(e, idx)" style="display:none" disabled="@_refs[idx].Uploading" />
                             </label>
                         </div>
                     </div>
                 }
                 <div class="ref-addrow">
-                    <button class="btn-addrow" @onclick="AddRefRow">+ Add Row</button>
+                    <button class="btn-addrow" @onclick="AddRefRow">@T("Common.AddRow")</button>
                 </div>
             </div>
 
-            <!-- Product Photo -->
-            <div class="form-section-title">Product Photo</div>
-            <div class="photo-area-modal">
-                @if (!string.IsNullOrEmpty(_prevUrl))
-                {
-                    <div class="prev-wrap">
-                        <img src="@_prevUrl" class="prev-img" />
-                        <button class="rm-photo" @onclick="RemovePhoto">✕</button>
+            </div>
+            <div class="pf-card2">
+            @* ── Account Status: cùng vị trí (cuối form) ở Customer/Vendor/Inspector/Product ── *@
+            <div class="form-section-title" style="margin-top:16px;">@T("Common.AccountStatus")</div>
+            <div class="btype-group" style="padding:8px 0 4px;">
+                    <label class="btype-label @(_f.IsActive ? "btype-active" : "")" @onclick="() => _f.IsActive = true">@T("Products.Valid")</label>
+                    <label class="btype-label @(!_f.IsActive ? "btype-active" : "")" @onclick="() => _f.IsActive = false">@T("Products.Invalid")</label>
                     </div>
-                }
-                <label class="upload-zone">
-                    <div class="upload-label">
-                        @if (_uploading)
-                        {
-                            <div class="spinner"></div>
-                            <span class="upload-text">Uploading...</span>
-                        }
-                        else
-                        {
-                            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="rgba(30,144,214,0.5)" stroke-width="1.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-                            <span class="upload-text">Click to upload photo</span>
-                            <span class="upload-hint">JPG / PNG / WEBP · max 5 MB</span>
-                        }
-                    </div>
-                    <InputFile OnChange="OnPhoto" accept="image/*" style="display:none" />
-                </label>
+
+            </div>
             </div>
 
             <div class="modal-footer">
-                <button class="btn-cancel" @onclick="CloseModal">Cancel</button>
+                <button class="btn-cancel" @onclick="CloseModal">@T("Common.Cancel")</button>
                 <button class="btn-save" @onclick="Save" disabled="@_saving">
                     @if (_saving) { <div class="spinner"></div> }
-                    @(_isEdit ? "Update Product" : "Save Product")
+                    @(_isEdit ? T("Products.UpdateProduct") : T("Products.SaveProduct"))
                 </button>
             </div>
         </div>
@@ -339,128 +472,124 @@
 {
     var d = _detailItem;
     <div class="modal-overlay" @onclick="() => _showDetail = false">
-        <div class="modal-card" @onclick:stopPropagation="true">
+        <div class="modal-card modal-wide modal-detail" @onclick:stopPropagation="true">
             <div class="modal-header">
-                <div>
-                    <h2>@d.ProductName</h2>
-                    <p style="font-size:12px;color:rgba(255,255,255,.35);margin-top:2px;">@d.ProductCode</p>
-                </div>
+                <h2>@T("Products.ViewTitle")</h2>
                 <button class="modal-close" @onclick="() => _showDetail = false">✕</button>
             </div>
 
-            <!-- ID + Status -->
-            <div class="form-grid" style="margin-bottom:8px;">
-                <div class="form-group">
-                    <label>Product ID</label>
-                    <div class="form-input form-input-disabled">@(string.IsNullOrEmpty(d.ProductCode) ? "—" : d.ProductCode)</div>
+            <div class="vc-grid">
+                <div class="vc-col">
+                    <ViewSection Title="@T("Products.ViewDetails")" Icon="box">
+                        <ViewRow Label="@T("Products.ProductID")" Value="@d.ProductCode" />
+                        <ViewRow Label="@T("Common.Status")"><span class="vc-badge @(d.IsActive ? "" : "off")">@(d.IsActive ? T("Products.Valid") : T("Products.Invalid"))</span></ViewRow>
+                        <ViewRow Label="@T("Common.ProductCode")" Value="@d.ItemNumber" />
+                        <ViewRow Label="@T("Common.ProductName")" Value="@d.ProductName" />
+                        <ViewRow Label="@T("Products.EstablishDate")" Value="@(d.EstablishDate.HasValue ? d.EstablishDate.Value.ToString("dd/MM/yyyy") : null)" />
+                    </ViewSection>
+                    <ViewSection Title="@T("Products.ViewVendor")" Icon="layers">
+                        <ViewRow Label="@T("Common.VendorID")" Value="@d.VendorId" />
+                        <ViewRow Label="@T("Common.VendorName")" Value="@d.VendorName" />
+                    </ViewSection>
+                    <ViewSection Title="@T("Products.ProductSpecifications")" Icon="briefcase">
+                        <ViewRow Label="@T("Common.Category")" Value="@d.Category" />
+                        <ViewRow Label="@T("Products.ViewSize")" Value="@(d.SizeL.HasValue || d.SizeW.HasValue || d.SizeH.HasValue ? $"{d.SizeL?.ToString("0.##") ?? "—"} × {d.SizeW?.ToString("0.##") ?? "—"} × {d.SizeH?.ToString("0.##") ?? "—"} mm" : null)" />
+                        <ViewRow Label="@T("Products.Weight")" Value="@(d.Weight.HasValue ? d.Weight.Value.ToString("0.###") + " kg" : null)" />
+                        @if (!string.IsNullOrEmpty(d.Remark))
+                        {
+                            <ViewRow Label="@T("Common.Remark")" Value="@d.Remark" />
+                        }
+                    </ViewSection>
                 </div>
-                <div class="form-group">
-                    <label>Status</label>
-                    <div style="padding-top:10px;">
-                        <span class="status-badge @(d.IsActive ? "active" : "inactive")">
-                            @(d.IsActive ? "Valid" : "Invalid")
-                        </span>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Vendor -->
-            <div class="form-section-title">Vendor</div>
-            <div class="form-grid">
-                <div class="form-group">
-                    <label>Vendor ID</label>
-                    <div class="form-input form-input-disabled">@(string.IsNullOrEmpty(d.VendorId) ? "—" : d.VendorId)</div>
-                </div>
-                <div class="form-group">
-                    <label>Vendor Name</label>
-                    <div class="form-input form-input-disabled">@(string.IsNullOrEmpty(d.VendorName) ? "—" : d.VendorName)</div>
-                </div>
-            </div>
-
-            <!-- Product Details -->
-            <div class="form-section-title">Product Details</div>
-            <div class="form-grid">
-                <div class="form-group">
-                    <label>Category</label>
-                    <div class="form-input form-input-disabled">@(string.IsNullOrEmpty(d.Category) ? "—" : d.Category)</div>
-                </div>
-                <div class="form-group">
-                    <label>Product Name</label>
-                    <div class="form-input form-input-disabled">@d.ProductName</div>
-                </div>
-                <div class="form-group">
-                    <label>Product Code</label>
-                    <div class="form-input form-input-disabled">@(string.IsNullOrEmpty(d.ItemNumber) ? "—" : d.ItemNumber)</div>
-                </div>
-                <div class="form-group">
-                    <label>Establish Date</label>
-                    <div class="form-input form-input-disabled">@(d.EstablishDate.HasValue ? d.EstablishDate.Value.ToString("dd/MM/yyyy") : "—")</div>
-                </div>
-                <div class="form-group full-width">
-                    <label>Size (MM/Inch) &amp; Weight</label>
-                    <div class="size-grid">
-                        <div class="form-group">
-                            <label>L</label>
-                            <div class="form-input form-input-disabled">@(d.SizeL.HasValue ? d.SizeL.Value.ToString("0.##") : "—")</div>
-                        </div>
-                        <div class="form-group">
-                            <label>W</label>
-                            <div class="form-input form-input-disabled">@(d.SizeW.HasValue ? d.SizeW.Value.ToString("0.##") : "—")</div>
-                        </div>
-                        <div class="form-group">
-                            <label>H</label>
-                            <div class="form-input form-input-disabled">@(d.SizeH.HasValue ? d.SizeH.Value.ToString("0.##") : "—")</div>
-                        </div>
-                        <div class="form-group">
-                            <label>Weight (KGS)</label>
-                            <div class="form-input form-input-disabled">@(d.Weight.HasValue ? d.Weight.Value.ToString("0.###") : "—")</div>
-                        </div>
-                    </div>
-                </div>
-                @if (!string.IsNullOrEmpty(d.Remark))
-                {
-                    <div class="form-group full-width">
-                        <label>Remark</label>
-                        <div class="form-input form-input-disabled" style="min-height:50px;white-space:pre-wrap;">@d.Remark</div>
-                    </div>
-                }
-            </div>
-
-            @if (d.References.Any(r => !string.IsNullOrEmpty(r.Name)))
-            {
-                <div class="form-section-title">Reference</div>
-                <div class="ref-table">
-                    @foreach (var r in d.References.Where(r => !string.IsNullOrEmpty(r.Name)))
+                <div class="vc-col">
+                    @if (d.CartonQuantity.HasValue || d.Cartons.Any())
                     {
-                        <div class="ref-row">
-                            <span class="ref-col-no ref-num">@r.SortOrder</span>
-                            <span class="ref-col-name" style="font-size:13px;color:#1a2d5a;">@r.Name</span>
-                            <div class="ref-col-file">
-                                @if (!string.IsNullOrEmpty(r.FileUrl))
+                        <ViewSection Title="@T("Products.ViewCarton")" Icon="box">
+                            @if (d.CartonQuantity.HasValue)
+                            {
+                                <div class="vc-note" style="padding:6px 0 0;color:#1d6fe0;font-weight:700;">@T("Products.ViewCartonSize", d.CartonQuantity)</div>
+                            }
+                            @if (d.Cartons.Any())
+                            {
+                                <div style="overflow-x:auto;">
+                                    <table class="vc-table">
+                                        <thead>
+                                            <tr><th>@T("Common.CartonVariant")</th><th>@T("Products.ViewPackingQty")</th><th>@T("Products.ViewLmm")</th><th>@T("Products.ViewWmm")</th><th>@T("Products.ViewHmm")</th><th>@T("Products.ViewWeightKg")</th></tr>
+                                        </thead>
+                                        <tbody>
+                                            @foreach (var c in d.Cartons)
+                                            {
+                                                <tr>
+                                                    <td>@c.CartonVariant</td><td>@c.PackagingQuantity</td>
+                                                    <td>@c.SizeL?.ToString("0.##")</td><td>@c.SizeW?.ToString("0.##")</td><td>@c.SizeH?.ToString("0.##")</td>
+                                                    <td>@c.Weight?.ToString("0.###")</td>
+                                                </tr>
+                                            }
+                                        </tbody>
+                                    </table>
+                                </div>
+                            }
+                        </ViewSection>
+                    }
+
+                    @if (d.References.Any(r => !string.IsNullOrEmpty(r.Name)))
+                    {
+                        <ViewSection Title="@T("Products.ViewDocs")" Icon="doc">
+                            <div style="overflow-x:auto;">
+                                <table class="vc-table">
+                                    <thead><tr><th>@T("Common.No")</th><th>@T("Products.ViewDocument")</th><th>@T("Products.File")</th></tr></thead>
+                                    <tbody>
+                                        @foreach (var r in d.References.Where(r => !string.IsNullOrEmpty(r.Name)))
+                                        {
+                                            <tr>
+                                                <td>@r.SortOrder</td>
+                                                <td class="l">@r.Name</td>
+                                                <td class="l">
+                                                    @if (!string.IsNullOrEmpty(r.FileUrl))
+                                                    {
+                                                        var fUrl = MediaUrl.Resolve(r.FileUrl, Http.BaseAddress?.ToString());
+                                                        <a class="vc-file" href="@fUrl" target="_blank" rel="noopener">📎 @r.FileName</a>
+                                                    }
+                                                </td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </table>
+                            </div>
+                        </ViewSection>
+                    }
+
+                    @if (d.PhotoUrls.Count > 0 || !string.IsNullOrEmpty(d.PhotoUrl))
+                    {
+                        var detailPhotos = d.PhotoUrls.Count > 0 ? d.PhotoUrls : new List<string> { d.PhotoUrl };
+                        <ViewSection Title="@T("Products.ProductPhoto")" Icon="image">
+                            <div class="vc-photos">
+                                @foreach (var du in detailPhotos)
                                 {
-                                    var fUrl = MediaUrl.Resolve(r.FileUrl, Http.BaseAddress?.ToString());
-                                    <a class="ref-fname" href="@fUrl" target="_blank">📎 @r.FileName</a>
+                                    var duUrl = MediaUrl.Resolve(du, Http.BaseAddress?.ToString());
+                                    var isMain = du == d.PhotoUrl;
+                                    <div class="vc-photo-item @(isMain ? "main" : "")">
+                                        <img src="@duUrl" @onclick="() => _lightbox = duUrl" />
+                                        @if (isMain)
+                                        {
+                                            <div class="vc-photo-side">
+                                                <span class="vc-main">✓ @T("Products.ViewMainPhoto")</span>
+                                                <small>@T("Products.ViewUseInReport")</small>
+                                            </div>
+                                        }
+                                    </div>
                                 }
                             </div>
-                        </div>
+                        </ViewSection>
                     }
                 </div>
-            }
-
-            @if (!string.IsNullOrEmpty(d.PhotoUrl))
-            {
-                <div class="form-section-title">Product Photo</div>
-                var photoUrl = MediaUrl.Resolve(d.PhotoUrl, Http.BaseAddress?.ToString());
-                <div style="text-align:center;padding:8px 0;">
-                    <img src="@photoUrl" style="max-width:100%;max-height:280px;border-radius:10px;border:1px solid #dde4ef;" />
-                </div>
-            }
+            </div>
 
             <div class="modal-footer">
-                <button class="btn-cancel" @onclick="() => _showDetail = false">Close</button>
+                <button class="btn-cancel" @onclick="() => _showDetail = false">@T("Common.Close")</button>
                 <button class="btn-save" @onclick="() => { _showDetail = false; OpenEdit(d); }">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-                    Edit
+                    @T("Common.Edit")
                 </button>
             </div>
         </div>
@@ -473,13 +602,13 @@
     <div class="modal-overlay" @onclick="() => _showDel = false">
         <div class="modal-card confirm-card" @onclick:stopPropagation="true">
             <div class="confirm-icon">🗑️</div>
-            <h2>Confirm Delete</h2>
-            <p>Delete <strong>@_delItem?.ProductName</strong>?</p>
-            <p>This action cannot be undone.</p>
+            <h2>@T("Products.ConfirmDelete")</h2>
+            <p>@T("Common.Delete") <strong>@_delItem?.ProductName</strong>?</p>
+            <p>@T("Products.ThisActionCannotBeUndone")</p>
             <div class="modal-footer">
-                <button class="btn-cancel" @onclick="() => _showDel = false">Cancel</button>
+                <button class="btn-cancel" @onclick="() => _showDel = false">@T("Common.Cancel")</button>
                 <button class="btn-delete" @onclick="DoDelete" disabled="@_saving">
-                    @if (_saving) { <div class="spinner"></div> } else { <span>Delete</span> }
+                    @if (_saving) { <div class="spinner"></div> } else { <span>@T("Common.Delete")</span> }
                 </button>
             </div>
         </div>
@@ -498,6 +627,7 @@
 }
 
 @code {
+    private bool _fOpen;
     // ── Records ──────────────────────────────────────────────────────
     class CategoryItem
     {
@@ -524,11 +654,26 @@
         public decimal? SizeH       { get; set; }
         public decimal? Weight      { get; set; }
         public string  PhotoUrl     { get; set; } = "";
+        public List<string> PhotoUrls { get; set; } = new();
         public string  Remark       { get; set; } = "";
         public bool    IsActive      { get; set; } = true;
         public DateTime? EstablishDate { get; set; }
         public DateTime CreatedAt   { get; set; }
+        public DateTime? UpdatedAt  { get; set; }
+        public int?    CartonQuantity { get; set; }
+        public List<PCartonDto> Cartons { get; set; } = new();
         public List<PRefDto> References { get; set; } = new();
+    }
+
+    class PCartonDto
+    {
+        public string   CartonVariant     { get; set; } = "";
+        public string   Description       { get; set; } = "";
+        public string   PackagingQuantity { get; set; } = "";
+        public decimal? SizeL             { get; set; }
+        public decimal? SizeW             { get; set; }
+        public decimal? SizeH             { get; set; }
+        public decimal? Weight            { get; set; }
     }
 
     class PRefDto
@@ -580,9 +725,11 @@
         public decimal Weight      { get; set; } = 0;
         public string ItemNumber   { get; set; } = "";
         public string PhotoUrl     { get; set; } = "";
+        public List<string> PhotoUrls { get; set; } = new();
         public string Remark       { get; set; } = "";
         public bool   IsActive      { get; set; } = true;
         public DateTime? EstablishDate { get; set; }
+        public int?   CartonQuantity { get; set; }
     }
 
     class RefRow
@@ -602,15 +749,15 @@
 
     bool   _loading = true, _saving = false, _uploading = false;
     string _pageError = "", _pageOk = "", _mErr = "";
-    string _search = "", _filterCat = "";
-    string _lightbox = "", _prevUrl = "";
+    string _search = "", _filterCat = "", _filterVendor = "";
+    string _lightbox = "";
     bool   _showModal = false, _isEdit = false;
     int    _editId = 0;
     PForm  _f = new();
     List<RefRow> _refs = new() { new(), new(), new(), new(), new() };
+    List<PCartonDto> _cartons = new() { new() };
     bool   _showDel = false;
     PDto?  _delItem = null;
-    IBrowserFile? _pendingFile = null;
 
     // Detail view
     bool  _showDetail = false;
@@ -623,6 +770,12 @@
     protected override async Task OnInitializedAsync()
     {
         await PageAccess.EnsureLoadedAsync();
+        // Page Access guard: Admin luon duoc vao, role khac phai co "Directory"
+        if (!PageAccess.HasAccess("Directory"))
+        {
+            Navigation.NavigateTo("/", replace: true);
+            return;
+        }
         await Task.WhenAll(Load(), LoadCusts(), LoadVends(), LoadCategories());
     }
 
@@ -677,7 +830,24 @@
         catch { }
     }
 
+    string _filterStatus = "";
+    int _pageIdx = 1, _pageSz = 10;
+    readonly HashSet<int> _sel = new();
+    List<PDto> _pageItems => _filtered.Skip((_pageIdx - 1) * _pageSz).Take(_pageSz).ToList();
+    void ToggleAll(bool on) { foreach (var x in _pageItems) { if (on) _sel.Add(x.Id); else _sel.Remove(x.Id); } }
+    void ToggleOne(int id, bool on) { if (on) _sel.Add(id); else _sel.Remove(id); }
+    void GoPage(int p) { _pageIdx = p; }
+    void SetPageSz(int n) { _pageSz = n; _pageIdx = 1; }
+    void ClearFilters() { _search = _filterCat = _filterVendor = _filterStatus = ""; ApplyFilter(); }
+    void SetStatusChip(string v) { _filterStatus = v; ApplyFilter(); }
+
     void ApplyFilter()
+    {
+        _pageIdx = 1;
+        ApplyFilterCore();
+    }
+
+    void ApplyFilterCore()
     {
         var q = _search.Trim().ToLower();
         _filtered = _all.Where(p =>
@@ -688,7 +858,9 @@
              p.CustomerName.ToLower().Contains(q) ||
              p.Category.ToLower().Contains(q)     ||
              p.ProductType.ToLower().Contains(q)) &&
-            (string.IsNullOrEmpty(_filterCat) || p.Category == _filterCat)
+            (string.IsNullOrEmpty(_filterCat) || p.Category == _filterCat) &&
+            (string.IsNullOrEmpty(_filterVendor) || p.VendorId == _filterVendor) &&
+            (_filterStatus == "" || (_filterStatus == "valid" ? p.IsActive : !p.IsActive))
         ).ToList();
     }
 
@@ -706,9 +878,10 @@
 
     async Task OpenAddModal()
     {
-        _f = new(); _prevUrl = ""; _pendingFile = null;
+        _f = new();
         _isEdit = false; _editId = 0; _mErr = "";
         _refs = new() { new(), new(), new(), new(), new() };
+        _cartons = new() { new() };
         // Tự động lấy code tiếp theo từ API
         try
         {
@@ -738,20 +911,18 @@
             SizeH         = (decimal)(item.SizeH   ?? 0),
             Weight        = (decimal)(item.Weight  ?? 0),
             PhotoUrl      = item.PhotoUrl,     Remark        = item.Remark,
+            PhotoUrls     = item.PhotoUrls.ToList(),
             IsActive      = item.IsActive,
-            EstablishDate = item.EstablishDate
+            EstablishDate = item.EstablishDate,
+            CartonQuantity = item.CartonQuantity
         };
-        // Resolve full URL cho photo preview
-        if (!string.IsNullOrEmpty(item.PhotoUrl))
+        _cartons = item.Cartons.Select(c => new PCartonDto
         {
-            var baseUrl = Http.BaseAddress?.ToString().TrimEnd('/') ?? "";
-            _prevUrl = MediaUrl.Resolve(item.PhotoUrl, baseUrl);
-        }
-        else
-        {
-            _prevUrl = "";
-        }
-        _pendingFile = null;
+            CartonVariant = c.CartonVariant, Description = c.Description, PackagingQuantity = c.PackagingQuantity,
+            SizeL = c.SizeL, SizeW = c.SizeW, SizeH = c.SizeH, Weight = c.Weight
+        }).ToList();
+        if (!_cartons.Any()) _cartons.Add(new PCartonDto());
+        if (_f.PhotoUrls.Count > 0 && !_f.PhotoUrls.Contains(_f.PhotoUrl)) _f.PhotoUrl = _f.PhotoUrls[0];
         // Load references từ product
         var baseUrlRef = Http.BaseAddress?.ToString().TrimEnd('/') ?? "";
         _refs = item.References.Select(r => new RefRow
@@ -775,7 +946,7 @@
         if (idx >= _refs.Count) return;
         var file = e.File;
         if (file == null) return;
-        if (file.Size > 20 * 1024 * 1024) { _mErr = $"Row {idx + 1}: File must be under 20 MB."; return; }
+        if (file.Size > 20 * 1024 * 1024) { _mErr = T("Products.RowFileMustBeUnder20", idx + 1); return; }
 
         _refs[idx].FileName  = file.Name;
         _refs[idx].FileUrl   = "";
@@ -800,7 +971,7 @@
             }
             else
             {
-                _mErr = $"Row {idx + 1}: Upload failed.";
+                _mErr = T("Products.RowUploadFailed", idx + 1);
                 _refs[idx].FileName = "";
             }
         }
@@ -812,63 +983,72 @@
 
     async Task OnPhoto(InputFileChangeEventArgs e)
     {
-        var file = e.File;
-        if (file == null) return;
-        if (file.Size > 5 * 1024 * 1024) { _mErr = "Image must be under 5 MB."; return; }
-        var ok = new[] { "image/jpeg","image/png","image/webp","image/gif" };
-        if (!ok.Contains(file.ContentType)) { _mErr = "Only JPG / PNG / WEBP allowed."; return; }
+        var ok = new[] { "image/jpeg","image/png","image/webp" };
         _mErr = "";
-
-        // Local preview
-        var buf = new byte[Math.Min(file.Size, 2 * 1024 * 1024)];
-        await file.OpenReadStream(5 * 1024 * 1024).ReadAsync(buf);
-        _prevUrl = $"data:{file.ContentType};base64,{Convert.ToBase64String(buf)}";
-
-        if (_isEdit && _editId > 0)
-            await DoUpload(_editId, file);
-        else
-            _pendingFile = file;
-    }
-
-    async Task DoUpload(int id, IBrowserFile file)
-    {
         _uploading = true;
+        StateHasChanged();
         try
         {
-            using var mc = new MultipartFormDataContent();
-            var sc = new StreamContent(file.OpenReadStream(5 * 1024 * 1024));
-            sc.Headers.ContentType = new MediaTypeHeaderValue(file.ContentType);
-            mc.Add(sc, "file", file.Name);
-            var resp = await Http.PostAsync($"api/products/{id}/photo", mc);
-            if (resp.IsSuccessStatusCode)
+            foreach (var picked in e.GetMultipleFiles(8))
             {
-                var opts = new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true };
-                var json = await resp.Content.ReadAsStringAsync();
-                var r = System.Text.Json.JsonSerializer.Deserialize<PhotoRes>(json, opts);
-                _f.PhotoUrl = r?.PhotoUrl ?? "";
-                _prevUrl    = _f.PhotoUrl;
-            }
-            else
-            {
-                var err = await resp.Content.ReadAsStringAsync();
-                _mErr = $"Photo upload failed: {err}";
+                if (_f.PhotoUrls.Count >= 8) break;
+                IBrowserFile file = picked;
+                try
+                {
+                    // Định dạng server không nhận (GIF, HEIC, không rõ loại...) → trình duyệt đổi sang JPEG trước khi gửi
+                    if (!ok.Contains(picked.ContentType ?? ""))
+                    {
+                        if (!(picked.ContentType ?? "").StartsWith("image/")) { _mErr = T("Products.OnlyJPGPNGWEBPAllowed"); continue; }
+                        file = await picked.RequestImageFileAsync("image/jpeg", 2560, 2560);
+                    }
+                    else
+                        file = await ImageShrink.ShrinkAsync(picked);   // ảnh điện thoại lớn → thu nhỏ trước khi upload
+                }
+                catch { _mErr = T("Products.OnlyJPGPNGWEBPAllowed"); continue; }
+                if (file.Size > 5 * 1024 * 1024) { _mErr = T("Products.ImageMustBeUnder5MB"); continue; }
+
+                using var mc = new MultipartFormDataContent();
+                var sc = new StreamContent(file.OpenReadStream(5 * 1024 * 1024));
+                sc.Headers.ContentType = new MediaTypeHeaderValue(file.ContentType);
+                mc.Add(sc, "file", file.Name);
+                var resp = await Http.PostAsync("api/upload/photo", mc);
+                if (resp.IsSuccessStatusCode)
+                {
+                    var r = await resp.Content.ReadFromJsonAsync<UploadResult>(new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                    if (!string.IsNullOrEmpty(r?.Url))
+                    {
+                        _f.PhotoUrls.Add(r.Url);
+                        if (string.IsNullOrEmpty(_f.PhotoUrl)) _f.PhotoUrl = r.Url;   // ảnh đầu tiên mặc định dùng trong báo cáo
+                    }
+                }
+                else
+                {
+                    var err = await resp.Content.ReadAsStringAsync();
+                    _mErr = T("Products.PhotoUploadFailed", err);
+                }
             }
         }
         catch (Exception ex) { _mErr = ex.Message; }
         finally { _uploading = false; }
     }
 
-    void RemovePhoto() { _prevUrl = ""; _f.PhotoUrl = ""; _pendingFile = null; }
+    void RemovePhoto(int idx)
+    {
+        if (idx < 0 || idx >= _f.PhotoUrls.Count) return;
+        var removed = _f.PhotoUrls[idx];
+        _f.PhotoUrls.RemoveAt(idx);
+        if (_f.PhotoUrl == removed) _f.PhotoUrl = _f.PhotoUrls.FirstOrDefault() ?? "";
+    }
 
     async Task Save()
     {
         _mErr = "";
-        if (string.IsNullOrWhiteSpace(_f.CustomerId))  { _mErr = "Please select a Customer."; return; }
-        if (string.IsNullOrWhiteSpace(_f.Category))    { _mErr = "Category is required."; return; }
-        if (string.IsNullOrWhiteSpace(_f.ProductName)) { _mErr = "Product Name is required."; return; }
+        if (string.IsNullOrWhiteSpace(_f.CustomerId))  { _mErr = T("Products.PleaseSelectCustomer"); return; }
+        if (string.IsNullOrWhiteSpace(_f.Category))    { _mErr = T("Products.CategoryIsRequired"); return; }
+        if (string.IsNullOrWhiteSpace(_f.ProductName)) { _mErr = T("Products.ProductNameIsRequired"); return; }
 
         _saving = true;
-        Waiting.Show(_isEdit ? "Saving product..." : "Creating product...");
+        Waiting.Show(_isEdit ? T("Products.SavingProduct") : T("Products.CreatingProduct"));
         try
         {
             var refs = _refs
@@ -881,9 +1061,11 @@
                 _f.ProductName, _f.ProductCode, _f.ItemNumber,
                 _f.ProductColor, _f.ProductSize,
                 _f.SizeL, _f.SizeW, _f.SizeH, _f.Weight,
-                PhotoUrl = _f.PhotoUrl, _f.Remark,
+                PhotoUrl = _f.PhotoUrl, PhotoUrls = _f.PhotoUrls, _f.Remark,
                 isActive      = _f.IsActive,
                 establishDate = _f.EstablishDate,
+                cartonQuantity = _f.CartonQuantity,
+                Cartons    = _cartons,
                 References = refs
             };
 
@@ -904,35 +1086,14 @@
 
             if (resp.IsSuccessStatusCode)
             {
-                if (!_isEdit && savedId > 0 && _pendingFile != null)
-                {
-                    await DoUpload(savedId, _pendingFile);
-                    // Update record with the photo URL returned from server
-                    if (!string.IsNullOrEmpty(_f.PhotoUrl))
-                    {
-                        var updateBody = new {
-                            _f.CustomerId, _f.VendorId, _f.Category, _f.ProductType,
-                            _f.ProductName, _f.ProductCode, _f.ItemNumber,
-                            _f.ProductColor, _f.ProductSize,
-                            _f.SizeL, _f.SizeW, _f.SizeH, _f.Weight,
-                            PhotoUrl = _f.PhotoUrl, _f.Remark,
-                            isActive      = _f.IsActive,
-                            establishDate = _f.EstablishDate,
-                            References = refs
-                        };
-                        await Http.PutAsJsonAsync($"api/products/{savedId}", updateBody);
-                    }
-                }
-
-                _pendingFile = null;
                 _showModal   = false;
-                _pageOk      = _isEdit ? "Product updated." : "Product added.";
+                _pageOk      = _isEdit ? T("Products.ProductUpdated") : T("Products.ProductAdded");
                 await Load();
             }
             else
             {
                 var e = await resp.Content.ReadAsStringAsync();
-                _mErr = $"Error: {e}";
+                _mErr = T("Products.Error", e);
             }
         }
         catch (Exception ex) { _mErr = ex.Message; }
@@ -949,13 +1110,13 @@
     {
         if (_delItem == null) return;
         _saving = true;
-        Waiting.Show("Deleting product...");
+        Waiting.Show(T("Products.DeletingProduct"));
         try
         {
             var resp = await Http.DeleteAsync($"api/products/{_delItem.Id}");
             _showDel = false;
-            if (resp.IsSuccessStatusCode) { _pageOk = $"'{_delItem.ProductName}' deleted."; await Load(); }
-            else _pageError = "Delete failed.";
+            if (resp.IsSuccessStatusCode) { _pageOk = T("Products.Deleted", _delItem.ProductName); await Load(); }
+            else _pageError = T("Products.DeleteFailed");
         }
         catch (Exception ex) { _pageError = ex.Message; }
         finally { _saving = false; Waiting.Hide(); }
@@ -995,6 +1156,8 @@
     .ptable { width:100%; border-collapse:collapse; background:#fff; font-size:12.5px; min-width:1000px; }
     .ptable th { padding:7px 9px; border:1px solid #b8c4d8; text-align:center; font-weight:600; font-size:11px; color:#1a2d5a; white-space:nowrap; text-transform:uppercase; letter-spacing:.04em; background:#fff; }
     .thead-group th { background:#fffde7; color:#1a2d5a !important; vertical-align:middle; }
+    /* Tiêu đề bảng nền vàng giống Inspector Profile (khách yêu cầu 4 trang Directory cùng kiểu) */
+    .th-y   { background:#fffde7 !important; }
     .status-badge         { padding:3px 9px; border-radius:20px; font-size:11px; font-weight:600; white-space:nowrap; }
     .status-badge.active  { background:#eaf3de; color:#3b6d11; border:1px solid #c0dd97; }
     .status-badge.inactive{ background:#fef2f2; color:#dc2626; border:1px solid #fecaca; }
@@ -1036,7 +1199,7 @@
 
     /* Modal */
     .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.55); backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center; z-index: 1000; padding: 20px; }
-    .modal-card { background: #fff; border: 1px solid #dde4ef; border-radius: 16px; padding: 28px 32px; width: 75vw; max-width: 1100px; max-height: 90vh; overflow-y: auto; box-shadow: 0 24px 60px rgba(0,0,0,0.18); }
+    .modal-card { background: #fff; border: 1px solid #dde4ef; border-radius: 16px; padding: 28px 32px; width: 90vw; max-width: 1200px; max-height: 90vh; overflow-y: auto; box-shadow: 0 24px 60px rgba(0,0,0,0.18); }
     .modal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
     .modal-header h2 { font-family: "Sora", sans-serif; font-size: 20px; font-weight: 700; color: #1a2d5a; }
     .modal-close { background: none; border: none; cursor: pointer; color: #9baac8; font-size: 18px; padding: 4px 8px; border-radius: 6px; line-height: 1; }
@@ -1078,6 +1241,16 @@
     .upload-text { font-size: 14px; color: #4a6080; }
     .upload-hint { font-size: 12px; color: #9baac8; }
     .photo-area-modal { display: flex; align-items: center; gap: 14px; margin-bottom: 8px; flex-wrap: wrap; }
+    .pp-sub { font-size: 12px; color: #6b7a99; margin: -4px 0 8px; }
+    .pp-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; margin-bottom: 10px; }
+    .pp-card { position: relative; border: 2px solid #dde4ef; border-radius: 12px; padding: 8px; background: #fff; display: flex; flex-direction: column; align-items: center; gap: 6px; }
+    .pp-card.main { border-color: #1e90d6; background: #f0f7ff; }
+    .pp-img { width: 100%; height: 110px; object-fit: contain; cursor: zoom-in; }
+    .pp-no { position: absolute; top: 6px; left: 6px; width: 22px; height: 22px; border-radius: 50%; background: #c5cfe3; color: #fff; font-size: 12px; font-weight: 600; display: flex; align-items: center; justify-content: center; }
+    .pp-card.main .pp-no { background: #1e90d6; }
+    .pp-del { position: absolute; top: 6px; right: 6px; width: 24px; height: 24px; border-radius: 6px; background: #fff; border: 1px solid #dde4ef; color: #dc2626; cursor: pointer; font-size: 12px; z-index: 1; }
+    .pp-radio { display: flex; align-items: center; gap: 6px; font-size: 12px; color: #1a2d5a; cursor: pointer; }
+    .pp-info { font-size: 12px; color: #1e6fb8; background: #eef6ff; border-radius: 8px; padding: 8px 10px; margin-bottom: 12px; }
     .prev-wrap { position: relative; flex-shrink: 0; }
     .prev-img { width: 80px; height: 80px; object-fit: cover; border-radius: 10px; border: 2px solid #dde4ef; }
     .rm-photo { position: absolute; top: -8px; right: -8px; width: 22px; height: 22px; border-radius: 50%; background: #dc2626; color: #fff; border: none; cursor: pointer; font-size: 11px; display: flex; align-items: center; justify-content: center; }
@@ -1128,5 +1301,18 @@
         .btn-add { width:100%; justify-content:center; }
         .modal-card { width: 100%; border-radius: 12px; padding: 16px 14px; max-height: 95vh; }
         .modal-header h2 { font-size: 16px; }
+        /* Màn chi tiết toàn trang — giống Customer Information: nền trắng, nút Close/Edit nằm cuối nội dung */
+        .modal-overlay:has(.modal-detail) { align-items:stretch; padding:0; }
+        .modal-card.modal-detail { background:#fff; width:100vw !important; max-width:100vw !important; height:100dvh; max-height:100dvh !important; border-radius:0 !important; border:none; padding:16px 14px calc(16px + env(safe-area-inset-bottom)); overflow-y:auto; overscroll-behavior:contain; -webkit-overflow-scrolling:touch; box-shadow:none; }
+        .modal-card.modal-detail .modal-header h2 { font-size:20px; }
     }
+
+    /* ── Carton Size table ── */
+    .ctn-wrap { overflow-x:auto; margin-bottom:8px; }
+    .ctn-table { width:100%; border-collapse:collapse; font-size:12px; min-width:640px; }
+    .ctn-table th { background:#f0f5fb; color:#4a6fa5; font-weight:700; font-size:10.5px; text-transform:uppercase; letter-spacing:.04em; padding:6px 4px; border:1px solid #dde4ef; text-align:center; }
+    .ctn-table td { border:1px solid #e6ecf5; padding:3px; text-align:center; }
+    .ctn-table td .form-input { padding:6px 8px; font-size:12px; min-width:0; width:100%; box-sizing:border-box; }
+    .ctn-view td { padding:7px 6px; color:#1a2d5a; }
+    .ctn-del { background:none; border:none; color:#e74c3c; cursor:pointer; font-size:13px; padding:4px 6px; }
 </style>

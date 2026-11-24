@@ -1,0 +1,235 @@
+﻿/* Container Loading Check (CLC): Pages/Clc*.razor */
+.clc-page { max-width:1280px; margin:0 auto; color:#1a2d5a; font-family:"DM Sans",sans-serif; }
+.clc-page * { box-sizing:border-box; }
+.clc-head { display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; margin-bottom:14px; color:#fff; }
+.clc-title { font-family:"Sora",sans-serif; font-size:20px; font-weight:700; margin:0; }
+.clc-sub { font-size:13px; color:rgba(255,255,255,.75); margin-top:2px; }
+
+.clc-btn { border:1.5px solid #cbd8ee; background:#fff; color:#1d4ed8; border-radius:10px; padding:10px 18px; font-size:14px; font-weight:700; cursor:pointer; font-family:inherit; white-space:nowrap; }
+.clc-btn:hover { background:#eef4ff; }
+.clc-btn.primary { background:#1d4ed8; border-color:#1d4ed8; color:#fff; }
+.clc-btn.primary:hover { background:#1a43b8; }
+.clc-btn.green { background:#16a34a; border-color:#16a34a; color:#fff; }
+.clc-btn.danger { color:#dc2626; border-color:#fecaca; }
+.clc-btn:disabled { opacity:.55; cursor:not-allowed; }
+.clc-btn.sm { padding:6px 12px; font-size:12.5px; border-radius:8px; }
+
+.clc-card { background:#fff; border-radius:14px; padding:16px; margin-bottom:14px; box-shadow:0 4px 18px rgba(0,0,0,.12); }
+.clc-card-t { display:flex; align-items:center; justify-content:space-between; gap:10px; font-size:15.5px; font-weight:800; color:#16346b; margin:0 0 12px; padding-bottom:8px; border-bottom:2px solid #dbe9fb; }
+/* Khung Inspector Assignment nền vàng nhạt giống Product Inspection (InspectionNew .office-card) */
+.clc-card.clc-card-office, body:has(.lp-head) .clc-card.clc-card-office { background:#fffdf0; border:1px solid #fde68a; }
+.clc-card-office .clc-card-t { border-bottom-color:#fde68a; }
+.clc-card-t small { font-size:12px; font-weight:500; color:#6b7c9c; }
+
+.clc-grid { display:grid; grid-template-columns:repeat(2, minmax(0,1fr)); gap:10px 16px; }
+.clc-grid.g3 { grid-template-columns:repeat(3, minmax(0,1fr)); }
+.clc-f { min-width:0; } .clc-f.full { grid-column:1 / -1; }
+.clc-f > label { display:block; font-size:12px; font-weight:700; color:#51638a; margin-bottom:4px; }
+.clc-req { color:#dc2626; }
+.clc-in { width:100%; height:40px; border:1.5px solid #cbd8ee; border-radius:9px; padding:8px 11px; font-size:14px; color:#1a2d5a; background:#fff; font-family:inherit;
+    -webkit-appearance:none; appearance:none; }
+select.clc-in { padding-right:30px; background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%236b7c9c' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E");
+    background-repeat:no-repeat; background-position:right 11px center; }
+textarea.clc-in { height:auto; min-height:76px; resize:vertical; }
+.clc-in:focus { outline:none; border-color:#3b82f6; box-shadow:0 0 0 3px rgba(59,130,246,.15); }
+.clc-in:disabled, .clc-in[readonly] { background:#f3f6fb; color:#51638a; }
+.clc-cnt { text-align:right; font-size:11px; color:#94a3b8; }
+
+/* stepper */
+.clc-steps { display:flex; justify-content:space-between; gap:6px; margin-bottom:14px; }
+.clc-step { flex:1; text-align:center; color:#fff; opacity:.75; cursor:pointer; background:none; border:none; font-family:inherit; font-size:12.5px; font-weight:600; }
+.clc-step b { display:flex; align-items:center; justify-content:center; width:34px; height:34px; border-radius:50%; margin:0 auto 4px; background:rgba(255,255,255,.2); border:2px solid rgba(255,255,255,.5); font-size:15px; }
+.clc-step.on { opacity:1; } .clc-step.on b { background:#fff; color:#1d4ed8; border-color:#fff; }
+.clc-step.done b { background:#16a34a; border-color:#16a34a; color:#fff; }
+
+/* bảng */
+.clc-scroll { overflow-x:auto; }
+.clc-table { width:100%; border-collapse:collapse; font-size:13.5px; min-width:640px; }
+.clc-table th { background:#eef4fb; color:#16346b; font-size:12px; text-transform:uppercase; letter-spacing:.03em; padding:8px; text-align:left; white-space:nowrap; }
+.clc-table td { padding:6px 8px; border-bottom:1px solid #edf2f9; vertical-align:middle; }
+.clc-table td.c, .clc-table th.c { text-align:center; }
+.clc-table tfoot td { font-weight:800; background:#f3f7fd; }
+.clc-table .clc-in { height:34px; padding:5px 8px; font-size:13px; }
+
+/* result pills */
+.clc-seg { display:flex; gap:6px; }
+.clc-seg button { flex:1; border:1.5px solid #cbd8ee; background:#f6f8fc; color:#51638a; border-radius:9px; padding:9px 4px; font-size:13.5px; font-weight:700; cursor:pointer; font-family:inherit; }
+.clc-seg button.pass.on { background:#dcfce7; border-color:#16a34a; color:#15803d; }
+.clc-seg button.fail.on { background:#fee2e2; border-color:#dc2626; color:#b91c1c; }
+.clc-seg button.na.on { background:#e5e7eb; border-color:#6b7280; color:#374151; }
+.clc-seg button.yes.on { background:#16a34a; border-color:#16a34a; color:#fff; }
+.clc-seg button.no.on { background:#dc2626; border-color:#dc2626; color:#fff; }
+.clc-seg.sm button { padding:5px 6px; font-size:12px; }
+.clc-pill { display:inline-block; padding:3px 11px; border-radius:99px; font-size:12px; font-weight:800; }
+.clc-pill.pass { background:#dcfce7; color:#15803d; } .clc-pill.fail { background:#fee2e2; color:#b91c1c; }
+.clc-pill.na { background:#e5e7eb; color:#374151; } .clc-pill.none { background:#f1f5f9; color:#94a3b8; }
+.clc-pill.hold { background:#fef3c7; color:#92400e; }
+.clc-pill.draft { background:#e5e7eb; color:#374151; } .clc-pill.pending { background:#fef3c7; color:#92400e; }
+.clc-pill.inprogress { background:#dbeafe; color:#1d4ed8; } .clc-pill.submitted { background:#dcfce7; color:#15803d; }
+
+/* 7 điểm */
+.clc-point { border:1.5px solid #dbe6f5; border-radius:12px; margin-bottom:8px; background:#fff; overflow:hidden; }
+.clc-point-h { display:flex; align-items:center; gap:10px; width:100%; padding:10px 12px; background:none; border:none; cursor:pointer; text-align:left; font-family:inherit; color:#1a2d5a; }
+.clc-point-n { flex-shrink:0; width:30px; height:30px; border-radius:50%; background:#16346b; color:#fff; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:14px; }
+.clc-point-name { flex:1; font-weight:700; font-size:14.5px; }
+.clc-point-ph { font-size:12px; color:#6b7c9c; }
+.clc-point-b { padding:4px 12px 14px; border-top:1px solid #edf2f9; }
+.clc-checks { display:flex; flex-direction:column; gap:6px; margin:8px 0; }
+.clc-check { display:flex; align-items:center; gap:8px; font-size:14px; }
+
+/* ảnh */
+.clc-photos { display:grid; grid-template-columns:repeat(auto-fill, minmax(110px, 1fr)); gap:8px; margin-top:6px; }
+.clc-ph { position:relative; aspect-ratio:4/3; border:2px dashed #93b4e8; border-radius:10px; background:#eef4ff; display:flex; align-items:center; justify-content:center; cursor:pointer; overflow:hidden; color:#2D7DD2; font-size:26px; font-weight:300; }
+.clc-ph img { width:100%; height:100%; object-fit:cover; display:block; }
+.clc-ph.has { border-style:solid; border-color:#dbe6f5; }
+.clc-ph .x { position:absolute; top:4px; right:4px; width:22px; height:22px; border-radius:50%; border:none; background:rgba(15,23,42,.7); color:#fff; font-size:12px; cursor:pointer; line-height:22px; padding:0; }
+.clc-ph .sp { font-size:11px; color:#2D7DD2; }
+.clc-slot { border:1.5px solid #dbe6f5; border-radius:12px; overflow:hidden; background:#fff; }
+.clc-slot-t { background:#16346b; color:#fff; font-size:12.5px; font-weight:700; padding:6px 10px; }
+.clc-slots { display:grid; grid-template-columns:repeat(2, minmax(0,1fr)); gap:10px; }
+
+.clc-nav { display:flex; gap:10px; margin-top:6px; }
+.clc-nav .clc-btn { flex:1; }
+.clc-err { background:#fee2e2; color:#991b1b; border-radius:10px; padding:10px 14px; margin-bottom:12px; font-size:13.5px; font-weight:600; }
+.clc-ok { background:#dcfce7; color:#166534; border-radius:10px; padding:10px 14px; margin-bottom:12px; font-size:13.5px; font-weight:600; }
+.clc-overall { display:flex; align-items:center; justify-content:space-between; border-radius:12px; padding:12px 16px; font-weight:800; margin:10px 0; background:#f1f5f9; }
+.clc-overall.pass { background:#dcfce7; color:#15803d; } .clc-overall.fail { background:#fee2e2; color:#b91c1c; } .clc-overall.hold { background:#fef3c7; color:#92400e; }
+.clc-overall span:last-child { font-size:24px; }
+.clc-sign { border:1.5px dashed #b7c8e6; border-radius:12px; min-height:110px; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:10px; background:#fbfdff; gap:6px; }
+.clc-sign img { max-height:90px; max-width:100%; object-fit:contain; }
+.clc-sign small { color:#51638a; }
+fieldset.clc-fs { border:0; margin:0; padding:0; min-width:0; }
+
+/* Danh sách CLC dùng chung bố cục Summary Inspections: nền sáng, chip, thẻ job có khối ngày */
+body:has(.clc-list .m-cards) .clc-head { color:#1a2d5a; }
+body:has(.clc-list .m-cards) .clc-sub { color:#6b7c9c; }
+.clc-list .m-date { width:52px; flex-shrink:0; text-align:center; background:#eef3fb; border-radius:10px; padding:6px 0; color:#1a2d5a; display:flex; flex-direction:column; line-height:1.1; }
+.clc-list .m-date b { font-size:20px; } .clc-list .m-date span { font-size:11px; text-transform:uppercase; color:#6b7280; } .clc-list .m-date small { font-size:10px; color:#6b7280; }
+.clc-list .m-card { cursor:pointer; }
+/* ô tìm kiếm / lọc (kiểu light, độc lập với CSS inline của trang Summary Inspections) */
+.clc-list .top-bar { display:flex; align-items:center; gap:10px; margin-bottom:14px; flex-wrap:wrap; }
+.clc-list .search-wrap { flex:1 1 260px; min-width:0; display:flex; align-items:center; gap:8px; background:#fff; border:1px solid #dde4ef; border-radius:8px; padding:8px 12px; }
+.clc-list .search-wrap svg { color:#8a99b5; flex-shrink:0; }
+.clc-list .search-input { flex:1; min-width:0; background:none; border:none; outline:none; color:#1a2d5a; font-size:13px; font-family:inherit; }
+.clc-list .search-input::placeholder { color:#9aa7bd; }
+.clc-list .lp-selects { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+.clc-list .filter-select { background:#fff; border:1px solid #dde4ef; border-radius:8px; padding:8px 30px 8px 12px; color:#1a2d5a; font-size:13px; outline:none; cursor:pointer; min-width:150px; font-family:inherit; -webkit-appearance:none; appearance:none;
+    background-image:url("data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%231a2d5a' stroke-width='1.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+    background-repeat:no-repeat; background-position:right 10px center; background-size:10px 6px; }
+.clc-list .btn-search { height:36px; padding:0 22px; border-radius:8px; font-size:13px; font-weight:600; font-family:inherit; cursor:pointer; background:#2563eb; border:1px solid #2563eb; color:#fff; }
+.clc-list .btn-search:hover { background:#1d4ed8; }
+@media (max-width:760px) { .clc-list .top-bar { flex-direction:row; } .clc-list .lp-selects { display:none; width:100%; } .clc-list .lp-filters.fopen .lp-selects { display:flex; } .clc-list .filter-select { flex:1; } }
+.clc-tablecard { display:none; }
+@media (min-width:761px) { .clc-tablecard { display:block; } }
+
+/* danh sách */
+.clc-filters { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px; }
+.clc-filters .clc-in { width:auto; min-width:150px; flex:1; }
+.clc-row-link { color:#1d4ed8; font-weight:800; cursor:pointer; background:none; border:none; padding:0; font-family:inherit; font-size:inherit; }
+
+@media (max-width:760px) {
+    .clc-grid, .clc-grid.g3 { grid-template-columns:minmax(0,1fr); }
+    .clc-card { padding:12px; }
+    .clc-title { font-size:17px; }
+    .clc-seg button { padding:8px 2px; font-size:13px; }
+    .clc-nav { flex-wrap:wrap; }
+    .clc-nav .clc-btn { flex:1 1 100%; white-space:normal; }
+}
+/* thẻ danh sách + bố cục danh sách (KPI dùng chung m-kpis từ desktop-list.css / mobile-list.css) */
+.clc-page.clc-list { max-width:none; width:100%; margin:0; }
+.clc-kpis { grid-template-columns:repeat(auto-fit, minmax(170px, 1fr)); }
+.clc-cards { display:none; }
+.clc-filters .clc-btn { height:40px; padding:0 20px; }
+.clc-table tbody tr:hover { background:#f6f9fe; }
+.clc-table td { padding:10px 8px; }
+@media (min-width:761px) {
+    body:has(.lp-head) .clc-card { box-shadow:0 1px 6px rgba(15,37,82,.06); border:1px solid #e3eaf6; }
+    body:has(.lp-head) .clc-head { color:#1a2d5a; }
+}
+@media (max-width:760px) {
+    .clc-head { flex-direction:column; align-items:stretch; }
+    .clc-head .clc-btn { width:100%; }
+    .clc-kpis { grid-template-columns:repeat(2, minmax(0,1fr)); }
+    .clc-filters { flex-direction:column; }
+    .clc-filters .clc-in { width:100%; flex:none !important; }
+    .clc-filters .clc-btn { width:100%; }
+    .clc-tablewrap { display:none; }
+    .clc-cards { display:flex; flex-direction:column; gap:10px; }
+    .clc-jc { border:1px solid #e3eaf6; border-radius:12px; padding:12px; background:#fff; box-shadow:0 1px 5px rgba(15,37,82,.06); cursor:pointer; }
+    .clc-jc-top { display:flex; justify-content:space-between; align-items:center; gap:8px; }
+    .clc-jc-name { font-weight:800; margin-top:6px; font-size:14.5px; }
+    .clc-jc-sub { color:#6b7c9c; font-size:12.5px; }
+    .clc-jc-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px 12px; margin-top:10px; font-size:13px; }
+    .clc-jc-grid small { display:block; font-size:11px; color:#6b7c9c; text-transform:uppercase; letter-spacing:.03em; }
+    .clc-jc-grid em { font-style:normal; color:#6b7c9c; font-size:11.5px; }
+    .clc-jc-foot { display:flex; flex-wrap:wrap; gap:8px; justify-content:space-between; align-items:center; margin-top:10px; padding-top:10px; border-top:1px solid #edf2f9; }
+    .clc-jc-act { display:flex; flex-wrap:wrap; justify-content:flex-end; gap:6px; min-width:0; max-width:100%; }
+}
+@media print {
+    .clc-noprint { display:none !important; }
+}
+.m-kpi-ico.k-red { background:#fee2e2; color:#dc2626; }
+.clc-eye { border:1px solid #cbd8ee; background:#fff; border-radius:8px; width:34px; height:30px; cursor:pointer; color:#1d4ed8; font-size:14px; }
+.clc-eye:hover { background:#eef4ff; }
+.clc-table .clc-pill { white-space:nowrap; }
+.clc-table { min-width:980px; }
+.clc-table td { overflow-wrap:normal; }
+.clc-table td:nth-child(3) { min-width:96px; overflow-wrap:anywhere; }
+.clc-more { position:relative; display:inline-block; }
+.clc-more-bd { position:fixed; inset:0; z-index:40; }
+.clc-more-menu { position:fixed; z-index:41; background:#fff; border:1px solid #cbd8ee; border-radius:10px; box-shadow:0 8px 24px rgba(15,40,90,.18); padding:6px; display:flex; flex-direction:column; gap:4px; min-width:150px; }
+.clc-more-menu .clc-btn { width:100%; text-align:left; }
+.clc-facts { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:10px; background:#fff; border:1px solid #dbe6f5; border-radius:12px; padding:10px 14px; margin-bottom:12px; }
+.clc-facts small { display:block; font-size:11px; color:#6b7c9c; } .clc-facts b { font-size:13px; color:#1a2d5a; overflow-wrap:anywhere; }
+@media (max-width:600px) { .clc-facts { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+.clc-items-h { font-weight:800; color:#1a2d5a; margin-bottom:8px; } .clc-items-h span { color:#7c3aed; }
+.clc-items-total td { font-weight:800; background:#eef4ff; }
+
+/* ── Điện thoại: trang chi tiết/kiểm CLC gọn hơn, bảng sản phẩm không cuộn ngang ── */
+@media (max-width:760px) {
+    .clc-page:not(.clc-list) .clc-head { flex-direction:row; align-items:center; flex-wrap:nowrap; gap:10px; margin-bottom:10px; }
+    .clc-page:not(.clc-list) .clc-head > div { min-width:0; flex:1; }
+    .clc-page:not(.clc-list) .clc-head .clc-btn { width:auto; flex-shrink:0; padding:8px 12px; font-size:12.5px; }
+    .clc-page:not(.clc-list) .clc-title { font-size:16px; line-height:1.25; }
+    .clc-page:not(.clc-list) .clc-sub { font-size:12px; }
+    .clc-facts { gap:8px 12px; padding:8px 12px; margin-bottom:10px; }
+    .clc-facts b { font-size:12.5px; }
+    .clc-ok { font-size:12.5px; padding:8px 12px; margin-bottom:10px; }
+    .clc-items { padding:10px 12px; margin-bottom:10px; }
+    .clc-items-h { font-size:14px; margin-bottom:6px; }
+    /* bảng sản phẩm ở chế độ kiểm: bảng nhỏ gọn 4 cột thay vì từng thẻ xếp dọc */
+    .clc-items .pf-table.clc-compact { display:table; width:100%; font-size:12.5px; border-collapse:collapse; }
+    .clc-items .pf-table.clc-compact thead { display:table-header-group; }
+    .clc-items .pf-table.clc-compact tbody { display:table-row-group; }
+    .clc-items .pf-table.clc-compact tr { display:table-row; background:none; border:none; border-radius:0; padding:0; margin:0; }
+    .clc-items .pf-table.clc-compact th { padding:6px 4px; font-size:10.5px; text-align:left; white-space:nowrap; }
+    .clc-items .pf-table.clc-compact td { display:table-cell; padding:7px 4px; border-bottom:1px solid #edf2f9; vertical-align:top; overflow-wrap:anywhere; }
+    .clc-items .pf-table.clc-compact td::before { display:none; }
+    .clc-items .pf-table.clc-compact td:nth-child(1) { width:26px; }
+    .clc-items .pf-table.clc-compact td:last-child { text-align:right !important; }
+    .clc-items .pf-table.clc-compact tr.clc-items-total td { border-bottom:none; }
+
+    /* Product Information (tạo/sửa job): mỗi sản phẩm là một thẻ, không cuộn ngang */
+    .clc-scroll:has(.clc-ptable) { overflow:visible; }
+    .clc-ptable { min-width:0 !important; width:100%; }
+    .clc-ptable thead { display:none; }
+    .clc-ptable, .clc-ptable tbody, .clc-ptable tfoot { display:block; }
+    .clc-ptable tbody tr { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px 8px; background:#fff; border:1px solid #dbe6f5; border-radius:12px; padding:10px; margin-bottom:10px; }
+    .clc-ptable td { display:block; padding:0 !important; border:none !important; min-width:0; }
+    .clc-ptable tbody td::before { content:attr(data-l); display:block; font-size:10.5px; font-weight:700; text-transform:uppercase; letter-spacing:.04em; color:#51638a; margin-bottom:3px; }
+    .clc-ptable tbody td:nth-child(1) { grid-column:1 / 3; align-self:center; font-weight:800; color:#16346b; }
+    .clc-ptable tbody td:nth-child(1)::before { display:inline; margin:0 6px 0 0; }
+    .clc-ptable tbody td:nth-child(7) { grid-column:3; grid-row:1; text-align:right; }
+    .clc-ptable tbody td:nth-child(1) { grid-row:1; }
+    /* ba ô Cartons / Qty / Unit: nhãn cùng chiều cao, ô nhập cùng độ cao → thẳng hàng */
+    .clc-ptable tbody td:nth-child(4)::before, .clc-ptable tbody td:nth-child(5)::before, .clc-ptable tbody td:nth-child(6)::before { min-height:27px; display:flex; align-items:flex-end; }
+    .clc-ptable .clc-in { height:42px !important; box-sizing:border-box; }
+    .clc-ptable tbody td:nth-child(7)::before { display:none; }
+    .clc-ptable tbody td:nth-child(2), .clc-ptable tbody td:nth-child(3) { grid-column:1 / -1; }
+    .clc-ptable .clc-in { width:100% !important; }
+    .clc-ptable tfoot tr { display:flex; flex-wrap:wrap; align-items:baseline; gap:6px 18px; background:#f3f7fd; border-radius:10px; padding:10px 12px; }
+    .clc-ptable tfoot td { padding:0 !important; background:none !important; }
+    .clc-ptable tfoot td:first-child { font-weight:800; margin-right:auto; }
+    .clc-ptable tfoot td[data-l]::before { content:attr(data-l) ": "; font-size:11px; font-weight:600; color:#51638a; }
+    .clc-ptable tfoot td:last-child { display:none; }
+}

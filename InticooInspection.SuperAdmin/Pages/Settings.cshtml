@@ -1,0 +1,103 @@
+@page
+@model SettingsModel
+@{
+    ViewData["Title"] = "Settings"; ViewData["Sub"] = "Configure system settings, platform options, billing, email and security.";
+    var req = ViewContext.HttpContext.Request;
+}
+<div class="panel" style="padding-bottom:6px"><div class="tabs" style="margin:0;border:0">
+  @foreach (var t in SettingsModel.TabList) { <a class="@(Model.Tab == t.Key ? "on" : "")" href="?tab=@t.Key">@t.Title</a> }
+  <a href="/languages">Languages</a><a href="/modules">Modules</a>
+</div></div>
+
+@if (SettingsModel.Tabs.TryGetValue(Model.Tab, out var cards))
+{
+  <div class="cols c2" style="align-items:start">
+  @foreach (var card in cards)
+  {
+    <div class="panel"><h3>@card.Title</h3><p class="sub">@card.Sub</p>
+      <form method="post" asp-page-handler="Save" class="f"><input type="hidden" name="tab" value="@Model.Tab" />
+        @foreach (var f in card.Fields)
+        {
+          var v = Model.S.GetValueOrDefault(f.Key, "");
+          if (f.Type == "bool")
+          {
+            <label class="switch"><span><b>@f.Label</b>@if (f.Hint != null) { <small>@f.Hint</small> }</span><input type="hidden" name="@f.Key" value="false" /><input type="checkbox" name="@f.Key" value="true" checked="@(v == "true")" /></label>
+          }
+          else
+          {
+            <div style="margin-bottom:12px"><label>@f.Label</label>
+            @if (f.Type == "textarea") { <textarea name="@f.Key" maxlength="1900">@v</textarea> }
+            else if (f.Type == "select") { <select name="@f.Key">@foreach (var o in Model.Opts(f)) { <option value="@o" selected="@(v == o)">@(o is "en" or "zh" or "vi" or "ms" ? LocalizationStore.Meta[o].Native : o)</option> }</select> }
+            else if (f.Type == "number") { <input type="number" name="@f.Key" value="@v" min="@f.Min" max="@f.Max" /> }
+            else { <input type="@(f.Type == "email" ? "email" : f.Type == "url" ? "url" : "text")" name="@f.Key" value="@v" maxlength="300" /> }
+            @if (f.Hint != null) { <div class="muted" style="font-size:.76rem;margin-top:3px">@f.Hint</div> }</div>
+          }
+        }
+        <button class="btn pri">Save</button></form></div>
+  }
+  @if (Model.Tab == "general")
+  {
+    <div class="panel" style="grid-column:1/-1"><h3>Subscription Plans <a class="btn pri sm" style="float:right" href="?tab=plans">@Icons.Svg("plus", 15) Manage Plans</a></h3><p class="sub">Manage subscription plans, pricing and features.</p>
+      <div class="tbl-wrap"><table class="t"><thead><tr><th>Plan Name</th><th class="num">Monthly Price (USD)</th><th class="num">Annual Price (USD)</th><th class="num">Max Users</th><th class="num">Storage</th><th>Status</th><th></th></tr></thead><tbody>
+      @foreach (var p in Model.Plans)
+      {
+        var save = p.MonthlyPrice > 0 ? (int)Math.Round((1 - p.AnnualPrice / (p.MonthlyPrice * 12)) * 100) : 0;
+        <tr><td><b>@p.Name</b></td><td class="num">@AdminUi.Money0(p.MonthlyPrice)</td><td class="num">@AdminUi.Money0(p.AnnualPrice) @if (save > 0) { <span style="color:#059669">(Save @save%)</span> }</td><td class="num">@p.MaxUsers</td><td class="num">@p.StorageGb GB</td><td>@AdminUi.Pill(p.IsActive ? "Active" : "Inactive")</td><td><a class="btn sm" href="?tab=plans&edit=@p.Id">@Icons.Svg("edit", 14)</a></td></tr>
+      }
+      </tbody></table></div></div>
+  }
+  </div>
+}
+else if (Model.Tab == "plans")
+{
+  <div class="panel"><h3>Subscription Plans</h3><p class="sub">Prices and limits shown on the website and used for new subscriptions.</p>
+    <div class="tbl-wrap"><table class="t"><thead><tr><th>Plan</th><th>Code</th><th class="num">Monthly (USD)</th><th class="num">Annual (USD)</th><th class="num">Max Users</th><th class="num">Storage (GB)</th><th>Status</th><th class="num">Subscriptions</th><th></th></tr></thead><tbody>
+    @foreach (var p in Model.Plans)
+    {
+      <tr><td><i class="dot" style="background:@(ReportService.PlanColor(p, Model.Plans.IndexOf(p)))"></i><b>@p.Name</b> @if (p.IsPopular) { <span class="pill blue">Most Popular</span> }<div class="muted">@p.Tagline</div></td><td>@p.Code</td><td class="num">@AdminUi.Money0(p.MonthlyPrice)</td><td class="num">@AdminUi.Money0(p.AnnualPrice)</td><td class="num">@p.MaxUsers</td><td class="num">@p.StorageGb</td>
+        <td>@AdminUi.Pill(p.IsActive ? "Active" : "Inactive")</td><td class="num">@Model.PlanUsage.GetValueOrDefault(p.Id)</td>
+        <td style="white-space:nowrap"><a class="btn sm" href="?tab=plans&edit=@p.Id">@Icons.Svg("edit", 14)</a>
+          <form method="post" asp-page-handler="DeletePlan" style="display:inline" data-confirm="Delete plan @p.Name?"><input type="hidden" name="id" value="@p.Id" /><button class="btn sm dng">@Icons.Svg("trash", 14)</button></form></td></tr>
+    }</tbody></table></div></div>
+  var ep = Model.Edit == null ? null : Model.Plans.FirstOrDefault(x => x.Id == Model.Edit);
+  <div class="panel"><h3>@(ep == null ? "Add Plan" : "Edit " + ep.Name)</h3>
+    <form method="post" asp-page-handler="Plan" class="f">
+      @if (ep != null) { <input type="hidden" name="id" value="@ep.Id" /><input type="hidden" name="code" value="@ep.Code" /> }
+      <div class="row">
+        @if (ep == null) { <div><label>Code</label><input name="code" required maxlength="30" placeholder="e.g. enterprise" /></div> }
+        <div><label>Name</label><input name="name" required maxlength="100" value="@ep?.Name" /></div><div><label>Tagline</label><input name="tagline" maxlength="200" value="@ep?.Tagline" /></div>
+        <div><label>Monthly price (USD)</label><input type="number" step="0.01" min="0" name="monthly" required value="@(ep?.MonthlyPrice.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture))" /></div>
+        <div><label>Annual price (USD)</label><input type="number" step="0.01" min="0" name="annual" required value="@(ep?.AnnualPrice.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture))" /></div>
+        <div><label>Max users</label><input type="number" min="1" name="maxUsers" required value="@(ep?.MaxUsers ?? 5)" /></div>
+        <div><label>Storage (GB)</label><input type="number" min="1" name="storageGb" required value="@(ep?.StorageGb ?? 100)" /></div>
+        <div><label>Sort order</label><input type="number" name="sortOrder" value="@(ep?.SortOrder ?? 10)" /></div>
+        <div><label>Chart color</label><input type="color" name="color" value="@(ep == null ? "#0891b2" : ReportService.PlanColor(ep, Model.Plans.IndexOf(ep)))" style="width:60px;padding:2px" /></div>
+      </div>
+      <div style="margin:10px 0"><label>Features shown on the website plan card (one per line)</label><textarea name="features" maxlength="2000" style="height:170px">@ep?.Features</textarea>
+        <div class="muted" style="font-size:.76rem;margin-top:3px">Use <b>{users}</b> and <b>{storage}</b> for the plan limits above (always in sync). Start a line with <b>*</b> to highlight it. Leave empty to list the plan modules automatically.</div></div>
+      <input type="hidden" name="popular" value="false" /><label class="check"><input type="checkbox" name="popular" value="true" checked="@(ep?.IsPopular == true)" /> Most popular (highlighted on the website)</label>
+      <input type="hidden" name="active" value="false" /><label class="check"><input type="checkbox" name="active" value="true" checked="@(ep == null || ep.IsActive)" /> Active (available for new registrations)</label>
+      <div class="acts"><button class="btn pri">Save Plan</button>@if (ep != null) { <a class="btn" href="?tab=plans">Cancel</a> }</div>
+    </form>
+    <p class="muted" style="font-size:.8rem">Which modules a plan includes is set in <a href="/modules">Modules</a>.</p></div>
+}
+else if (Model.Tab == "integrations")
+{
+  <div class="panel"><h3>Integrations</h3><p class="sub">Status of external services. Secrets are configured on the server, never here.</p>
+    <dl class="dl" style="grid-template-columns:200px 1fr"><dt>Card payments</dt><dd>@Model.PayMode</dd><dt>PayPal</dt><dd>@Model.PayPalMode</dd>
+      <dt>Outgoing email</dt><dd class="muted">Not available — the portal has no mail sender yet, templates are only stored.</dd>
+      <dt>Database per company</dt><dd>@Model.ProvMode</dd>
+      <dt>Main app URL</dt><dd>@(Model.AppUrl == "" ? "Not set (Portal:AppUrl)" : Model.AppUrl)</dd><dt>Public website URL</dt><dd>@(Model.PublicUrl == "" ? "Not set (Portal:PublicUrl)" : Model.PublicUrl)</dd></dl>
+    <p class="muted" style="font-size:.8rem;margin-top:10px">Read from this console's server configuration. The public website takes payments, so it must have the same Payments / PayPal settings.</p></div>
+}
+else if (Model.Tab == "system")
+{
+  <div class="panel"><h3>System</h3>
+    <dl class="dl" style="grid-template-columns:200px 1fr"><dt>Environment</dt><dd>@Model.EnvName</dd><dt>Management database</dt><dd>@Model.DbServer</dd><dt>Customer data isolation</dt><dd>@Model.ProvMode</dd><dt>Payment mode</dt><dd>@Model.PayMode</dd>
+      <dt>Server time (UTC)</dt><dd>@AdminUi.DT(DateTime.UtcNow)</dd></dl>
+    @if (Model.Demo)
+    {
+      <h4>Demo data</h4><p class="muted">@Model.DemoCompanies demo companies (with their subscriptions, invoices, payments and users) are in the database for previewing this console.</p>
+      <form method="post" asp-page-handler="PurgeDemo" data-confirm="Delete all demo data? Real customers are not affected."><button class="btn dng">@Icons.Svg("trash", 15) Remove demo data</button></form>
+    }</div>
+}

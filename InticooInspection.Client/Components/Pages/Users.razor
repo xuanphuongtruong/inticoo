@@ -1,5 +1,6 @@
 @page "/users"
 @attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Admin")]
+@using InticooInspection.Domain.Security
 @using System.Net.Http.Json
 @using System.Net.Http.Headers
 @using Microsoft.AspNetCore.Components.Forms
@@ -8,58 +9,136 @@
 @inject Blazored.SessionStorage.ISessionStorageService SessionStorage
 @using InticooInspection.Client.Services
 @inject WaitingService Waiting
+@inherits LocalizedComponentBase
 
-<PageTitle>Login Accounts - Inticoo</PageTitle>
+<PageTitle>@T("Users.LoginAccountsInticoo")</PageTitle>
 
-<div class="top-bar">
+<div class="u-page">
+<div class="lp-head">
     <div class="title-block">
-        <h1 class="page-title">Login Account</h1>
-        <span class="page-sub">Manage Customer and Inspector accounts</span>
+        <h1 class="page-title">@T("Common.LoginAccount")</h1>
+        <span class="page-sub">@T("Users.ManageCustomerAndInspectorAccounts")</span>
     </div>
-    <div class="tb-divider"></div>
+    @if (_plan?.Applies == true)
+    {
+        @* Hạn mức gói của công ty (số liệu từ api/me/plan-usage — Super Admin quản lý gói) *@
+        var uPct = _plan.MaxUsers > 0 ? _plan.ActiveUsers * 100.0 / _plan.MaxUsers : 0;
+        var sPct = _plan.StorageGb > 0 ? _plan.UsedGb * 100.0 / _plan.StorageGb : 0;
+        var over = uPct >= 100 || sPct >= 100; var near = !over && (uPct >= _plan.WarnPercent || sPct >= _plan.WarnPercent);
+        <div style="display:flex;flex-wrap:wrap;gap:6px 16px;align-items:center;font-size:.82rem;padding:8px 12px;border-radius:10px;background:@(over ? "#fef2f2" : near ? "#fffbeb" : "#f3f7fe");border:1px solid @(over ? "#fecaca" : near ? "#fde68a" : "#dbe6f7")">
+            @if (!string.IsNullOrEmpty(_plan.Plan)) { <span>@T("Users.PlanLabel"): <b>@_plan.Plan</b></span> }
+            @if (_plan.MaxUsers > 0) { <span>@T("Users.PlanActiveUsers"): <b style="color:@(uPct >= 100 ? "#b91c1c" : "inherit")">@_plan.ActiveUsers / @_plan.MaxUsers</b></span> }
+            @if (_plan.StorageGb > 0) { <span>@T("Users.PlanStorage"): <b style="color:@(sPct >= 100 ? "#b91c1c" : "inherit")">@($"{_plan.UsedGb:0.##} / {_plan.StorageGb} GB")</b></span> }
+            @if (over && _plan.Enforced) { <span style="flex-basis:100%;color:#991b1b">@T("Users.PlanLimitReached")</span> }
+            else if (near) { <span style="flex-basis:100%;color:#92400e">@T("Users.PlanLimitNear")</span> }
+        </div>
+    }
+</div>
+@if (!string.IsNullOrEmpty(_listError)) { <div style="margin:8px 0;padding:10px 14px;border-radius:8px;background:#fef2f2;border:1px solid #fecaca;color:#991b1b;font-size:.88rem">@_listError</div> }
+<div class="top-bar lp-filters @(_fOpen ? "fopen" : "")">
     <div class="search-wrap">
         <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5">
             <circle cx="9" cy="9" r="5.5"/><path d="M15 15l-2.5-2.5" stroke-linecap="round"/>
         </svg>
-        <input class="search-input" type="text" placeholder="Search by name, username, email, mobile..."
+        <input class="search-input" type="text" placeholder="@T("Users.SearchByNameUsernameEmailMobile")"
                @bind="_search" @bind:event="oninput" @onkeyup="OnSearchKey" />
     </div>
+    <button type="button" class="lp-filter-toggle @(_fOpen ? "on" : "")" @onclick="() => _fOpen = !_fOpen" aria-label="@T("Common.Filters")"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5h18l-7 8v6l-4 2v-8z"/></svg></button>
     <select class="filter-select" @bind="_filterRole" @bind:after="() => LoadPage(1)">
-        <option value="">All Roles</option>
-        <option value="Customer">Customer</option>
-        <option value="Inspector">Inspector</option>
+        <option value="">@T("Users.AllRoles")</option>
+        @foreach (var r in _roleOptions) { <option value="@r">@TE("Opt", r)</option> }
     </select>
-    <span class="total-count">@_total accounts</span>
+    <select class="filter-select" @bind="_filterStatus" @bind:after="() => LoadPage(1)">
+        <option value="">@T("Common.AllStatus")</option>
+        <option value="active">@T("Common.Active")</option>
+        <option value="inactive">@T("Common.Inactive")</option>
+    </select>
+    <select class="filter-select" @bind="_filterCountry" @bind:after="() => LoadPage(1)">
+        <option value="">@T("Users.AllCountries")</option>
+        @foreach (var c in _countries) { <option value="@c.Name">@c.Name</option> }
+    </select>
+    @if (_filterRole != "" || _filterStatus != "" || _filterCountry != "" || _search != "")
+    {
+        <button class="btn-reset" @onclick="ResetFilters">@T("Users.Reset")</button>
+    }
+    <span class="total-count">@T("Users.Accounts", _total)</span>
     <button class="btn-new" @onclick="async () => await OpenCreate()">
         <svg width="13" height="13" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M10 4v12M4 10h12"/></svg>
-        New Account
+        @T("Users.NewAccount")
     </button>
+</div>
+
+<div class="u-kpis">
+    <div class="u-kpi"><span class="u-kpi-ico k-blue"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg></span><b>@_kpiTotal</b><small>@T("Users.TotalAccounts")</small></div>
+    <div class="u-kpi"><span class="u-kpi-ico k-green"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M8 12l3 3 5-6"/></svg></span><b class="green">@_kpiActive</b><small>@T("Common.Active")</small></div>
+    <div class="u-kpi"><span class="u-kpi-ico k-orange"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M10 9v6M14 9v6"/></svg></span><b class="red">@_kpiInactive</b><small>@T("Common.Inactive")</small></div>
 </div>
 
 @if (_loading)
 {
-    <div class="loading-wrap"><div class="spinner"></div><span>Loading...</span></div>
+    <div class="loading-wrap"><div class="spinner"></div><span>@T("Common.Loading")</span></div>
 }
 else if (_users.Count == 0)
 {
-    <div class="empty-state"><p>No accounts found.</p></div>
+    <div class="empty-state"><p>@T("Users.NoAccountsFound")</p></div>
 }
 else
 {
+    @* Điện thoại: danh sách dạng thẻ (bảng 10 cột bị cắt chữ); bảng chỉ hiện trên máy tính *@
+    <div class="m-cards u-cards">
+        @{ int cardNo = (_page - 1) * _pageSize; }
+        @foreach (var cu in _users)
+        {
+            var u = cu;
+            cardNo++;
+            <div class="m-card u-card">
+                <span class="u-card-no">@cardNo</span>
+                <div class="u-card-main">
+                    <div class="m-card-name">@(string.IsNullOrEmpty(u.FullName) ? u.Username : u.FullName)</div>
+                    <div class="m-card-rows">
+                        <div><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>@u.Username</div>
+                        @if (!string.IsNullOrEmpty(u.Country))
+                        {
+                            <div><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 21s7-6 7-11a7 7 0 0 0-14 0c0 5 7 11 7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>@u.Country</div>
+                        }
+                    </div>
+                </div>
+                <div class="u-card-badges">
+                    @foreach (var r in u.Roles)
+                    {
+                        <span class="role-badge role-@r.ToLower()">@TE("Opt", r)</span>
+                    }
+                    <button class="status-toggle @(u.IsActive ? "s-active" : "s-inactive")" @onclick="() => ToggleActive(u)">
+                        @(u.IsActive ? T("Common.Active") : T("Common.Inactive"))
+                    </button>
+                </div>
+                <div class="u-card-act">
+                    <button class="bico bedit" @onclick="async () => await OpenEdit(u)" title="@T("Common.Edit")">
+                        <svg width="13" height="13" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 2l4 4-10 10H4v-4L14 2z" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    </button>
+                    <button class="bico bdel" @onclick="() => ConfirmDelete(u)" title="@T("Common.Delete")">
+                        <svg width="13" height="13" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 6h14M8 6V4h4v2M5 6l1 11h8l1-11" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    </button>
+                </div>
+            </div>
+        }
+    </div>
+
     <div class="table-wrap">
         <table class="ptable">
             <thead>
                 <tr class="thead-top">
+                    <th class="th-c th-chk"><input type="checkbox" checked="@(_users.Count > 0 && _users.All(x => _sel.Contains(x.Id)))" @onchange="e => ToggleAll((bool)(e.Value ?? false))" /></th>
                     <th class="th-c th-no">No</th>
-                    <th class="tc">Name</th>
+                    <th class="tc">@T("Users.Name")</th>
                     <!-- <th class="tc">ID</th> -->
-                    <th class="tc">Mobile</th>
+                    <th class="tc">@T("Common.Mobile")</th>
                     <th class="tc">Email</th>
-                    <th class="tc">Country</th>
-                    <th class="tc">Username</th>
-                    <th class="tc">Role</th>
-                    <th class="tc">Status</th>
-                    <th class="th-c th-act">Actions</th>
+                    <th class="tc">@T("Common.Country")</th>
+                    <th class="tc">@T("Users.Username")</th>
+                    <th class="tc">@T("Users.Role")</th>
+                    <th class="tc">@T("Common.Status")</th>
+                    <th class="th-c th-act">@T("Common.Actions")</th>
                 </tr>
             </thead>
             <tbody>
@@ -69,6 +148,7 @@ else
                     var u = user;
                     rowNo++;
                     <tr class="table-row @(rowNo % 2 == 0 ? "tr-alt" : "")">
+                        <td class="td-c"><input type="checkbox" checked="@_sel.Contains(u.Id)" @onchange="e => ToggleOne(u.Id, (bool)(e.Value ?? false))" /></td>
                         <td class="td-c td-no">@rowNo</td>
                         <td>
                             <div class="user-cell">
@@ -83,21 +163,21 @@ else
                         <td class="tc">
                             @foreach (var r in u.Roles)
                             {
-                                <span class="role-badge role-@r.ToLower()">@r</span>
+                                <span class="role-badge role-@r.ToLower()">@TE("Opt", r)</span>
                             }
                         </td>
                         <td class="tc">
                             <button class="status-toggle @(u.IsActive ? "s-active" : "s-inactive")"
                                     @onclick="() => ToggleActive(u)">
-                                @(u.IsActive ? "Active" : "Inactive")
+                                @(u.IsActive ? T("Common.Active") : T("Common.Inactive"))
                             </button>
                         </td>
                         <td class="tc">
                             <div class="action-btns">
-                                <button class="bico bedit" @onclick="async () => await OpenEdit(u)" title="Edit">
+                                <button class="bico bedit" @onclick="async () => await OpenEdit(u)" title="@T("Common.Edit")">
                                     <svg width="13" height="13" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 2l4 4-10 10H4v-4L14 2z" stroke-linecap="round" stroke-linejoin="round"/></svg>
                                 </button>
-                                <button class="bico bdel" @onclick="() => ConfirmDelete(u)" title="Delete">
+                                <button class="bico bdel" @onclick="() => ConfirmDelete(u)" title="@T("Common.Delete")">
                                     <svg width="13" height="13" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 6h14M8 6V4h4v2M5 6l1 11h8l1-11" stroke-linecap="round" stroke-linejoin="round"/></svg>
                                 </button>
                             </div>
@@ -108,24 +188,22 @@ else
         </table>
     </div>
 
-    @if (_total > _pageSize)
-    {
-        <div class="pagination">
-            <button class="page-btn" disabled="@(_page == 1)" @onclick="PrevPage">&#8592; Prev</button>
-            <span class="page-info">Page @_page of @TotalPages()</span>
-            <button class="page-btn" disabled="@(_page >= TotalPages())" @onclick="NextPage">Next &#8594;</button>
-        </div>
-    }
+    <ListPager Total="_total" Page="_page" PageSize="_pageSize" Noun="@T("Pager.Accounts")" OnPage="LoadPage" OnPageSize="SetPageSize" />
 }
 
-@* ── Create / Edit Modal ── *@
+</div>
+
+@* ── Create / Edit User (popup theo mẫu: thông tin, khách hàng, quyền module) ── *@
 @if (_showModal)
 {
     <div class="modal-overlay" @onclick="CloseModal">
-        <div class="modal-card" @onclick:stopPropagation="true">
-            <div class="modal-header">
-                <h2>@(_editId == null ? "New Account" : "Edit Account")</h2>
-                <button class="modal-close" @onclick="CloseModal">&#x2715;</button>
+        <div class="modal-card uf-card" @onclick:stopPropagation="true">
+            <div class="uf-head">
+                <div>
+                    <h2 class="uf-title">@(_editId == null ? T("Users.CreateNewUser") : T("Users.EditUser"))</h2>
+                    <div class="uf-sub">@T("Users.SetUserInformationCustomerAccessAnd")</div>
+                </div>
+                <button class="modal-close" @onclick="CloseModal" title="@T("Common.Close")">&#x2715;</button>
             </div>
 
             @if (!string.IsNullOrEmpty(_formError))
@@ -133,144 +211,231 @@ else
                 <div class="error-alert">@_formError</div>
             }
 
-            @* ── Status ── *@
-            <div class="frow">
-                <div class="fcell fcell-full">
-                    <label class="flabel">Status</label>
-                    <label class="check-label" style="margin-top:6px;">
-                        <input type="checkbox" @bind="_formIsActive" />
-                        <span>@(_formIsActive ? "Active" : "Inactive")</span>
-                    </label>
+            <div class="uf-grid">
+                <!-- ════ Cột trái ════ -->
+                <div class="uf-col">
+                    <!-- User Information -->
+                    <section class="uf-box">
+                        <h3 class="uf-box-t">@T("Users.UserInformation")</h3>
+                        <div class="uf-row2">
+                            <div class="uf-f">
+                                <label>@T("Users.FullName") <i>*</i></label>
+                                <input class="uf-in" type="text" placeholder="@T("Users.EnterFullName")" @bind="_formFullName" @bind:event="oninput" />
+                            </div>
+                            <div class="uf-f">
+                                <label>@T("Users.Role") <i>*</i></label>
+                                <select class="uf-in uf-role @(_formRoles.FirstOrDefault()?.ToLower())" value="@(_formRoles.FirstOrDefault() ?? "")" @onchange="e => SelectRole(e.Value?.ToString() ?? string.Empty)">
+                                    <option value="">@T("Users.SelectRole")</option>
+                                    @foreach (var r in _roleOptions) { <option value="@r">@TE("Opt", r)</option> }
+                                </select>
+                            </div>
+                            <div class="uf-f">
+                                <label>Email <i>*</i></label>
+                                <input class="uf-in" type="email" placeholder="@T("Users.EnterEmail")" @bind="_formEmail" @bind:event="oninput" />
+                            </div>
+                            <div class="uf-f">
+                                <label>@T("Common.Mobile")</label>
+                                <input class="uf-in" type="tel" placeholder="@T("Common.EnterMobileNumber")" @bind="_formMobile" @bind:event="oninput" />
+                            </div>
+                            <div class="uf-f">
+                                <label>@T("Users.Username") @if (_editId == null) { <i>*</i> }</label>
+                                @if (_editId == null)
+                                {
+                                    <input class="uf-in" type="text" placeholder="@T("Users.EnterUsername")" autocomplete="off" @bind="_formUsername" @bind:event="oninput" />
+                                }
+                                else
+                                {
+                                    <input class="uf-in" type="text" readonly value="@_formUsername" />
+                                }
+                            </div>
+                            <div class="uf-f">
+                                <label>@(_editId == null ? T("Users.Password") : T("Users.NewPassword")) @if (_editId == null) { <i>*</i> }</label>
+                                <div class="uf-pw">
+                                    <input class="uf-in" type="@(_showPw ? "text" : "password")" autocomplete="new-password"
+                                           placeholder="@(_editId == null ? T("Users.EnterPassword") : T("Users.LeaveBlankToKeepCurrent"))"
+                                           @bind="_formPassword" @bind:event="oninput" />
+                                    <button type="button" class="uf-eye" @onclick="() => _showPw = !_showPw" title="@(_showPw ? T("Users.Hide") : T("Users.Show")) password">
+                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>@if (_showPw) { <path d="M4 4l16 16"/> }</svg>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        @if (_editId != null) { <div class="uf-hint">@T("Users.UsernameCannotBeChangedAfterCreation")</div> }
+                    </section>
+
+                    <!-- Customer Access -->
+                    <section class="uf-box">
+                        <h3 class="uf-box-t">@T("Users.CustomerAccess")</h3>
+                        <p class="uf-desc">@T("Users.SelectWhichCustomerSThisUser")</p>
+                        <div class="uf-radios">
+                            <label class="uf-radio"><input type="radio" name="uf-cust" checked="@(!_custAll)" @onchange="() => _custAll = false" /><span>@T("Users.SpecificCustomerS")</span></label>
+                            <label class="uf-radio"><input type="radio" name="uf-cust" checked="@_custAll" @onchange="() => _custAll = true" /><span>@T("Users.AllCustomers")</span></label>
+                        </div>
+                        @if (!_custAll)
+                        {
+                            <div class="uf-cust-tools">
+                                <div class="uf-search">
+                                    <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="9" cy="9" r="6"/><path d="M15 15l3 3" stroke-linecap="round"/></svg>
+                                    <input placeholder="@T("Users.SearchCustomer")" @bind="_custSearch" @bind:event="oninput" />
+                                </div>
+                                <button type="button" class="uf-link" @onclick="ToggleSelectAllCustomers">@(AllVisibleSelected ? T("Users.ClearAll") : T("Users.SelectAll"))</button>
+                            </div>
+                            <div class="uf-cust-list">
+                                @if (_loadingCustomers) { <div class="uf-muted">@T("Users.LoadingCustomers")</div> }
+                                @foreach (var c in VisibleCustomers)
+                                {
+                                    var cc = c;
+                                    var on = _formCustomerIds.Contains(cc.CustomerId, StringComparer.OrdinalIgnoreCase);
+                                    <label class="uf-check @(on ? "on" : "")">
+                                        <input type="checkbox" checked="@on" @onchange="e => ToggleCustomer(cc, e.Value is bool b && b)" />
+                                        <span>@cc.CustomerId — @cc.CompanyName</span>
+                                    </label>
+                                }
+                                @if (!_loadingCustomers && !VisibleCustomers.Any()) { <div class="uf-muted">@T("Users.NoCustomersFound")</div> }
+                            </div>
+                            <div class="uf-hint">@T("Users.Selected", _formCustomerIds.Count)</div>
+                        }
+                    </section>
+
+                    <!-- Additional Information -->
+                    <section class="uf-box">
+                        <h3 class="uf-box-t">@T("Users.AdditionalInformation")</h3>
+                        <div class="uf-row2">
+                            <div class="uf-f">
+                                <label>@T("Users.Department")</label>
+                                <select class="uf-in" @bind="_formDepartment">
+                                    <option value="">@T("Common.Select")</option>
+                                    @foreach (var d in DepartmentOptions) { <option value="@d">@TE("Opt", d)</option> }
+                                </select>
+                            </div>
+                            <div class="uf-f">
+                                <label>@T("Common.Position")</label>
+                                <input class="uf-in" type="text" placeholder="@T("Users.EGPurchaser")" @bind="_formPosition" @bind:event="oninput" />
+                            </div>
+                            <div class="uf-f">
+                                <label>@T("Common.Country")</label>
+                                @if (_loadingCountries)
+                                {
+                                    <div class="uf-in uf-muted">@T("Common.Loading")</div>
+                                }
+                                else
+                                {
+                                    <select class="uf-in" @bind="_formCountry">
+                                        <option value="">@T("Users.SelectCountry")</option>
+                                        @foreach (var c in _countries) { <option value="@c.Name">@c.Name</option> }
+                                    </select>
+                                }
+                            </div>
+                            <div class="uf-f">
+                                <label>@T("Common.Status")</label>
+                                <label class="uf-switch">
+                                    <input type="checkbox" @bind="_formIsActive" />
+                                    <span class="uf-slider"></span>
+                                    <b>@(_formIsActive ? T("Common.Active") : T("Common.Inactive"))</b>
+                                </label>
+                                <div class="uf-hint">@T("Users.InactiveUsersCannotLoginToSystem")</div>
+                            </div>
+                        </div>
+                    </section>
+                </div>
+
+                <!-- ════ Cột phải: Module Permissions ════ -->
+                <div class="uf-col">
+                    <section class="uf-box">
+                        <div class="uf-perm-head">
+                            <div>
+                                <h3 class="uf-box-t">@T("Users.ModulePermissions")</h3>
+                                <p class="uf-desc">@T("Users.SetWhatThisUserCanAccess")</p>
+                            </div>
+                            <div class="uf-legend">
+                                <span><i class="lv-none"></i>@T("Users.NoAccess")</span>
+                                <span><i class="lv-view"></i>@T("Users.ViewOnly")</span>
+                                <span><i class="lv-edit"></i>@T("Users.EditUseModule")</span>
+                            </div>
+                        </div>
+                        <div class="uf-tbl-wrap">
+                            <table class="uf-tbl">
+                                <thead>
+                                    <tr>
+                                        <th class="tl">@T("Users.Module")</th>
+                                        <th>@T("Users.NoAccess")</th>
+                                        <th>@T("Users.ViewOnly")</th>
+                                        <th>@T("Common.Edit")<br />@T("Users.UseModule")</th>
+                                        <th class="tl">@T("Users.AdditionalSettings")<br /><small>@T("Users.OnlyAvailableWhenEditIsSelected")</small></th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var def in ModulePermissionSet.Catalog)
+                                    {
+                                        var d = def;
+                                        var p = _formPerms.Get(d.Key);
+                                        <tr>
+                                            <td class="tl">
+                                                <div class="uf-mod">
+                                                    <span class="uf-mod-ico">@((MarkupString)ModuleIcon(d.Key))</span>
+                                                    <b>@TE("Opt", d.Label)</b>
+                                                </div>
+                                            </td>
+                                            @foreach (var lv in new[] { PermLevel.None, PermLevel.View, PermLevel.Edit })
+                                            {
+                                                var l = lv;
+                                                var disabled = l > d.MaxLevel;
+                                                <td class="tc">
+                                                    <label class="uf-lv lv-@l.ToString().ToLower() @(p.Level == l ? "on" : "") @(disabled ? "dis" : "")">
+                                                        <input type="radio" name="@($"lv-{d.Key}")" checked="@(p.Level == l)" disabled="@disabled"
+                                                               @onchange="() => SetLevel(d, l)" />
+                                                        <span></span>
+                                                    </label>
+                                                </td>
+                                            }
+                                            <td class="tl">
+                                                @if (d.Flags.Length == 0 || (d.FlagsNeedEdit && d.MaxLevel < PermLevel.Edit))
+                                                {
+                                                    <span class="uf-dash">-</span>
+                                                    @if (d.MaxLevel < PermLevel.Edit) { <div class="uf-note">@T("Users.OnlyNoAccessOrViewOnly")</div> }
+                                                }
+                                                else
+                                                {
+                                                    var enabled = p.Level >= (d.FlagsNeedEdit ? PermLevel.Edit : PermLevel.View);
+                                                    <div class="uf-flags @(enabled ? "" : "dis")">
+                                                        @foreach (var f in d.Flags)
+                                                        {
+                                                            var ff = f;
+                                                            <label class="uf-flag">
+                                                                <input type="checkbox" checked="@(enabled && p.Flag(ff))" disabled="@(!enabled)"
+                                                                       @onchange="e => p.SetFlag(ff, e.Value is bool b && b)" />
+                                                                <span>@FlagLabel(ff)</span>
+                                                            </label>
+                                                        }
+                                                    </div>
+                                                }
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <div class="uf-rules">
+                            <span class="uf-rules-ico">i</span>
+                            <div>
+                                <b>@T("Users.PermissionRules")</b>
+                                <ul>
+                                    <li>@T("Users.CreateEditAndDeletePermissionsAre")</li>
+                                    <li>@T("Users.DashboardInspectionSchedulePerformanceReviewAnd")</li>
+                                    <li>@T("Users.UsersWillOnlySeeDataFrom")</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </section>
                 </div>
             </div>
 
-            @* ── Section: Role ── *@
-            <div class="fsection-title">Role <span class="req">*</span></div>
-            <div class="form-group">
-                <div class="roles-picker">
-                    @foreach (var role in _roleOptions)
-                    {
-                        var r = role;
-                        <label class="role-check @(_formRoles.Contains(r) ? "checked" : "")"
-                               @onclick="() => SelectRole(r)" style="cursor:pointer;">
-                            <span class="role-badge role-@r.ToLower()">@r</span>
-                        </label>
-                    }
-                </div>
-            </div>
-
-            @* ── Link to Customer (only when role = Customer) ── *@
-            @if (_formRoles.Contains("Customer"))
-            {
-                <div class="form-group">
-                    <label class="flabel">Link to Customer <span class="req">*</span></label>
-                    @if (_loadingCustomers)
-                    {
-                        <div class="form-input" style="color:#9baac8;font-style:italic;">Loading customers...</div>
-                    }
-                    else
-                    {
-                        <select class="form-input" value="@_formCustomerId" @onchange="OnCustomerChanged">
-                            <option value="">-- Select Customer --</option>
-                            @foreach (var c in _customers)
-                            {
-                                <option value="@c.CustomerId">@c.CustomerId — @c.CompanyName</option>
-                            }
-                        </select>
-                    }
-                </div>
-            }
-
-            @* ── Section: Login ── *@
-            <div class="fsection-title">Login</div>
-            <div class="frow">
-                <div class="fcell">
-                    <label class="flabel">
-                        User Name
-                        @if (_editId == null) { <span class="req">*</span> }
-                    </label>
-                    @if (_editId == null)
-                    {
-                        <input class="form-input" type="text" placeholder="Enter username"
-                               @bind="_formUsername" @bind:event="oninput" autocomplete="off" />
-                    }
-                    else
-                    {
-                        <input class="form-input" type="text" readonly value="@_formUsername" />
-                        <div class="label-hint" style="margin-top:4px;">Username cannot be changed after creation.</div>
-                    }
-                </div>
-                <div class="fcell">
-                    <label class="flabel">@(_editId == null ? "Password *" : "New Password")<span class="label-hint"> @(_editId != null ? "(leave blank to keep)" : "")</span></label>
-                    <input class="form-input" type="password"
-                           placeholder="@(_editId == null ? "Enter password" : "Leave blank to keep current")"
-                           @bind="_formPassword" @bind:event="oninput" />
-                </div>
-            </div>
-
-            @* ── Section: User Details ── *@
-            <div class="fsection-title">User Details</div>
-            <div class="frow">
-                <div class="fcell">
-                    <label class="flabel">Full Name <span class="req">*</span></label>
-                    <input class="form-input" type="text" placeholder="Enter full name"
-                           @bind="_formFullName" @bind:event="oninput" />
-                </div>
-                <div class="fcell">
-                    <label class="flabel">Mobile</label>
-                    <input class="form-input" type="tel" placeholder="Enter mobile number"
-                           @bind="_formMobile" @bind:event="oninput" />
-                </div>
-            </div>
-            <div class="frow">
-                <div class="fcell">
-                    <label class="flabel">Email</label>
-                    <input class="form-input" type="email" placeholder="Enter email"
-                           @bind="_formEmail" @bind:event="oninput" />
-                </div>
-                <div class="fcell">
-                    <label class="flabel">Country</label>
-                    @if (_loadingCountries)
-                    {
-                        <div class="form-input" style="color:#9baac8;font-style:italic;">Loading...</div>
-                    }
-                    else
-                    {
-                        <select class="form-input" @bind="_formCountry">
-                            <option value="">-- Select Country --</option>
-                            @foreach (var c in _countries)
-                            {
-                                <option value="@c.Name">@c.Name</option>
-                            }
-                        </select>
-                    }
-                </div>
-            </div>
-
-            @* ── Section: Page Access ── *@
-            <div class="fsection-title">Page Access</div>
-            <div class="form-group">
-                <p class="fhint">Select which pages this account can see and access.</p>
-                <div class="page-access-list">
-                    @foreach (var p in _pageAccessOptions)
-                    {
-                        var key = p.Key;
-                        var label = p.Label;
-                        <label class="page-access-row @(_formPageAccess.Contains(key) ? "pa-checked" : "")">
-                            <span class="pa-label">@label</span>
-                            <input type="checkbox"
-                                   checked="@_formPageAccess.Contains(key)"
-                                   @onchange="e => TogglePageAccess(key, e.Value)" />
-                        </label>
-                    }
-                </div>
-            </div>
-
-            <div class="modal-footer">
-                <button class="btn-cancel" @onclick="CloseModal">Cancel</button>
-                <button class="btn-submit" @onclick="SaveUser" disabled="@_saving">
+            <div class="uf-foot">
+                <button class="uf-btn ghost" @onclick="CloseModal">@T("Common.Cancel")</button>
+                <button class="uf-btn primary" @onclick="SaveUser" disabled="@_saving">
                     @if (_saving) { <span class="spinner"></span> }
-                    else { <span>@(_editId == null ? "Create Account" : "Save Changes")</span> }
+                    else { <span>@(_editId == null ? T("Users.CreateUser") : T("Users.SaveUser"))</span> }
                 </button>
             </div>
         </div>
@@ -282,12 +447,12 @@ else
     <div class="modal-overlay" @onclick="() => _deleteUser = null">
         <div class="modal-card confirm-card" @onclick:stopPropagation="true">
             <div class="confirm-icon">&#9888;</div>
-            <h2>Delete Account</h2>
-            <p>Are you sure you want to delete <strong>@_deleteUser.Username</strong>?<br/>This action cannot be undone.</p>
+            <h2>@T("Users.DeleteAccount")</h2>
+            <p>@T("Users.AreYouSureYouWantTo") <strong>@_deleteUser.Username</strong>?<br/>@T("Users.ThisActionCannotBeUndone")</p>
             <div class="modal-footer">
-                <button class="btn-cancel" @onclick="() => _deleteUser = null">Cancel</button>
+                <button class="btn-cancel" @onclick="() => _deleteUser = null">@T("Common.Cancel")</button>
                 <button class="btn-delete" @onclick="DeleteUser" disabled="@_saving">
-                    @if (_saving) { <span class="spinner"></span> } else { <span>Delete</span> }
+                    @if (_saving) { <span class="spinner"></span> } else { <span>@T("Common.Delete")</span> }
                 </button>
             </div>
         </div>
@@ -295,14 +460,20 @@ else
 }
 
 @code {
+    private bool _fOpen;
     // Only roles managed on this page
-    private readonly List<string> _roleOptions = new() { "Customer", "Inspector" };
+    private readonly List<string> _roleOptions = new() { "Admin", "Customer", "QAQCManager", "Inspector", "Vendor", "Management", "CustomRole" };
 
     private List<UserDto> _users = new();
     private bool   _loading   = true;
     private string _search    = "";
-    private string _filterRole = "";
-    private int    _page = 1, _pageSize = 20, _total = 0;
+    private string _filterRole = "", _filterStatus = "", _filterCountry = "";
+    private int _kpiTotal, _kpiActive, _kpiInactive;
+    private int    _page = 1, _pageSize = 10, _total = 0;
+    private readonly HashSet<string> _sel = new();
+    private void ToggleAll(bool on) { foreach (var x in _users) { if (on) _sel.Add(x.Id); else _sel.Remove(x.Id); } }
+    private void ToggleOne(string id, bool on) { if (on) _sel.Add(id); else _sel.Remove(id); }
+    private async Task SetPageSize(int n) { _pageSize = n; await LoadPage(1); }
 
     // Modal state
     private bool    _showModal    = false;
@@ -313,18 +484,92 @@ else
     private bool    _formIsActive = true;
     private List<string> _formRoles = new();
     private List<string> _formPageAccess = new();
+    private string  _formDepartment = "", _formPosition = "";
+    private ModulePermissionSet _formPerms = new();
+    private bool    _custAll = false;                       // Customer Access: All customers
+    private List<string> _formCustomerIds = new();          // Customer Access: Specific
+    private string  _custSearch = "";
+    private bool    _showPw = false;
     private string  _formError = "";
     private bool    _saving    = false;
 
     // Page Access catalogue (key is stable, label is for display)
-    private readonly List<PageAccessOption> _pageAccessOptions = new()
+    private List<PageAccessOption> _pageAccessOptions => new List<PageAccessOption>()
     {
-        new("JobRequest",          "Job Request"),
-        new("InspectionSchedule",  "Inspection Schedule"),
-        new("SummaryInspections",  "Summary Inspections"),
-        new("PerformanceReview",   "Performance Review"),
+        new("JobRequest",          T("Users.JobRequest")),
+        new("InspectionSchedule",  T("Users.InspectionSchedule")),
+        new("SummaryInspections",  T("Users.SummaryInspections")),
+        new("Directory",           T("Users.Directory")),
+        new("PerformanceReview",   T("Users.PerformanceReview")),
+        new("DefectManagement",    T("Users.DefectManagement")),
     };
     private record PageAccessOption(string Key, string Label);
+
+    private string[] _departments => new[] { "Purchasing", "Quality Assurance", "Quality Control", "Production", "Merchandising", "Sales", "Management", "Other" };
+    // Giữ giá trị cũ không có trong danh sách để không bị mất khi mở sửa
+    private IEnumerable<string> DepartmentOptions =>
+        string.IsNullOrWhiteSpace(_formDepartment) || _departments.Contains(_formDepartment) ? _departments : _departments.Append(_formDepartment);
+
+    private IEnumerable<CustomerDropdownItem> VisibleCustomers =>
+        string.IsNullOrWhiteSpace(_custSearch) ? _customers
+        : _customers.Where(c => c.CustomerId.Contains(_custSearch, StringComparison.OrdinalIgnoreCase)
+                             || c.CompanyName.Contains(_custSearch, StringComparison.OrdinalIgnoreCase));
+
+    private bool AllVisibleSelected => VisibleCustomers.Any() && VisibleCustomers.All(c => _formCustomerIds.Contains(c.CustomerId, StringComparer.OrdinalIgnoreCase));
+
+    private void ToggleSelectAllCustomers()
+    {
+        var vis = VisibleCustomers.Select(c => c.CustomerId).ToList();
+        if (AllVisibleSelected) _formCustomerIds.RemoveAll(id => vis.Contains(id, StringComparer.OrdinalIgnoreCase));
+        else foreach (var id in vis) if (!_formCustomerIds.Contains(id, StringComparer.OrdinalIgnoreCase)) _formCustomerIds.Add(id);
+    }
+
+    private void ToggleCustomer(CustomerDropdownItem c, bool on)
+    {
+        _formCustomerIds.RemoveAll(x => x.Equals(c.CustomerId, StringComparison.OrdinalIgnoreCase));
+        if (on)
+        {
+            _formCustomerIds.Add(c.CustomerId);
+            // Tài khoản Customer: chọn khách hàng đầu tiên → điền sẵn thông tin còn trống
+            if (_editId == null && _formRoles.Contains("Customer") && _formCustomerIds.Count == 1) FillFromCustomer(c);
+        }
+    }
+
+    private void SetLevel(ModuleDef d, PermLevel level)
+    {
+        var p = _formPerms.Get(d.Key);
+        var wasBelow = p.Level < (d.FlagsNeedEdit ? PermLevel.Edit : PermLevel.View);
+        p.Level = level;
+        var enabled = level >= (d.FlagsNeedEdit ? PermLevel.Edit : PermLevel.View);
+        // Vừa mở khoá các cờ → bật sẵn tất cả cho tiện; hạ mức → tắt hết
+        foreach (var f in d.Flags) p.SetFlag(f, enabled && (wasBelow || p.Flag(f)));
+    }
+
+    private string FlagLabel(string f) => f switch
+    {
+        PermAction.Export   => T("Users.ExportData"),
+        PermAction.Download => T("Users.DownloadReports"),
+        _ => TE("Opt", f)
+    };
+
+    private static string ModuleIcon(string key)
+    {
+        const string a = "<svg width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'>";
+        var body = key switch
+        {
+            ModuleKeys.Dashboard          => "<path d='M5 20V12M10 20V8M15 20V4M20 20v-9'/>",
+            ModuleKeys.JobRequest         => "<path d='M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z'/><path d='M14 3v5h5M9 13h6M9 17h6'/>",
+            ModuleKeys.InspectionSchedule => "<rect x='3' y='4.5' width='18' height='16.5' rx='2'/><path d='M3 9.5h18M8 2.5v4M16 2.5v4M12 12.5v5M9.5 15h5'/>",
+            ModuleKeys.DefectManagement   => "<path d='M10.3 3.9L1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z'/><path d='M12 9v4M12 17h.01'/>",
+            ModuleKeys.ContainerLoadingCheck => "<rect x='3' y='7' width='18' height='10' rx='1.5'/><path d='M7 7v10M11 7v10M15 7v10M19 7v10'/>",
+            ModuleKeys.InspectionSummary  => "<rect x='5' y='4' width='14' height='17' rx='2'/><path d='M9 3h6v3H9zM9 13l2 2 4-4'/>",
+            ModuleKeys.PerformanceTest    => "<path d='M9 3h6M10 3v6L5 19a1.5 1.5 0 0 0 1.3 2h11.4a1.5 1.5 0 0 0 1.3-2l-5-10V3M7.5 15h9'/>",
+            ModuleKeys.PerformanceReview  => "<path d='M5 20V12M10 20V8M15 20V4M20 20v-9'/>",
+            ModuleKeys.Directory          => "<path d='M3 6.5A1.5 1.5 0 0 1 4.5 5h5l2 2h8A1.5 1.5 0 0 1 21 8.5v9a1.5 1.5 0 0 1-1.5 1.5h-15A1.5 1.5 0 0 1 3 17.5z'/>",
+            _                             => "<path d='M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z'/><path d='M14 3v5h5M12 11v6M9.5 14.5L12 17l2.5-2.5'/>",
+        };
+        return a + body + "</svg>";
+    }
     private static readonly string[] CUSTOMER_DEFAULT_ACCESS  = new[] { "InspectionSchedule", "SummaryInspections" };
     private static readonly string[] INSPECTOR_DEFAULT_ACCESS = new[] { "JobRequest", "InspectionSchedule", "SummaryInspections", "PerformanceReview" };
 
@@ -339,7 +584,7 @@ else
     protected override async Task OnInitializedAsync()
     {
         await SetAuthHeader();
-        await Task.WhenAll(LoadPage(1), LoadCountries(), LoadCustomers());
+        await Task.WhenAll(LoadPage(1), LoadCountries(), LoadCustomers(), LoadPlanUsage());
     }
 
     private async Task SetAuthHeader()
@@ -360,19 +605,40 @@ else
         {
             // Default filter: hiển thị cả Customer và Inspector trong list
             var roleFilter = string.IsNullOrEmpty(_filterRole)
-                ? "Customer,Inspector"
+                ? string.Join(",", _roleOptions)
                 : _filterRole;
+            var extra = (string.IsNullOrEmpty(_filterCountry) ? "" : $"&country={Uri.EscapeDataString(_filterCountry)}");
 
             // onlyLoginVisible=true: chỉ hiển thị account có cột ShowInLoginAccount được tick.
             var url = $"api/users?page={page}&pageSize={_pageSize}" +
                       $"&search={Uri.EscapeDataString(_search)}" +
                       $"&roles={Uri.EscapeDataString(roleFilter)}" +
-                      $"&onlyLoginVisible=true";
+                      $"&onlyLoginVisible=true" + extra +
+                      (_filterStatus == "active" ? "&isActive=true" : _filterStatus == "inactive" ? "&isActive=false" : "");
             var result = await Http.GetFromJsonAsync<UserPageResult>(url);
             if (result != null) { _users = result.Items; _total = result.Total; }
+            await LoadKpis(roleFilter, extra);
         }
         catch { }
         finally { _loading = false; }
+    }
+
+    private async Task LoadKpis(string roleFilter, string extra)
+    {
+        try
+        {
+            var q = $"api/users?page=1&pageSize=1&roles={Uri.EscapeDataString(roleFilter)}&onlyLoginVisible=true{extra}&search={Uri.EscapeDataString(_search)}";
+            var a = await Http.GetFromJsonAsync<UserPageResult>(q + "&isActive=true");
+            var i = await Http.GetFromJsonAsync<UserPageResult>(q + "&isActive=false");
+            _kpiActive = a?.Total ?? 0; _kpiInactive = i?.Total ?? 0; _kpiTotal = _kpiActive + _kpiInactive;
+        }
+        catch { }
+    }
+
+    private async Task ResetFilters()
+    {
+        _filterRole = _filterStatus = _filterCountry = _search = "";
+        await LoadPage(1);
     }
 
     private async Task OnSearchKey(KeyboardEventArgs e) { if (e.Key == "Enter") await LoadPage(1); }
@@ -409,6 +675,9 @@ else
         _formMobile = ""; _formCountry = ""; _formCustomerId = "";
         _formIsActive = true; _formRoles = new(); _formError = "";
         _formPageAccess = new();
+        _formDepartment = ""; _formPosition = "";
+        _formPerms = ModulePermissionSet.DefaultFor(null);
+        _custAll = false; _formCustomerIds = new(); _custSearch = ""; _showPw = false;
     }
 
     private async Task OpenCreate()
@@ -437,6 +706,15 @@ else
                                         .Select(x => x.Trim())
                                         .Where(x => _pageAccessOptions.Any(o => o.Key == x))
                                         .ToList();
+        _formDepartment = u.Department ?? "";
+        _formPosition   = u.Position   ?? "";
+        // Quyền hiệu lực: JSON nếu đã có, tài khoản cũ suy ra từ PageAccess
+        _formPerms = ModulePermissionSet.Effective(u.ModulePermissions, u.PageAccess).Normalize();
+        // Customer Access: "*" = tất cả; CSV = chọn riêng; trống = theo CustomerId cũ (Inspector cũ = tất cả)
+        _custAll = CustomerAccess.IsAll(u.CustomerIds) || (string.IsNullOrWhiteSpace(u.CustomerIds) && !u.Roles.Contains("Customer"));
+        _formCustomerIds = CustomerAccess.Parse(u.CustomerIds);
+        if (_formCustomerIds.Count == 0 && !string.IsNullOrWhiteSpace(u.CustomerId)) _formCustomerIds.Add(u.CustomerId);
+        _custSearch = ""; _showPw = false;
         _formError     = "";
         _showModal     = true;
         await Task.CompletedTask;
@@ -446,18 +724,14 @@ else
 
     private void SelectRole(string role)
     {
-        _formRoles = new List<string> { role };
+        _formRoles = string.IsNullOrEmpty(role) ? new List<string>() : new List<string> { role };
         if (role != "Customer") _formCustomerId = "";
 
-        // Set page access defaults by role (only when creating new — don't stomp edits)
+        // Mặc định theo role (chỉ khi tạo mới — không đè khi đang sửa)
         if (_editId == null)
         {
-            _formPageAccess = role switch
-            {
-                "Customer"  => CUSTOMER_DEFAULT_ACCESS.ToList(),
-                "Inspector" => INSPECTOR_DEFAULT_ACCESS.ToList(),
-                _           => new()
-            };
+            _formPerms = ModulePermissionSet.DefaultFor(role);
+            _custAll   = role != "Customer";
         }
 
         StateHasChanged();
@@ -481,13 +755,9 @@ else
     /// Mobile, Email, Country từ thông tin customer.
     /// Chỉ ghi đè field nào có giá trị trong data customer; field trống thì giữ nguyên giá trị hiện tại.
     /// </summary>
-    private void OnCustomerChanged(ChangeEventArgs e)
+    private void FillFromCustomer(CustomerDropdownItem c)
     {
-        _formCustomerId = e.Value?.ToString() ?? "";
-        if (string.IsNullOrEmpty(_formCustomerId)) return;
-
-        var c = _customers.FirstOrDefault(x => x.CustomerId == _formCustomerId);
-        if (c == null) return;
+        _formCustomerId = c.CustomerId;
 
         // Full Name fill từ CompanyName theo yêu cầu
         if (!string.IsNullOrWhiteSpace(c.CompanyName)) _formFullName = c.CompanyName;
@@ -499,15 +769,24 @@ else
     private async Task SaveUser()
     {
         _formError = "";
-        if (string.IsNullOrWhiteSpace(_formUsername))                    { _formError = "Username is required."; return; }
-        if (string.IsNullOrWhiteSpace(_formFullName))                    { _formError = "Full Name is required."; return; }
-        if (_editId == null && string.IsNullOrWhiteSpace(_formPassword)) { _formError = "Password is required."; return; }
-        if (_formRoles.Count == 0)                                        { _formError = "Please select a role."; return; }
-        if (_formRoles.Contains("Customer") && string.IsNullOrEmpty(_formCustomerId))
-        { _formError = "Please select a Customer to link this account."; return; }
+        if (string.IsNullOrWhiteSpace(_formUsername))                    { _formError = T("Users.UsernameIsRequired"); return; }
+        if (string.IsNullOrWhiteSpace(_formFullName))                    { _formError = T("Users.FullNameIsRequired"); return; }
+        if (_editId == null && string.IsNullOrWhiteSpace(_formPassword)) { _formError = T("Users.PasswordIsRequired"); return; }
+        if (_formRoles.Count == 0)                                        { _formError = T("Users.PleaseSelectRole"); return; }
+        if (_editId == null && string.IsNullOrWhiteSpace(_formEmail))    { _formError = T("Users.EmailIsRequired"); return; }
+        if (!_custAll && _formCustomerIds.Count == 0)
+        { _formError = T("Users.PleaseSelectAtLeastOneCustomer"); return; }
+        if (!_formPerms.Normalize().Modules.Values.Any(m => m.Level > PermLevel.None))
+        { _formError = T("Users.PleaseGiveThisUserAccessTo"); return; }
+
+        var customerIds = _custAll ? CustomerAccess.All : string.Join(",", _formCustomerIds);
+        // Liên kết khách hàng chính (tương thích cũ): Customer = khách hàng đầu tiên được chọn
+        if (_formRoles.Contains("Customer")) _formCustomerId = _custAll ? (_formCustomerIds.FirstOrDefault() ?? _formCustomerId) : _formCustomerIds[0];
+        var modulePermissions = _formPerms.ToJson();
+        var pageAccessCsv     = _formPerms.ToPageAccessCsv();
 
         _saving = true;
-        Waiting.Show(_editId == null ? "Creating account..." : "Saving account...");
+        Waiting.Show(_editId == null ? T("Users.CreatingAccount") : T("Users.SavingAccount"));
         try
         {
             HttpResponseMessage response;
@@ -523,7 +802,11 @@ else
                     customerId = _formCustomerId,
                     isActive   = _formIsActive,
                     roles      = _formRoles,
-                    pageAccess = string.Join(",", _formPageAccess)
+                    pageAccess = pageAccessCsv,
+                    department = _formDepartment,
+                    position   = _formPosition,
+                    customerIds = customerIds,
+                    modulePermissions = modulePermissions
                 };
                 response = await Http.PostAsJsonAsync("api/users", payload);
             }
@@ -539,26 +822,57 @@ else
                     customerId  = _formCustomerId,
                     isActive    = _formIsActive,
                     roles       = _formRoles,
-                    pageAccess  = string.Join(",", _formPageAccess)
+                    pageAccess  = pageAccessCsv,
+                    department  = _formDepartment,
+                    position    = _formPosition,
+                    customerIds = customerIds,
+                    modulePermissions = modulePermissions
                 };
                 response = await Http.PutAsJsonAsync($"api/users/{_editId}", payload);
             }
 
-            if (response.IsSuccessStatusCode) { _showModal = false; await LoadPage(_page); }
+            if (response.IsSuccessStatusCode) { _showModal = false; await LoadPage(_page); await LoadPlanUsage(); }
             else
             {
                 var err = await response.Content.ReadFromJsonAsync<ErrorResponse>();
-                _formError = err?.Message ?? "An error occurred.";
+                _formError = TA(err?.Message) ?? T("Users.ErrorOccurred");
             }
         }
-        catch { _formError = "Connection error."; }
+        catch { _formError = T("Users.ConnectionError"); }
         finally { _saving = false; Waiting.Hide(); }
     }
 
     private async Task ToggleActive(UserDto user)
     {
+        _listError = null;
         var response = await Http.PutAsJsonAsync($"api/users/{user.Id}/toggle-active", new { });
-        if (response.IsSuccessStatusCode) { user.IsActive = !user.IsActive; StateHasChanged(); }
+        if (response.IsSuccessStatusCode) { user.IsActive = !user.IsActive; await LoadPlanUsage(); StateHasChanged(); }
+        else
+        {
+            // vd. vượt hạn mức người dùng của gói (403) → hiện thông báo đã dịch
+            try { var err = await response.Content.ReadFromJsonAsync<ErrorResponse>(); _listError = TA(err?.Message) ?? T("Users.ErrorOccurred"); }
+            catch { _listError = T("Users.ErrorOccurred"); }
+        }
+    }
+
+    // ── Hạn mức gói (người dùng / dung lượng) ─────────────────────────────────
+    private PlanUsageDto? _plan;
+    private string? _listError;
+    private async Task LoadPlanUsage()
+    {
+        try { _plan = await Http.GetFromJsonAsync<PlanUsageDto>("api/me/plan-usage"); }
+        catch { _plan = null; }   // API cũ chưa có endpoint / lỗi mạng → không hiện
+    }
+    private class PlanUsageDto
+    {
+        public bool Applies { get; set; }
+        public bool Enforced { get; set; }
+        public string? Plan { get; set; }
+        public int MaxUsers { get; set; }
+        public int ActiveUsers { get; set; }
+        public int StorageGb { get; set; }
+        public double UsedGb { get; set; }
+        public int WarnPercent { get; set; } = 80;
     }
 
     private void ConfirmDelete(UserDto user) => _deleteUser = user;
@@ -567,7 +881,7 @@ else
     {
         if (_deleteUser == null) return;
         _saving = true;
-        Waiting.Show("Deleting account...");
+        Waiting.Show(T("Users.DeletingAccount"));
         var response = await Http.DeleteAsync($"api/users/{_deleteUser.Id}");
         _saving = false;
         Waiting.Hide();
@@ -590,6 +904,10 @@ else
         public bool     IsActive    { get; set; }
         public List<string> Roles   { get; set; } = new();
         public string?  PageAccess  { get; set; }   // CSV of page keys, e.g. "JobRequest,SummaryInspections"
+        public string?  Department  { get; set; }
+        public string?  Position    { get; set; }
+        public string?  CustomerIds { get; set; }   // "*" hoặc CSV mã KH
+        public string?  ModulePermissions { get; set; }
         public DateTime CreatedAt   { get; set; }
     }
 
@@ -656,6 +974,46 @@ else
     .user-avatar { width:30px; height:30px; border-radius:50%; background:#1e90d6; color:#fff; font-size:11px; font-weight:600; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
     .user-fullname { font-weight:500; color:#1a2d5a; }
 
+    .u-kpis { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:14px; margin-bottom:16px; }
+    .u-kpi { background:#fff; border-radius:12px; padding:14px 18px; display:flex; align-items:center; gap:14px; box-shadow:0 2px 10px rgba(0,0,0,.12); }
+    .u-kpi b { font-size:28px; line-height:1; color:#1a2d5a; font-weight:700; }
+    .u-kpi b.green { color:#16a34a; } .u-kpi b.red { color:#dc2626; }
+    .u-kpi small { color:#64748b; font-size:13px; }
+    .u-kpi-ico { width:44px; height:44px; border-radius:12px; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+    .u-kpi-ico.k-blue { background:#e0ecff; color:#1d4ed8; } .u-kpi-ico.k-green { background:#dcfce7; color:#16a34a; } .u-kpi-ico.k-orange { background:#ffedd5; color:#ea580c; }
+    .btn-reset { background:rgba(255,255,255,.12); border:1px solid rgba(255,255,255,.3); color:#fff; border-radius:8px; padding:8px 14px; font-size:13px; cursor:pointer; font-family:inherit; }
+    .btn-reset:hover { background:rgba(255,255,255,.22); }
+    /* thẻ tài khoản (điện thoại) */
+    .u-page { display:flex; flex-direction:column; }
+    .u-page > * { order:3; }
+    .u-page > .lp-head { order:0; } .u-page > .u-kpis { order:1; } .u-page > .top-bar { order:2; }
+    .u-card { position:relative; display:grid; grid-template-columns:30px minmax(0,1fr) auto auto; grid-template-areas:"no main badges act"; gap:6px 10px; align-items:center; }
+    .u-card-no { grid-area:no; width:28px; height:28px; border-radius:8px; background:#eef3fb; color:#42557f; font-size:12px; font-weight:700; display:flex; align-items:center; justify-content:center; }
+    .u-card-main { grid-area:main; min-width:0; }
+    .u-card-badges { grid-area:badges; display:flex; flex-direction:column; gap:6px; align-items:center; }
+    .u-card-act { grid-area:act; display:flex; gap:6px; }
+    @@media (max-width:760px) {
+        .u-kpis { grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; }
+        .u-kpi { display:grid; grid-template-columns:auto 1fr; grid-template-rows:auto auto; column-gap:8px; row-gap:4px; align-items:center; padding:10px; }
+        .u-kpi .u-kpi-ico { grid-column:1; grid-row:1; width:34px; height:34px; }
+        .u-kpi b { grid-column:2; grid-row:1; font-size:22px; }
+        .u-kpi small { grid-column:1 / -1; grid-row:2; font-size:12px; }
+        /* ô tìm kiếm + 3 bộ lọc luôn hiện, nút New Account nằm sau bộ lọc (theo thiết kế mẫu) */
+        .u-page > .top-bar { background:#fff; border-radius:14px; padding:12px; gap:10px; margin-bottom:12px; display:flex; flex-wrap:wrap; box-shadow:0 1px 6px rgba(15,37,82,.08); }
+        .u-page > .top-bar .search-wrap { flex:0 0 100% !important; width:100% !important; }
+        .u-page > .top-bar .lp-filter-toggle, .u-page > .top-bar .total-count { display:none !important; }
+        .u-page > .top-bar .filter-select { display:block !important; flex:0 0 calc((100% - 20px) / 3) !important; min-width:0 !important; width:calc((100% - 20px) / 3) !important; font-size:12px; padding:8px 18px 8px 8px; background-position:right 6px center !important; text-overflow:ellipsis; }
+        .u-card { gap:6px 8px; padding:12px 10px; }
+        .u-card .role-badge { font-size:9.5px; padding:2px 8px; white-space:nowrap; }
+        .u-card .status-toggle { font-size:10px; padding:2px 10px; }
+        .u-card .m-card-name { font-size:14.5px; }
+        .u-page > .top-bar .btn-reset { order:5; }
+        .u-page > .top-bar .btn-new { order:6; flex:1 1 100%; justify-content:center; height:44px; border-radius:10px; }
+    }
+    .role-qaqcmanager { background:#d1fae5; color:#047857; }
+    .role-vendor { background:#ede9fe; color:#6d28d9; }
+    .role-management { background:#fee2e2; color:#b91c1c; }
+    .role-customrole { background:#f3f4f6; color:#4b5563; }
     .role-badge { display:inline-block; padding:2px 8px; border-radius:10px; font-size:10px; font-weight:600; text-transform:uppercase; letter-spacing:.04em; margin:0 2px; }
     .role-admin    { background:#fde7e7; color:#dc2626; }
     .role-inspector{ background:#dbeafe; color:#1565c0; }
@@ -748,5 +1106,121 @@ else
     .page-access-row .pa-label { flex:1; }
     .page-access-row input[type="checkbox"] {
         width:18px; height:18px; accent-color:#1e90d6; cursor:pointer; margin:0;
+    }
+
+    /* ══ Popup Create / Edit User (theo mẫu) ══ */
+    .modal-card.uf-card { max-width:1320px; width:100%; max-height:94vh; padding:22px 24px 18px; background:#f5f8fc; border-radius:16px; }
+    .uf-head { display:flex; justify-content:space-between; align-items:flex-start; gap:12px; margin-bottom:14px; }
+    .uf-title { font-family:"DM Sans",sans-serif; font-size:26px; font-weight:800; color:#0f2552; margin:0; letter-spacing:-.01em; }
+    .uf-sub { font-size:14px; color:#64748b; margin-top:2px; }
+    .uf-grid { display:grid; grid-template-columns:minmax(0,.9fr) minmax(0,1.5fr); gap:16px; align-items:start; }
+    .uf-col { display:flex; flex-direction:column; gap:14px; min-width:0; }
+    .uf-box { background:#fff; border:1px solid #e3e9f2; border-radius:12px; padding:16px 18px; box-shadow:0 1px 4px rgba(15,40,90,.04); min-width:0; }
+    .uf-box-t { font-size:18px; font-weight:800; color:#0f2552; margin:0 0 10px; }
+    .uf-desc { font-size:13px; color:#64748b; margin:-4px 0 10px; line-height:1.45; }
+    .uf-row2 { display:grid; grid-template-columns:repeat(2, minmax(0,1fr)); gap:12px 16px; }
+    .uf-f { display:flex; flex-direction:column; gap:5px; min-width:0; }
+    .uf-f > label { font-size:13.5px; color:#334155; font-weight:500; }
+    .uf-f > label i { color:#ef4444; font-style:normal; }
+    /* Ô nhập cao cố định + tự vẽ mũi tên select: đồng đều Safari / Chrome / Android */
+    .uf-in { height:42px; width:100%; box-sizing:border-box; padding:0 12px; border:1px solid #d5deea; border-radius:8px; background:#fff;
+        font-size:14.5px; font-family:inherit; color:#1a2d5a; outline:none; line-height:40px; }
+    .uf-in:focus { border-color:#3b82f6; box-shadow:0 0 0 3px rgba(59,130,246,.12); }
+    .uf-in[readonly] { background:#f1f5f9; color:#475569; }
+    select.uf-in { -webkit-appearance:none; appearance:none; padding-right:34px; cursor:pointer;
+        background:#fff url("data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='7'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%231a2d5a' stroke-width='1.6' fill='none'/%3E%3C/svg%3E") no-repeat right 12px center; }
+    select.uf-role.customer  { background-color:#fdf3dc; border-color:#f3cf86; color:#92400e; font-weight:600; }
+    select.uf-role.inspector { background-color:#e8f0fd; border-color:#a9c4f5; color:#1d4ed8; font-weight:600; }
+    .uf-pw { position:relative; }
+    .uf-pw .uf-in { padding-right:42px; }
+    .uf-eye { position:absolute; right:6px; top:50%; transform:translateY(-50%); width:32px; height:32px; border:none; background:none; color:#64748b; cursor:pointer; display:flex; align-items:center; justify-content:center; border-radius:6px; }
+    .uf-eye:hover { background:#f1f5f9; }
+    .uf-hint { font-size:12px; color:#94a3b8; margin-top:6px; }
+    .uf-muted { color:#94a3b8; font-size:13px; padding:6px 2px; }
+
+    .uf-radios { display:flex; gap:26px; flex-wrap:wrap; margin-bottom:10px; }
+    .uf-radio { display:inline-flex; align-items:center; gap:8px; font-size:14px; color:#1a2d5a; cursor:pointer; }
+    .uf-radio input { width:20px; height:20px; accent-color:#1d4ed8; margin:0; }
+    .uf-cust-tools { display:flex; align-items:center; gap:12px; margin-bottom:8px; }
+    .uf-search { flex:1; min-width:0; display:flex; align-items:center; gap:8px; height:40px; padding:0 12px; border:1px solid #d5deea; border-radius:8px; color:#64748b; background:#fff; }
+    .uf-search input { flex:1; min-width:0; border:none; outline:none; font-size:14px; font-family:inherit; color:#1a2d5a; background:transparent; }
+    .uf-link { border:none; background:none; color:#1d4ed8; font-weight:600; font-size:14px; cursor:pointer; font-family:inherit; white-space:nowrap; padding:4px; }
+    .uf-cust-list { max-height:190px; overflow-y:auto; display:flex; flex-direction:column; gap:2px; padding-right:4px; }
+    .uf-check { display:flex; align-items:center; gap:10px; padding:6px 6px; border-radius:6px; font-size:14px; color:#1a2d5a; cursor:pointer; }
+    .uf-check:hover { background:#f5f8fc; }
+    .uf-check input { width:18px; height:18px; accent-color:#1d4ed8; margin:0; flex-shrink:0; }
+    .uf-check span { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+
+    /* Công tắc Active */
+    .uf-switch { position:relative; display:inline-flex; align-items:center; gap:10px; cursor:pointer; height:42px; font-size:14px; color:#1a2d5a; }
+    .uf-switch input { position:absolute; opacity:0; width:0; height:0; }
+    .uf-slider { width:46px; height:26px; border-radius:13px; background:#cbd5e1; position:relative; transition:background .2s; flex-shrink:0; }
+    .uf-slider::after { content:""; position:absolute; top:3px; left:3px; width:20px; height:20px; border-radius:50%; background:#fff; box-shadow:0 1px 3px rgba(0,0,0,.25); transition:transform .2s; }
+    .uf-switch input:checked + .uf-slider { background:#16a34a; }
+    .uf-switch input:checked + .uf-slider::after { transform:translateX(20px); }
+    .uf-switch b { font-weight:500; }
+
+    /* Bảng quyền */
+    .uf-perm-head { display:flex; justify-content:space-between; align-items:flex-start; gap:12px; flex-wrap:wrap; }
+    .uf-legend { display:flex; gap:14px; flex-wrap:wrap; font-size:12.5px; color:#334155; padding-top:4px; }
+    .uf-legend span { display:inline-flex; align-items:center; gap:6px; }
+    .uf-legend i { width:16px; height:16px; border-radius:50%; display:inline-block; box-sizing:border-box; }
+    .uf-legend .lv-none { background:#9ca3af; border:3px solid #e5e7eb; }
+    .uf-legend .lv-view { border:4px solid #1d4ed8; background:#fff; }
+    .uf-legend .lv-edit { border:4px solid #16a34a; background:#fff; }
+    .uf-tbl-wrap { overflow-x:auto; -webkit-overflow-scrolling:touch; }
+    .uf-tbl { width:100%; border-collapse:collapse; font-size:14px; min-width:680px; }
+    .uf-tbl th { background:#eef3fa; color:#1a2d5a; font-weight:700; font-size:13px; padding:10px 8px; text-align:center; border-bottom:1px solid #dfe7f1; line-height:1.25; }
+    .uf-tbl th small { font-weight:400; color:#64748b; font-size:11.5px; }
+    .uf-tbl td { padding:9px 8px; border-bottom:1px solid #eef2f7; vertical-align:middle; }
+    .uf-tbl td + td { border-left:1px solid #f1f4f8; }
+    .uf-tbl .tl { text-align:left; } .uf-tbl .tc { text-align:center; }
+    .uf-mod { display:flex; align-items:center; gap:10px; }
+    .uf-mod-ico { width:24px; display:flex; justify-content:center; color:#1a2d5a; flex-shrink:0; }
+    .uf-mod b { font-weight:600; color:#0f2552; white-space:nowrap; }
+    /* Radio tròn tự vẽ theo màu mức quyền */
+    .uf-lv { display:inline-flex; position:relative; cursor:pointer; }
+    .uf-lv input { position:absolute; opacity:0; width:0; height:0; }
+    .uf-lv span { width:22px; height:22px; border-radius:50%; border:1.5px solid #9aa8bb; background:#fff; box-sizing:border-box; transition:all .12s; }
+    .uf-lv.on.lv-none span { border:5px solid #e5e7eb; background:#9ca3af; }
+    .uf-lv.on.lv-view span { border:6px solid #1d4ed8; }
+    .uf-lv.on.lv-edit span { border:6px solid #16a34a; }
+    .uf-lv:not(.dis):hover span { border-color:#3b82f6; }
+    .uf-lv.dis { cursor:not-allowed; } .uf-lv.dis span { background:#f1f5f9; border-color:#d9dfe7; }
+    .uf-lv input:focus-visible + span { outline:2px solid #3b82f6; outline-offset:2px; }
+    .uf-flags { display:flex; gap:6px 14px; flex-wrap:nowrap; }
+    .uf-flags.dis { opacity:.45; }
+    .uf-flag { display:inline-flex; align-items:center; gap:6px; font-size:13.5px; color:#334155; cursor:pointer; white-space:nowrap; }
+    .uf-flag input { width:18px; height:18px; accent-color:#1d4ed8; margin:0; }
+    .uf-dash { color:#64748b; }
+    .uf-note { font-size:12px; color:#94a3b8; }
+    .uf-rules { display:flex; gap:12px; margin-top:14px; background:#f3f7fd; border:1px solid #e1e9f5; border-radius:10px; padding:12px 14px; font-size:13px; color:#475569; }
+    .uf-rules-ico { width:22px; height:22px; border-radius:50%; background:#1d4ed8; color:#fff; font-weight:800; font-size:13px; font-style:italic; display:flex; align-items:center; justify-content:center; flex-shrink:0; font-family:Georgia,serif; }
+    .uf-rules b { color:#0f2552; }
+    .uf-rules ul { margin:4px 0 0; padding-left:18px; }
+    .uf-rules li { margin:2px 0; }
+
+    .uf-foot { display:flex; justify-content:flex-end; gap:12px; margin-top:16px; }
+    .uf-btn { height:46px; min-width:130px; padding:0 22px; border-radius:9px; font-size:15.5px; font-weight:700; cursor:pointer; font-family:inherit; border:none; }
+    .uf-btn.ghost { background:#e5e9ef; color:#1a2d5a; }
+    .uf-btn.ghost:hover { background:#d9dfe7; }
+    .uf-btn.primary { background:#1d7fe0; color:#fff; box-shadow:0 2px 8px rgba(29,127,224,.3); }
+    .uf-btn.primary:hover:not([disabled]) { background:#1565c0; }
+    .uf-btn[disabled] { opacity:.6; cursor:not-allowed; }
+
+    @@media (max-width:1100px) {
+        .uf-grid { grid-template-columns:minmax(0,1fr); }
+    }
+    @@media (max-width:640px) {
+        .modal-overlay { padding:8px; }
+        .modal-card.uf-card { padding:16px 12px 14px; max-height:96vh; }
+        .uf-title { font-size:21px; }
+        .uf-row2 { grid-template-columns:minmax(0,1fr); }
+        .uf-box { padding:14px 12px; }
+        .uf-in, .uf-search input { font-size:16px; } /* 16px: iOS Safari không tự phóng to khi chạm */
+        .uf-foot .uf-btn { flex:1; min-width:0; }
+        /* Trang danh sách: tiêu đề + phụ đề xuống dòng thay vì tràn ngang */
+        .title-block { flex-wrap:wrap; min-width:0; }
+        .page-sub { white-space:normal; }
     }
 </style>

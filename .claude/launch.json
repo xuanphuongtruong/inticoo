@@ -1,0 +1,115 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "inticoo-api",
+      "runtimeExecutable": "dotnet",
+      "runtimeArgs": [
+        "run",
+        "--project",
+        "D:/Source/InticooApp/InticooInspection/InticooInspection.API",
+        "--launch-profile",
+        "http"
+      ],
+      "port": 5034
+    },
+    {
+      "name": "inticoo-client",
+      "runtimeExecutable": "dotnet",
+      "runtimeArgs": [
+        "run",
+        "--project",
+        "D:/Source/InticooApp/InticooInspection/InticooInspection.Client",
+        "--launch-profile",
+        "http"
+      ],
+      "port": 5186
+    },
+    {
+      "name": "inticoo-superadmin",
+      "runtimeExecutable": "dotnet",
+      "runtimeArgs": [
+        "run",
+        "--project",
+        "D:/Source/InticooApp/InticooInspection/InticooInspection.SuperAdmin",
+        "--launch-profile",
+        "http"
+      ],
+      "port": 5210
+    },
+    {
+      "name": "inticoo-superadmin-localdb",
+      "runtimeExecutable": "dotnet",
+      "runtimeArgs": [
+        "run",
+        "--project",
+        "D:/Source/InticooApp/InticooInspection/InticooInspection.SuperAdmin",
+        "--launch-profile",
+        "http",
+        "--",
+        "--ConnectionStrings:Super=Server=(localdb)\\MSSQLLocalDB;Database=InticooInspectionSupper_Dev;Trusted_Connection=True;TrustServerCertificate=True",
+        "--Seed:Demo=true",
+        "--SuperAdmin:Email=dev@inticoo.test",
+        "--SuperAdmin:Password=DevTest#2026x",
+        "--PayPal:ClientId=",
+        "--PayPal:Secret=",
+        "--Portal:PublicUrl=http://localhost:5200",
+        "--Provisioning:Mode=Database",
+        "--Provisioning:DatabasePrefix=InticooDev_",
+        "--Portal:AppUrl=http://localhost:5186"
+      ],
+      "port": 5210
+    },
+    {
+      "name": "inticoo-website",
+      "runtimeExecutable": "dotnet",
+      "runtimeArgs": [
+        "run",
+        "--project",
+        "D:/Source/InticooApp/InticooInspection/InticooInspection.Website",
+        "--launch-profile",
+        "http"
+      ],
+      "port": 5200
+    },
+    {
+      "name": "inticoo-website-localdb",
+      "runtimeExecutable": "dotnet",
+      "runtimeArgs": [
+        "run",
+        "--project",
+        "D:/Source/InticooApp/InticooInspection/InticooInspection.Website",
+        "--launch-profile",
+        "http",
+        "--",
+        "--ConnectionStrings:Super=Server=(localdb)\\MSSQLLocalDB;Database=InticooInspectionSupper_Dev;Trusted_Connection=True;TrustServerCertificate=True",
+        "--Seed:Demo=true",
+        "--SuperAdmin:Email=dev@inticoo.test",
+        "--SuperAdmin:Password=DevTest#2026x",
+        "--PayPal:ClientId=",
+        "--PayPal:Secret=",
+        "--Provisioning:Mode=Database",
+        "--Provisioning:DatabasePrefix=InticooDev_",
+        "--Portal:AppUrl=http://localhost:5186"
+      ],
+      "port": 5200
+    },
+    {
+      "name": "inticoo-api-localdb",
+      "runtimeExecutable": "dotnet",
+      "runtimeArgs": [
+        "run",
+        "--project",
+        "D:/Source/InticooApp/InticooInspection/InticooInspection.API",
+        "--launch-profile",
+        "http",
+        "--",
+        "--ConnectionStrings:DefaultConnection=Server=(localdb)\\MSSQLLocalDB;Database=InticooInspection_DevRoot;Trusted_Connection=True;TrustServerCertificate=True",
+        "--ConnectionStrings:Super=Server=(localdb)\\MSSQLLocalDB;Database=InticooInspectionSupper_Dev;Trusted_Connection=True;TrustServerCertificate=True",
+        "--Usage:StartDelaySeconds=5",
+        "--Portal:PublicUrl=http://localhost:5200"
+      ],
+      "port": 5034
+    }
+  ]
+}

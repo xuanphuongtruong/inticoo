@@ -1,0 +1,304 @@
+@page "/settings/billing"
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Admin")]
+@using System.Globalization
+@using System.Net.Http.Headers
+@using System.Net.Http.Json
+@using InticooInspection.Client.Services
+@inject SettingsClient Settings
+@inject HttpClient Http
+@inject IJSRuntime JS
+@inject Blazored.SessionStorage.ISessionStorageService SessionStorage
+@inherits LocalizedComponentBase
+
+@* Gói, mức sử dụng, hóa đơn, thanh toán THẬT của công ty — api/billing đọc từ DB quản trị (Portal / Super Admin).
+   Không còn số liệu mẫu viết cứng. *@
+<PageTitle>@T("Settings.BillTitle")</PageTitle>
+
+<div class="st-page">
+    <div class="st-crumb">@T("Menu.Settings") › <b>@T("Settings.BillTitle")</b></div>
+    <div class="st-top">
+        <div>
+            <h1 class="st-title">@T("Settings.BillTitle")</h1>
+            <div class="st-sub">@T("Settings.BillSub")</div>
+        </div>
+        @if (!string.IsNullOrEmpty(_data?.UpgradeUrl) && _data!.Applies)
+        {
+            <a class="st-btn primary" href="@_data.UpgradeUrl" target="_blank" rel="noopener">@T("Settings.ChangePlan")</a>
+        }
+    </div>
+
+    @if (_billSaved) { <div class="st-toast">@T("Settings.SavedOk")</div> }
+    @if (_billFailed) { <div class="st-toast err">@T("Settings.SaveFailed")</div> }
+
+    @if (_loading)
+    {
+        <div class="st-sub" style="padding:30px 0">@T("Common.Loading")</div>
+    }
+    else if (_data == null)
+    {
+        <div class="st-toast err">@T("Settings.SaveFailed")</div>
+    }
+    else if (!_data.Applies)
+    {
+        <div class="st-sec"><div class="st-sub" style="padding:10px 0">@T("Settings.NoBillingAccount")</div></div>
+    }
+    else
+    {
+        var sub = _data.Subscription; var u = _data.Usage;
+        <div class="st-bill-top">
+            <SettingsSection Title="@T("Settings.CurrentSubscription")" Subtitle="@T("Settings.CurrentSubscriptionSub")" Icon="@IcoCard" DefaultOpen="true">
+                @if (sub == null) { <div class="st-sub">@T("Settings.NoSubscription")</div> }
+                else
+                {
+                    <div class="st-plan">
+                        <div>
+                            <div class="st-plan-name">@sub.Plan <span class="st-pill">@TE("Status", sub.Status)</span></div>
+                            <div class="st-price">@Money(sub.Price) <small>/ @(Annual(sub.Cycle) ? T("Settings.Year") : T("Settings.Month"))</small></div>
+                            @if (sub.NextBillingDate != null) { <div class="st-sub">@T("Settings.NextBilling", D(sub.NextBillingDate.Value))</div> }
+                            <div class="st-sub" style="margin-bottom:12px">@T("Settings.BillingCycle", Annual(sub.Cycle) ? T("Settings.Annual") : T("Settings.Monthly"))</div>
+                            @if (!string.IsNullOrEmpty(_data.UpgradeUrl))
+                            {
+                                <a class="st-btn outline block" href="@_data.UpgradeUrl" target="_blank" rel="noopener">@T("Settings.ChangePlan")</a>
+                            }
+                        </div>
+                        <ul class="st-feat">
+                            @foreach (var f in (sub.Features.Count > 0 ? sub.Features : _data.Modules)) { <li>@f</li> }
+                        </ul>
+                    </div>
+                }
+            </SettingsSection>
+
+            <SettingsSection Title="@T("Settings.UsageOverview")" Subtitle="@(sub?.NextBillingDate != null ? T("Settings.UsageCycle", Cycle(sub)) : "")" Icon="@IcoDb" DefaultOpen="true">
+                @if (u != null)
+                {
+                    <div class="st-usage">
+                        <div class="st-usage-top"><span>@T("Settings.StorageUsage")</span><span>@($"{u.UsedGb:0.##} GB")@(u.StorageGb > 0 ? $" / {u.StorageGb:N0} GB" : "")</span></div>
+                        @if (u.StorageGb > 0) { <div class="st-usage-line"><div class="st-bar"><i style="width:@Pct(u.UsedGb, u.StorageGb)%"></i></div><em>@Pct(u.UsedGb, u.StorageGb)%</em></div> }
+                    </div>
+                    <div class="st-usage">
+                        <div class="st-usage-top"><span>@T("Settings.TotalUsers")</span><span>@u.ActiveUsers@(u.MaxUsers > 0 ? $" / {u.MaxUsers}" : "")</span></div>
+                        @if (u.MaxUsers > 0) { <div class="st-usage-line"><div class="st-bar"><i style="width:@Pct(u.ActiveUsers, u.MaxUsers)%"></i></div><em>@Pct(u.ActiveUsers, u.MaxUsers)%</em></div> }
+                    </div>
+                    <div class="st-usage">
+                        <div class="st-usage-top"><span>@T("Settings.TotalInspectionsMonth")</span><span>@u.InspectionsThisMonth</span></div>
+                    </div>
+                }
+            </SettingsSection>
+        </div>
+
+        <div class="st-sec">
+            <div class="st-tabs-bar">
+                <div class="st-tabs" style="flex:1">
+                    <button type="button" class="@(_tab == 0 ? "on" : "")" @onclick="() => _tab = 0">@T("Settings.Invoices")</button>
+                    <button type="button" class="@(_tab == 1 ? "on" : "")" @onclick="() => _tab = 1">@T("Settings.PaymentMethod")</button>
+                </div>
+                @if (_tab == 0 && _data.Invoices.Count > 0)
+                {
+                    <button class="st-btn primary st-sm" style="margin-bottom:12px" @onclick="DownloadList">@T("Settings.DownloadInvoices")</button>
+                }
+            </div>
+
+            @if (_tab == 0)
+            {
+                @if (_data.Invoices.Count == 0) { <div class="st-sub" style="padding:14px 0">@T("Settings.NoInvoices")</div> }
+                else
+                {
+                    <div class="st-inv">
+                        <div class="st-inv-head">
+                            <div>@T("Settings.InvoiceNo")</div><div>@T("Settings.InvoiceDate")</div><div>@T("Settings.Period")</div>
+                            <div>@T("Settings.Plan")</div><div>@T("Settings.AmountUsd")</div><div>@T("Common.Status")</div><div>@T("Common.Action")</div>
+                        </div>
+                        @foreach (var inv in _data.Invoices)
+                        {
+                            <div class="st-inv-row">
+                                <div>@inv.Number</div><div>@D(inv.InvoiceDate)</div><div>@D(inv.PeriodStart) – @D(inv.PeriodEnd)</div><div>@inv.Plan</div>
+                                <div>@Money(inv.Total)</div>
+                                <div><span class="st-pill @(inv.Status == "Paid" ? "" : "def")">@TE("Status", inv.Status)</span></div>
+                                <div class="st-inv-act">
+                                    <button class="st-btn outline st-sm" @onclick="() => _view = inv">@T("Common.View")</button>
+                                    <button class="st-btn outline st-sm icon" title="@T("Common.Download")" @onclick="() => DownloadOne(inv)">↓</button>
+                                </div>
+                            </div>
+                            <div class="st-inv-m">
+                                <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#6b7280" stroke-width="1.6" stroke-linecap="round"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 8h6M9 12h6M9 16h3"/></svg>
+                                <div class="main"><b>@inv.Number</b>@D(inv.InvoiceDate)<br /><b style="display:inline">@Money(inv.Total)</b> <span class="st-pill">@TE("Status", inv.Status)</span></div>
+                                <button class="st-btn outline st-sm" @onclick="() => _view = inv">@T("Common.View")</button>
+                            </div>
+                        }
+                    </div>
+                    <div class="st-sub" style="text-align:right;margin-top:8px">@T("Settings.ShowingOf", 1, _data.Invoices.Count)</div>
+                }
+            }
+            else
+            {
+                @PaymentCard()
+            }
+        </div>
+
+        @if (_tab == 0)
+        {
+            <div class="st-bill-bottom">
+                <SettingsSection Title="@T("Settings.PaymentMethod")" Subtitle="@T("Settings.PaymentMethodSub")" Icon="@IcoCard" DefaultOpen="false">
+                    @PaymentCard()
+                </SettingsSection>
+                <SettingsSection Title="@T("Settings.BillingInformation")" Subtitle="@T("Settings.BillingInformationSub")" Icon="@IcoDoc" DefaultOpen="false">
+                    @if (_editBill)
+                    {
+                        <div class="st-grid" style="margin:8px 0 12px">
+                            <div class="st-field"><label>@T("Settings.CompanyName")</label><input class="st-input" @bind="_draft.Company" /></div>
+                            <div class="st-field"><label>@T("Common.Address")</label><input class="st-input" @bind="_draft.Addr1" /></div>
+                            <div class="st-field"><input class="st-input" @bind="_draft.Addr2" /></div>
+                        </div>
+                        <div style="display:flex;gap:10px">
+                            <button class="st-btn outline block" @onclick="CancelBill">@T("Common.Cancel")</button>
+                            <button class="st-btn primary block" @onclick="SaveBill">@T("Common.Save")</button>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="st-addr"><b>@_bill.Company</b>@_bill.Addr1<br />@_bill.Addr2</div>
+                        <button class="st-btn outline block" @onclick="StartEditBill">@T("Settings.EditBillingInfo")</button>
+                    }
+                </SettingsSection>
+            </div>
+        }
+    }
+</div>
+
+@if (_view != null)
+{
+    var v = _view;
+    <div style="position:fixed;inset:0;background:rgba(15,23,42,.45);z-index:1000;display:grid;place-items:center;padding:16px" @onclick="() => _view = null">
+        <div style="background:#fff;color:#16233f;border-radius:14px;max-width:560px;width:100%;padding:24px;box-shadow:0 20px 60px rgba(0,0,0,.25)" @onclick:stopPropagation="true">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px">
+                <div><div class="st-sub">@T("Settings.Invoice")</div><h2 style="margin:2px 0 0;font-size:1.3rem;color:#0c1d4f">@v.Number</h2></div>
+                <span class="st-pill @(v.Status == "Paid" ? "" : "def")">@TE("Status", v.Status)</span>
+            </div>
+            <div class="st-sub" style="margin:14px 0 4px">@T("Settings.BilledTo")</div>
+            <div class="st-addr" style="margin-bottom:12px"><b>@_bill.Company</b>@_bill.Addr1<br />@_bill.Addr2</div>
+            <table style="width:100%;border-collapse:collapse;font-size:.92rem;color:#16233f">
+                <tr><td class="st-sub">@T("Settings.InvoiceDate")</td><td style="text-align:right">@D(v.InvoiceDate)</td></tr>
+                <tr><td class="st-sub">@T("Settings.DueDate")</td><td style="text-align:right">@D(v.DueDate)</td></tr>
+                <tr><td class="st-sub">@T("Settings.Period")</td><td style="text-align:right">@D(v.PeriodStart) – @D(v.PeriodEnd)</td></tr>
+                <tr><td class="st-sub">@T("Settings.Plan")</td><td style="text-align:right">@v.Plan (@(Annual(v.Cycle) ? T("Settings.Annual") : T("Settings.Monthly")))</td></tr>
+                <tr><td class="st-sub">@T("Settings.Subtotal")</td><td style="text-align:right">@Money(v.Amount)</td></tr>
+                <tr><td class="st-sub">@T("Settings.Tax")</td><td style="text-align:right">@Money(v.Tax)</td></tr>
+                <tr><td><b>@T("Settings.Total")</b></td><td style="text-align:right"><b>@Money(v.Total)</b></td></tr>
+                @if (v.PaidAt != null) { <tr><td class="st-sub">@T("Settings.PaidOn")</td><td style="text-align:right">@D(v.PaidAt.Value)@(v.Method != null ? " · " + MethodName(v.Method) : "")</td></tr> }
+            </table>
+            <div style="display:flex;gap:10px;margin-top:18px">
+                <button class="st-btn outline block" @onclick="() => _view = null">@T("Common.Close")</button>
+                <button class="st-btn primary block" @onclick="() => DownloadOne(v)">↓ @T("Common.Download")</button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private int _tab;
+    private bool _loading = true;
+    private BillingDto? _data;
+    private InvoiceDto? _view;
+
+    private class BillInfo
+    {
+        public string Company { get; set; } = "";
+        public string Addr1 { get; set; } = "";
+        public string Addr2 { get; set; } = "";
+    }
+    private BillInfo _bill = new(), _draft = new();
+    private bool _editBill, _billSaved, _billFailed;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var token = await SessionStorage.GetItemAsync<string>("auth_token");
+            if (!string.IsNullOrEmpty(token)) Http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+            _data = await Http.GetFromJsonAsync<BillingDto>("api/billing");
+        }
+        catch { _data = null; }
+        // Thông tin xuất hóa đơn: mặc định lấy theo hồ sơ công ty đăng ký; công ty tự sửa thì dùng bản đã lưu
+        var c = _data?.Company;
+        if (c != null) _bill = new BillInfo { Company = c.Name, Addr1 = c.Address, Addr2 = c.Country };
+        var saved = await Settings.LoadAsync<BillInfo>(SettingsClient.Billing);
+        if (saved != null && !string.IsNullOrWhiteSpace(saved.Company) && saved.Company != "TOYABR HOUSEWARE CO., LTD") _bill = saved;
+        _loading = false;
+    }
+
+    private void StartEditBill() { _draft = new BillInfo { Company = _bill.Company, Addr1 = _bill.Addr1, Addr2 = _bill.Addr2 }; _editBill = true; }
+    private void CancelBill() => _editBill = false;
+
+    private async Task SaveBill()
+    {
+        var ok = await Settings.SaveAsync(SettingsClient.Billing, _draft);
+        if (ok) { _bill = _draft; _editBill = false; }
+        _billSaved = ok; _billFailed = !ok; StateHasChanged();
+        await Task.Delay(2500);
+        _billSaved = false; _billFailed = false; StateHasChanged();
+    }
+
+    // ── Định dạng ─────────────────────────────────────────────────────────────
+    private static string Money(decimal v) => "$" + v.ToString("N2", CultureInfo.InvariantCulture);
+    private string D(DateTime d) => L.Date(d, "d MMM yyyy") ?? d.ToString("dd/MM/yyyy");
+    private static bool Annual(string? cycle) => cycle == "Annual";
+    private string Cycle(SubDto s) => $"{D(s.NextBillingDate!.Value.AddMonths(Annual(s.Cycle) ? -12 : -1))} – {D(s.NextBillingDate!.Value)}";
+    private static int Pct(double used, double max) => max <= 0 ? 0 : (int)Math.Min(100, Math.Round(used * 100 / max));
+    private string MethodName(string m) => m switch { "BankTransfer" => T("Settings.BankTransfer"), "PayPal" => "PayPal", _ => T("Settings.Card") };
+
+    private RenderFragment PaymentCard() => __b =>
+    {
+        var p = _data?.Payment;
+        string html;
+        if (p == null) html = "<div class='st-sub' style='padding:8px 0'>" + Enc(T("Settings.NoPaymentYet")) + "</div>";
+        else if (p.Method == "Card" && !string.IsNullOrEmpty(p.Last4))
+            html = "<div class='st-visa'><b>" + Enc((p.CardBrand ?? "CARD").ToUpperInvariant()) + "</b><span>**** **** **** " + Enc(p.Last4) + "</span><span>" + Enc(p.Holder ?? "") + "</span><span class='st-pill def'>" + Enc(T("Settings.Default")) + "</span></div>";
+        else html = "<div class='st-visa'><b>" + Enc(MethodName(p.Method)) + "</b><span>" + Enc(D(p.Date)) + "</span></div>";
+        __b.AddMarkupContent(0, html);
+    };
+    private static string Enc(string s) => System.Net.WebUtility.HtmlEncode(s);
+
+    // ── Tải hóa đơn ───────────────────────────────────────────────────────────
+    private async Task DownloadList()
+    {
+        string Csv(string s) { if (s.Length > 0 && "=+-@".Contains(s[0])) s = "'" + s; return s.Contains(',') || s.Contains('"') ? "\"" + s.Replace("\"", "\"\"") + "\"" : s; }
+        var sb = new System.Text.StringBuilder("﻿");
+        sb.AppendLine(string.Join(",", new[] { T("Settings.InvoiceNo"), T("Settings.InvoiceDate"), T("Settings.Period"), T("Settings.Plan"), T("Settings.Subtotal"), T("Settings.Tax"), T("Settings.Total"), T("Common.Status") }.Select(Csv)));
+        foreach (var i in _data!.Invoices)
+            sb.AppendLine(string.Join(",", new[] { i.Number, i.InvoiceDate.ToString("yyyy-MM-dd"), $"{i.PeriodStart:yyyy-MM-dd} – {i.PeriodEnd:yyyy-MM-dd}", i.Plan,
+                i.Amount.ToString("0.00", CultureInfo.InvariantCulture), i.Tax.ToString("0.00", CultureInfo.InvariantCulture), i.Total.ToString("0.00", CultureInfo.InvariantCulture), i.Status }.Select(Csv)));
+        await JS.InvokeVoidAsync("ptmDownloadBlob", Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(sb.ToString())), "text/csv", "invoices.csv", false, T("Users.ErrorOccurred"));
+    }
+
+    private const string IcoCard = "<svg viewBox='0 0 24 24'><rect x='3' y='5' width='18' height='14' rx='2'/><path d='M3 10h18M7 15h4'/></svg>";
+    private const string IcoDb = "<svg viewBox='0 0 24 24'><ellipse cx='12' cy='6' rx='7' ry='3'/><path d='M5 6v6c0 1.7 3.1 3 7 3s7-1.3 7-3V6M5 12v6c0 1.7 3.1 3 7 3s7-1.3 7-3v-6'/></svg>";
+    private const string IcoDoc = "<svg viewBox='0 0 24 24'><rect x='5' y='3' width='14' height='18' rx='2'/><path d='M9 8h6M9 12h6M9 16h3'/></svg>";
+
+    // ── DTO (api/billing) ─────────────────────────────────────────────────────
+    private class BillingDto
+    {
+        public bool Applies { get; set; }
+        public string? UpgradeUrl { get; set; }
+        public CompanyDto? Company { get; set; }
+        public SubDto? Subscription { get; set; }
+        public List<string> Modules { get; set; } = new();
+        public UsageDto? Usage { get; set; }
+        public List<InvoiceDto> Invoices { get; set; } = new();
+        public PaymentDto? Payment { get; set; }
+    }
+    private class CompanyDto { public string Name { get; set; } = ""; public string Address { get; set; } = ""; public string Country { get; set; } = ""; }
+    private class SubDto
+    {
+        public string Plan { get; set; } = ""; public string Cycle { get; set; } = "Monthly"; public decimal Price { get; set; }
+        public DateTime? NextBillingDate { get; set; } public string Status { get; set; } = ""; public List<string> Features { get; set; } = new();
+    }
+    private class UsageDto { public int StorageGb { get; set; } public double UsedGb { get; set; } public int MaxUsers { get; set; } public int ActiveUsers { get; set; } public int InspectionsThisMonth { get; set; } }
+    private class InvoiceDto
+    {
+        public string Number { get; set; } = ""; public DateTime InvoiceDate { get; set; } public DateTime DueDate { get; set; }
+        public DateTime PeriodStart { get; set; } public DateTime PeriodEnd { get; set; } public string Plan { get; set; } = ""; public string Cycle { get; set; } = "";
+        public decimal Amount { get; set; } public decimal Tax { get; set; } public decimal Total { get; set; } public string Status { get; set; } = "";
+        public DateTime? PaidAt { get; set; } public string? Method { get; set; }
+    }
+    private class PaymentDto { public string Method { get; set; } = ""; public string? CardBrand { get; set; } public string? Last4 { get; set; } public string? Holder { get; set; } public DateTime Date { get; set; } }
+}

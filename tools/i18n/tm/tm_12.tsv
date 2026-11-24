@@ -1,0 +1,32 @@
+Top 5 Defect Products & Defects	Top 5 sản phẩm lỗi & loại lỗi	缺陷产品与缺陷前 5 名	5 produk cacat & kecacatan teratas
+AQL Inspection Quantity & Defects (Monthly)	Số lượng kiểm AQL & Lỗi (theo tháng)	AQL 检验数量与缺陷（按月）	Kuantiti pemeriksaan AQL & Kecacatan (bulanan)
+Key Volume & Resources	Khối lượng & Nguồn lực chính	主要数量与资源	Volum & Sumber utama
+Defects & CAPA	Lỗi & CAPA	缺陷与 CAPA	Kecacatan & CAPA
+Compliance & Integrity Clause	Điều khoản tuân thủ & liêm chính	合规与廉洁条款	Klausa pematuhan & integriti
+E. Appearance & Craftsmanship	E. Ngoại quan & Tay nghề	E. 外观与工艺	E. Penampilan & Ketukangan
+B-iv. Packaging & Labeling Specifications{0}	B-iv. Thông số bao bì & nhãn{0}	B-iv. 包装与标签规格{0}	B-iv. Spesifikasi pembungkusan & pelabelan{0}
+B. Packaging & Identification	B. Đóng gói & Nhận diện	B. 包装与标识	B. Pembungkusan & Pengenalan
+ID: {0}  ·  Endpoint: api/inspections/{1}	Mã: {0} · Endpoint: api/inspections/{1}	编号：{0} · 接口：api/inspections/{1}	ID: {0} · Endpoint: api/inspections/{1}
+The results presented herein reflect our findings at the time and place of inspection. This report does not release the seller or manufacturer from their contractual obligations, nor does it prejudice the buyer's right to seek compensation for any apparent or latent defects not identified during our random inspection or arising thereafter. This document does not constitute evidence of shipment. Final approval from the client is required prior to the release of the goods.	Kết quả trong báo cáo này phản ánh những gì chúng tôi ghi nhận tại thời điểm và địa điểm kiểm hàng. Báo cáo này không miễn trừ cho bên bán hoặc nhà sản xuất khỏi các nghĩa vụ theo hợp đồng, cũng không làm ảnh hưởng đến quyền yêu cầu bồi thường của bên mua đối với mọi lỗi hiển nhiên hoặc tiềm ẩn chưa được phát hiện trong quá trình kiểm hàng ngẫu nhiên hoặc phát sinh sau đó. Tài liệu này không phải là bằng chứng giao hàng. Cần có phê duyệt cuối cùng của khách hàng trước khi xuất hàng.	本报告所示结果反映我们在验货时间和地点的检验发现。本报告不免除卖方或制造商的合同义务，也不影响买方就抽检中未发现或日后出现的明显或潜在缺陷要求赔偿的权利。本文件不构成出货凭证，须经客户最终批准方可放货。	Keputusan yang dibentangkan di sini mencerminkan penemuan kami pada masa dan tempat pemeriksaan. Laporan ini tidak melepaskan penjual atau pengilang daripada obligasi kontrak mereka, dan tidak menjejaskan hak pembeli untuk menuntut pampasan bagi sebarang kecacatan ketara atau terpendam yang tidak dikenal pasti semasa pemeriksaan rawak kami atau yang timbul selepas itu. Dokumen ini bukan bukti penghantaran. Kelulusan muktamad daripada pelanggan diperlukan sebelum barang dilepaskan.
+B. Packaging & Identification{0}	B. Đóng gói & Nhận diện{0}	B. 包装与标识{0}	B. Pembungkusan & Pengenalan{0}
+iv. Packaging & Labeling Specifications{0}	iv. Thông số bao bì & nhãn{0}	iv. 包装与标签规格{0}	iv. Spesifikasi pembungkusan & pelabelan{0}
+Inspection Date & Time	Ngày & giờ kiểm hàng	验货日期与时间	Tarikh & masa pemeriksaan
+Page {0} / {1}  ·  {2} records	Trang {0} / {1} · {2} bản ghi	第 {0} / {1} 页 · {2} 条记录	Halaman {0} / {1} · {2} rekod
+Food & Beverage	Thực phẩm & Đồ uống	食品与饮料	Makanan & Minuman
+Open CV ↗	Mở CV ↗	打开简历 ↗	Buka CV ↗
+View photo ↗	Xem ảnh ↗	查看照片 ↗	Lihat foto ↗
+Drag & drop or	Kéo thả hoặc	拖放或	Seret & lepas atau
+View ↗	Xem ↗	查看 ↗	Lihat ↗
+📄 CV	📄 CV	📄 简历	📄 CV
+Inspector ID        :	Mã kiểm hàng viên :	验货员编号：	ID pemeriksa :
+Monthly & Yearly Inspection Metrics	Chỉ số kiểm hàng theo tháng & năm	月度与年度验货指标	Metrik pemeriksaan bulanan & tahunan
+Open file failed: 	Mở tệp thất bại: 	打开文件失败：	Gagal membuka fail: 
+Size (MM/Inch) & Weight	Kích thước (mm/inch) & Trọng lượng	尺寸 (mm/inch) 与重量	Saiz (mm/inci) & Berat
+Each KPI scores 100 when its target is met, otherwise proportionally lower. When no CAPA was issued in a year, the Overall Score is weighted on Pass Rate (30) and Defect Rate (40) only. Rating: 95–100 Excellent · 90–94 Good · 80–89 Acceptable · <80 Improvement Required.	Mỗi KPI đạt 100 điểm khi đạt mục tiêu, nếu không thì giảm theo tỷ lệ. Năm không phát hành CAPA nào, Điểm tổng chỉ tính theo Tỷ lệ đạt (30) và Tỷ lệ lỗi (40). Xếp hạng: 95–100 Xuất sắc · 90–94 Tốt · 80–89 Chấp nhận được · <80 Cần cải thiện.	每项 KPI 达到目标得 100 分，否则按比例降低。若某年未开立 CAPA，总分仅按合格率 (30) 和缺陷率 (40) 加权。评级：95–100 优秀 · 90–94 良好 · 80–89 合格 · <80 需改进。	Setiap KPI mendapat 100 apabila sasaran dicapai, jika tidak lebih rendah secara berkadar. Jika tiada CAPA dikeluarkan dalam setahun, Skor keseluruhan hanya ditimbang berdasarkan Kadar lulus (30) dan Kadar kecacatan (40). Penarafan: 95–100 Cemerlang · 90–94 Baik · 80–89 Boleh diterima · <80 Perlu penambahbaikan.
+KPI formula & scoring	Công thức & cách tính điểm KPI	KPI 公式与评分	Formula & pemarkahan KPI
+Vendor ID        :	Mã nhà cung cấp :	供应商编号：	ID pembekal :
+Vendor Quality Metrics & Inspection Results	Chỉ số chất lượng nhà cung cấp & Kết quả kiểm hàng	供应商质量指标与验货结果	Metrik kualiti pembekal & Keputusan pemeriksaan
+PDF, JPG, PNG  ·  Max 10 MB / file	PDF, JPG, PNG · Tối đa 10 MB / tệp	PDF, JPG, PNG · 每个文件最大 10 MB	PDF, JPG, PNG · Maks 10 MB / fail
+Drag & drop files here, or	Kéo thả tệp vào đây, hoặc	拖放文件到此处，或	Seret & lepas fail di sini, atau
+PDF, JPG, PNG, XLSX, DOCX  ·  Max 20 MB / file	PDF, JPG, PNG, XLSX, DOCX · Tối đa 20 MB / tệp	PDF, JPG, PNG, XLSX, DOCX · 每个文件最大 20 MB	PDF, JPG, PNG, XLSX, DOCX · Maks 20 MB / fail
+Drag & drop factory evaluation files, or	Kéo thả tệp đánh giá nhà máy vào đây, hoặc	拖放工厂评估文件到此处，或	Seret & lepas fail penilaian kilang, atau

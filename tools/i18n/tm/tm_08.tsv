@@ -1,0 +1,169 @@
+Confirm Delete	Xác nhận xóa	确认删除	Sahkan pemadaman
+No file attached	Chưa có tệp đính kèm	未附加文件	Tiada fail dilampirkan
+References	Tài liệu tham chiếu	参考资料	Rujukan
+Requirements	Yêu cầu	要求	Keperluan
+Procedure	Quy trình	程序	Prosedur
+Protocol Name	Tên quy trình	规程名称	Nama protokol
+PDF, Word, Excel, image or archive — up to 50 MB per file. You can attach multiple files.	PDF, Word, Excel, hình ảnh hoặc tệp nén — tối đa 50 MB mỗi tệp. Có thể đính kèm nhiều tệp.	PDF、Word、Excel、图片或压缩包 — 每个文件最大 50 MB，可附加多个文件。	PDF, Word, Excel, imej atau arkib — sehingga 50 MB setiap fail. Anda boleh melampirkan beberapa fail.
+{0} file(s) attached	Đã đính kèm {0} tệp	已附加 {0} 个文件	{0} fail dilampirkan
++ Add files	+ Thêm tệp	+ 添加文件	+ Tambah fail
+Cancel this file	Bỏ tệp này	取消此文件	Batalkan fail ini
+NEW	MỚI	新	BAHARU
+Remove this file	Gỡ tệp này	移除此文件	Buang fail ini
+Reference (Attached files)	Tài liệu tham chiếu (tệp đính kèm)	参考资料（附件）	Rujukan (fail lampiran)
+E.g.: No product damage is allowed. / Must meet all.	Vd.: Không cho phép hư hỏng sản phẩm. / Phải đạt tất cả.	例如：不允许产品损坏。/ 必须全部满足。	Cth.: Tiada kerosakan produk dibenarkan. / Mesti memenuhi semua.
+Describe step-by-step procedure...	Mô tả từng bước của quy trình...	逐步描述测试程序...	Terangkan prosedur langkah demi langkah...
+Test Procedure	Quy trình thử nghiệm	测试程序	Prosedur ujian
+E.g.: 1. General Safety Requirements. / 2. Seat and back static load test...	Vd.: 1. Yêu cầu an toàn chung. / 2. Thử tải tĩnh mặt ngồi và tựa lưng...	例如：1. 一般安全要求。/ 2. 座面和靠背静载测试...	Cth.: 1. Keperluan keselamatan am. / 2. Ujian beban statik tempat duduk dan sandaran...
+Test Protocol (Step name)	Quy trình thử nghiệm (tên bước)	测试规程（步骤名称）	Protokol ujian (nama langkah)
+Sort Order	Thứ tự	排序	Susunan
+Full name: EN581-1 & EN581-2:2015 (Outdoor Seating for Europe market)	Tên đầy đủ: EN581-1 & EN581-2:2015 (Ghế ngoài trời cho thị trường châu Âu)	全称：EN581-1 & EN581-2:2015（欧洲市场户外座椅）	Nama penuh: EN581-1 & EN581-2:2015 (Tempat duduk luar untuk pasaran Eropah)
+No categories	Không có danh mục	无类别	Tiada kategori
+Select or type a category	Chọn hoặc nhập danh mục	选择或输入类别	Pilih atau taip kategori
+{0} Test Protocol	Quy trình thử nghiệm {0}	{0} 测试规程	Protokol ujian {0}
+Showing {0} / {1} records	Hiển thị {0} / {1} bản ghi	显示 {0} / {1} 条记录	Memaparkan {0} / {1} rekod
+View all files	Xem tất cả tệp	查看所有文件	Lihat semua fail
+No data found	Không có dữ liệu	未找到数据	Tiada data ditemui
+Protocol / Standard / Test...	Quy trình / Tiêu chuẩn / Thử nghiệm...	规程 / 标准 / 测试...	Protokol / Piawaian / Ujian...
+No matches	Không có kết quả phù hợp	无匹配项	Tiada padanan
+All categories	Tất cả danh mục	所有类别	Semua kategori
++ Add New	+ Thêm mới	+ 新增	+ Tambah baharu
+Manage test standard list · {0} records	Quản lý danh sách tiêu chuẩn thử nghiệm · {0} bản ghi	管理测试标准列表 · {0} 条记录	Urus senarai piawaian ujian · {0} rekod
+Performance Test Master	Danh mục thử nghiệm tính năng	性能测试主数据	Induk ujian prestasi
+Saved record but file upload failed: {0} {1}	Đã lưu bản ghi nhưng tải tệp thất bại: {0} {1}	记录已保存，但文件上传失败：{0} {1}	Rekod disimpan tetapi muat naik fail gagal: {0} {1}
+Could not determine saved record id.	Không xác định được mã bản ghi đã lưu.	无法确定已保存记录的编号。	Tidak dapat menentukan ID rekod yang disimpan.
+Error {0}: {1}	Lỗi {0}: {1}	错误 {0}：{1}	Ralat {0}: {1}
+Not authenticated. Please log in again.	Chưa xác thực. Vui lòng đăng nhập lại.	未通过身份验证，请重新登录。	Tidak disahkan. Sila log masuk semula.
+Please enter Category and Protocol Name.	Vui lòng nhập Danh mục và Tên quy trình.	请输入类别和规程名称。	Sila masukkan Kategori dan Nama protokol.
+Weight	Trọng lượng	重量	Berat
+Packaging Qty	SL đóng gói	包装数量	Kuantiti pembungkusan
+Weight (KGS)	Trọng lượng (kg)	重量 (kg)	Berat (kg)
+Establish Date	Ngày tạo	建立日期	Tarikh ditubuhkan
+Product Details	Chi tiết sản phẩm	产品详情	Butiran produk
+Product ID	Mã sản phẩm	产品编号	ID produk
+JPG / PNG / WEBP · max 5 MB	JPG / PNG / WEBP · tối đa 5 MB	JPG / PNG / WEBP · 最大 5 MB	JPG / PNG / WEBP · maks 5 MB
+Remove row	Xóa dòng	删除行	Buang baris
+Dining Chair	Ghế ăn	餐椅	Kerusi makan
+Carton A	Thùng A	纸箱 A	Karton A
+Carton Size (MM/Inch)	Kích thước thùng (mm/inch)	纸箱尺寸 (mm/inch)	Saiz karton (mm/inci)
+Packaging Quantity	Số lượng đóng gói	包装数量	Kuantiti pembungkusan
+Optional notes...	Ghi chú (không bắt buộc)...	可选备注...	Nota pilihan...
+Net Weight (KGS)	Trọng lượng tịnh (kg)	净重 (kg)	Berat bersih (kg)
+Product Size (MM/Inch)	Kích thước sản phẩm (mm/inch)	产品尺寸 (mm/inch)	Saiz produk (mm/inci)
+e.g. 2	vd. 2	例如：2	cth. 2
+Carton Quantity	Số lượng thùng	纸箱数量	Kuantiti karton
+e.g. ITM-001	vd. ITM-001	例如：ITM-001	cth. ITM-001
+e.g. 55-inch OLED	vd. OLED 55 inch	例如：55 英寸 OLED	cth. OLED 55 inci
+— Select Vendor —	— Chọn nhà cung cấp —	— 选择供应商 —	— Pilih pembekal —
+— Select Customer —	— Chọn khách hàng —	— 选择客户 —	— Pilih pelanggan —
+Invalid	Không hiệu lực	无效	Tidak sah
+Valid	Hiệu lực	有效	Sah
+No products found.	Không tìm thấy sản phẩm.	未找到产品。	Tiada produk ditemui.
+Updated On	Ngày cập nhật	更新日期	Dikemas kini pada
+Add Product	Thêm sản phẩm	添加产品	Tambah produk
+All Vendors	Tất cả nhà cung cấp	所有供应商	Semua pembekal
+Search name, code, customer, category...	Tìm tên, mã, khách hàng, danh mục...	搜索名称、编号、客户、类别...	Cari nama, kod, pelanggan, kategori...
+Manage product master data	Quản lý dữ liệu sản phẩm	管理产品主数据	Urus data induk produk
+Product Information	Thông tin sản phẩm	产品信息	Maklumat produk
+Product Information - Inticoo	Thông tin sản phẩm - Inticoo	产品信息 - Inticoo	Maklumat produk - Inticoo
+Delete failed.	Xóa thất bại.	删除失败。	Gagal memadam.
+'{0}' deleted.	Đã xóa '{0}'.	已删除“{0}”。	'{0}' dipadam.
+Deleting product...	Đang xóa sản phẩm...	正在删除产品...	Sedang memadam produk...
+Error: {0}	Lỗi: {0}	错误：{0}	Ralat: {0}
+Product added.	Đã thêm sản phẩm.	产品已添加。	Produk ditambah.
+Product updated.	Đã cập nhật sản phẩm.	产品已更新。	Produk dikemas kini.
+Creating product...	Đang tạo sản phẩm...	正在创建产品...	Sedang mencipta produk...
+Saving product...	Đang lưu sản phẩm...	正在保存产品...	Sedang menyimpan produk...
+Product Name is required.	Bắt buộc nhập tên sản phẩm.	产品名称为必填项。	Nama produk diperlukan.
+Category is required.	Bắt buộc chọn danh mục.	类别为必填项。	Kategori diperlukan.
+Please select a Customer.	Vui lòng chọn khách hàng.	请选择客户。	Sila pilih pelanggan.
+Photo upload failed: {0}	Tải ảnh lên thất bại: {0}	照片上传失败：{0}	Gagal memuat naik foto: {0}
+Only JPG / PNG / WEBP allowed.	Chỉ chấp nhận JPG / PNG / WEBP.	仅允许 JPG / PNG / WEBP。	Hanya JPG / PNG / WEBP dibenarkan.
+Image must be under 5 MB.	Ảnh phải nhỏ hơn 5 MB.	图片必须小于 5 MB。	Imej mesti kurang daripada 5 MB.
+Row {0}: Upload failed.	Dòng {0}: Tải lên thất bại.	第 {0} 行：上传失败。	Baris {0}: Gagal memuat naik.
+Row {0}: File must be under 20 MB.	Dòng {0}: Tệp phải nhỏ hơn 20 MB.	第 {0} 行：文件必须小于 20 MB。	Baris {0}: Fail mesti kurang daripada 20 MB.
+— Carton Quantity: {0}	— Số lượng thùng: {0}	— 纸箱数量：{0}	— Kuantiti karton: {0}
+Save Product	Lưu sản phẩm	保存产品	Simpan produk
+Update Product	Cập nhật sản phẩm	更新产品	Kemas kini produk
+New Product	Thêm sản phẩm	新建产品	Produk baharu
+Edit Product	Sửa sản phẩm	编辑产品	Sunting produk
+Delete Account	Xóa tài khoản	删除账户	Padam akaun
+Users will only see data from the customer(s) assigned above.	Người dùng chỉ thấy dữ liệu của (các) khách hàng được gán ở trên.	用户只能看到上方所分配客户的数据。	Pengguna hanya akan melihat data daripada pelanggan yang ditetapkan di atas.
+Dashboard, Inspection Schedule, Performance Review and Directory are limited to No Access or View Only.	Tổng quan, Lịch kiểm hàng, Đánh giá hiệu suất và Danh mục chỉ có thể là Không truy cập hoặc Chỉ xem.	仪表板、验货计划、绩效评估和名录仅限“无权限”或“仅查看”。	Papan pemuka, Jadual pemeriksaan, Semakan prestasi dan Direktori terhad kepada Tiada akses atau Lihat sahaja.
+Create, Edit and Delete permissions are only available when Edit (Use Module) is selected.	Quyền Tạo, Sửa và Xóa chỉ có khi chọn Sửa (Sử dụng phân hệ).	只有选择“编辑（使用模块）”时才可设置创建、编辑和删除权限。	Kebenaran Cipta, Sunting dan Padam hanya tersedia apabila Sunting (Guna modul) dipilih.
+Permission Rules	Quy tắc phân quyền	权限规则	Peraturan kebenaran
+(Only No Access or View Only)	(Chỉ Không truy cập hoặc Chỉ xem)	（仅限无权限或仅查看）	(Hanya Tiada akses atau Lihat sahaja)
+(Only available when Edit is selected)	(Chỉ có khi chọn Sửa)	（仅在选择编辑时可用）	(Hanya tersedia apabila Sunting dipilih)
+Additional Settings	Thiết lập bổ sung	其他设置	Tetapan tambahan
+(Use Module)	(Sử dụng phân hệ)	（使用模块）	(Guna modul)
+View Only	Chỉ xem	仅查看	Lihat sahaja
+No Access	Không truy cập	无权限	Tiada akses
+Module	Phân hệ	模块	Modul
+Edit (Use Module)	Sửa (Sử dụng phân hệ)	编辑（使用模块）	Sunting (Guna modul)
+Set what this user can access and what actions are allowed for each module.	Thiết lập những gì người dùng được truy cập và các thao tác được phép trong từng phân hệ.	设置该用户可访问的内容以及每个模块允许的操作。	Tetapkan apa yang boleh diakses oleh pengguna ini dan tindakan yang dibenarkan bagi setiap modul.
+Module Permissions	Quyền theo phân hệ	模块权限	Kebenaran modul
+Inactive users cannot login to the system.	Người dùng ngừng hoạt động không thể đăng nhập hệ thống.	停用的用户无法登录系统。	Pengguna tidak aktif tidak boleh log masuk ke sistem.
+— Select country —	— Chọn quốc gia —	— 选择国家 —	— Pilih negara —
+e.g. Purchaser	vd. Nhân viên mua hàng	例如：采购员	cth. Pembeli
+Department	Bộ phận	部门	Jabatan
+Additional Information	Thông tin bổ sung	其他信息	Maklumat tambahan
+{0} selected	Đã chọn {0}	已选 {0}	{0} dipilih
+Loading customers...	Đang tải khách hàng...	正在加载客户...	Sedang memuatkan pelanggan...
+Search customer...	Tìm khách hàng...	搜索客户...	Cari pelanggan...
+All customers	Tất cả khách hàng	所有客户	Semua pelanggan
+Specific customer(s)	Khách hàng cụ thể	指定客户	Pelanggan tertentu
+Select which customer(s) this user can access. The user will only see data from the selected customers.	Chọn (các) khách hàng mà người dùng này được truy cập. Người dùng chỉ thấy dữ liệu của các khách hàng đã chọn.	选择该用户可访问的客户，用户只能看到所选客户的数据。	Pilih pelanggan yang boleh diakses oleh pengguna ini. Pengguna hanya akan melihat data daripada pelanggan yang dipilih.
+Customer Access	Quyền truy cập khách hàng	客户访问权限	Akses pelanggan
+Username cannot be changed after creation.	Không thể đổi tên đăng nhập sau khi tạo.	用户名创建后不能修改。	Nama pengguna tidak boleh diubah selepas dicipta.
+Enter username	Nhập tên đăng nhập	输入用户名	Masukkan nama pengguna
+— Select role —	— Chọn vai trò —	— 选择角色 —	— Pilih peranan —
+Role	Vai trò	角色	Peranan
+User Information	Thông tin người dùng	用户信息	Maklumat pengguna
+Set user information, customer access and module permissions.	Thiết lập thông tin người dùng, quyền truy cập khách hàng và quyền theo phân hệ.	设置用户信息、客户访问权限和模块权限。	Tetapkan maklumat pengguna, akses pelanggan dan kebenaran modul.
+Username	Tên đăng nhập	用户名	Nama pengguna
+No accounts found.	Không tìm thấy tài khoản.	未找到账户。	Tiada akaun ditemui.
+New Account	Thêm tài khoản	新建账户	Akaun baharu
+{0} accounts	{0} tài khoản	{0} 个账户	{0} akaun
+All Roles	Tất cả vai trò	所有角色	Semua peranan
+Search by name, username, email, mobile...	Tìm theo tên, tên đăng nhập, email, di động...	按姓名、用户名、邮箱、手机搜索...	Cari mengikut nama, nama pengguna, e-mel, telefon bimbit...
+Manage Customer and Inspector accounts	Quản lý tài khoản khách hàng và kiểm hàng viên	管理客户和验货员账户	Urus akaun pelanggan dan pemeriksa
+Login Accounts - Inticoo	Tài khoản đăng nhập - Inticoo	登录账户 - Inticoo	Akaun log masuk - Inticoo
+Deleting account...	Đang xóa tài khoản...	正在删除账户...	Sedang memadam akaun...
+Saving account...	Đang lưu tài khoản...	正在保存账户...	Sedang menyimpan akaun...
+Creating account...	Đang tạo tài khoản...	正在创建账户...	Sedang mencipta akaun...
+Please give this user access to at least one module.	Vui lòng cấp quyền cho người dùng ít nhất một phân hệ.	请至少为该用户分配一个模块的访问权限。	Sila beri pengguna ini akses kepada sekurang-kurangnya satu modul.
+Please select at least one customer (or choose All customers).	Vui lòng chọn ít nhất một khách hàng (hoặc chọn Tất cả khách hàng).	请至少选择一个客户（或选择所有客户）。	Sila pilih sekurang-kurangnya satu pelanggan (atau pilih Semua pelanggan).
+Email is required.	Bắt buộc nhập email.	邮箱为必填项。	E-mel diperlukan.
+Please select a role.	Vui lòng chọn vai trò.	请选择角色。	Sila pilih peranan.
+Password is required.	Bắt buộc nhập mật khẩu.	密码为必填项。	Kata laluan diperlukan.
+Username is required.	Bắt buộc nhập tên đăng nhập.	用户名为必填项。	Nama pengguna diperlukan.
+Download Reports	Tải báo cáo	下载报告	Muat turun laporan
+Export Data	Xuất dữ liệu	导出数据	Eksport data
+Performance Review	Đánh giá hiệu suất	绩效评估	Semakan prestasi
+Directory	Danh mục	名录	Direktori
+Inspection Schedule	Lịch kiểm hàng	验货计划	Jadual pemeriksaan
+Job Request	Yêu cầu kiểm hàng	验货申请	Permintaan tugasan
+Save User	Lưu người dùng	保存用户	Simpan pengguna
+Create User	Tạo người dùng	创建用户	Cipta pengguna
+Select All	Chọn tất cả	全选	Pilih semua
+Clear All	Bỏ chọn tất cả	全部清除	Kosongkan semua
+Show	Hiện	显示	Tunjuk
+Hide	Ẩn	隐藏	Sembunyi
+Leave blank to keep current	Để trống để giữ mật khẩu hiện tại	留空则保留当前密码	Biarkan kosong untuk mengekalkan yang semasa
+Enter password	Nhập mật khẩu	输入密码	Masukkan kata laluan
+Edit User	Sửa người dùng	编辑用户	Sunting pengguna
+Create New User	Tạo người dùng mới	创建新用户	Cipta pengguna baharu
+Closed CAPAs ÷ Issued CAPAs × 100	CAPA đã đóng ÷ CAPA đã phát hành × 100	已关闭 CAPA ÷ 已开立 CAPA × 100	CAPA ditutup ÷ CAPA dikeluarkan × 100
+CAPA Closure Rate (%)	Tỷ lệ đóng CAPA (%)	CAPA 关闭率 (%)	Kadar penutupan CAPA (%)
+Total Defects ÷ Total Shipment Qty × 100	Tổng số lỗi ÷ Tổng SL giao hàng × 100	缺陷总数 ÷ 出货总数量 × 100	Jumlah kecacatan ÷ Jumlah kuantiti penghantaran × 100
+Passed ÷ (Passed + Failed) × 100	Đạt ÷ (Đạt + Không đạt) × 100	合格 ÷ (合格 + 不合格) × 100	Lulus ÷ (Lulus + Gagal) × 100
+Inspection Pass Rate (%)	Tỷ lệ kiểm hàng đạt (%)	验货合格率 (%)	Kadar lulus pemeriksaan (%)
+Track only	Chỉ theo dõi	仅跟踪	Jejak sahaja
+Total inspections conducted	Tổng số lượt kiểm đã thực hiện	已进行的验货总数	Jumlah pemeriksaan dijalankan
+Total units shipped (completed PSI)	Tổng số đơn vị đã giao (PSI hoàn thành)	出货总件数（已完成 PSI）	Jumlah unit dihantar (PSI selesai)
+Target	Mục tiêu	目标	Sasaran
+Formula	Công thức	公式	Formula
+Vendor Rating	Xếp hạng nhà cung cấp	供应商评级	Penarafan pembekal
+Overall Score	Điểm tổng	总分	Skor keseluruhan
+Total CAPA Closure Rate (%)	Tổng tỷ lệ đóng CAPA (%)	CAPA 总关闭率 (%)	Jumlah kadar penutupan CAPA (%)
+Total Defect Rate (%)	Tổng tỷ lệ lỗi (%)	总缺陷率 (%)	Jumlah kadar kecacatan (%)

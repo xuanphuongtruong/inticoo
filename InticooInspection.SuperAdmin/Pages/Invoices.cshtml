@@ -1,0 +1,80 @@
+@page
+@model InvoicesModel
+@{
+    ViewData["Title"] = "Invoices"; ViewData["Sub"] = "Manage all invoices, payments and billing records.";
+    var req = ViewContext.HttpContext.Request;
+    string Tab(string? s) => AdminUi.Qs(req, ("status", s), ("page", null), ("id", null));
+    var cur = Model.Status ?? "";
+    var sel = Model.Sel; var adding = Model.Mode == "add";
+    var lastPay = sel?.Payments.OrderByDescending(p => p.Id).FirstOrDefault();
+}
+<div class="kpis">
+  <div class="kpi"><span class="ic b">@Icons.Svg("receipt", 24)</span><div><small>Total Invoices</small><strong>@Model.TotalN</strong><div class="sub">@Model.ThisMonthN this month @AdminUi.Delta(Model.ThisMonthN, Model.LastMonthN) · last month @Model.LastMonthN</div></div></div>
+  <div class="kpi"><span class="ic g">@Icons.Svg("dollar", 24)</span><div><small>Total Collected (USD)</small><strong>@AdminUi.Money0(Model.TotalAmount)</strong><div class="sub">this month @AdminUi.Money0(Model.ThisMonthAmount) @AdminUi.Delta(Model.ThisMonthAmount, Model.LastMonthAmount) · last month @AdminUi.Money0(Model.LastMonthAmount)</div></div></div>
+  <div class="kpi"><span class="ic g">@Icons.Svg("check", 24)</span><div><small>Paid</small><strong>@Model.N("Paid")</strong></div></div>
+  <div class="kpi"><span class="ic a">@Icons.Svg("clock", 24)</span><div><small>Pending Payment</small><strong>@Model.N("Pending")</strong></div></div>
+  <div class="kpi"><span class="ic r">@Icons.Svg("x", 24)</span><div><small>Overdue</small><strong>@Model.N("Overdue")</strong></div></div>
+</div>
+<div class="split">
+<div class="panel">
+  <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap">
+    <div class="tabs" style="flex:1;border:0;margin:0">
+      <a class="@(cur == "" ? "on" : "")" href="@Tab(null)">All Invoices (@Model.TotalN)</a>
+      @foreach (var s in InvoiceStatus.All.OrderBy(x => x != InvoiceStatus.Paid)) { <a class="@(cur == s ? "on" : "")" href="@Tab(s)">@s (@Model.N(s))</a> }
+    </div>
+    <a class="btn pri" href="?mode=add">@Icons.Svg("plus", 16) Create Invoice</a>
+  </div>
+  <form class="filters" method="get">
+    <div><label>Search</label><input type="search" name="q" value="@Model.Q" placeholder="Search invoice no., company..." maxlength="100" /></div>
+    <div><label>Status</label><select name="status" data-autosubmit><option value="">All Status</option>@foreach (var s in InvoiceStatus.All) { <option value="@s" selected="@(Model.Status == s)">@s</option> }</select></div>
+    <div><label>Plan</label><select name="plan" data-autosubmit><option value="">All Plans</option>@foreach (var p in Model.Plans) { <option value="@p.Name" selected="@(Model.Plan == p.Name)">@p.Name</option> }</select></div>
+    <div><label>Invoice Date</label><input type="date" name="from" value="@Model.From?.ToString("yyyy-MM-dd")" /></div><div><label>&nbsp;</label><input type="date" name="to" value="@Model.To?.ToString("yyyy-MM-dd")" /></div>
+    @if (Model.Company != null) { <input type="hidden" name="company" value="@Model.Company" /> }
+    <button class="btn">Filter</button><a class="btn" href="/invoices">Reset</a>
+    <a class="btn" href="@AdminUi.Qs(req, ("handler", "Export"))">@Icons.Svg("download", 16) Export</a>
+  </form>
+  <div class="tbl-wrap"><table class="t">
+    <thead><tr><th>Invoice No.</th><th>Company Name</th><th>Plan</th><th>Billing Cycle</th><th class="num">Amount (USD)</th><th>Invoice Date</th><th>Due Date</th><th>Status</th><th></th></tr></thead><tbody>
+    @foreach (var i in Model.Rows)
+    {
+      <tr class="@(sel?.Id == i.Id ? "sel" : "")"><td><a href="@AdminUi.Qs(req, ("id", i.Id.ToString()), ("mode", null))">@i.Number</a></td>
+        <td><div class="co"><span class="logo-sq" style="background:@AdminUi.Color(i.Company!.Name)">@AdminUi.Initial(i.Company.Name)</span><span>@i.Company.Name</span>@AdminUi.Flag(i.Company.CountryCode)</div></td>
+        <td>@i.PlanName</td><td>@i.BillingCycle</td><td class="num">@AdminUi.Money(i.Amount + i.Tax)</td><td>@AdminUi.D(i.InvoiceDate)</td><td>@AdminUi.D(i.DueDate)</td><td>@AdminUi.Pill(i.Status)</td>
+        <td><a class="btn sm" href="@AdminUi.Qs(req, ("id", i.Id.ToString()), ("mode", null))">@Icons.Svg("eye", 15)</a></td></tr>
+    }
+    @if (Model.Rows.Count == 0) { <tr><td colspan="9" class="muted" style="padding:24px;text-align:center">No invoices match the filters.</td></tr> }
+    </tbody></table></div>
+  <partial name="_Pager" model="Model.Pager" />
+</div>
+<div class="panel detail">
+@if (adding)
+{
+  <h2>Create Invoice</h2><p class="muted">Creates an invoice for the company's current plan and billing cycle.</p>
+  <form method="post" asp-page-handler="Create" class="f"><label>Company</label>
+    <select name="companyId" required style="margin-bottom:12px"><option value="">Select company</option>@foreach (var c in Model.Companies) { <option value="@c.Id">@c.Name</option> }</select>
+    <div class="acts"><button class="btn pri">Create</button><a class="btn" href="/invoices">Cancel</a></div></form>
+}
+else if (sel == null) { <p class="muted">Select an invoice.</p> }
+else
+{
+  <div style="display:flex;justify-content:space-between;align-items:center"><h2>@sel.Number</h2>@AdminUi.Pill(sel.Status)</div>
+  <div class="head" style="margin-top:12px"><span class="logo-sq" style="background:@AdminUi.Color(sel.Company!.Name);width:46px;height:46px;font-size:1.3rem">@AdminUi.Initial(sel.Company.Name)</span><div><b>@sel.Company.Name</b><div class="muted">@sel.Company.Country</div></div></div>
+  <div class="acts"><a class="btn" target="_blank" href="/invoiceview?id=@sel.Id">@Icons.Svg("doc", 15) View Invoice</a><a class="btn" href="/companies?id=@sel.CompanyId">@Icons.Svg("building", 15) View Company</a></div>
+  <h4>Invoice Details</h4>
+  <dl class="dl"><dt>Invoice No.</dt><dd>@sel.Number</dd><dt>Company</dt><dd>@sel.Company.Name</dd><dt>Plan</dt><dd>@sel.PlanName</dd><dt>Billing Cycle</dt><dd>@sel.BillingCycle</dd>
+    <dt>Invoice Date</dt><dd>@AdminUi.D(sel.InvoiceDate)</dd><dt>Due Date</dt><dd>@AdminUi.D(sel.DueDate)</dd><dt>Amount (USD)</dt><dd>@AdminUi.Money(sel.Amount)</dd>
+    @if (sel.Tax > 0) { <dt>Tax</dt><dd>@AdminUi.Money(sel.Tax)</dd> }
+    <dt>Status</dt><dd>@AdminUi.Pill(sel.Status)</dd>
+    @if (lastPay != null) { <dt>Payment Method</dt><dd>@lastPay.Method @(lastPay.Provider != "" ? "(" + lastPay.Provider + ")" : "")</dd><dt>Payment Date</dt><dd>@AdminUi.DT(sel.PaidAt ?? lastPay.CreatedAt)</dd><dt>Transaction ID</dt><dd>@lastPay.TransactionId</dd> }
+    <dt>Paid Amount</dt><dd>@AdminUi.Money(sel.Status == InvoiceStatus.Paid ? sel.Amount + sel.Tax : 0)</dd><dt>Balance</dt><dd>@AdminUi.Money(sel.Status == InvoiceStatus.Paid || sel.Status == InvoiceStatus.Cancelled ? 0 : sel.Amount + sel.Tax)</dd></dl>
+  <div class="acts">
+    @if (sel.Status is InvoiceStatus.Pending or InvoiceStatus.Overdue)
+    {
+      <form method="post" asp-page-handler="MarkPaid" data-confirm="Confirm that payment for this invoice has been received?"><input type="hidden" name="id" value="@sel.Id" /><button class="btn pri blk">@Icons.Svg("check", 15) Mark as Paid</button></form>
+    }
+    @if (sel.Status == InvoiceStatus.Paid && lastPay != null) { <a class="btn blk" href="/payments?id=@lastPay.Id">@Icons.Svg("wallet", 15) View Payment</a> }
+    @if (sel.Status != InvoiceStatus.Paid && sel.Status != InvoiceStatus.Cancelled && sel.Status != InvoiceStatus.Refunded) { <form method="post" asp-page-handler="Cancel" data-confirm="Cancel this invoice?"><input type="hidden" name="id" value="@sel.Id" /><button class="btn dng blk">@Icons.Svg("trash", 15) Cancel Invoice</button></form> }
+  </div>
+}
+</div>
+</div>

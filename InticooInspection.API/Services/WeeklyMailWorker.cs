@@ -1,5 +1,6 @@
 using InticooInspection.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
+using InticooInspection.API.Services.Tenancy;
 
 namespace InticooInspection.API.Services
 {
@@ -49,9 +50,20 @@ namespace InticooInspection.API.Services
             while (await timer.WaitForNextTickAsync(stoppingToken));
         }
 
+        // Mỗi công ty khách có DB riêng → chạy lần lượt cho DB gốc + từng công ty đang hoạt động.
         private async Task TickAsync(CancellationToken ct)
         {
-            await using var scope = _sp.CreateAsyncScope();
+            foreach (var tenant in await TenantMaintenance.AllAsync(_sp, ct))
+            {
+                try { await TickTenantAsync(tenant, ct); }
+                catch (OperationCanceledException) { throw; }
+                catch (Exception ex) { _logger.LogError(ex, "Lỗi WeeklyMailWorker ở công ty {Tenant}", tenant?.Code ?? "(DB gốc)"); }
+            }
+        }
+
+        private async Task TickTenantAsync(TenantInfo? tenant, CancellationToken ct)
+        {
+            await using var scope = TenantMaintenance.CreateScope(_sp, tenant);
             var provider = scope.ServiceProvider.GetRequiredService<IMailConfigProvider>();
             var cfg      = await provider.GetAsync(ct);
 
@@ -96,7 +108,7 @@ namespace InticooInspection.API.Services
                 _logger.LogInformation("Bắt đầu gửi mail VENDOR hàng tuần lúc {time} (VN)", nowVn);
                 var vRes = await mail.SendWeeklyVendorMailsAsync(ct);
                 _logger.LogInformation(
-                    "Hoàn tất tuần (Vendor). Sent: {sent}/{total}, Skipped: {skip}, Failed: {fail}, Inspections: {ins}",
+                    "Weekly run completed (Vendor). Sent: {sent}/{total}, Skipped: {skip}, Failed: {fail}, Inspections: {ins}",
                     vRes.VendorsSent, vRes.VendorsTotal,
                     vRes.VendorsSkipped, vRes.VendorsFailed, vRes.InspectionsTotal);
             }
@@ -118,7 +130,7 @@ namespace InticooInspection.API.Services
                 _logger.LogInformation("Bắt đầu gửi mail CUSTOMER hàng tuần lúc {time} (VN)", nowVn);
                 var cRes = await mail.SendWeeklyCustomerMailsAsync(ct);
                 _logger.LogInformation(
-                    "Hoàn tất tuần (Customer). Sent: {sent}/{total}, Skipped: {skip}, Failed: {fail}, Inspections: {ins}",
+                    "Weekly run completed (Customer). Sent: {sent}/{total}, Skipped: {skip}, Failed: {fail}, Inspections: {ins}",
                     cRes.VendorsSent, cRes.VendorsTotal,
                     cRes.VendorsSkipped, cRes.VendorsFailed, cRes.InspectionsTotal);
             }

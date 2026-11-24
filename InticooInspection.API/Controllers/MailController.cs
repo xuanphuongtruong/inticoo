@@ -13,6 +13,7 @@ namespace InticooInspection.API.Controllers
     [ApiController]
     [Route("api/mail")]
     [Authorize]
+    [AdminApi]   // chỉ Admin: gửi mail hàng loạt, xem log/cấu hình SMTP
     public class MailController : ControllerBase
     {
         private readonly AppDbContext             _db;
@@ -331,18 +332,18 @@ namespace InticooInspection.API.Controllers
         public async Task<IActionResult> SendTest([FromBody] TestMailRequest req, CancellationToken ct)
         {
             if (string.IsNullOrWhiteSpace(req.ToEmail))
-                return BadRequest(new { success = false, error = "Email không được để trống" });
+                return BadRequest(new { success = false, error = "Email is required" });
 
-            var subject = req.Subject ?? "[Inticoo] Email Test - Kiểm tra cấu hình SMTP";
+            var subject = req.Subject ?? "[Inticoo] Test Email - SMTP configuration check";
             var html    = $@"<html><body style='font-family:Segoe UI,Arial;color:#333;'>
 <div style='max-width:600px;margin:0 auto;padding:24px;background:#f8f9fa;border-radius:8px;'>
-  <h2 style='color:#1e6091;'>✅ Email Test thành công!</h2>
-  <p>Đây là email test từ <strong>Inticoo Inspection System</strong>.</p>
-  <p>Nếu bạn nhận được email này, cấu hình SMTP đang hoạt động bình thường.</p>
+  <h2 style='color:#1e6091;'>✅ Test email succeeded!</h2>
+  <p>This is a test email from the <strong>Inticoo Inspection System</strong>.</p>
+  <p>If you received this email, the SMTP configuration is working correctly.</p>
   <hr/>
   <p style='font-size:12px;color:#888;'>
-    Gửi lúc: {DateTime.Now:dd/MM/yyyy HH:mm:ss}<br/>
-    Người nhận: {WebUtility.HtmlEncode(req.ToEmail)}
+    Sent at: {DateTime.Now:dd/MM/yyyy HH:mm:ss}<br/>
+    Recipient: {WebUtility.HtmlEncode(req.ToEmail)}
   </p>
 </div></body></html>";
 
@@ -389,7 +390,7 @@ namespace InticooInspection.API.Controllers
                 });
                 await _db.SaveChangesAsync(ct);
 
-                return Ok(new { success = true, message = "Đã gửi email test thành công" });
+                return Ok(new { success = true, message = "Test email sent successfully" });
             }
             catch (Exception ex)
             {
@@ -416,11 +417,11 @@ namespace InticooInspection.API.Controllers
         public async Task<IActionResult> SendTestVendor([FromBody] TestMailRequest req, CancellationToken ct)
         {
             if (string.IsNullOrWhiteSpace(req.ToEmail))
-                return BadRequest(new { success = false, error = "Email không được để trống" });
+                return BadRequest(new { success = false, error = "Email is required" });
 
             var (ok, error) = await _mail.SendTestVendorMailAsync(req.ToEmail, ct);
             if (!ok) return StatusCode(500, new { success = false, error });
-            return Ok(new { success = true, message = $"Đã gửi mail test (template Vendor) tới {req.ToEmail}" });
+            return Ok(new { success = true, message = $"Test email (Vendor template) sent to {req.ToEmail}" });
         }
 
         // POST api/mail/send-test-customer
@@ -430,11 +431,11 @@ namespace InticooInspection.API.Controllers
         public async Task<IActionResult> SendTestCustomer([FromBody] TestMailRequest req, CancellationToken ct)
         {
             if (string.IsNullOrWhiteSpace(req.ToEmail))
-                return BadRequest(new { success = false, error = "Email không được để trống" });
+                return BadRequest(new { success = false, error = "Email is required" });
 
             var (ok, error) = await _mail.SendTestCustomerMailAsync(req.ToEmail, ct);
             if (!ok) return StatusCode(500, new { success = false, error });
-            return Ok(new { success = true, message = $"Đã gửi mail test (template Customer) tới {req.ToEmail}" });
+            return Ok(new { success = true, message = $"Test email (Customer template) sent to {req.ToEmail}" });
         }
 
         // ═════════════════════════════════════════════════════════════════════

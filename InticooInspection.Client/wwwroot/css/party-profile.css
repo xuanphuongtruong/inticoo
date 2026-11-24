@@ -1,0 +1,171 @@
+/* Customer / Vendor profile: tab Contacts + Report Settings (Shared/Party*.razor) */
+
+.pf-tabs { display:flex; gap:6px; border-bottom:1.5px solid #dbe6f5; margin:4px 0 14px; overflow-x:auto; }
+.pf-tabs button { background:none; border:none; padding:10px 16px; font-size:13.5px; font-weight:600; color:#6b7c9c; cursor:pointer; white-space:nowrap;
+    border-bottom:3px solid transparent; margin-bottom:-1.5px; font-family:inherit; }
+.pf-tabs button.on { color:#1d4ed8; border-bottom-color:#1d4ed8; }
+
+.pf-contacts, .pf-rs { color:#1a2d5a; text-align:left; font-size:13px; }
+.pf-contacts { margin-top:22px; }
+.pf-sec-head, .pf-card-head { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; margin-bottom:10px; flex-wrap:wrap; }
+.pf-sec-title, .pf-card-title { font-size:15px; font-weight:700; color:#1a2d5a; }
+.pf-sec-sub, .pf-card-sub { font-size:12px; color:#6b7c9c; margin:2px 0 10px; }
+.pf-req { color:#dc2626; }
+.pf-empty { padding:18px; text-align:center; color:#8a99b5; background:#f6f9ff; border:1px dashed #c8d7ee; border-radius:10px; }
+
+.pf-btn { border:1px solid #cbd8ee; background:#fff; color:#1d4ed8; border-radius:8px; padding:8px 14px; font-size:13px; font-weight:600; cursor:pointer; font-family:inherit; }
+.pf-btn:hover { background:#eef4ff; }
+.pf-btn-primary { background:#1d4ed8; color:#fff; border-color:#1d4ed8; }
+.pf-btn-primary:hover { background:#1a43b8; }
+.pf-btn-ghost { white-space:nowrap; }
+.pf-icon-btn { border:none; background:none; cursor:pointer; color:#8a99b5; font-size:15px; padding:4px 8px; border-radius:6px; }
+.pf-icon-btn:hover { background:#eef2f9; color:#1a2d5a; }
+.pf-del:hover { background:#fee2e2; color:#dc2626; }
+.pf-link { margin-left:10px; font-size:11.5px; font-weight:500; color:#1d4ed8; cursor:pointer; text-decoration:underline; }
+
+.pf-input { width:100%; border:1px solid #cbd8ee; border-radius:8px; padding:8px 10px; font-size:13px; background:#fff; color:#1a2d5a; font-family:inherit;
+    height:38px; box-sizing:border-box; -webkit-appearance:none; appearance:none; }
+select.pf-input { padding-right:28px; background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%236b7c9c' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E");
+    background-repeat:no-repeat; background-position:right 10px center; }
+/* Safari macOS/iOS: ô giờ/ngày bị lệch chiều cao và canh giữa khi appearance:none */
+input.pf-input[type="time"] { display:block; min-height:38px; line-height:normal; }
+input.pf-input::-webkit-date-and-time-value { text-align:left; min-height:1.2em; margin:0; }
+.pf-input:focus { outline:none; border-color:#3b82f6; box-shadow:0 0 0 3px rgba(59,130,246,.15); }
+
+/* bảng contacts */
+.pf-table-scroll { overflow-x:auto; border:1px solid #dbe6f5; border-radius:10px; }
+.pf-table { width:100%; border-collapse:collapse; min-width:820px; background:#fff; }
+.pf-table th { background:#f3f7fd; color:#51638a; font-size:11.5px; text-transform:uppercase; letter-spacing:.04em; padding:9px 8px; text-align:left; border-bottom:1px solid #dbe6f5; white-space:nowrap; }
+.pf-table td { padding:7px 8px; border-bottom:1px solid #eef2f9; vertical-align:middle; }
+.pf-table tr:last-child td { border-bottom:none; }
+.pf-table .pf-c { text-align:center; }
+.pf-row-off td { opacity:.55; }
+
+/* toggle */
+.pf-switch { position:relative; display:inline-block; width:40px; height:22px; margin:0; vertical-align:middle; }
+.pf-switch input { opacity:0; width:0; height:0; position:absolute; }
+.pf-switch span { position:absolute; inset:0; background:#cbd5e1; border-radius:22px; transition:.15s; cursor:pointer; }
+.pf-switch span::before { content:""; position:absolute; width:16px; height:16px; left:3px; top:3px; background:#fff; border-radius:50%; transition:.15s; }
+.pf-switch input:checked + span { background:#2563eb; }
+.pf-switch input:checked + span::before { transform:translateX(18px); }
+.pf-switch-lbl { width:auto; height:auto; display:inline-flex; align-items:center; gap:8px; font-size:12.5px; font-weight:600; color:#1a2d5a; }
+.pf-switch-lbl span { position:relative; inset:auto; display:inline-block; width:40px; height:22px; flex-shrink:0; }
+
+/* report settings */
+.pf-subtabs { display:flex; gap:6px; margin-bottom:14px; flex-wrap:wrap; }
+.pf-subtabs button { border:1px solid #cbd8ee; background:#fff; color:#475a80; border-radius:8px; padding:8px 14px; font-size:13px; font-weight:600; cursor:pointer; font-family:inherit; }
+.pf-subtabs button.on { background:#1d4ed8; border-color:#1d4ed8; color:#fff; }
+.pf-two { display:grid; grid-template-columns:minmax(0,1fr); gap:16px; align-items:start; } /* preview nằm dưới form để đủ rộng */
+.pf-actions-up { display:flex; justify-content:flex-end; gap:10px; margin-top:12px; }
+.pf-btn-dark { background:#111827; color:#fff; border-color:#111827; }
+.pf-card { background:#fff; border:1px solid #dbe6f5; border-radius:12px; padding:14px 16px; margin-bottom:14px; }
+.pf-card.pf-disabled, .pf-disabled { opacity:.5; pointer-events:none; }
+.pf-step { font-size:13.5px; font-weight:700; color:#1d4ed8; margin:8px 0 6px; }
+.pf-field { margin-bottom:12px; min-width:0; }
+.pf-field > label { display:block; font-size:12px; font-weight:600; color:#51638a; margin-bottom:5px; }
+.pf-row2 { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1.6fr); gap:12px; }
+.pf-rel { position:relative; }
+.pf-subj { display:flex; gap:8px; }
+.pf-menu { position:absolute; right:0; top:100%; z-index:20; background:#fff; border:1px solid #cbd8ee; border-radius:10px; box-shadow:0 8px 24px rgba(15,40,90,.18);
+    padding:6px; display:flex; flex-direction:column; min-width:190px; max-height:260px; overflow-y:auto; }
+.pf-menu button { background:none; border:none; text-align:left; padding:7px 10px; font-size:12.5px; border-radius:6px; cursor:pointer; color:#1a2d5a; font-family:inherit; }
+.pf-menu button:hover { background:#eef4ff; }
+.pf-inline { display:flex; gap:18px; flex-wrap:wrap; }
+.pf-radio, .pf-check { display:inline-flex; align-items:center; gap:6px; font-size:13px; font-weight:500 !important; color:#1a2d5a !important; margin:0; cursor:pointer; }
+.pf-days { display:flex; flex-wrap:wrap; gap:6px 18px; }
+
+.pf-msg { display:grid; grid-template-columns:minmax(0,1fr) 190px; gap:10px; }
+.pf-rte { border:1px solid #cbd8ee; border-radius:8px; background:#fff; overflow:hidden; min-width:0; }
+.pf-rte-bar { display:flex; align-items:center; gap:2px; padding:5px 6px; background:#f3f7fd; border-bottom:1px solid #dbe6f5; }
+.pf-rte-bar button { border:none; background:none; min-width:28px; height:26px; border-radius:5px; cursor:pointer; color:#1a2d5a; font-size:13px; font-family:inherit; }
+.pf-rte-bar button:hover { background:#dfe9fa; }
+.pf-rte-sep { width:1px; height:16px; background:#cbd8ee; margin:0 4px; }
+.pf-rte-area { min-height:190px; max-height:340px; overflow-y:auto; padding:10px 12px; font-size:13px; line-height:1.5; color:#1a2d5a; outline:none; }
+.pf-rte-area p { margin:0 0 8px; }
+.pf-fields { background:#f3f7fd; border:1px solid #dbe6f5; border-radius:8px; padding:8px; max-height:380px; overflow-y:auto; display:flex; flex-direction:column; gap:1px; }
+.pf-fields-t { font-size:11.5px; font-weight:700; color:#51638a; margin-bottom:4px; }
+.pf-fields button { background:none; border:none; text-align:left; padding:3px 4px; font-size:12px; color:#1d4ed8; cursor:pointer; border-radius:4px; font-family:inherit; }
+.pf-fields button:hover { background:#dfe9fa; }
+
+.pf-opt-grid { display:grid; grid-template-columns:repeat(3, minmax(0,1fr)); gap:10px; }
+.pf-opt { display:flex; align-items:flex-start; gap:10px; border:1.5px solid #dbe6f5; border-radius:10px; padding:12px; cursor:pointer; background:#fff; margin:0; }
+.pf-opt.on { border-color:#2563eb; background:#eef4ff; }
+.pf-opt input { margin-top:3px; }
+.pf-opt b { display:block; font-size:13px; color:#1a2d5a; }
+.pf-opt small { display:block; font-size:11.5px; color:#6b7c9c; margin-top:2px; line-height:1.35; }
+.pf-radio-list { display:flex; flex-direction:column; gap:8px; }
+.pf-actions { display:flex; justify-content:flex-end; margin-top:12px; }
+
+/* preview */
+.pf-preview { position:sticky; top:8px; }
+.pf-pv-meta { background:#f6f9ff; border:1px solid #e1eaf7; border-radius:8px; padding:8px 10px; font-size:12px; margin-bottom:10px; word-break:break-word; }
+.pf-pv-meta span { display:inline-block; min-width:56px; font-weight:700; color:#51638a; }
+.pf-pv-body { font-size:13px; line-height:1.5; color:#1a2d5a; word-break:break-word; }
+.pf-pv-body p { margin:0 0 8px; }
+.pf-pv-note { margin-top:10px; font-size:11px; color:#94a3b8; font-style:italic; }
+.pf-pv-table { width:100%; border-collapse:collapse; font-size:11.5px; margin:4px 0; }
+.pf-pv-table th, .pf-pv-table td { border:1px solid #dbe6f5; padding:5px 6px; text-align:left; }
+.pf-pv-table th { background:#f3f7fd; color:#51638a; }
+
+.pf-modal-ov { position:fixed; inset:0; background:rgba(15,23,42,.5); z-index:3000; display:flex; align-items:center; justify-content:center; padding:16px; }
+.pf-modal { background:#fff; border-radius:14px; width:min(680px,100%); max-height:90vh; overflow-y:auto; padding:14px 16px; color:#1a2d5a; }
+.pf-modal-head { display:flex; align-items:center; justify-content:space-between; margin-bottom:8px; }
+.pf-modal .pf-preview { position:static; border:none; padding:0; }
+
+@media (max-width: 700px) {
+    .pf-table-scroll { border:none; overflow:visible; }
+    .pf-table, .pf-table tbody { display:block; min-width:0; background:none; }
+    .pf-table thead { display:none; }
+    .pf-table tr { display:grid; grid-template-columns:1fr 1fr; gap:8px 10px; background:#fff; border:1px solid #dbe6f5; border-radius:10px; padding:10px; margin-bottom:10px; }
+    .pf-table td { display:block; padding:0; border:none; text-align:left !important; min-width:0; }
+    .pf-table td::before { content:attr(data-l); display:block; font-size:10.5px; font-weight:700; text-transform:uppercase; letter-spacing:.04em; color:#51638a; margin-bottom:3px; }
+    .pf-table td:nth-child(1), .pf-table td:nth-child(3) { grid-column:1 / -1; }
+    .pf-table td:last-child { grid-column:1 / -1; text-align:right !important; }
+    .pf-table td:last-child::before { display:none; }
+}
+
+@media (max-width: 600px) {
+    .pf-tabs { overflow-x:visible; }
+    .pf-tabs button { flex:1 1 0; white-space:normal; padding:8px 4px; font-size:12.5px; line-height:1.25; }
+    .pf-subtabs button { flex:1 1 calc(50% - 6px); padding:8px 6px; font-size:12px; }
+    .pf-card { padding:12px; }
+    .pf-subj { flex-direction:column; }
+    .pf-subj .pf-btn { align-self:flex-start; }
+}
+
+@media (max-width: 900px) {
+    .pf-two { grid-template-columns:minmax(0,1fr); }
+    .pf-preview { position:static; }
+    .pf-msg { grid-template-columns:minmax(0,1fr); }
+    .pf-fields { max-height:140px; flex-direction:row; flex-wrap:wrap; }
+    .pf-opt-grid { grid-template-columns:minmax(0,1fr); }
+    .pf-row2 { grid-template-columns:minmax(0,1fr); }
+}
+
+/* Contacts: cột đủ rộng để đọc được tên/chức danh/email (không bị cắt), tiêu đề cột xuống dòng gọn */
+.pf-contacts .pf-table { min-width:900px; }
+.pf-contacts .pf-table th { white-space:normal; line-height:1.25; vertical-align:bottom; }
+.pf-contacts .pf-table td:nth-child(1) .pf-input { min-width:150px; font-weight:600; }
+.pf-contacts .pf-table td:nth-child(2) .pf-input { min-width:150px; }
+.pf-contacts .pf-table td:nth-child(3) .pf-input { min-width:220px; }
+.pf-contacts .pf-table td:nth-child(4) .pf-input { min-width:150px; }
+.pf-contacts .pf-table tbody tr:hover { background:#f5f9ff; }
+
+/* ── Popup 2 cột dùng chung cho New Customer / Vendor / Inspector / Product (theo mockup khách) ── */
+/* Một thẻ liền cho cả form (khách: "Don't separate like that"): các mục chỉ ngăn bằng tiêu đề xanh + đường kẻ */
+/* Khách yêu cầu "1 not split 2": form chỉ một cột ở mọi cỡ màn hình, các thẻ xếp dọc */
+.pf-cols { display:grid; grid-template-columns:minmax(0,1fr); gap:0; align-items:start; margin-top:12px;
+           border:1px solid #dde4ef; border-radius:12px; background:#fafcff; padding:14px 18px 16px; }
+.pf-cols + .pf-cols { margin-top:0; border-top:none; border-top-left-radius:0; border-top-right-radius:0; }
+.pf-cols:has(+ .pf-cols) { border-bottom-left-radius:0; border-bottom-right-radius:0; }
+.pf-card2 { border:none; border-radius:0; padding:0; background:transparent; min-width:0; }
+.pf-card2 + .pf-card2 { border-left:none; margin-left:0; padding-left:0; border-top:1px solid #e3eaf5; margin-top:14px; padding-top:12px; }
+.pf-card2 > .form-section-title, .pf-card2 > .section-title, .pf-card2 > .fsection-title { margin-top:0 !important; padding-bottom:6px; }
+
+@media (max-width: 900px) {
+  .pf-cols { grid-template-columns:minmax(0,1fr); padding:12px 14px 14px; }
+  .pf-card2 + .pf-card2 { border-left:none; margin-left:0; padding-left:0; border-top:1px solid #e3eaf5; margin-top:14px; padding-top:12px; }
+}
+.pf-main-contact { display:inline-block; background:#eef4ff; color:#1d4ed8; border:1px solid #cfe0ff; border-radius:8px; padding:6px 12px; font-size:12.5px; font-weight:700; margin-bottom:10px; }
+.ip-phone { display:grid; grid-template-columns:minmax(92px,32%) minmax(0,1fr); gap:8px; }
+.ip-phone .ip-dial { padding-right:20px; text-overflow:ellipsis; }

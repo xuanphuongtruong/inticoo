@@ -1,0 +1,61 @@
+@page "/resources/{slug}"
+@inject PortalDbContext Db
+@{
+    var slug = (RouteData.Values["slug"] as string ?? "").ToLowerInvariant();
+    var r = await Db.ResourceItems.AsNoTracking().Include(x => x.Translations)
+        .FirstOrDefaultAsync(x => x.Slug == slug && x.IsPublished && x.PublishedAt <= DateTime.UtcNow && x.Section != ResourceSection.Faq);
+    if (r == null) { Response.StatusCode = 404; ViewData["Title"] = L["Resources"]; }
+    var t = r == null ? default : Ui.Res(r, L);
+    var embed = ResourceContent.Embed(r?.VideoUrl);
+    var related = r == null ? new List<ResourceItem>() : await Db.ResourceItems.AsNoTracking().Include(x => x.Translations)
+        .Where(x => x.Id != r.Id && x.IsPublished && x.PublishedAt <= DateTime.UtcNow && x.Section == ResourceSection.Learning)
+        .OrderByDescending(x => x.PublishedAt).Take(3).ToListAsync();
+    if (r != null) { ViewData["Title"] = t.Title; ViewData["Desc"] = t.Summary; }
+}
+@if (r == null)
+{
+  <div class="wrap center" style="padding:90px 20px"><h1>404</h1><p class="lead muted">@L["This resource could not be found."]</p><a class="btn" href="/resources">← @L["Resources"]</a></div>
+}
+else
+{
+  <section class="art-head">
+    <div class="wrap">
+      <a class="back" href="/resources">← @L["Resources"]</a>
+      <span class="eyebrow">@(r.Kind == "Video" ? L["VIDEO"] : r.Section == ResourceSection.Reference ? "PDF" : r.Section == ResourceSection.Learning ? L["ARTICLE"] : L["Featured Resources"])</span>
+      <h1>@t.Title</h1>
+      @if (t.Summary != null) { <p class="lead">@t.Summary</p> }
+      <div class="meta">@Icons.Svg("calendar", 16) @L.Date(r.PublishedAt)</div>
+    </div>
+  </section>
+  <div class="wrap art">
+    <article>
+      @if (embed != null) { <div class="vid"><iframe src="@embed" title="@t.Title" allow="accelerometer; encrypted-media; picture-in-picture; fullscreen" allowfullscreen loading="lazy"></iframe></div> }
+      else if (ResourceContent.IsUploadedVideo(r.VideoUrl)) { <div class="vid"><video src="@r.VideoUrl" controls preload="metadata" poster="@r.CoverPath"></video></div> }
+      else if (r.CoverPath != null && t.Body != null) { <img class="cover" src="@r.CoverPath" alt="" /> }
+      @if (t.Body != null) { <div class="prose">@Html.Raw(t.Body)</div> }
+      @if (r.FilePath != null)
+      {
+        <div class="dl-box">@Icons.Svg("doc", 34)<div><b>@(r.FileName ?? r.Slug + ".pdf")</b><small>PDF</small></div>
+          <a class="btn" href="@r.FilePath" download="@(r.FileName ?? r.Slug + ".pdf")">@Icons.Svg("download", 18) @L["Download PDF"]</a></div>
+      }
+      @if (t.Body == null && r.FilePath == null && r.VideoUrl == null)
+      {
+        <div class="alert info">@L["This resource is being prepared. Contact us and we will send it to you."] <a href="/contact?subject=Request a Resource">@L["Request a Resource"]</a></div>
+      }
+    </article>
+    <aside>
+      <div class="card"><h3>@L["Need help with quality inspection?"]</h3><p class="muted">@L["Our team can show you how Inticoo fits your process."]</p>
+        <a class="btn block" href="/contact?subject=Book a Demo">@L["Book a Demo"] →</a></div>
+      @if (related.Count > 0)
+      {
+        <h3 style="margin:22px 0 10px">@L["Learning Center"]</h3>
+        @foreach (var x in related)
+        {
+          var tx = Ui.Res(x, L);
+          <a class="rel" href="/resources/@x.Slug">@if (x.CoverPath != null) { <img src="@x.CoverPath" alt="" loading="lazy" /> }<span><b>@tx.Title</b><small>@L.Date(x.PublishedAt)</small></span></a>
+        }
+        <a href="/resources/articles" style="font-weight:700">@L["View All Articles"] →</a>
+      }
+    </aside>
+  </div>
+}

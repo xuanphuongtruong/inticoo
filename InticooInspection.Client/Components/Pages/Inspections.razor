@@ -1,71 +1,110 @@
-@page "/inspections"
+﻿@page "/inspections"
 @attribute [Microsoft.AspNetCore.Authorization.Authorize]
 @using System.Net.Http.Json
 @using System.Net.Http.Headers
 @using Microsoft.AspNetCore.Components.Authorization
 @inject HttpClient Http
+@inject IJSRuntime JS
 @inject NavigationManager Navigation
 @inject Blazored.SessionStorage.ISessionStorageService SessionStorage
 @inject AuthenticationStateProvider AuthStateProvider
 @using InticooInspection.Client.Services
 @inject WaitingService Waiting
 @inject PageAccessService PageAccess
+@inherits LocalizedComponentBase
 
-<PageTitle>Summary Inspections - Inticoo</PageTitle>
+<PageTitle>@T("Inspections.SummaryInspectionsInticoo")</PageTitle>
 
-<div class="page-container">
+<div class="page-container lp">
 
-    <!-- Top bar -->
-    <div class="top-bar">
+    <div class="lp-head">
         <div class="title-block">
-            <h1 class="page-title">Summary Inspections</h1>
+            <h1 class="page-title">@T("Inspections.SummaryInspections")</h1>
+            <span class="page-sub">@T("Inspections.Subtitle")</span>
         </div>
-        <div class="sep"></div>
-        <div class="search-wrap">
-            <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2">
-                <circle cx="9" cy="9" r="6"/><path d="M15 15l-3.5-3.5" stroke-linecap="round"/>
-            </svg>
-            <input class="search-input" type="text" placeholder="Search job no, customer, product, inspector..."
-                   @bind="_search" @bind:event="oninput" @onkeyup="OnSearchKeyUp" />
-        </div>
-        <select class="filter-select" @bind="_statusFilter" @bind:after="() => LoadPage(1)">
-            <option value="">All Status</option>
-            <option value="New">New</option>
-            <option value="Delay">Delay</option>
-            <option value="Completed">Completed</option>
-            <option value="Cancel">Cancel</option>
-        </select>
-        <select class="filter-select" @bind="_categoryFilter" @bind:after="() => LoadPage(1)">
-            <option value="">All Categories</option>
-            <option value="Mechanical">Mechanical</option>
-            <option value="Electrical">Electrical</option>
-            <option value="Chemical">Chemical</option>
-            <option value="Textile">Textile</option>
-            <option value="Furniture">Furniture</option>
-            <option value="Electronics">Electronics</option>
-            <option value="Packaging">Packaging</option>
-            <option value="Food &amp; Beverage">Food &amp; Beverage</option>
-            <option value="Other">Other</option>
-        </select>
-
-        <!-- Date filter group -->
-        <select class="filter-select" @bind="_dateField" @bind:after="() => LoadPage(1)" title="Date type">
-            <option value="inspection">Inspection Date</option>
-            <option value="receive">Receive Date</option>
-        </select>
-        <input class="filter-date" type="date" @bind="_dateFrom" @bind:after="() => LoadPage(1)" title="From date" />
-        <input class="filter-date" type="date" @bind="_dateTo"   @bind:after="() => LoadPage(1)" title="To date" />
-        @if (_dateFrom.HasValue || _dateTo.HasValue)
+        @if (PageAccess.Can("JobRequest", "Create"))
         {
-            <button class="btn-clear-date" @onclick="ClearDateRange" title="Clear date filter">✕</button>
-        }
-
         <button class="btn-add" @onclick="GoToNew">
             <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.5">
                 <path d="M10 4v12M4 10h12" stroke-linecap="round"/>
             </svg>
-            New Inspection
+            @T("Common.NewInspection")
         </button>
+        }
+    </div>
+
+    <!-- Filters -->
+    <div class="top-bar lp-filters @(_fOpen ? "fopen" : "")">
+        <div class="search-wrap">
+            <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="9" cy="9" r="6"/><path d="M15 15l-3.5-3.5" stroke-linecap="round"/>
+            </svg>
+            <input class="search-input" type="text" placeholder="@T("Inspections.SearchJobNoCustomerProductInspector")"
+                   @bind="_search" @bind:event="oninput" @onkeyup="OnSearchKeyUp" />
+        </div>
+    <button type="button" class="lp-filter-toggle @(_fOpen ? "on" : "")" @onclick="() => _fOpen = !_fOpen" aria-label="@T("Common.Filters")"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5h18l-7 8v6l-4 2v-8z"/></svg></button>
+        <div class="lp-dates">
+            <select class="filter-select" @bind="_dateField" @bind:after="() => LoadPage(1)" title="@T("Inspections.DateType")">
+                <option value="inspection">@T("Common.InspectionDate")</option>
+                <option value="receive">@T("Inspections.ReceiveDate")</option>
+            </select>
+            <DateFilter @bind-Value="_dateFrom" @bind-Value:after="() => LoadPage(1)" Placeholder="@T("Inspections.FromDate")" />
+            <span class="lp-arrow">&rarr;</span>
+            <DateFilter @bind-Value="_dateTo" @bind-Value:after="() => LoadPage(1)" Placeholder="@T("Inspections.ToDate")" />
+            @if (_dateFrom.HasValue || _dateTo.HasValue)
+            {
+                <button class="btn-clear-date" @onclick="ClearDateRange" title="@T("Inspections.ClearDateFilter")">✕</button>
+            }
+        </div>
+        <div class="lp-selects">
+            <select class="filter-select" @bind="_statusFilter" @bind:after="() => LoadPage(1)">
+                <option value="">@T("Common.AllStatus")</option>
+                <option value="New">@T("Inspections.New")</option>
+                <option value="Delay">@T("Inspections.Delay")</option>
+                <option value="Completed">@T("Common.Completed")</option>
+                <option value="Cancel">@T("Common.Cancel")</option>
+                <option value="Draft">@T("Status.Draft")</option>
+            </select>
+            <select class="filter-select" @bind="_categoryFilter" @bind:after="() => LoadPage(1)">
+                <option value="">@T("Common.AllCategories")</option>
+                @foreach (var c in Taxonomy.MainCategories) { <option value="@c">@TE("Opt", c)</option> }
+            </select>
+            <select class="filter-select" @bind="_typeFilter" @bind:after="() => LoadPage(1)">
+                <option value="">@T("Inspections.AllTypes")</option>
+                @foreach (var ty in new[] { "DPI", "PPT", "PST" }) { <option value="@ty">@TE("Opt", ty)</option> }
+            </select>
+            @if (!_isCustomer)
+            {
+            <select class="filter-select" @bind="_customerFilter" @bind:after="() => LoadPage(1)">
+                <option value="">@T("Inspections.AllCustomers")</option>
+                @foreach (var c in _custOpts) { <option value="@c.Key">@c.Value</option> }
+            </select>
+            }
+            <select class="filter-select" @bind="_vendorFilter" @bind:after="() => LoadPage(1)">
+                <option value="">@T("Inspections.AllVendors")</option>
+                @foreach (var v in _vendOpts) { <option value="@v.Key">@v.Value</option> }
+            </select>
+        </div>
+        <div class="lp-actions">
+            <button type="button" class="lp-btn-reset" @onclick="ResetFilters">@T("Common.Reset")</button>
+            <button type="button" class="lp-btn-search" @onclick="() => LoadPage(1)">@T("Common.Search")</button>
+        </div>
+    </div>
+
+    <div class="m-kpis m-kpis4 lp-kpis">
+        <div class="m-kpi"><span class="m-kpi-ico k-blue"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 8h6M9 12h6M9 16h3"/></svg></span><b>@_cntAll</b><small>@T("Customers.KpiTotal")</small></div>
+        <div class="m-kpi"><span class="m-kpi-ico k-green"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M8 12l3 3 5-6"/></svg></span><b>@_cntCompleted</b><small>@T("Common.Completed")</small></div>
+        <div class="m-kpi"><span class="m-kpi-ico k-blue"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></span><b>@_cntNew</b><small>@T("Inspections.New")</small></div>
+        <div class="m-kpi"><span class="m-kpi-ico k-orange"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h12M6 21h12M7 3c0 6 10 6 10 18M17 3c0 6-10 6-10 18"/></svg></span><b class="red">@_cntDelay</b><small>@T("Inspections.Delay")</small></div>
+        <div class="m-kpi"><span class="m-kpi-ico k-green"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M8 12l3 3 5-6"/></svg></span><b>@_cntPass</b><small>@T("Status.Pass")</small></div>
+        <div class="m-kpi"><span class="m-kpi-ico k-red"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M9 9l6 6M15 9l-6 6"/></svg></span><b class="red">@_cntFail</b><small>@T("Status.Fail")</small></div>
+    </div>
+    <div class="m-chips">
+        <button type="button" class="@(_statusFilter == "" ? "on" : "")" @onclick='() => SetStatusChip("")'>@T("Customers.ChipAll") (@_cntAll)</button>
+        <button type="button" class="@(_statusFilter == "Completed" ? "on" : "")" @onclick='() => SetStatusChip("Completed")'>@T("Common.Completed") (@_cntCompleted)</button>
+        <button type="button" class="@(_statusFilter == "New" ? "on" : "")" @onclick='() => SetStatusChip("New")'>@T("Inspections.New") (@_cntNew)</button>
+        <button type="button" class="@(_statusFilter == "Delay" ? "on" : "")" @onclick='() => SetStatusChip("Delay")'>@T("Inspections.Delay") (@_cntDelay)</button>
+        <button type="button" class="@(_statusFilter == "Cancel" ? "on" : "")" @onclick='() => SetStatusChip("Cancel")'>@T("Common.Cancel") (@_cntCancel)</button>
     </div>
 
     @if (!string.IsNullOrEmpty(_pageError))
@@ -77,37 +116,87 @@
     {
         <div class="loading-state">
             <div class="spinner-lg"></div>
-            <span>Loading...</span>
+            <span>@T("Common.Loading")</span>
         </div>
     }
     else
     {
+        <div class="m-cards">
+            @if (_inspections.Count == 0)
+            {
+                <div class="m-empty">@T("Inspections.NoInspectionsFound")</div>
+            }
+            @foreach (var mi in _inspections)
+            {
+                var it = mi;
+                var idate = it.InspectionDate ?? it.CreatedAt;
+                <div class="m-card">
+                    <div class="m-card-top">
+                        <div class="m-date">
+                            <b>@idate.ToString("dd")</b>
+                            <span>@L.Date(idate, "MMM")</span>
+                            <small>@idate.ToString("yyyy")</small>
+                        </div>
+                        <div class="m-card-main">
+                            <div class="m-card-head">
+                                <div class="m-card-name">@(string.IsNullOrEmpty(it.JobNumber) ? "—" : it.JobNumber)</div>
+                                <span class="@GetBadgeClass(it.Status)">@GetStatusLabel(it.Status)</span>
+                            </div>
+                            <div class="m-card-sub">@(string.IsNullOrEmpty(it.CustomerName) ? "—" : it.CustomerName)</div>
+                            <div class="m-card-code">@T("Common.PONumber"): @(string.IsNullOrEmpty(it.PoNumber) ? "—" : it.PoNumber)</div>
+                        </div>
+                    </div>
+                    <div class="m-tags">
+                        @if (!string.IsNullOrEmpty(it.ProductCategory)) { <span class="m-cat gray"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 8h6M9 12h6M9 16h3"/></svg>@it.ProductCategory</span> }
+                        @if (!string.IsNullOrEmpty(it.InspectionType)) { <span class="m-cat">@TE("Opt", it.InspectionType)</span> }
+                    </div>
+                    <div class="m-card-rows">
+                        @if (!string.IsNullOrEmpty(it.VendorName)) { <div><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="5" y="3" width="14" height="18" rx="1.5"/><path d="M9 7h2M13 7h2M9 11h2M13 11h2M9 15h2M13 15h2"/></svg>@it.VendorName</div> }
+                        @if (!string.IsNullOrEmpty(it.VendorCountry)) { <div><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 21s7-6 7-11a7 7 0 0 0-14 0c0 5 7 11 7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>@it.VendorCountry</div> }
+                        @if (!string.IsNullOrEmpty(it.InspectorName)) { <div><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>@it.InspectorName</div> }
+                    </div>
+                    @if (it.Status == "Completed")
+                    {
+                        <div class="m-card-actions">
+                            <button type="button" class="m-btn-outline" @onclick="() => GoToReport(it.Id)">@T("Common.ViewReport")</button>
+                        </div>
+                    }
+                    else if (CanAct && CanEdit(it.Status) && CanEditInsp)
+                    {
+                        <div class="m-card-actions">
+                            <button type="button" class="m-btn-fill" @onclick="() => GoToEdit(it.Id)">@T("Common.Edit")</button>
+                        </div>
+                    }
+                </div>
+            }
+        </div>
+
         <!-- Table -->
         <div class="table-wrap">
             <table class="ptable">
                 <thead>
                     <tr>
                         <th class="th-y">No</th>
-                        <th class="th-y">Receive Date</th>
-                        <th class="th-y">Job No</th>
-                        <th class="th-y">P.O. Number</th>
-                        <th class="th-y">Inspection Date</th>
-                        <th class="th-y">Customer Name</th>
-                        <th class="th-y">Category</th>
-                        <th class="th-y">Inspection Type</th>
-                        <th class="th-y">Vendor Name</th>
-                        <th class="th-y">Vendor Country</th>
-                        <th class="th-y">Inspector Name</th>
-                        <th class="th-y">Inspector ID</th>
-                        <th class="th-y">Status</th>
-                        <th class="th-y">View</th>
-                        @if (PageAccess.IsAdmin) { <th class="th-y">Action</th> }
+                        <th class="th-y">@T("Inspections.ReceiveDate")</th>
+                        <th class="th-y">@T("Inspections.JobNo")</th>
+                        <th class="th-y">@T("Common.PONumber")</th>
+                        <th class="th-y">@T("Common.InspectionDate")</th>
+                        <th class="th-y">@T("Common.CustomerName")</th>
+                        <th class="th-y">@T("Common.Category")</th>
+                        <th class="th-y">@T("Common.InspectionType")</th>
+                        <th class="th-y">@T("Common.VendorName")</th>
+                        <th class="th-y">@T("Inspections.VendorCountry")</th>
+                        <th class="th-y">@T("Common.InspectorName")</th>
+                        <th class="th-y">@T("Common.Result")</th>
+                        <th class="th-y">@T("Common.Status")</th>
+                        <th class="th-y">@T("Common.View")</th>
+                        @if (CanAct) { <th class="th-y">@T("Common.Action")</th> }
                     </tr>
                 </thead>
                 <tbody>
                     @if (_inspections.Count == 0)
                     {
-                        <tr><td colspan="@(PageAccess.IsAdmin ? 15 : 14)" class="td-empty">No inspections found.</td></tr>
+                        <tr><td colspan="@(CanAct ? 15 : 14)" class="td-empty">@T("Inspections.NoInspectionsFound")</td></tr>
                     }
                     else
                     {
@@ -122,19 +211,23 @@
                                 <td class="tc mono">@(string.IsNullOrEmpty(it.JobNumber) ? "—" : it.JobNumber)</td>
                                 <td class="tc mono">@(string.IsNullOrEmpty(it.PoNumber) ? "—" : it.PoNumber)</td>
                                 <td class="tc">@(it.InspectionDate.HasValue ? it.InspectionDate.Value.ToString("dd/MM/yyyy") : "—")</td>
-                                <td class="tc fw">@(string.IsNullOrEmpty(it.CustomerName) ? "—" : it.CustomerName)</td>
+                                <td class="tc fw td-co">@(string.IsNullOrEmpty(it.CustomerName) ? "—" : it.CustomerName)</td>
                                 <td class="tc">@(string.IsNullOrEmpty(it.ProductCategory) ? "—" : it.ProductCategory)</td>
                                 <td class="tc">
                                     @if (!string.IsNullOrEmpty(it.InspectionType))
                                     {
-                                        <span class="type-badge">@it.InspectionType</span>
+                                        <span class="type-badge">@TE("Opt", it.InspectionType)</span>
                                     }
                                     else { <span class="dash">—</span> }
                                 </td>
-                                <td class="tc">@(string.IsNullOrEmpty(it.VendorName) ? "—" : it.VendorName)</td>
+                                <td class="tc td-co">@(string.IsNullOrEmpty(it.VendorName) ? "—" : it.VendorName)</td>
                                 <td class="tc">@(string.IsNullOrEmpty(it.VendorCountry) ? "—" : it.VendorCountry)</td>
                                 <td class="tc">@(string.IsNullOrEmpty(it.InspectorName) ? "—" : it.InspectorName)</td>
-                                <td class="tc mono">@(string.IsNullOrEmpty(it.InspectorId) ? "—" : it.InspectorId)</td>
+                                <td class="tc">
+                                    @if (string.Equals(it.FinalResult, "PASSED", StringComparison.OrdinalIgnoreCase)) { <span class="res-pass">✓ @T("Status.Pass")</span> }
+                                    else if (string.Equals(it.FinalResult, "FAILED", StringComparison.OrdinalIgnoreCase)) { <span class="res-fail">✕ @T("Status.Fail")</span> }
+                                    else { <span class="dash">—</span> }
+                                </td>
                                 <td class="tc">
                                     <span class="@GetBadgeClass(it.Status)">@GetStatusLabel(it.Status)</span>
                                 </td>
@@ -143,7 +236,7 @@
                                        để các user không có quyền Admin (không thấy cột Action) vẫn xem được báo cáo *@
                                     @if (it.Status == "Completed")
                                     {
-                                        <button class="bico bview bview-report" @onclick="() => GoToReport(it.Id)" title="View Report">
+                                        <button class="bico bview bview-report" @onclick="() => GoToReport(it.Id)" title="@T("Common.ViewReport")">
                                             <svg width="13" height="13" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8">
                                                 <path d="M2 10s3-6 8-6 8 6 8 6-3 6-8 6-8-6-8-6z" stroke-linecap="round"/>
                                                 <circle cx="10" cy="10" r="2.5"/>
@@ -155,28 +248,37 @@
                                         <span class="dash">—</span>
                                     }
                                 </td>
-                                @if (PageAccess.IsAdmin)
+                                @if (CanAct)
                                 {
                                     <td class="tc">
                                         @* Nếu status là New, Delay → cho phép Edit + Delete *@
                                         @if (CanEdit(it.Status))
                                         {
-                                            <button class="bico bedit" @onclick="() => GoToEdit(it.Id)" title="Edit">
+                                            @if (CanEditInsp)
+                                            {
+                                            <button class="bico bedit" @onclick="() => GoToEdit(it.Id)" title="@T("Common.Edit")">
                                                 <svg width="13" height="13" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8">
                                                     <path d="M14 2l4 4-10 10H4v-4L14 2z" stroke-linecap="round" stroke-linejoin="round"/>
                                                 </svg>
                                             </button>
-                                            <button class="bico bdel" @onclick="() => ConfirmDelete(it)" title="Delete">
+                                            }
+                                            @if (CanDeleteInsp)
+                                            {
+                                            <button class="bico bdel" @onclick="() => ConfirmDelete(it)" title="@T("Common.Delete")">
                                                 <svg width="13" height="13" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8">
                                                     <path d="M4 6h12M8 6V4h4v2M7 6v10h6V6" stroke-linecap="round" stroke-linejoin="round"/>
                                                 </svg>
                                             </button>
-                                            <button class="bico bcancel" @onclick="() => ConfirmCancel(it)" title="Cancel">
+                                            }
+                                            @if (CanEditInsp && it.Status != "Draft")
+                                            {
+                                            <button class="bico bcancel" @onclick="() => ConfirmCancel(it)" title="@T("Common.Cancel")">
                                                 <svg width="13" height="13" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2">
                                                     <circle cx="10" cy="10" r="7.5"/>
                                                     <path d="M5.5 5.5l9 9" stroke-linecap="round"/>
                                                 </svg>
                                             </button>
+                                            }
                                         }
                                         else
                                         {
@@ -185,7 +287,7 @@
                                                (luôn hiển thị, không phụ thuộc quyền Admin). *@
                                             @if (it.Status != "Completed")
                                             {
-                                                <button class="bico bview" @onclick="() => GoToDetail(it.Id)" title="View">
+                                                <button class="bico bview" @onclick="() => GoToDetail(it.Id)" title="@T("Common.View")">
                                                     <svg width="13" height="13" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8">
                                                         <path d="M2 10s3-6 8-6 8 6 8 6-3 6-8 6-8-6-8-6z" stroke-linecap="round"/>
                                                         <circle cx="10" cy="10" r="2.5"/>
@@ -203,18 +305,26 @@
         </div>
 
         <!-- Pagination -->
-        @if (_total > _pageSize)
+        @if (_total > 0)
         {
-            <div class="pagination">
-                <button class="page-btn" disabled="@(_page == 1)" @onclick="PrevPage">← Prev</button>
-                <span class="page-info">Page @_page / @TotalPages() &nbsp;·&nbsp; @_total records</span>
-                <button class="page-btn" disabled="@(_page >= TotalPages())" @onclick="NextPage">Next →</button>
-            </div>
-        }
-        else if (_total > 0)
-        {
-            <div class="pagination">
-                <span class="page-info">@_total record@(_total > 1 ? "s" : "")</span>
+            <div class="pagination lp-pager">
+                <span class="page-info">@T("Inspections.ShowingRange", (_page - 1) * _pageSize + 1, Math.Min(_page * _pageSize, _total), _total)</span>
+                <div class="lp-pager-right">
+                    <select class="lp-perpage" value="@_pageSize" @onchange="SetPageSize">
+                        @foreach (var n in new[] { 10, 20, 50, 100 }) { <option value="@n">@T("Inspections.PerPage", n)</option> }
+                    </select>
+                    @if (_total > _pageSize)
+                    {
+                        <button class="page-btn pg" disabled="@(_page == 1)" @onclick="PrevPage">&lsaquo;</button>
+                        @foreach (var n in PageNumbers())
+                        {
+                            var pn = n;
+                            @if (pn == 0) { <span class="pg-dots">…</span> }
+                            else { <button class="page-btn pg @(pn == _page ? "on" : "")" @onclick="() => LoadPage(pn)">@pn</button> }
+                        }
+                        <button class="page-btn pg" disabled="@(_page >= TotalPages())" @onclick="NextPage">&rsaquo;</button>
+                    }
+                </div>
             </div>
         }
     }
@@ -230,20 +340,19 @@
                     <path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6" stroke-linecap="round" stroke-linejoin="round"/>
                 </svg>
             </div>
-            <h3 class="modal-title">Delete Inspection</h3>
+            <h3 class="modal-title">@T("Inspections.DeleteInspection")</h3>
             <p class="modal-msg">
-                Are you sure you want to delete
-                <strong>@(string.IsNullOrEmpty(_deleteTarget.JobNumber) ? $"#{_deleteTarget.Id}" : _deleteTarget.JobNumber)</strong>?
-                This action cannot be undone.
+                @T("Inspections.AreYouSureYouWantTo2")
+                <strong>@(string.IsNullOrEmpty(_deleteTarget.JobNumber) ? $"#{_deleteTarget.Id}" : _deleteTarget.JobNumber)</strong>@T("Inspections.ThisActionCannotBeUndone")
             </p>
             @if (!string.IsNullOrEmpty(_deleteError))
             {
                 <div class="modal-err">@_deleteError</div>
             }
             <div class="modal-actions">
-                <button class="btn-cancel-modal" @onclick="CancelDelete" disabled="@_deleting">Cancel</button>
+                <button class="btn-cancel-modal" @onclick="CancelDelete" disabled="@_deleting">@T("Common.Cancel")</button>
                 <button class="btn-del-confirm" @onclick="ExecuteDelete" disabled="@_deleting">
-                    @if (_deleting) { <span>Deleting...</span> } else { <span>Delete</span> }
+                    @if (_deleting) { <span>@T("Inspections.Deleting")</span> } else { <span>@T("Common.Delete")</span> }
                 </button>
             </div>
         </div>
@@ -261,20 +370,19 @@
                     <path d="M8 8l8 8M16 8l-8 8" stroke-linecap="round"/>
                 </svg>
             </div>
-            <h3 class="modal-title">Cancel Inspection</h3>
+            <h3 class="modal-title">@T("Inspections.CancelInspection")</h3>
             <p class="modal-msg">
-                Are you sure you want to cancel
-                <strong>@(string.IsNullOrEmpty(_cancelTarget.JobNumber) ? $"#{_cancelTarget.Id}" : _cancelTarget.JobNumber)</strong>?
-                This will mark the inspection as <strong>Cancelled</strong>.
+                @T("Inspections.AreYouSureYouWantTo")
+                <strong>@(string.IsNullOrEmpty(_cancelTarget.JobNumber) ? $"#{_cancelTarget.Id}" : _cancelTarget.JobNumber)</strong>@T("Inspections.ThisWillMarkInspectionAs") <strong>@T("Inspections.Cancelled")</strong>.
             </p>
             @if (!string.IsNullOrEmpty(_cancelError))
             {
                 <div class="modal-err">@_cancelError</div>
             }
             <div class="modal-actions">
-                <button class="btn-cancel-modal" @onclick="CancelCancelAction" disabled="@_cancelling">Back</button>
+                <button class="btn-cancel-modal" @onclick="CancelCancelAction" disabled="@_cancelling">@T("Common.Back")</button>
                 <button class="btn-cancel-confirm" @onclick="ExecuteCancel" disabled="@_cancelling">
-                    @if (_cancelling) { <span>Cancelling...</span> } else { <span>Confirm Cancel</span> }
+                    @if (_cancelling) { <span>@T("Inspections.Cancelling")</span> } else { <span>@T("Inspections.ConfirmCancel")</span> }
                 </button>
             </div>
         </div>
@@ -282,6 +390,7 @@
 }
 
 @code {
+    private bool _fOpen;
     private List<InspectionRow> _inspections = new();
     private bool   _loading      = true;
     private string _search          = "";
@@ -298,9 +407,16 @@
     private string _pageError    = "";
 
     // Role-based filter — set khi init, truyền vào URL
+    private string _typeFilter = "", _customerFilter = "", _vendorFilter = "";
+    private List<KeyValuePair<string,string>> _custOpts = new(), _vendOpts = new();
     private string _filterInspectorId = "";
     private string _filterCustomerId  = "";
     private bool   _isCustomer        = false;  // dùng để ẩn Action column
+
+    // Quyền theo module (màn Create/Edit User): Edit/Cancel = Job Request Edit; Delete = Job Request hoặc Summary Delete
+    private bool CanEditInsp   => PageAccess.Can("JobRequest", "Edit");
+    private bool CanDeleteInsp => PageAccess.Can("JobRequest", "Delete") || PageAccess.Can("SummaryInspections", "Delete");
+    private bool CanAct        => CanEditInsp || CanDeleteInsp;
 
     // Delete state
     private InspectionRow? _deleteTarget = null;
@@ -315,6 +431,7 @@
     protected override async Task OnInitializedAsync()
     {
         await PageAccess.EnsureLoadedAsync();
+        _ = LoadFilterOptions();
 
         var authState = await AuthStateProvider.GetAuthenticationStateAsync();
         var user      = authState.User;
@@ -358,7 +475,7 @@
                         if (user.IsInRole("Inspector"))
                             _filterInspectorId = me.InspectorId ?? "";
                         else if (user.IsInRole("Customer"))
-                            _filterCustomerId = me.CustomerId ?? "";
+                            _filterCustomerId = ""; // khách hàng: API lọc theo danh sách KH được phép (PageAccess.CustomerScope)
                     }
                 }
                 catch (Exception ex)
@@ -372,13 +489,10 @@
         await LoadPage(1);
 
         // Client-side fallback: lọc lại sau khi load phòng trường hợp backend chưa filter
-        if (!string.IsNullOrEmpty(_filterCustomerId))
+        if (PageAccess.CustomerScope != null)
         {
-            _inspections = _inspections.Where(i =>
-                !string.IsNullOrEmpty(i.CustomerId) &&
-                i.CustomerId.Equals(_filterCustomerId, StringComparison.OrdinalIgnoreCase)
-            ).ToList();
-            Console.WriteLine($"[Inspections] After client filter customerId={_filterCustomerId}: {_inspections.Count} rows");
+            _inspections = _inspections.Where(i => PageAccess.AllowsCustomer(i.CustomerId)).ToList();
+            Console.WriteLine($"[Inspections] After client filter by customer scope: {_inspections.Count} rows");
         }
         else if (!string.IsNullOrEmpty(_filterInspectorId))
         {
@@ -393,6 +507,7 @@
     private void GoToNew()          => Navigation.NavigateTo("/inspections/new");
     private void GoToEdit(int id)   => Navigation.NavigateTo($"/inspections/{id}/edit");
     private void GoToDetail(int id) => Navigation.NavigateTo($"/inspections/{id}");
+    // Điện thoại và máy tính đều mở trang báo cáo web (khách yêu cầu quay lại web view cũ, dễ tải file).
     private void GoToReport(int id)  => Navigation.NavigateTo($"/inspection-report/{id}/from/inspections");
     private async Task PrevPage()   => await LoadPage(_page - 1);
     private async Task NextPage()   => await LoadPage(_page + 1);
@@ -422,6 +537,7 @@
             "completed" => "Completed",
             "cancel"    => "Cancel",
             "cancelled" => "Cancel",
+            "draft"     => "Draft",
             _           => raw.Trim()
         };
     }
@@ -431,6 +547,7 @@
     {
         "New"   => true,
         "Delay" => true,
+        "Draft" => true,   // job nháp chưa giao: mở lại để sửa / Assign & Send
         _       => false
     };
 
@@ -440,15 +557,17 @@
         "Delay"     => "badge s-pending",
         "Completed" => "badge s-active",
         "Cancel"    => "badge s-inactive",
+        "Draft"     => "badge s-draft",
         _           => "badge s-new"
     };
 
     private string GetStatusLabel(string status) => status switch
     {
-        "New"       => "New",
-        "Delay"     => "Delay",
-        "Completed" => "Completed",
-        "Cancel"    => "Cancel",
+        "New"       => T("Inspections.New"),
+        "Delay"     => T("Inspections.Delay"),
+        "Completed" => T("Common.Completed"),
+        "Cancel"    => T("Common.Cancel"),
+        "Draft"     => T("Status.Draft"),
         _           => status
     };
 
@@ -460,18 +579,18 @@
     {
         if (_deleteTarget == null) return;
         _deleting = true; _deleteError = "";
-        Waiting.Show("Deleting inspection...");
+        Waiting.Show(T("Inspections.DeletingInspection"));
         try
         {
             var token = await SessionStorage.GetItemAsync<string>("auth_token");
-            if (string.IsNullOrEmpty(token)) { _deleteError = "Session expired. Please log in again."; return; }
+            if (string.IsNullOrEmpty(token)) { _deleteError = T("Inspections.SessionExpiredPleaseLogInAgain"); return; }
             Http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
             var resp = await Http.DeleteAsync($"api/inspections/{_deleteTarget.Id}");
             if (resp.IsSuccessStatusCode)          { _deleteTarget = null; await LoadPage(_page); }
-            else if ((int)resp.StatusCode == 401)  _deleteError = "Unauthorized. Please log in again.";
-            else if ((int)resp.StatusCode == 403)  _deleteError = "You do not have permission to delete this inspection.";
-            else                                   _deleteError = $"Delete failed ({(int)resp.StatusCode})";
+            else if ((int)resp.StatusCode == 401)  _deleteError = T("Inspections.UnauthorizedPleaseLogInAgain");
+            else if ((int)resp.StatusCode == 403)  _deleteError = T("Inspections.YouDoNotHavePermissionTo2");
+            else                                   _deleteError = T("Inspections.DeleteFailed", (int)resp.StatusCode);
         }
         catch (Exception ex) { _deleteError = ex.Message; }
         finally { _deleting = false; Waiting.Hide(); }
@@ -485,11 +604,11 @@
     {
         if (_cancelTarget == null) return;
         _cancelling = true; _cancelError = "";
-        Waiting.Show("Cancelling inspection...");
+        Waiting.Show(T("Inspections.CancellingInspection"));
         try
         {
             var token = await SessionStorage.GetItemAsync<string>("auth_token");
-            if (string.IsNullOrEmpty(token)) { _cancelError = "Session expired. Please log in again."; return; }
+            if (string.IsNullOrEmpty(token)) { _cancelError = T("Inspections.SessionExpiredPleaseLogInAgain"); return; }
             Http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
             // Backend enum: InspectionStatus.Cancelled
@@ -497,15 +616,54 @@
             var resp = await Http.PutAsJsonAsync($"api/inspections/{_cancelTarget.Id}/status", body);
 
             if (resp.IsSuccessStatusCode)          { _cancelTarget = null; await LoadPage(_page); }
-            else if ((int)resp.StatusCode == 401)  _cancelError = "Unauthorized. Please log in again.";
-            else if ((int)resp.StatusCode == 403)  _cancelError = "You do not have permission to cancel this inspection.";
-            else                                   _cancelError = $"Cancel failed ({(int)resp.StatusCode})";
+            else if ((int)resp.StatusCode == 401)  _cancelError = T("Inspections.UnauthorizedPleaseLogInAgain");
+            else if ((int)resp.StatusCode == 403)  _cancelError = T("Inspections.YouDoNotHavePermissionTo");
+            else                                   _cancelError = T("Inspections.CancelFailed", (int)resp.StatusCode);
         }
         catch (Exception ex) { _cancelError = ex.Message; }
         finally { _cancelling = false; Waiting.Hide(); }
     }
 
     // ── Load ──────────────────────────────────────────────────────
+    private int _cntAll, _cntCompleted, _cntNew, _cntDelay, _cntCancel, _cntPass, _cntFail;
+    private async Task ResetFilters()
+    {
+        _search = _statusFilter = _categoryFilter = _typeFilter = _customerFilter = _vendorFilter = "";
+        _dateFrom = _dateTo = null;
+        await LoadPage(1);
+    }
+
+    private async Task LoadFilterOptions()
+    {
+        try
+        {
+            var opts = new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+            var c = System.Text.Json.JsonSerializer.Deserialize<List<DropOpt>>(await Http.GetStringAsync("api/customers/dropdown"), opts) ?? new();
+            _custOpts = c.Select(x => new KeyValuePair<string,string>(x.CustomerId ?? "", x.CompanyName ?? "")).ToList();
+            var v = System.Text.Json.JsonSerializer.Deserialize<List<DropOpt>>(await Http.GetStringAsync("api/vendors/dropdown"), opts) ?? new();
+            _vendOpts = v.Select(x => new KeyValuePair<string,string>(x.Code ?? "", x.Name ?? "")).ToList();
+            StateHasChanged();
+        }
+        catch { }
+    }
+    private class DropOpt { public string? CustomerId { get; set; } public string? CompanyName { get; set; } public string? Code { get; set; } public string? Name { get; set; } }
+
+    private async Task SetPageSize(ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out var n) && n > 0) { _pageSize = n; await LoadPage(1); }
+    }
+
+    private IEnumerable<int> PageNumbers()
+    {
+        var tp = TotalPages(); var list = new List<int>();
+        for (int i = 1; i <= tp; i++)
+            if (i == 1 || i == tp || Math.Abs(i - _page) <= 1) list.Add(i);
+            else if (list.Count > 0 && list[^1] != 0) list.Add(0);
+        return list;
+    }
+
+    private async Task SetStatusChip(string v) { _statusFilter = v; await LoadPage(1); }
+
     private async Task LoadPage(int page)
     {
         _loading = true; _page = page;
@@ -528,6 +686,10 @@
             if (_dateFrom.HasValue || _dateTo.HasValue)
                 url += $"&dateField={Uri.EscapeDataString(_dateField)}";
 
+            if (!string.IsNullOrEmpty(_typeFilter))     url += $"&inspectionType={Uri.EscapeDataString(_typeFilter)}";
+            if (!string.IsNullOrEmpty(_customerFilter)) url += $"&customerId={Uri.EscapeDataString(_customerFilter)}";
+            if (!string.IsNullOrEmpty(_vendorFilter))   url += $"&vendorId={Uri.EscapeDataString(_vendorFilter)}";
+
             // Role-based filter
             if (!string.IsNullOrEmpty(_filterInspectorId))
                 url += $"&inspectorId={Uri.EscapeDataString(_filterInspectorId)}";
@@ -535,7 +697,7 @@
                 url += $"&customerId={Uri.EscapeDataString(_filterCustomerId)}";
             var opts = new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true };
             var resp = await Http.GetAsync(url);
-            if (!resp.IsSuccessStatusCode) { _pageError = $"Load failed ({(int)resp.StatusCode})"; return; }
+            if (!resp.IsSuccessStatusCode) { _pageError = T("Inspections.LoadFailed", (int)resp.StatusCode); return; }
 
             var json   = await resp.Content.ReadAsStringAsync();
             var result = System.Text.Json.JsonSerializer.Deserialize<PageResult>(json, opts);
@@ -599,6 +761,7 @@
 
                 _inspections = items.ToList();
                 _total       = result.Total;
+                _cntAll = result.CntAll; _cntCompleted = result.CntCompleted; _cntNew = result.CntNew; _cntDelay = result.CntDelay; _cntCancel = result.CntCancel; _cntPass = result.CntPass; _cntFail = result.CntFail;
                 _pageError   = "";
             }
         }
@@ -621,6 +784,7 @@
     // ── DTOs ──────────────────────────────────────────────────────
     private class PageResult
     {
+        public int CntAll { get; set; } public int CntCompleted { get; set; } public int CntNew { get; set; } public int CntDelay { get; set; } public int CntCancel { get; set; } public int CntPass { get; set; } public int CntFail { get; set; }
         public int Total { get; set; }
         public List<InspectionRow> Items { get; set; } = new();
     }
@@ -647,6 +811,7 @@
         public string?   InspectionType  { get; set; }
         public string?   InspectorName   { get; set; }
         public string?   InspectorId     { get; set; }
+        public string?   FinalResult     { get; set; }
     }
 
     // DTOs để resolve InspectorId/CustomerId từ api/users
@@ -681,6 +846,8 @@
     .filter-select { background:rgba(255,255,255,.1); border:1px solid rgba(255,255,255,.15); border-radius:8px; padding:8px 32px 8px 12px; color:#fff; font-size:13px; outline:none; cursor:pointer; min-width:130px; font-family:"DM Sans",sans-serif; flex-shrink:0; -webkit-appearance:none; -moz-appearance:none; appearance:none; background-image:url("data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23ffffff' stroke-width='1.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E"); background-repeat:no-repeat; background-position:right 10px center; background-size:10px 6px; }
     .filter-select::-ms-expand { display:none; }
     .filter-select option { background:#1565c0; }
+    .lp-selects .filter-select { min-width:190px; text-overflow:ellipsis; }
+    .lp-selects .filter-select:nth-child(n+4) { min-width:240px; } /* Customers / Vendors: hiển thị được tên dài */
 
     /* Date range filter */
     .filter-date {
@@ -718,7 +885,21 @@
 
     /* Table */
     .table-wrap { overflow-x:auto; -webkit-overflow-scrolling:touch; border-radius:10px; box-shadow:0 4px 20px rgba(0,0,0,.25); max-width:100%; }
-    .ptable { width:100%; border-collapse:collapse; background:#fff; font-size:12.5px; min-width:1200px; }
+    .ptable { width:100%; border-collapse:collapse; background:#fff; font-size:12.5px; min-width:1100px; }
+    .ptable td.td-co { min-width:118px; line-height:1.3; }
+    /* Vừa khít màn 1366px (khách: không muốn cuộn ngang): tiêu đề được xuống dòng, ô PO/Job No bẻ dòng khi cần */
+    .ptable { min-width:0 !important; }
+    .ptable { font-size:12px !important; }
+    .ptable th { white-space:normal !important; line-height:1.2; padding:6px 4px !important; font-size:11.5px; }
+    .ptable td { padding:6px 4px !important; font-size:12px; }
+    .ptable .badge, .ptable .type-badge { padding-left:7px; padding-right:7px; }
+    .ptable td.mono { font-size:11.5px; overflow-wrap:anywhere; }
+    .ptable td:nth-child(2), .ptable td:nth-child(5) { white-space:nowrap; }
+    .ptable td.mono:nth-child(3) { min-width:70px; }
+    .ptable td.td-no { width:1%; }
+    .res-pass, .res-fail { display:inline-block; padding:3px 10px; border-radius:20px; font-size:11.5px; font-weight:700; white-space:nowrap; }
+    .res-pass { background:#dcfce7; color:#15803d; }
+    .res-fail { background:#fee2e2; color:#b91c1c; }
     .ptable th { padding:7px 9px; border:1px solid #b8c4d8; text-align:center; font-weight:600; font-size:12px; color:#1a2d5a; white-space:nowrap; }
     .th-y   { background:#fffde7; }
     .th-grp { background:#e3f2fd; }
@@ -748,6 +929,7 @@
     .s-new      { background:#ede9fe; color:#7c3aed; border:1px solid #c4b5fd; }
     .s-active   { background:#dcfce7; color:#16a34a; border:1px solid #86efac; }
     .s-inactive { background:#fee2e2; color:#dc2626; border:1px solid #fca5a5; }
+    .s-draft { background:#f1f5f9; color:#475569; border:1px dashed #94a3b8; }
     .s-pending  { background:#fef9c3; color:#ca8a04; border:1px solid #fde047; }
     .s-progress { background:#dbeafe; color:#1d4ed8; border:1px solid #93c5fd; }
 
@@ -846,5 +1028,19 @@
         @@media (max-width: 768px) {
             .search-input, .filter-select, .filter-date { font-size:16px; }
         }
+    }
+
+    /* ── Mobile: KPI + chip + thẻ ── */
+    @@media (max-width:760px) {
+        .m-kpis4 { grid-template-columns:repeat(2,1fr) !important; }
+        .m-kpi { flex-direction:row !important; justify-content:flex-start; gap:10px !important; padding:10px 12px !important; }
+        .m-kpi b { margin-left:auto; }
+        .m-kpi small { order:-1; margin-left:0; }
+        .m-date { width:52px; flex-shrink:0; text-align:center; background:#eef3fb; border-radius:10px; padding:6px 0; color:#1a2d5a; display:flex; flex-direction:column; line-height:1.1; }
+        .m-date b { font-size:20px; } .m-date span { font-size:11px; text-transform:uppercase; color:#6b7280; } .m-date small { font-size:10px; color:#6b7280; }
+        .m-card-sub { font-size:13.5px; color:#1a2d5a; font-weight:600; }
+        .m-tags { display:flex; flex-wrap:wrap; gap:6px; }
+        .m-cat.gray { background:#f1f5f9; color:#475569; display:inline-flex; align-items:center; gap:5px; }
+        .m-empty { background:#fff; border-radius:12px; padding:24px; text-align:center; color:#6b7280; }
     }
 </style>

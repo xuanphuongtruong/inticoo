@@ -1,0 +1,50 @@
+@inherits LocalizedComponentBase
+@inject IJSRuntime JS
+@* Soạn nội dung email: thanh công cụ + vùng contenteditable. Value = HTML.
+   Version: đổi số này để nạp lại nội dung từ bên ngoài (đổi tab/ngôn ngữ) mà không làm nhảy con trỏ khi đang gõ. *@
+
+<div class="pf-rte">
+    <div class="pf-rte-bar">
+        <button type="button" title="@T("PartyReport.Bold")" @onmousedown:preventDefault @onclick='() => Exec("bold")'><b>B</b></button>
+        <button type="button" title="@T("PartyReport.Italic")" @onmousedown:preventDefault @onclick='() => Exec("italic")'><i>I</i></button>
+        <button type="button" title="@T("PartyReport.Underline")" @onmousedown:preventDefault @onclick='() => Exec("underline")'><u>U</u></button>
+        <span class="pf-rte-sep"></span>
+        <button type="button" title="@T("PartyReport.BulletList")" @onmousedown:preventDefault @onclick='() => Exec("insertUnorderedList")'>&#8226;&#8801;</button>
+        <button type="button" title="@T("PartyReport.NumberedList")" @onmousedown:preventDefault @onclick='() => Exec("insertOrderedList")'>1.&#8801;</button>
+        <button type="button" title="@T("PartyReport.Link")" @onmousedown:preventDefault @onclick="AddLink">&#128279;</button>
+    </div>
+    <div class="pf-rte-area" contenteditable="true" @ref="_el" @oninput="OnInput" @onblur="OnInput"></div>
+</div>
+
+@code {
+    [Parameter] public string Value { get; set; } = "";
+    [Parameter] public EventCallback<string> ValueChanged { get; set; }
+    [Parameter] public int Version { get; set; }
+
+    private ElementReference _el;
+    private int _loadedVersion = -1;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (_loadedVersion != Version)
+        {
+            _loadedVersion = Version;
+            await JS.InvokeVoidAsync("partyEditor.set", _el, Value ?? "");
+        }
+    }
+
+    private async Task OnInput() => await Push(await JS.InvokeAsync<string>("partyEditor.get", _el));
+
+    private async Task Exec(string cmd) => await Push(await JS.InvokeAsync<string>("partyEditor.exec", _el, cmd));
+
+    private async Task AddLink() => await Push(await JS.InvokeAsync<string>("partyEditor.link", _el));
+
+    /// <summary>Chèn chữ (vd. "[Customer Name]") tại vị trí con trỏ.</summary>
+    public async Task InsertAsync(string text) => await Push(await JS.InvokeAsync<string>("partyEditor.insert", _el, text));
+
+    private async Task Push(string html)
+    {
+        Value = html;
+        await ValueChanged.InvokeAsync(html);
+    }
+}

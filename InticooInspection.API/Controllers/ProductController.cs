@@ -1,4 +1,5 @@
-﻿using InticooInspection.API.Services;
+﻿using InticooInspection.Domain.Security;
+using InticooInspection.API.Services;
 using InticooInspection.Domain.Entities;
 using InticooInspection.Infrastructure.Data;
 using Microsoft.AspNetCore.Mvc;
@@ -27,6 +28,7 @@ namespace InticooInspection.API.Controllers
         public async Task<IActionResult> GetAll(
             [FromQuery] string? search,
             [FromQuery] string? category,
+            [FromQuery] string? vendorId,
             [FromQuery] int page     = 1,
             [FromQuery] int pageSize = 50)
         {
@@ -48,6 +50,9 @@ namespace InticooInspection.API.Controllers
 
                 if (!string.IsNullOrWhiteSpace(category))
                     query = query.Where(p => p.Category == category);
+
+                if (!string.IsNullOrWhiteSpace(vendorId))
+                    query = query.Where(p => p.Vendor != null && p.Vendor.Code == vendorId);
 
                 var total = await query.CountAsync();
                 var items = await query
@@ -73,10 +78,19 @@ namespace InticooInspection.API.Controllers
                         SizeH        = p.SizeH,
                         Weight       = p.Weight,
                         PhotoUrl     = p.PhotoUrl     ?? "",
+                        PhotoUrlsJson = p.PhotoUrlsJson,
                         Remark       = p.Remark       ?? "",
                         IsActive      = p.IsActive,
                         EstablishDate = p.EstablishDate,
                         CreatedAt    = p.CreatedAt,
+                        UpdatedAt    = p.UpdatedAt,
+                        CartonQuantity = p.CartonQuantity,
+                        Cartons      = p.Cartons.OrderBy(c => c.SortOrder).Select(c => new ProductCartonDto
+                        {
+                            Id = c.Id, SortOrder = c.SortOrder, CartonVariant = c.CartonVariant ?? "",
+                            Description = c.Description ?? "", PackagingQuantity = c.PackagingQuantity ?? "",
+                            SizeL = c.SizeL, SizeW = c.SizeW, SizeH = c.SizeH, Weight = c.Weight
+                        }).ToList(),
                         References   = p.References.OrderBy(r => r.SortOrder).Select(r => new ProductReferenceDto
                         {
                             Id        = r.Id,
@@ -149,8 +163,17 @@ namespace InticooInspection.API.Controllers
                     sizeH       = p.SizeH,
                     weight      = p.Weight,
                     photoUrl    = p.PhotoUrl     ?? "",
+                    photoUrls   = ParsePhotoUrls(p.PhotoUrlsJson, p.PhotoUrl),
                     customerId  = p.Customer != null ? p.Customer.CustomerId : "",
-                    vendorId    = p.Vendor   != null ? p.Vendor.Code         : ""
+                    vendorId    = p.Vendor   != null ? p.Vendor.Code         : "",
+                    cartonQuantity = p.CartonQuantity,
+                    cartons     = p.Cartons.OrderBy(c => c.SortOrder).Select(c => new
+                    {
+                        cartonVariant     = c.CartonVariant ?? "",
+                        description       = c.Description ?? "",
+                        packagingQuantity = c.PackagingQuantity ?? "",
+                        sizeL = c.SizeL, sizeW = c.SizeW, sizeH = c.SizeH, weight = c.Weight
+                    }).ToList()
                 })
                 .ToListAsync();
             return Ok(items);
@@ -165,6 +188,7 @@ namespace InticooInspection.API.Controllers
                              .Include(x => x.Customer)
                              .Include(x => x.Vendor)
                              .Include(x => x.References.OrderBy(r => r.SortOrder))
+                             .Include(x => x.Cartons)
                              .FirstOrDefaultAsync(x => x.Id == id);
             if (p == null) return NotFound();
             return Ok(new ProductDto
@@ -186,10 +210,19 @@ namespace InticooInspection.API.Controllers
                 SizeH        = p.SizeH,
                 Weight       = p.Weight,
                 PhotoUrl     = p.PhotoUrl     ?? "",
+                PhotoUrlsJson = p.PhotoUrlsJson,
                 Remark       = p.Remark       ?? "",
                 IsActive      = p.IsActive,
                 EstablishDate = p.EstablishDate,
                 CreatedAt    = p.CreatedAt,
+                UpdatedAt    = p.UpdatedAt,
+                CartonQuantity = p.CartonQuantity,
+                Cartons      = p.Cartons.OrderBy(c => c.SortOrder).Select(c => new ProductCartonDto
+                {
+                    Id = c.Id, SortOrder = c.SortOrder, CartonVariant = c.CartonVariant ?? "",
+                    Description = c.Description ?? "", PackagingQuantity = c.PackagingQuantity ?? "",
+                    SizeL = c.SizeL, SizeW = c.SizeW, SizeH = c.SizeH, Weight = c.Weight
+                }).ToList(),
                 References   = p.References.OrderBy(r => r.SortOrder).Select(r => new ProductReferenceDto
                 {
                     Id        = r.Id,
@@ -205,6 +238,7 @@ namespace InticooInspection.API.Controllers
         [HttpPost]
         public async Task<IActionResult> Create([FromBody] ProductRequest req)
         {
+            if (await HttpContext.RequestServices.GetRequiredService<UserAccess>().RequireAdminAsync() is { } denied) return denied;
             if (string.IsNullOrWhiteSpace(req.ProductName))
                 return BadRequest(new { message = "Product name is required." });
 
@@ -229,10 +263,14 @@ namespace InticooInspection.API.Controllers
                 SizeH         = req.SizeH,
                 Weight        = req.Weight,
                 PhotoUrl      = req.PhotoUrl,
+                PhotoUrlsJson = SerializePhotoUrls(req.PhotoUrls),
                 Remark        = req.Remark,
                 IsActive      = req.IsActive,
                 EstablishDate = req.EstablishDate,
-                CreatedAt     = DateTime.UtcNow
+                CartonQuantity = req.CartonQuantity,
+                CreatedAt     = DateTime.UtcNow,
+                UpdatedAt     = DateTime.UtcNow,
+                Cartons       = BuildCartons(req.Cartons)
             };
 
             _db.Products.Add(product);
@@ -262,6 +300,7 @@ namespace InticooInspection.API.Controllers
         [HttpPut("{id}")]
         public async Task<IActionResult> Update(int id, [FromBody] ProductRequest req)
         {
+            if (await HttpContext.RequestServices.GetRequiredService<UserAccess>().RequireAsync((ModuleKeys.JobRequest, PermAction.Create), (ModuleKeys.JobRequest, PermAction.Edit)) is { } denied) return denied;
             var product = await _db.Products.FindAsync(id);
             if (product == null) return NotFound();
             if (string.IsNullOrWhiteSpace(req.ProductName))
@@ -288,8 +327,27 @@ namespace InticooInspection.API.Controllers
             product.Remark        = req.Remark;
             product.IsActive      = req.IsActive;
             product.EstablishDate = req.EstablishDate;
+            product.CartonQuantity = req.CartonQuantity;
+            product.UpdatedAt     = DateTime.UtcNow;
 
-            if (!string.IsNullOrWhiteSpace(req.PhotoUrl))
+            var oldCartons = await _db.ProductCartons.Where(c => c.ProductId == id).ToListAsync();
+            _db.ProductCartons.RemoveRange(oldCartons);
+            foreach (var c in BuildCartons(req.Cartons))
+            {
+                c.ProductId = id;
+                _db.ProductCartons.Add(c);
+            }
+
+            if (req.PhotoUrls != null)
+            {
+                // Danh sách ảnh là nguồn chính: PhotoUrl = ảnh được chọn dùng trong báo cáo (mặc định ảnh đầu tiên)
+                var list = req.PhotoUrls.Where(u => !string.IsNullOrWhiteSpace(u)).Take(8).ToList();
+                product.PhotoUrlsJson = SerializePhotoUrls(list);
+                product.PhotoUrl = !string.IsNullOrWhiteSpace(req.PhotoUrl) && list.Contains(req.PhotoUrl)
+                    ? req.PhotoUrl
+                    : list.FirstOrDefault();
+            }
+            else if (!string.IsNullOrWhiteSpace(req.PhotoUrl))
                 product.PhotoUrl = req.PhotoUrl;
 
             var oldRefs = await _db.ProductReferences
@@ -315,10 +373,24 @@ namespace InticooInspection.API.Controllers
             return Ok(new { success = true });
         }
 
+        static List<ProductCarton> BuildCartons(List<ProductCartonDto>? rows) =>
+            (rows ?? new())
+                .Where(c => !string.IsNullOrWhiteSpace(c.CartonVariant) || !string.IsNullOrWhiteSpace(c.Description)
+                         || c.SizeL > 0 || c.SizeW > 0 || c.SizeH > 0 || c.Weight > 0)
+                .Select((c, i) => new ProductCarton
+                {
+                    SortOrder         = i + 1,
+                    CartonVariant     = c.CartonVariant?.Trim(),
+                    Description       = c.Description?.Trim(),
+                    PackagingQuantity = c.PackagingQuantity?.Trim(),
+                    SizeL = c.SizeL, SizeW = c.SizeW, SizeH = c.SizeH, Weight = c.Weight
+                }).ToList();
+
         // ── DELETE api/products/{id} ──────────────────────────────────
         [HttpDelete("{id}")]
         public async Task<IActionResult> Delete(int id)
         {
+            if (await HttpContext.RequestServices.GetRequiredService<UserAccess>().RequireAdminAsync() is { } denied) return denied;
             var product = await _db.Products.FindAsync(id);
             if (product == null) return NotFound();
             _db.Products.Remove(product);
@@ -326,11 +398,31 @@ namespace InticooInspection.API.Controllers
             return Ok(new { success = true });
         }
 
+        internal static List<string> ParsePhotoUrls(string? json, string? mainUrl)
+        {
+            List<string>? list = null;
+            if (!string.IsNullOrWhiteSpace(json))
+            {
+                try { list = System.Text.Json.JsonSerializer.Deserialize<List<string>>(json); } catch { }
+            }
+            list ??= new List<string>();
+            // Dữ liệu cũ chỉ có PhotoUrl → coi như danh sách 1 ảnh
+            if (list.Count == 0 && !string.IsNullOrWhiteSpace(mainUrl)) list.Add(mainUrl);
+            return list;
+        }
+
+        static string? SerializePhotoUrls(List<string>? urls)
+        {
+            var list = (urls ?? new()).Where(u => !string.IsNullOrWhiteSpace(u)).Take(8).ToList();
+            return list.Count == 0 ? null : System.Text.Json.JsonSerializer.Serialize(list);
+        }
+
         // ── POST api/products/{id}/photo ──────────────────────────────
         // ✅ Đã sửa: upload lên Azure Blob Storage thay vì lưu local
         [HttpPost("{id}/photo")]
         public async Task<IActionResult> UploadPhoto(int id, IFormFile file)
         {
+            if (await HttpContext.RequestServices.GetRequiredService<UserAccess>().RequireAdminAsync() is { } denied) return denied;
             var product = await _db.Products.FindAsync(id);
             if (product == null) return NotFound();
             if (file == null || file.Length == 0)
@@ -348,7 +440,8 @@ namespace InticooInspection.API.Controllers
             await using var stream = file.OpenReadStream();
             var url = await _blobService.UploadAsync("products", fileName, stream, file.ContentType);
 
-            product.PhotoUrl = url;
+            product.PhotoUrl  = url;
+            product.UpdatedAt = DateTime.UtcNow;
             await _db.SaveChangesAsync();
 
             return Ok(new { success = true, photoUrl = url });
@@ -402,6 +495,7 @@ namespace InticooInspection.API.Controllers
         [HttpPost("{id}/references/upload")]
         public async Task<IActionResult> UploadReferenceFile(int id, IFormFile file)
         {
+            if (await HttpContext.RequestServices.GetRequiredService<UserAccess>().RequireAdminAsync() is { } denied) return denied;
             var product = await _db.Products.FindAsync(id);
             if (product == null) return NotFound();
             if (file == null || file.Length == 0)
@@ -429,8 +523,8 @@ namespace InticooInspection.API.Controllers
         // ─────────────────────────────────────────────────────────────────
         [HttpGet("template")]
         [Microsoft.AspNetCore.Authorization.AllowAnonymous]
-        public IActionResult DownloadImportTemplate([FromServices] IWebHostEnvironment env)
-            => ImportHelper.ServeTemplate(env, "Products_Import_Template.xlsx");
+        public IActionResult DownloadImportTemplate([FromServices] IWebHostEnvironment env, [FromQuery] string? lang)
+            => ImportHelper.ServeTemplate(env, "Products_Import_Template.xlsx", lang);
 
         // ─────────────────────────────────────────────────────────────────
         // POST api/products/import
@@ -441,6 +535,7 @@ namespace InticooInspection.API.Controllers
         [RequestSizeLimit(20 * 1024 * 1024)]
         public async Task<IActionResult> Import(IFormFile file)
         {
+            if (await HttpContext.RequestServices.GetRequiredService<UserAccess>().RequireAdminAsync() is { } denied) return denied;
             var validateError = ImportHelper.ValidateFile(file);
             if (validateError != null) return validateError;
 
@@ -618,11 +713,30 @@ namespace InticooInspection.API.Controllers
         public decimal? SizeH       { get; set; }
         public decimal? Weight      { get; set; }
         public string  PhotoUrl     { get; set; } = "";
+        [System.Text.Json.Serialization.JsonIgnore]
+        public string? PhotoUrlsJson { get; set; }
+        public List<string> PhotoUrls => ProductController.ParsePhotoUrls(PhotoUrlsJson, PhotoUrl);
         public string  Remark       { get; set; } = "";
         public bool    IsActive      { get; set; } = true;
         public DateTime? EstablishDate { get; set; }
         public DateTime CreatedAt    { get; set; }
+        public DateTime? UpdatedAt   { get; set; }
+        public int?    CartonQuantity { get; set; }
+        public List<ProductCartonDto>    Cartons    { get; set; } = new();
         public List<ProductReferenceDto> References { get; set; } = new();
+    }
+
+    public class ProductCartonDto
+    {
+        public int      Id                { get; set; }
+        public int      SortOrder         { get; set; }
+        public string?  CartonVariant     { get; set; } = "";
+        public string?  Description       { get; set; } = "";
+        public string?  PackagingQuantity { get; set; } = "";
+        public decimal? SizeL             { get; set; }
+        public decimal? SizeW             { get; set; }
+        public decimal? SizeH             { get; set; }
+        public decimal? Weight            { get; set; }
     }
 
     public class ProductRequest
@@ -641,9 +755,12 @@ namespace InticooInspection.API.Controllers
         public decimal? SizeH         { get; set; }
         public decimal? Weight        { get; set; }
         public string?  PhotoUrl      { get; set; }
+        public List<string>? PhotoUrls { get; set; }
         public string?  Remark        { get; set; }
         public bool     IsActive      { get; set; } = true;
         public DateTime? EstablishDate { get; set; }
+        public int?     CartonQuantity { get; set; }
+        public List<ProductCartonDto>        Cartons    { get; set; } = new();
         public List<ProductReferenceRequest> References { get; set; } = new();
     }
 

@@ -1,0 +1,80 @@
+@page
+@inject PortalDbContext Db
+@{
+    ViewData["Title"] = L["Pricing"];
+    var plans = await Db.Plans.AsNoTracking().Include(p => p.Modules).ThenInclude(m => m.Module).Where(p => p.IsActive).OrderBy(p => p.SortOrder).ToListAsync();
+    bool Has(Plan p, string code) => p.Modules.Any(x => x.Module!.Code == code);
+    // Mỗi dòng: icon, tên, hàm trả về ô của 1 gói (null = có ✓, "" = không có —, chuỗi khác = chữ)
+    var rows = new List<(string Icon, string Name, Func<Plan, string?> Cell)>
+    {
+        ("doc", "Product Inspections (PPI, DPI, PST)", p => Has(p, "inspection") ? null : ""),
+        ("container", "Loading Container Check (CLC)", p => Has(p, "clc") ? null : ""),
+        ("alert", "Defect Management", p => null),
+        ("doc", "CAPA Management", p => Has(p, "capa") ? null : ""),
+        ("users", "Supplier Management", p => null),
+        ("barchart", "Quality Analytics Dashboard", p => Has(p, "api") ? L["Advanced reports & export"] : Has(p, "analytics") ? L["Advanced reports"] : L["Basic reports"]),
+        ("users", "User & Permission Control", p => L.F("Up to {0} users", p.MaxUsers)),
+        ("translate", "Multi-language (EN / 中文 / Tiếng Việt / Bahasa Melayu)", p => "English / 中文 / Tiếng Việt / Bahasa Melayu"),
+        ("cloud", "Cloud Storage", p => p.StorageGb + " GB"),
+        ("api", "API Integration", p => Has(p, "api") ? null : ""),
+        ("mail", "Email Notifications", p => null),
+        ("headset", "Dedicated Account Manager", p => Has(p, "api") ? null : ""),
+    };
+}
+<section class="hero">
+  <div class="wrap">
+    <div>
+      <span class="eyebrow">@L["Pricing"]</span>
+      <h1>@L["Flexible Plans for Every Business"]</h1>
+      <p class="lead">@L["Choose the plan that fits your needs. All plans include secure cloud storage, multi-language support and regular updates."]</p>
+      <partial name="_Badges" model="@("pricing")" />
+    </div>
+    <div class="hero-shot"><img src="/img/photos/hero-dashboard.png" alt="@L["Inticoo dashboard on laptop and mobile"]" width="1080" height="638" /></div>
+  </div>
+</section>
+
+<section class="sec tight">
+  <div class="wrap">
+    <div class="cmp-wrap">
+    <table class="cmp2">
+      <thead><tr>
+        <th class="feat-h">@L["Features"]</th>
+        @for (var i = 0; i < plans.Count; i++)
+        {
+          var p = plans[i];
+          var save = p.MonthlyPrice > 0 ? (int)Math.Round((1 - p.AnnualPrice / (p.MonthlyPrice * 12)) * 100) : 0;
+          <th><div class="ph-card @(i == plans.Count - 1 && plans.Count > 1 ? "pro" : "")">
+            <div class="ph"><span class="ic">@Icons.Svg(Ui.PlanIcon(p.Code))</span><div><h3>@p.Name</h3><small>@L[p.Tagline]</small></div></div>
+            <div class="price" style="color:@(i == plans.Count - 1 && plans.Count > 1 ? "var(--purple)" : "var(--blue)")">US$ @p.MonthlyPrice.ToString("N0") <small>/ @L["month"]</small></div>
+            <div class="yr">@L["or"] US$ @p.AnnualPrice.ToString("N0") / @L["year"] @if (save > 0) { <span class="save">@L["Save"] @save%</span> }</div>
+            <a class="btn @(p.IsPopular ? "" : "ghost") block" href="/register?plan=@p.Code">@L["Register & Subscribe"]</a>
+          </div></th>
+        }
+      </tr></thead>
+      <tbody>
+        @foreach (var r in rows)
+        {
+          <tr><td class="f">@Icons.Svg(r.Icon) @L[r.Name]</td>
+            @foreach (var p in plans)
+            {
+              var c = r.Cell(p);
+              <td>@if (c == null) { <span class="yes">@Icons.Svg("check")</span> } else if (c == "") { <span class="no">—</span> } else { @c }</td>
+            }
+          </tr>
+        }
+      </tbody>
+    </table>
+    </div>
+
+    <div class="grid g4 info4" style="margin-top:30px">
+      <div class="card"><span class="ico plain">@Icons.Svg("dollar")</span><div><h3>@L["All Plans Include"]</h3>
+        <ul class="ticks"><li>@L["Secure and independent company account"]</li><li>@L["Regular updates and new features"]</li><li>@L["Professional support"]</li></ul></div></div>
+      <div class="card"><span class="ico plain">@Icons.Svg("shield")</span><div><h3>@L["Enterprise-Grade Security"]</h3>
+        <ul class="ticks"><li>@L["Your data is separated from other companies"]</li><li>@L["Encrypted and backed up regularly"]</li></ul></div></div>
+      <div class="card"><span class="ico plain">@Icons.Svg("globe")</span><div><h3>@L["4-Language Support"]</h3>
+        <ul class="ticks"><li>English</li><li>中文 (Chinese)</li><li>Tiếng Việt (Vietnamese)</li><li>Bahasa Melayu</li></ul></div></div>
+      <div class="card"><span class="ico plain">@Icons.Svg("headset")</span><div><h3>@L["Need Help Choosing?"]</h3>
+        <p>@L["Our team can help you find the right plan for your business."]</p><a class="btn ghost" href="/contact?subject=Request a Quote">@L["Contact Us"] →</a></div></div>
+    </div>
+  </div>
+</section>

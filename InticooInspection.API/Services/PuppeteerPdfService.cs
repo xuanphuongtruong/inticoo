@@ -17,7 +17,8 @@ namespace InticooInspection.API.Services;
 /// </summary>
 public interface IPdfService
 {
-    Task<byte[]> GenerateInspectionReportPdfAsync(int inspectionId, string authToken, CancellationToken ct = default);
+    // lang: ngôn ngữ báo cáo (en/vi/zh/ms) — inject vào localStorage "app_lang" để trang Blazor hiển thị đúng ngôn ngữ
+    Task<byte[]> GenerateInspectionReportPdfAsync(int inspectionId, string authToken, CancellationToken ct = default, string? lang = null);
 }
 
 public class PuppeteerPdfService : IPdfService, IAsyncDisposable
@@ -39,7 +40,7 @@ public class PuppeteerPdfService : IPdfService, IAsyncDisposable
     }
 
     public async Task<byte[]> GenerateInspectionReportPdfAsync(
-        int inspectionId, string authToken, CancellationToken ct = default)
+        int inspectionId, string authToken, CancellationToken ct = default, string? lang = null)
     {
         var sw = System.Diagnostics.Stopwatch.StartNew();
         _logger.LogInformation("════════════════════════════════════════════════════");
@@ -90,7 +91,7 @@ public class PuppeteerPdfService : IPdfService, IAsyncDisposable
 
         var baseUrl = _config["AppBaseUrl"]?.TrimEnd('/')
                        ?? throw new InvalidOperationException(
-                           "AppBaseUrl chưa được cấu hình trong appsettings.json");
+                           "AppBaseUrl is not configured in appsettings.json");
         var pageUrl = $"{baseUrl}/inspection-report/{inspectionId}?print=1";
 
         _logger.LogInformation("[PDF] Base URL: {BaseUrl}", baseUrl);
@@ -105,6 +106,7 @@ public class PuppeteerPdfService : IPdfService, IAsyncDisposable
             // WASM đọc được token ngay khi khởi tạo.
             // ─────────────────────────────────────────────────────────
             var escapedToken = System.Text.Json.JsonSerializer.Serialize(authToken);
+            var escapedLang  = System.Text.Json.JsonSerializer.Serialize(lang ?? "en");
             _logger.LogInformation("[PDF] Step 1/3: Injecting auth_token before page load (length={Len})...",
                 authToken.Length);
 
@@ -114,6 +116,7 @@ public class PuppeteerPdfService : IPdfService, IAsyncDisposable
                         sessionStorage.setItem('auth_token', {escapedToken});
                         // Một số app dùng localStorage làm fallback
                         localStorage.setItem('auth_token', {escapedToken});
+                        localStorage.setItem('app_lang', {escapedLang});
                         console.log('[PDF-INJECT] Token injected, length=' + {escapedToken}.length);
                     }} catch (e) {{
                         console.error('[PDF-INJECT] Failed:', e.message);

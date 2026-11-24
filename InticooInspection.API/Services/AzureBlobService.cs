@@ -13,9 +13,11 @@ namespace InticooInspection.API.Services
     public class AzureBlobService
     {
         private readonly string _uploadsRoot;
+        private readonly IHttpContextAccessor _http;
 
-        public AzureBlobService(IWebHostEnvironment env)
+        public AzureBlobService(IWebHostEnvironment env, IHttpContextAccessor http)
         {
+            _http = http;
             var wwwroot = env.WebRootPath ?? Path.Combine(env.ContentRootPath, "wwwroot");
             _uploadsRoot = Path.Combine(wwwroot, "uploads");
             Directory.CreateDirectory(_uploadsRoot);
@@ -27,14 +29,20 @@ namespace InticooInspection.API.Services
         /// </summary>
         public async Task<string> UploadAsync(string folder, string fileName, Stream stream, string contentType)
         {
+            folder = TenantFolder(folder);
             var folderPath = Path.Combine(_uploadsRoot, folder);
             Directory.CreateDirectory(folderPath);
 
             var fullPath = Path.Combine(folderPath, fileName);
             if (stream.CanSeek) stream.Position = 0;
 
+            // Hạn mức dung lượng của gói (công ty khách): vượt → PlanLimitException → 403
+            var limits = _http.HttpContext?.RequestServices.GetService<Usage.PlanLimitService>();
+            if (limits != null) await limits.EnsureStorageAsync(stream.CanSeek ? stream.Length : 0);
+
             await using (var fs = new FileStream(fullPath, FileMode.Create, FileAccess.Write))
                 await stream.CopyToAsync(fs);
+            limits?.Track(new FileInfo(fullPath).Length);
 
             // URL tương đối — đồng nhất với cách CustomerFilesController đang dùng
             return $"/uploads/{folder}/{fileName}";
@@ -43,10 +51,23 @@ namespace InticooInspection.API.Services
         /// <summary>Xóa file wwwroot/uploads/{folder}/{fileName} nếu tồn tại.</summary>
         public Task DeleteAsync(string folder, string fileName)
         {
+            folder = TenantFolder(folder);
             var fullPath = Path.Combine(_uploadsRoot, folder, fileName);
             if (File.Exists(fullPath))
                 File.Delete(fullPath);
             return Task.CompletedTask;
+        }
+
+        /// <summary>URL có phải file do service này lưu trong thư mục <paramref name="folder"/> của công ty hiện tại không.</summary>
+        public bool IsOwnFile(string? url, string folder) =>
+            !string.IsNullOrEmpty(url) && url.StartsWith($"/uploads/{TenantFolder(folder)}/", StringComparison.OrdinalIgnoreCase);
+
+        /// <summary>Công ty khách (DB riêng) lưu file ở uploads/t/{mã công ty}/... để không đè file của công ty khác
+        /// (Id trong các DB khác nhau có thể trùng). DB gốc giữ đường dẫn cũ.</summary>
+        private string TenantFolder(string folder)
+        {
+            var t = _http.HttpContext?.RequestServices.GetService<Tenancy.TenantContext>()?.Tenant;
+            return t == null ? folder : $"t/{t.Code}/{folder}";
         }
     }
 }

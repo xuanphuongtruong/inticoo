@@ -1,3 +1,5 @@
+﻿using InticooInspection.Domain.Security;
+using InticooInspection.API.Services;
 using InticooInspection.Domain.Entities;
 using InticooInspection.Infrastructure.Data;
 using Microsoft.AspNetCore.Authorization;
@@ -31,12 +33,14 @@ namespace InticooInspection.API.Controllers
         // GET api/inspections
         [HttpGet]
         [AllowAnonymous]
-        public async Task<IActionResult> GetAll([FromQuery] string? status, [FromQuery] string? search, [FromQuery] int page = 1, [FromQuery] int pageSize = 20)
+        public async Task<IActionResult> GetAll([FromQuery] string? status, [FromQuery] string? search, [FromQuery] int page = 1, [FromQuery] int pageSize = 20,
+            [FromQuery] string? customerId = null, [FromQuery] string? vendorId = null, [FromQuery] string? inspectionType = null)
         {
             try
             {
                 // ── Dùng raw SQL-safe projection, không động đến navigation props ──
                 var allRaw = await _db.Inspections
+                    .IgnoreQueryFilters()   // danh sách Summary hiện cả job Draft để quản lý mở tiếp
                     .AsNoTracking()
                     .Select(i => new
                     {
@@ -61,6 +65,21 @@ namespace InticooInspection.API.Controllers
                         i.FinalResult,
                     })
                     .ToListAsync();
+
+                // ── Phạm vi khách hàng của người gọi (Customer Access trên màn User) ──
+                var custScope = await HttpContext.RequestServices.GetRequiredService<UserAccess>().CustomerScopeAsync();
+                if (custScope != null)
+                    allRaw = allRaw.Where(i => !string.IsNullOrEmpty(i.CustomerId) && custScope.Contains(i.CustomerId)).ToList();
+
+                // Số liệu KPI (không phụ thuộc bộ lọc đang chọn)
+                var kpiToday = DateTime.Today;
+                var cntAll       = allRaw.Count(i => i.StatusVal != InspectionStatus.Draft);
+                var cntCompleted = allRaw.Count(i => (int)i.StatusVal == 2);
+                var cntCancel    = allRaw.Count(i => (int)i.StatusVal == 3);
+                var cntDelay     = allRaw.Count(i => (int)i.StatusVal == 0 && i.InspectionDate != default(DateTime) && i.InspectionDate.Date < kpiToday);
+                var cntNew       = allRaw.Count(i => (int)i.StatusVal == 0) - cntDelay;
+                var cntPass      = allRaw.Count(i => string.Equals(i.FinalResult, "PASSED", StringComparison.OrdinalIgnoreCase));
+                var cntFail      = allRaw.Count(i => string.Equals(i.FinalResult, "FAILED", StringComparison.OrdinalIgnoreCase));
 
                 // ── Filter in-memory ──
                 // DB mapping: 0=New, 1=OnGoing, 2=Completed, 3=Cancel, 4=Pending
@@ -97,12 +116,20 @@ namespace InticooInspection.API.Controllers
                             "cancel"    => (int?)3,
                             "cancelled" => (int?)3,
                             "pending"   => (int?)4,
+                            "draft"     => (int?)9,
                             _           => null
                         };
                         if (sv.HasValue)
                             allRaw = allRaw.Where(i => (int)i.StatusVal == sv.Value).ToList();
                     }
                 }
+
+                if (!string.IsNullOrWhiteSpace(customerId))
+                    allRaw = allRaw.Where(i => string.Equals(i.CustomerId, customerId, StringComparison.OrdinalIgnoreCase)).ToList();
+                if (!string.IsNullOrWhiteSpace(vendorId))
+                    allRaw = allRaw.Where(i => string.Equals(i.VendorId, vendorId, StringComparison.OrdinalIgnoreCase)).ToList();
+                if (!string.IsNullOrWhiteSpace(inspectionType))
+                    allRaw = allRaw.Where(i => string.Equals(i.InspectionTypeVal.ToString(), inspectionType, StringComparison.OrdinalIgnoreCase)).ToList();
 
                 if (!string.IsNullOrWhiteSpace(search))
                 {
@@ -124,7 +151,7 @@ namespace InticooInspection.API.Controllers
                     .ToList();
 
                 if (pageItems.Count == 0)
-                    return Ok(new { total, page, pageSize, items = new List<object>() });
+                    return Ok(new { total, page, pageSize, items = new List<object>(), cntAll, cntCompleted, cntCancel, cntDelay, cntNew, cntPass, cntFail });
 
                 // ── Lookups: load toàn bộ vào memory, tránh Contains() gây lỗi SQL Server cũ ──
 
@@ -239,6 +266,7 @@ namespace InticooInspection.API.Controllers
                     2 => "Completed",
                     3 => "Cancel",
                     4 => "Delay",      // legacy Pending
+                    9 => "Draft",
                     _ => "New"
                 };
                 static string MapInspType(InspectionType t) => t switch
@@ -328,7 +356,7 @@ namespace InticooInspection.API.Controllers
                     };
                 }).ToList();
 
-                return Ok(new { total, page, pageSize, items });
+                return Ok(new { total, page, pageSize, items, cntAll, cntCompleted, cntCancel, cntDelay, cntNew, cntPass, cntFail });
             }
             catch (Exception ex)
             {
@@ -347,6 +375,7 @@ namespace InticooInspection.API.Controllers
           try
           {
             var inspection = await _db.Inspections
+                .IgnoreQueryFilters()
                 .Include(i => i.CreatedBy)
                 .Include(i => i.OverallConclusions.OrderBy(o => o.Order))
                 .Include(i => i.Packaging)
@@ -354,10 +383,13 @@ namespace InticooInspection.API.Controllers
                 .Include(i => i.ColourSwatches.OrderBy(c => c.Order))
                 .Include(i => i.PerformanceTests.OrderBy(p => p.Order))
                 .Include(i => i.References.OrderBy(r => r.Order))
+                .Include(i => i.Cartons.OrderBy(c => c.CartonIndex))
                 .AsNoTracking()
                 .FirstOrDefaultAsync(i => i.Id == id);
 
             if (inspection == null) return NotFound();
+            var custScope = await HttpContext.RequestServices.GetRequiredService<UserAccess>().CustomerScopeAsync();
+            if (custScope != null && !custScope.Contains(inspection.CustomerId ?? "")) return NotFound();
 
             // Lookup ProductCode — gộp vào 1 query, không cần round-trip thứ 2
             var productCode = string.IsNullOrEmpty(inspection.ProductName) ? "" :
@@ -443,6 +475,7 @@ namespace InticooInspection.API.Controllers
                 2 => "Completed",
                 3 => "Cancel",
                 4 => "Delay",      // legacy Pending
+                9 => "Draft",
                 _ => "New"
             };
 
@@ -498,6 +531,22 @@ namespace InticooInspection.API.Controllers
                 _ => ""
             };
 
+            // Toàn bộ ảnh sản phẩm trong hồ sơ (ảnh chính đứng đầu) để màn QC hiển thị thư viện xem/phóng to
+            var prodPhotoUrls = new List<string>();
+            {
+                var prod = await _db.Products.AsNoTracking()
+                    .Where(p => (!string.IsNullOrEmpty(inspection.ItemNumber) && p.ItemNumber == inspection.ItemNumber)
+                             || p.ProductName == inspection.ProductName)
+                    .OrderByDescending(p => p.ItemNumber == inspection.ItemNumber)
+                    .FirstOrDefaultAsync();
+                if (prod != null)
+                {
+                    prodPhotoUrls = ProductController.ParsePhotoUrls(prod.PhotoUrlsJson, prod.PhotoUrl);
+                    if (!string.IsNullOrEmpty(prod.PhotoUrl) && prodPhotoUrls.Remove(prod.PhotoUrl))
+                        prodPhotoUrls.Insert(0, prod.PhotoUrl);
+                }
+            }
+
             return Ok(new
             {
                 id = inspection.Id,
@@ -535,6 +584,9 @@ namespace InticooInspection.API.Controllers
                 generalRemark = inspection.GeneralRemark,
                 inspectorId = inspection.InspectorId,
                 inspectorName = inspection.InspectorName,
+                inspectionStartTime = inspection.InspectionStartTime,
+                inspectionEndTime = inspection.InspectionEndTime,
+                inspectorRemarks = inspection.InspectorRemarks,
                 createdAt = inspection.CreatedAt,
                 completedAt = inspection.CompletedAt,
                 createdById = inspection.CreatedById,
@@ -557,6 +609,7 @@ namespace InticooInspection.API.Controllers
                 aqlMinorReject = inspection.MinorReject,
                 photo1Url = inspection.Photo1Url,
                 photo2Url = inspection.Photo2Url,
+                productPhotoUrls = prodPhotoUrls,
                 finalResult = inspection.FinalResult,
                 inspectorComments = inspection.InspectorComments,
                 signatureUrl = inspection.SignatureUrl,
@@ -583,7 +636,18 @@ namespace InticooInspection.API.Controllers
                     outerH = inspection.Packaging.OuterSizeH,
                     outerWeight = inspection.Packaging.OuterWeight,
                     assemblyInstruction = inspection.Packaging.AssemblyInstruction,
-                    hardware = inspection.Packaging.Hardware
+                    hardware = inspection.Packaging.Hardware,
+                    burstingTest = inspection.Packaging.BurstingTest,
+                    cartons = inspection.Cartons.OrderBy(c => c.CartonIndex).Select(c => new
+                    {
+                        cartonIndex = c.CartonIndex,
+                        cartonVariant = c.CartonVariant,
+                        description = c.Description,
+                        packingQuantity = c.PackingQuantity,
+                        innerPackingQty = c.InnerPackingQty,
+                        innerL = c.InnerSizeL, innerW = c.InnerSizeW, innerH = c.InnerSizeH, innerWeight = c.InnerWeight,
+                        outerL = c.OuterSizeL, outerW = c.OuterSizeW, outerH = c.OuterSizeH, outerWeight = c.OuterWeight
+                    }).ToList()
                 },
 
                 // Product Spec
@@ -593,6 +657,9 @@ namespace InticooInspection.API.Controllers
                     sizeW = inspection.ProductSpec.SizeW,
                     sizeH = inspection.ProductSpec.SizeH,
                     weight = inspection.ProductSpec.Weight,
+                    actualSizeL = inspection.ProductSpec.ActualSizeL,
+                    actualSizeW = inspection.ProductSpec.ActualSizeW,
+                    actualSizeH = inspection.ProductSpec.ActualSizeH,
                     compareGoldenSample = inspection.ProductSpec.CompareGoldenSample
                 },
 
@@ -654,6 +721,7 @@ namespace InticooInspection.API.Controllers
         [AllowAnonymous]
         public async Task<IActionResult> Create([FromBody] CreateInspectionRequest request)
         {
+          if (await HttpContext.RequestServices.GetRequiredService<UserAccess>().RequireAsync((ModuleKeys.JobRequest, PermAction.Create)) is { } denied) return denied;
           try
           {
             // Thử nhiều claim type — JWT có thể dùng "sub" hoặc NameIdentifier
@@ -684,7 +752,7 @@ namespace InticooInspection.API.Controllers
             var jnPrefix = $"{typePrefix}-JN";
 
             // Đếm số inspection cùng loại để lấy số thứ tự tiếp theo
-            var count = await _db.Inspections
+            var count = await _db.Inspections.IgnoreQueryFilters()
                 .CountAsync(i => i.JobNumber != null && i.JobNumber.StartsWith(jnPrefix));
             var jobNumber = $"{typePrefix}-JN{100000 + count + 1}-{yearSuffix}";
 
@@ -759,6 +827,9 @@ namespace InticooInspection.API.Controllers
                 GeneralRemark = request.GeneralRemark,
                 InspectorId = request.InspectorId,
                 InspectorName = request.InspectorName,
+                InspectionStartTime = request.InspectionStartTime,
+                InspectionEndTime = request.InspectionEndTime,
+                InspectorRemarks = request.InspectorRemarks is { Length: > 500 } r ? r[..500] : request.InspectorRemarks,
                 JobNumber = jobNumber,
 
                 // AQL
@@ -799,8 +870,10 @@ namespace InticooInspection.API.Controllers
                     OuterSizeH = request.Packaging.OuterH,
                     OuterWeight = request.Packaging.OuterWeight,
                     AssemblyInstruction = request.Packaging.AssemblyInstruction,
-                    Hardware = request.Packaging.Hardware
+                    Hardware = request.Packaging.Hardware,
+                    BurstingTest = request.Packaging.BurstingTest
                 },
+                Cartons = BuildCartons(request.Packaging),
 
                 // C. Product Specification
                 ProductSpec = request.ProductSpec == null ? null : new InspectionProductSpec
@@ -846,7 +919,7 @@ namespace InticooInspection.API.Controllers
                         Remark = r.Remark
                     }).ToList(),
 
-                Status = InspectionStatus.Pending,
+                Status = request.IsDraft == true ? InspectionStatus.Draft : InspectionStatus.Pending,
                 CreatedAt = DateTime.UtcNow,
                 CreatedById = userId,
                 Steps = request.Steps.Select((s, i) => new InspectionStep
@@ -888,6 +961,7 @@ namespace InticooInspection.API.Controllers
         [AllowAnonymous]
         public async Task<IActionResult> UpdateStatus(int id, [FromBody] UpdateStatusRequest request)
         {
+            if (await HttpContext.RequestServices.GetRequiredService<UserAccess>().RequireAsync((ModuleKeys.JobRequest, PermAction.Edit), (ModuleKeys.InspectionSummary, PermAction.Edit)) is { } denied) return denied;
             var inspection = await _db.Inspections.FindAsync(id);
             if (inspection == null) return NotFound();
 
@@ -907,6 +981,7 @@ namespace InticooInspection.API.Controllers
         [AllowAnonymous]
         public async Task<IActionResult> UpdateStep(int id, int stepId, [FromBody] UpdateStepRequest request)
         {
+            if (await HttpContext.RequestServices.GetRequiredService<UserAccess>().RequireAsync((ModuleKeys.InspectionSchedule, PermAction.Use), (ModuleKeys.InspectionSummary, PermAction.Create), (ModuleKeys.InspectionSummary, PermAction.Edit), (ModuleKeys.JobRequest, PermAction.Edit)) is { } denied) return denied;
             var step = await _db.InspectionSteps.FindAsync(stepId);
             if (step == null || step.InspectionId != id) return NotFound();
 
@@ -927,7 +1002,9 @@ namespace InticooInspection.API.Controllers
         [AllowAnonymous]
         public async Task<IActionResult> Delete(int id)
         {
+            if (await HttpContext.RequestServices.GetRequiredService<UserAccess>().RequireAsync((ModuleKeys.JobRequest, PermAction.Delete), (ModuleKeys.InspectionSummary, PermAction.Delete)) is { } denied) return denied;
             var inspection = await _db.Inspections
+                .IgnoreQueryFilters()
                 .Include(i => i.Steps)
                 .Include(i => i.OverallConclusions)
                 .Include(i => i.Packaging)
@@ -947,6 +1024,7 @@ namespace InticooInspection.API.Controllers
         [AllowAnonymous]
         public async Task<IActionResult> UpdateOverall(int id, [FromBody] List<OverallConclusionRequest> request)
         {
+            if (await HttpContext.RequestServices.GetRequiredService<UserAccess>().RequireAsync((ModuleKeys.InspectionSchedule, PermAction.Use), (ModuleKeys.InspectionSummary, PermAction.Create), (ModuleKeys.InspectionSummary, PermAction.Edit)) is { } denied) return denied;
             var inspection = await _db.Inspections
                 .Include(i => i.OverallConclusions)
                 .FirstOrDefaultAsync(i => i.Id == id);
@@ -969,146 +1047,260 @@ namespace InticooInspection.API.Controllers
             return Ok(new { success = true });
         }
 
-        // GET api/inspections/dashboard
+        static List<InspectionCarton> BuildCartons(PackagingRequest? pkg) =>
+            (pkg?.Cartons ?? new())
+                .Select((c, i) => new InspectionCarton
+                {
+                    CartonIndex     = i + 1,
+                    CartonVariant   = c.CartonVariant?.Trim(),
+                    Description     = c.Description?.Trim(),
+                    PackingQuantity = c.PackingQuantity?.Trim(),
+                    InnerPackingQty = c.InnerPackingQty,
+                    InnerSizeL = c.InnerL, InnerSizeW = c.InnerW, InnerSizeH = c.InnerH, InnerWeight = c.InnerWeight,
+                    OuterSizeL = c.OuterL, OuterSizeW = c.OuterW, OuterSizeH = c.OuterH, OuterWeight = c.OuterWeight
+                }).ToList();
+
+        // GET api/inspections/dashboard?year=2026&month=9&vendorId=&customerId=&category=
+        // Quality Dashboard — mọi số liệu inspection lọc theo Period / Vendor / Customer / Category.
         [HttpGet("dashboard")]
         [AllowAnonymous]
-        public async Task<IActionResult> Dashboard()
+        public async Task<IActionResult> Dashboard([FromQuery] int? year, [FromQuery] int? month,
+            [FromQuery] string? vendorId, [FromQuery] string? customerId, [FromQuery] string? category)
         {
             try
             {
-                var now = DateTime.UtcNow;
-                var currentYear = now.Year;
-                var currentMonth = now.Month;
+                var now   = DateTime.UtcNow;
+                var y     = year  ?? now.Year;
+                var m     = month ?? now.Month;
+                var prevY = m == 1 ? y - 1 : y;
+                var prevM = m == 1 ? 12 : m - 1;
 
-                // ── Tổng quan ──
-                var allInspections = await _db.Inspections
-                    .AsNoTracking()
-                    .Select(i => new
-                    {
-                        i.Id,
-                        i.Status,
-                        i.InspectionType,
-                        i.InspectionDate,
-                        i.CreatedAt,
-                        i.JobNumber,
-                        i.CustomerName,
-                        i.CustomerId,
-                        i.ProductCategory,
-                        i.InspectorId,
-                        i.InspectorName,
-                        i.FinalResult
-                    }).ToListAsync();
+                var all = await QualityStats.LoadAsync(_db);
+                var custScope = await HttpContext.RequestServices.GetRequiredService<UserAccess>().CustomerScopeAsync();
+                if (custScope != null)
+                    all = all.Where(i => !string.IsNullOrEmpty(i.CustomerId) && custScope.Contains(i.CustomerId)).ToList();
 
-                var total = allInspections.Count;
-                var pending = allInspections.Count(i => i.Status == InspectionStatus.Pending);
-                var completed = allInspections.Count(i => i.Status == InspectionStatus.Completed);
+                // Danh sách cho bộ lọc (lấy trước khi lọc)
+                var filterVendors = all.Where(i => !string.IsNullOrEmpty(i.VendorId))
+                    .GroupBy(i => i.VendorId!).Select(g => new { id = g.Key, name = g.First().VendorName })
+                    .OrderBy(v => v.name).ToList();
+                var filterCustomers = all.Where(i => !string.IsNullOrEmpty(i.CustomerId))
+                    .GroupBy(i => i.CustomerId!).Select(g => new { id = g.Key, name = g.First().CustomerName })
+                    .OrderBy(c => c.name).ToList();
+                var filterCategories = all.Where(i => !string.IsNullOrEmpty(i.Category))
+                    .Select(i => i.Category!).Distinct().OrderBy(c => c).ToList();
 
-                var customerCount = await _db.Customers.CountAsync();
-                var vendorCount = await _db.Vendors.CountAsync();
-                var productCount = await _db.Products.CountAsync();
-                var inspectorCount = await _userManager.Users
-                    .CountAsync(u => u.InspectorId != null && u.InspectorId != "");
-
-                // ── Inspections by Month (current year) ──
-                var thisYearInsp = allInspections
-                    .Where(i => i.InspectionDate.Year == currentYear)
+                var list = all.Where(i =>
+                        (string.IsNullOrEmpty(vendorId)   || i.VendorId   == vendorId) &&
+                        (string.IsNullOrEmpty(customerId) || i.CustomerId == customerId) &&
+                        (string.IsNullOrEmpty(category)   || i.Category   == category))
                     .ToList();
 
-                var byMonth = Enumerable.Range(1, 12).Select(m => new
+                // CLC (Container Loading Check): theo Vendor/Customer; Category la thuoc tinh san pham nen loc Category thi khong tinh CLC
+                var clcAll = string.IsNullOrEmpty(category)
+                    ? (await ClcStats.LoadAsync(_db)).Where(c =>
+                        (custScope == null || (c.CustomerCode != null && custScope.Contains(c.CustomerCode))) &&
+                        (string.IsNullOrEmpty(vendorId)   || c.VendorCode   == vendorId) &&
+                        (string.IsNullOrEmpty(customerId) || c.CustomerCode == customerId)).ToList()
+                    : new List<ClcStat>();
+                var clcYear = clcAll.Where(c => c.Date.Year == y).ToList();
+
+                List<InspStat> InMonth(int yy, int mm) => list.Where(i => i.InspectionDate.Year == yy && i.InspectionDate.Month == mm).ToList();
+                var cur  = InMonth(y, m);
+                var prev = InMonth(prevY, prevM);
+                var yearList = list.Where(i => i.InspectionDate.Year == y).ToList();
+                int Shipped(IEnumerable<InspStat> l) => l.Where(i => i.IsCompleted && i.Type == InspectionType.PST).Sum(i => i.ShipmentQty);
+
+                // ── Master data (không phụ thuộc bộ lọc) ──
+                bool InCur(DateTime d) => d.Year == y && d.Month == m;
+                var inspectorDates = await _userManager.Users.AsNoTracking()
+                    .Where(u => u.InspectorId != null && u.InspectorId != "").Select(u => u.CreatedAt).ToListAsync();
+                var productDates  = await _db.Products.AsNoTracking().Select(p => p.CreatedAt).ToListAsync();
+                var vendorDates   = await _db.Vendors.AsNoTracking().Select(v => v.CreatedAt).ToListAsync();
+                var customerDates = await _db.Customers.AsNoTracking().Select(c => c.CreatedAt).ToListAsync();
+
+                // ── CAPA (Defect Management) ──
+                var todayUtc = now.Date;
+                var capas = (await _db.DefectCapas.AsNoTracking()
+                        .Select(c => new { c.VendorId, c.VendorName, c.CustomerId, c.Status, c.DueDate, c.OpenDate })
+                        .ToListAsync())
+                    .Where(c => (custScope == null || custScope.Contains(c.CustomerId ?? "")) &&
+                                (string.IsNullOrEmpty(vendorId)   || c.VendorId   == vendorId) &&
+                                (string.IsNullOrEmpty(customerId) || c.CustomerId == customerId))
+                    .ToList();
+                bool CapaOpen(string st) => st != DefectCapaService.StatusClosed;
+                var openCapaCount    = capas.Count(c => CapaOpen(c.Status));
+                var overdueCapaCount = capas.Count(c => CapaOpen(c.Status) && c.DueDate != null && c.DueDate < todayUtc);
+
+                var kpi = new
                 {
-                    month = m,
-                    completed = thisYearInsp.Count(i => i.InspectionDate.Month == m && i.Status == InspectionStatus.Completed),
-                    pending = thisYearInsp.Count(i => i.InspectionDate.Month == m && i.Status != InspectionStatus.Completed)
+                    totalInspections     = cur.Count,
+                    totalInspectionsPrev = prev.Count,
+                    awaiting             = cur.Count(i => i.IsAwaiting),
+                    awaitingPrev         = prev.Count(i => i.IsAwaiting),
+                    completed            = cur.Count(i => i.IsCompleted),
+                    passRate             = QualityStats.PassRate(cur),
+                    passRatePrev         = QualityStats.PassRate(prev),
+                    failed               = cur.Count(i => i.Failed),
+                    failedPrev           = prev.Count(i => i.Failed),
+                    defectRate           = QualityStats.DefectRateAql(cur),
+                    defectRatePrev       = QualityStats.DefectRateAql(prev),
+                    openCapa             = (int?)openCapaCount,
+                    overdueCapa          = (int?)overdueCapaCount,
+                    inspectors           = inspectorDates.Count,
+                    inspectorsNew        = inspectorDates.Count(InCur),
+                    products             = productDates.Count,
+                    productsNew          = productDates.Count(InCur),
+                    vendors              = vendorDates.Count,
+                    vendorsNew           = vendorDates.Count(InCur),
+                    customers            = customerDates.Count,
+                    customersNew         = customerDates.Count(InCur),
+                    shippedQty           = Shipped(cur),
+                    shippedQtyPrev       = Shipped(prev),
+                };
+
+                // ── 12 tháng của năm đang chọn ──
+                var monthly = Enumerable.Range(1, 12).Select(mm =>
+                {
+                    var l    = yearList.Where(i => i.InspectionDate.Month == mm).ToList();
+                    var done = l.Where(i => i.IsCompleted).ToList();
+                    return new
+                    {
+                        month        = mm,
+                        aqlQty       = done.Sum(i => i.SampleSize),
+                        critical     = done.Sum(i => i.Critical),
+                        major        = done.Sum(i => i.Major),
+                        minor        = done.Sum(i => i.Minor),
+                        totalDefects = done.Sum(i => i.Defects),
+                        defectRate   = QualityStats.DefectRateAql(done),
+                        ppi          = l.Count(i => i.Type == InspectionType.PPT),
+                        dpi          = l.Count(i => i.Type == InspectionType.DPI),
+                        psi          = l.Count(i => i.Type == InspectionType.PST),
+                        clc          = ClcStats.InMonth(clcYear, mm),
+                        total        = l.Count + ClcStats.InMonth(clcYear, mm),
+                        completed    = done.Count,
+                        awaiting     = l.Count(i => i.IsAwaiting),
+                        shippedQty   = Shipped(l),
+                    };
                 }).ToList();
 
-                // ── Current month stats ──
-                var thisMonth = thisYearInsp.Where(i => i.InspectionDate.Month == currentMonth).ToList();
-                var monthCompleted = thisMonth.Count(i => i.Status == InspectionStatus.Completed);
-                var monthPending = thisMonth.Count(i => i.Status != InspectionStatus.Completed);
+                // ── Top 5 sản phẩm lỗi / Top 5 shipment (tháng & năm) ──
+                // Ảnh sản phẩm cho bảng Top 5 (khớp theo Product Code/ItemNumber, rồi tới tên)
+                var productPhotos = await _db.Products.AsNoTracking()
+                    .Where(p => p.PhotoUrl != null && p.PhotoUrl != "")
+                    .Select(p => new { p.ItemNumber, p.ProductName, p.PhotoUrl }).ToListAsync();
+                string? PhotoOf(InspStat i) =>
+                    productPhotos.FirstOrDefault(p => !string.IsNullOrEmpty(i.ItemNumber) && p.ItemNumber == i.ItemNumber)?.PhotoUrl
+                    ?? productPhotos.FirstOrDefault(p => p.ProductName == i.ProductName)?.PhotoUrl;
 
-                // ── Inspection Types by Month (current month) ──
-                var monthPpt = thisMonth.Count(i => i.InspectionType == InspectionType.PPT);
-                var monthDpi = thisMonth.Count(i => i.InspectionType == InspectionType.DPI);
-                var monthPst = thisMonth.Count(i => i.InspectionType == InspectionType.PST);
-
-                // ── Inspection Types by Year ──
-                var typeByMonth = Enumerable.Range(1, 12).Select(m => new
+                object TopDefectProducts(List<InspStat> l)
                 {
-                    month = m,
-                    ppt = thisYearInsp.Count(i => i.InspectionDate.Month == m && i.InspectionType == InspectionType.PPT),
-                    dpi = thisYearInsp.Count(i => i.InspectionDate.Month == m && i.InspectionType == InspectionType.DPI),
-                    pst = thisYearInsp.Count(i => i.InspectionDate.Month == m && i.InspectionType == InspectionType.PST),
-                }).ToList();
+                    var done  = l.Where(i => i.IsCompleted && i.Defects > 0).ToList();
+                    var total = done.Sum(i => i.Defects);
+                    return done.GroupBy(i => i.ProductKey)
+                        .Select(g => new
+                        {
+                            product    = g.First().ProductName,
+                            itemNumber = g.First().ItemNumber,
+                            photoUrl   = PhotoOf(g.First()),
+                            mainDefect = QualityStats.TopDefect(g) ?? "—",
+                            critical   = g.Sum(i => i.Critical),
+                            major      = g.Sum(i => i.Major),
+                            minor      = g.Sum(i => i.Minor),
+                            defects    = g.Sum(i => i.Defects),
+                            pct        = QualityStats.Pct(g.Sum(i => i.Defects), total)
+                        })
+                        .OrderByDescending(x => x.defects).ToList();   // client tự lấy Top 5 theo Severity
+                }
+                object TopShipments(List<InspStat> l)
+                {
+                    var pst   = l.Where(i => i.IsCompleted && i.Type == InspectionType.PST).ToList();
+                    var total = pst.Sum(i => i.ShipmentQty);
+                    return pst.GroupBy(i => i.ProductKey)
+                        .Select(g => new
+                        {
+                            product    = g.First().ProductName,
+                            itemNumber = g.First().ItemNumber,
+                            photoUrl   = PhotoOf(g.First()),
+                            qty        = g.Sum(i => i.ShipmentQty),
+                            pct        = QualityStats.Pct(g.Sum(i => i.ShipmentQty), total)
+                        })
+                        .OrderByDescending(x => x.qty).Take(5).ToList();
+                }
 
-                var yearPpt = thisYearInsp.Count(i => i.InspectionType == InspectionType.PPT);
-                var yearDpi = thisYearInsp.Count(i => i.InspectionType == InspectionType.DPI);
-                var yearPst = thisYearInsp.Count(i => i.InspectionType == InspectionType.PST);
-
-                // ── Recent Inspections (latest 10) ──
-                var recent = allInspections
-                    .OrderByDescending(i => i.CreatedAt)
-                    .Take(10)
-                    .Select(i => new
+                // ── Supplier / Vendor performance (năm đang chọn) ──
+                var vendorPerf = yearList.Where(i => !string.IsNullOrEmpty(i.VendorName))
+                    .GroupBy(i => i.VendorId ?? i.VendorName)
+                    .Select(g =>
                     {
-                        i.JobNumber,
-                        i.CustomerName,
-                        i.CustomerId,
-                        i.ProductCategory,
-                        i.InspectorName,
-                        i.InspectorId,
-                        status = i.Status.ToString(),
-                        inspType = i.InspectionType.ToString(),
-                        i.FinalResult,
-                        date = i.InspectionDate
-                    }).ToList();
+                        var vm  = g.Where(i => i.InspectionDate.Month == m).ToList();
+                        var vpm = list.Where(i => (i.VendorId ?? i.VendorName) == g.Key
+                                               && i.InspectionDate.Year == prevY && i.InspectionDate.Month == prevM).ToList();
+                        var judgedNow  = vm.Any(i => i.Judged);
+                        var judgedPrev = vpm.Any(i => i.Judged);
+                        var diff = judgedNow && judgedPrev ? QualityStats.PassRate(vm) - QualityStats.PassRate(vpm) : 0;
+                        return new
+                        {
+                            vendorId    = g.First().VendorId,
+                            vendorName  = g.First().VendorName,
+                            inspections = g.Count(),
+                            passRate    = QualityStats.PassRate(g),
+                            defectRate  = QualityStats.DefectRateAql(g),
+                            capaOverdue = (int?)capas.Count(c => (c.VendorId ?? c.VendorName) == g.Key && CapaOpen(c.Status)
+                                                                 && c.DueDate != null && c.DueDate < todayUtc),
+                            trend       = diff > 0.05 ? "up" : diff < -0.05 ? "down" : "flat"
+                        };
+                    })
+                    .OrderByDescending(v => v.inspections).ToList();
 
-                // ── Top Customers (most inspections) ──
-                var topCustomers = allInspections
-                    .Where(i => !string.IsNullOrEmpty(i.CustomerName))
-                    .GroupBy(i => new { i.CustomerId, i.CustomerName })
-                    .Select(g => new { g.Key.CustomerId, g.Key.CustomerName, count = g.Count() })
-                    .OrderByDescending(x => x.count)
-                    .Take(5)
-                    .ToList();
+                var recent = list.Select(i => new
+                    {
+                        jobNumber   = i.JobNumber,
+                        date        = i.InspectionDate,
+                        customer    = i.CustomerName,
+                        vendor      = i.VendorName,
+                        product     = i.ProductName,
+                        stage       = StageCode(i.Type),
+                        status      = i.Status.ToString(),
+                        result      = i.FinalResult,
+                        clcId       = (int?)null
+                    })
+                    .Concat(clcAll.Select(c => new
+                    {
+                        jobNumber   = (string?)c.JobNumber,
+                        date        = c.Date,
+                        customer    = c.CustomerName,
+                        vendor      = c.VendorName,
+                        product     = "—",
+                        stage       = "CLC",
+                        status      = c.Submitted ? "Completed" : "Pending",
+                        result      = c.Overall == "PASS" ? "PASSED" : c.Overall == "FAIL" ? "FAILED" : c.Overall,
+                        clcId       = (int?)c.Id
+                    }))
+                    .OrderByDescending(x => x.date).Take(8).ToList();
 
-                // ── Top Inspectors (most jobs) ──
-                var topInspectors = allInspections
-                    .Where(i => !string.IsNullOrEmpty(i.InspectorId))
-                    .GroupBy(i => new { i.InspectorId, i.InspectorName })
-                    .Select(g => new { g.Key.InspectorId, g.Key.InspectorName, count = g.Count() })
-                    .OrderByDescending(x => x.count)
-                    .Take(5)
-                    .ToList();
+                object TopBy(Func<InspStat, string?> key, Func<InspStat, string?> name) => yearList
+                    .Where(i => !string.IsNullOrEmpty(key(i)))
+                    .GroupBy(key)
+                    .Select(g => new { id = g.Key, name = name(g.First()), count = g.Count() })
+                    .OrderByDescending(x => x.count).Take(5).ToList();
 
                 return Ok(new
                 {
                     updatedAt = now,
-                    totalInspections = total,
-                    pendingInspections = pending,
-                    completedInspections = completed,
-                    customerCount,
-                    vendorCount,
-                    productCount,
-                    inspectorCount,
-
-                    // Inspections by Month
-                    monthCompleted,
-                    monthPending,
-                    byMonth,
-
-                    // Types
-                    monthPpt,
-                    monthDpi,
-                    monthPst,
-                    yearPpt,
-                    yearDpi,
-                    yearPst,
-                    typeByMonth,
-
-                    // Lists
-                    recentInspections = recent,
-                    topCustomers,
-                    topInspectors
+                    year = y, month = m,
+                    filters = new { vendors = filterVendors, customers = filterCustomers, categories = filterCategories },
+                    kpi,
+                    monthly,
+                    topDefectProductsMonth = TopDefectProducts(cur),
+                    topDefectProductsYear  = TopDefectProducts(yearList),
+                    topShipmentsMonth      = TopShipments(cur),
+                    topShipmentsYear       = TopShipments(yearList),
+                    vendorPerformance      = vendorPerf,
+                    recentInspections      = recent,
+                    topCustomers  = TopBy(i => i.CustomerId ?? i.CustomerName, i => i.CustomerName),
+                    topInspectors = TopBy(i => i.InspectorId, i => i.InspectorName),
+                    topVendors    = TopBy(i => i.VendorId ?? i.VendorName, i => i.VendorName),
                 });
             }
             catch (Exception ex)
@@ -1116,6 +1308,13 @@ namespace InticooInspection.API.Controllers
                 return StatusCode(500, new { error = ex.Message, inner = ex.InnerException?.Message });
             }
         }
+
+        static string StageCode(InspectionType t) => t switch
+        {
+            InspectionType.PPT => "PPI",
+            InspectionType.DPI => "DPI",
+            _                  => "PSI"
+        };
 
         // GET api/inspections/inspector-review/{inspectorId}?year=2026&month=4
         [HttpGet("inspector-review/{inspectorId}")]
@@ -1125,96 +1324,125 @@ namespace InticooInspection.API.Controllers
             try
             {
                 var now = DateTime.UtcNow;
-                var targetYear = year ?? now.Year;
+                var targetYear  = year  ?? now.Year;
                 var targetMonth = month ?? now.Month;
 
-                // Load all inspections for this inspector
-                var allInsp = await _db.Inspections
-                    .AsNoTracking()
-                    .Where(i => i.InspectorId == inspectorId)
-                    .Select(i => new
-                    {
-                        i.Id,
-                        i.InspectionDate,
-                        i.InspectionType,
-                        i.FinalResult,
-                        i.QcResultJson,
-                        i.Status,
-                        i.CreatedAt,
-                        i.CompletedAt
-                    }).ToListAsync();
-
-                // ── Monthly bar chart (current year) ──
+                var allInsp  = await QualityStats.LoadAsync(_db, q => q.Where(i => i.InspectorId == inspectorId));
+                // CLC luu InspectorId = AppUser.Id -> doi tu ma inspector (vd. IP10003) sang user id
+                var inspUserId = await _userManager.Users.AsNoTracking().Where(u => u.InspectorId == inspectorId).Select(u => u.Id).FirstOrDefaultAsync();
+                var clcAll   = inspUserId == null ? new List<ClcStat>() : await ClcStats.LoadAsync(_db, q => q.Where(c => c.InspectorId == inspUserId));
+                var clcYear  = clcAll.Where(c => c.Date.Year == targetYear).ToList();
                 var yearInsp = allInsp.Where(i => i.InspectionDate.Year == targetYear).ToList();
+                var monthInsp = yearInsp.Where(i => i.InspectionDate.Month == targetMonth).ToList();
 
+                // ── Monthly stacked bar (năm đang chọn) ──
                 var monthlyData = Enumerable.Range(1, 12).Select(m => new
                 {
                     month = m,
-                    ppt = yearInsp.Count(i => i.InspectionDate.Month == m && i.InspectionType == InspectionType.PPT),
-                    dpi = yearInsp.Count(i => i.InspectionDate.Month == m && i.InspectionType == InspectionType.DPI),
-                    pst = yearInsp.Count(i => i.InspectionDate.Month == m && i.InspectionType == InspectionType.PST),
+                    ppt = yearInsp.Count(i => i.InspectionDate.Month == m && i.Type == InspectionType.PPT),
+                    dpi = yearInsp.Count(i => i.InspectionDate.Month == m && i.Type == InspectionType.DPI),
+                    pst = yearInsp.Count(i => i.InspectionDate.Month == m && i.Type == InspectionType.PST),
+                    clc = ClcStats.InMonth(clcYear, m),
                 }).ToList();
 
-                // ── Yearly totals ──
-                var yearPpt = yearInsp.Count(i => i.InspectionType == InspectionType.PPT);
-                var yearDpi = yearInsp.Count(i => i.InspectionType == InspectionType.DPI);
-                var yearPst = yearInsp.Count(i => i.InspectionType == InspectionType.PST);
+                // ── CLC Pass/Fail (chi job da gui duyet co ket luan) ──
+                var clcPassed = clcYear.Count(c => c.Passed);
+                var clcFailed = clcYear.Count(c => c.Failed);
+                var clcHeld   = clcYear.Count(c => c.Held);
+                var clcByMonth = Enumerable.Range(1, 12).Select(m => new
+                {
+                    month  = m,
+                    passed = clcYear.Count(c => c.Date.Month == m && c.Passed),
+                    failed = clcYear.Count(c => c.Date.Month == m && c.Failed),
+                    held   = clcYear.Count(c => c.Date.Month == m && c.Held),
+                }).ToList();
 
-                // ── Pass/Fail for year ──
-                var yearTotal = yearInsp.Count;
-                var yearPassed = yearInsp.Count(i => i.FinalResult == "PASSED");
-                var yearFailed = yearInsp.Count(i => i.FinalResult == "FAILED");
-                var yearPassRate = yearTotal > 0 ? Math.Round((double)yearPassed / yearTotal * 100, 1) : 0;
-                var yearFailRate = yearTotal > 0 ? Math.Round((double)yearFailed / yearTotal * 100, 1) : 0;
+                // Nam truoc (so sanh the KPI) + Latest Inspections (gop inspection san pham va CLC)
+                var prevInsp = allInsp.Where(i => i.InspectionDate.Year == targetYear - 1).ToList();
+                var prevClc  = clcAll.Count(c => c.Date.Year == targetYear - 1);
+                var latest = allInsp.Select(i => new { id = i.Id, clcId = (int?)null, date = i.InspectionDate, type = StageCode(i.Type),
+                                    customer = i.CustomerName, vendor = i.VendorName, jobNumber = i.JobNumber,
+                                    result = i.IsCompleted ? (i.FinalResult == "PASSED" ? "PASS" : i.FinalResult == "FAILED" ? "FAIL" : "DONE") : "PENDING" })
+                    .Concat(clcAll.Select(c => new { id = c.Id, clcId = (int?)c.Id, date = c.Date, type = "CLC",
+                                    customer = c.CustomerName, vendor = c.VendorName, jobNumber = (string?)c.JobNumber,
+                                    result = c.Submitted ? (c.Overall ?? "DONE") : "PENDING" }))
+                    .OrderByDescending(x => x.date).Take(8).ToList();
 
-                // ── PST Pass/Fail by month (horizontal bar chart) ──
+                // ── PST Pass/Fail (chỉ tính inspection có kết luận PASSED/FAILED → tổng = 100%) ──
+                var pstYear   = yearInsp.Where(i => i.Type == InspectionType.PST).ToList();
+                var pstPassed = pstYear.Count(i => i.Passed);
+                var pstFailed = pstYear.Count(i => i.Failed);
                 var pstByMonth = Enumerable.Range(1, 12).Select(m => new
                 {
-                    month = m,
-                    passed = yearInsp.Count(i => i.InspectionDate.Month == m && i.InspectionType == InspectionType.PST && i.FinalResult == "PASSED"),
-                    failed = yearInsp.Count(i => i.InspectionDate.Month == m && i.InspectionType == InspectionType.PST && i.FinalResult == "FAILED"),
+                    month  = m,
+                    passed = pstYear.Count(i => i.InspectionDate.Month == m && i.Passed),
+                    failed = pstYear.Count(i => i.InspectionDate.Month == m && i.Failed),
                 }).ToList();
 
-                // ── Average inspection duration (days from CreatedAt to CompletedAt) per type ──
-                double AvgDays(InspectionType t)
-                {
-                    var completed = yearInsp
-                        .Where(i => i.InspectionType == t && i.CompletedAt.HasValue)
-                        .Select(i => (i.CompletedAt!.Value - i.CreatedAt).TotalDays)
-                        .ToList();
-                    return completed.Any() ? Math.Round(completed.Average(), 1) : 0;
-                }
-                var avgPst = AvgDays(InspectionType.PST);
-                var avgDpi = AvgDays(InspectionType.DPI);
-                var avgPpt = AvgDays(InspectionType.PPT);
+                // ── On-time (tháng đang chọn + cả năm) ──
+                var monthKnown  = monthInsp.Where(i => i.OnTime.HasValue).ToList();
+                var onTimeCount = monthKnown.Count(i => i.OnTime == true);
+                var delayCount  = monthKnown.Count - onTimeCount;
 
-                // ── On-time rate: completed within expected (≤5 days) ──
-                var completedJobs = yearInsp.Where(i => i.CompletedAt.HasValue).ToList();
-                var onTime = completedJobs.Count(i => (i.CompletedAt!.Value - i.CreatedAt).TotalDays <= 5);
-                var delayed = completedJobs.Count - onTime;
-                var onTimeRate = completedJobs.Any() ? Math.Round((double)onTime / completedJobs.Count * 100, 1) : 0;
-                var delayedRate = completedJobs.Any() ? Math.Round((double)delayed / completedJobs.Count * 100, 1) : 0;
+                // ── Annual Inspection Performance (5 năm) ──
+                var annual = QualityStats.AnnualYears(allInsp).Select(yy =>
+                {
+                    var l    = allInsp.Where(i => i.InspectionDate.Year == yy).ToList();
+                    var done = l.Where(i => i.IsCompleted).ToList();
+                    var cy = clcAll.Where(c => c.Date.Year == yy).ToList();
+                    return new
+                    {
+                        year                = yy,
+                        totalInspection     = l.Count + cy.Count,
+                        ppi                 = l.Count(i => i.Type == InspectionType.PPT),
+                        dpi                 = l.Count(i => i.Type == InspectionType.DPI),
+                        psi                 = l.Count(i => i.Type == InspectionType.PST),
+                        clc                 = cy.Count,
+                        defectDetectionRate = done.Any() ? QualityStats.DefectRateAql(done) : (double?)null,
+                        onTimeRate          = QualityStats.OnTimeRate(l),
+                    };
+                }).ToList();
 
                 return Ok(new
                 {
                     inspectorId,
                     targetYear,
                     targetMonth,
-                    yearTotal,
-                    yearPassed,
-                    yearFailed,
-                    yearPassRate,
-                    yearFailRate,
-                    yearPpt,
-                    yearDpi,
-                    yearPst,
-                    avgDurationPst = avgPst,
-                    avgDurationDpi = avgDpi,
-                    avgDurationPpt = avgPpt,
-                    onTimeRate,
-                    delayedRate,
+                    yearTotal   = yearInsp.Count + clcYear.Count,
+                    monthTotal  = monthInsp.Count,
+                    yearPpt     = yearInsp.Count(i => i.Type == InspectionType.PPT),
+                    yearDpi     = yearInsp.Count(i => i.Type == InspectionType.DPI),
+                    yearPst     = yearInsp.Count(i => i.Type == InspectionType.PST),
+                    yearClc     = clcYear.Count,
+                    clcPassed,
+                    clcFailed,
+                    clcHeld,
+                    clcPassRate = QualityStats.Pct(clcPassed, clcPassed + clcFailed + clcHeld),
+                    clcFailRate = QualityStats.Pct(clcFailed, clcPassed + clcFailed + clcHeld),
+                    clcHoldRate = QualityStats.Pct(clcHeld, clcPassed + clcFailed + clcHeld),
+                    prevTotal = prevInsp.Count + prevClc,
+                    prevPpt = prevInsp.Count(i => i.Type == InspectionType.PPT),
+                    prevDpi = prevInsp.Count(i => i.Type == InspectionType.DPI),
+                    prevPst = prevInsp.Count(i => i.Type == InspectionType.PST),
+                    prevClc,
+                    latest,
+                    clcByMonth,
+                    yearPassed  = yearInsp.Count(i => i.Passed),
+                    yearFailed  = yearInsp.Count(i => i.Failed),
+                    yearPassRate = QualityStats.PassRate(yearInsp),
+                    pstPassed,
+                    pstFailed,
+                    pstPassRate = QualityStats.Pct(pstPassed, pstPassed + pstFailed),
+                    pstFailRate = pstPassed + pstFailed > 0 ? Math.Round(100 - QualityStats.Pct(pstPassed, pstPassed + pstFailed), 1) : 0,
+                    onTimeCount,
+                    delayedCount = delayCount,
+                    onTimeRate   = QualityStats.Pct(onTimeCount, monthKnown.Count),
+                    delayedRate  = monthKnown.Count > 0 ? Math.Round(100 - QualityStats.Pct(onTimeCount, monthKnown.Count), 1) : 0,
+                    onTimeKnown  = monthKnown.Count,
+                    onTimeYearRate = QualityStats.OnTimeRate(yearInsp),
                     monthlyData,
                     pstByMonth,
+                    annual,
                 });
             }
             catch (Exception ex)
@@ -1228,9 +1456,11 @@ namespace InticooInspection.API.Controllers
         [AllowAnonymous]
         public async Task<IActionResult> Update(int id, [FromBody] CreateInspectionRequest request)
         {
+            if (await HttpContext.RequestServices.GetRequiredService<UserAccess>().RequireAsync((ModuleKeys.JobRequest, PermAction.Edit)) is { } denied) return denied;
             try
             {
                 var inspection = await _db.Inspections
+                    .IgnoreQueryFilters()
                     .Include(i => i.Steps)
                     .Include(i => i.OverallConclusions)
                     .Include(i => i.Packaging)
@@ -1238,6 +1468,7 @@ namespace InticooInspection.API.Controllers
                     .Include(i => i.ColourSwatches)
                     .Include(i => i.PerformanceTests)
                     .Include(i => i.References)
+                    .Include(i => i.Cartons)
                     .FirstOrDefaultAsync(i => i.Id == id);
 
                 if (inspection == null) return NotFound();
@@ -1247,10 +1478,16 @@ namespace InticooInspection.API.Controllers
                 {
                 InspectionStatus.Pending,
                 InspectionStatus.InProgress,
-                InspectionStatus.Completed
+                InspectionStatus.Completed,
+                InspectionStatus.Draft
             };
                 if (!editableStatuses.Contains(inspection.Status))
                     return BadRequest(new { error = "Cannot edit an inspection with status Completed or Cancelled." });
+
+                // Job nháp: "Assign & Send to Inspector" (IsDraft=false) → chuyển sang New; vẫn lưu nháp thì giữ Draft.
+                // Job đã giao không quay lại Draft được.
+                if (inspection.Status == InspectionStatus.Draft && request.IsDraft == false)
+                    inspection.Status = InspectionStatus.Pending;
 
                 var inspType = Enum.TryParse<InspectionType>(request.InspectionType, true, out var parsedType)
                     ? parsedType : InticooInspection.Domain.Entities.InspectionType.DPI;
@@ -1318,6 +1555,9 @@ namespace InticooInspection.API.Controllers
                 inspection.GeneralRemark = request.GeneralRemark;
                 inspection.InspectorId = request.InspectorId;
                 inspection.InspectorName = request.InspectorName;
+                inspection.InspectionStartTime = request.InspectionStartTime;
+                inspection.InspectionEndTime = request.InspectionEndTime;
+                inspection.InspectorRemarks = request.InspectorRemarks is { Length: > 500 } rm ? rm[..500] : request.InspectorRemarks;
                 inspection.Photo1Url = request.Photo1Url;
                 inspection.Photo2Url = request.Photo2Url;
 
@@ -1361,6 +1601,15 @@ namespace InticooInspection.API.Controllers
                     inspection.Packaging.OuterWeight = request.Packaging.OuterWeight;
                     inspection.Packaging.AssemblyInstruction = request.Packaging.AssemblyInstruction;
                     inspection.Packaging.Hardware = request.Packaging.Hardware;
+                    inspection.Packaging.BurstingTest = request.Packaging.BurstingTest;
+
+                    // Carton list: thay toàn bộ theo request (số dòng = Carton Number)
+                    _db.InspectionCartons.RemoveRange(inspection.Cartons);
+                    foreach (var c in BuildCartons(request.Packaging))
+                    {
+                        c.InspectionId = id;
+                        _db.InspectionCartons.Add(c);
+                    }
                 }
 
                 // ── Product Spec ──
@@ -1447,17 +1696,31 @@ namespace InticooInspection.API.Controllers
         // Toàn bộ QC data lưu vào QcResultJson (JSON string) trên Inspection
         // + cập nhật OverallConclusions, Status, CompletedAt
         // ═══════════════════════════════════════════════════════════════
+        /// <summary>Ghi kích thước thực đo (C-i Product Size) vào cột riêng để truy vấn/báo cáo; 0/rỗng = chưa đo → null.</summary>
+        private static void SyncActualSize(Inspection inspection, QcProductSpecResultDto? ps)
+        {
+            if (ps == null) return;
+            static double? Pos(double? v) => v is > 0 ? v : null;
+            inspection.ProductSpec ??= new InspectionProductSpec { InspectionId = inspection.Id };
+            inspection.ProductSpec.ActualSizeL = Pos(ps.SpecL);
+            inspection.ProductSpec.ActualSizeW = Pos(ps.SpecW);
+            inspection.ProductSpec.ActualSizeH = Pos(ps.SpecH);
+        }
+
         [HttpPut("{id}/qc-result")]
         [AllowAnonymous]
         public async Task<IActionResult> SaveQcResult(int id, [FromBody] QcResultRequest request)
         {
+            if (await HttpContext.RequestServices.GetRequiredService<UserAccess>().RequireAsync((ModuleKeys.InspectionSchedule, PermAction.Use), (ModuleKeys.InspectionSummary, PermAction.Create), (ModuleKeys.InspectionSummary, PermAction.Edit)) is { } denied) return denied;
             try
             {
                 var inspection = await _db.Inspections
                     .Include(i => i.OverallConclusions)
+                    .Include(i => i.ProductSpec)
                     .FirstOrDefaultAsync(i => i.Id == id);
 
                 if (inspection == null) return NotFound(new { error = "Inspection not found" });
+                SyncActualSize(inspection, request.ProductSpec);
 
                 // ════════════════════════════════════════════════════════
                 // 1. Các field quan trọng — lưu thẳng vào DB column riêng
@@ -1489,6 +1752,8 @@ namespace InticooInspection.API.Controllers
                     aql = request.Aql,
                     performanceTests = request.PerformanceTests,
                     defects = request.Defects,
+                    lastStep = request.LastStep,
+                    stepSchema = request.StepSchema,
                 };
                 inspection.QcResultJson = System.Text.Json.JsonSerializer.Serialize(qcData,
                     new System.Text.Json.JsonSerializerOptions { WriteIndented = false });
@@ -1514,6 +1779,11 @@ namespace InticooInspection.API.Controllers
 
                 await _db.SaveChangesAsync();
 
+                // Defect Management: tự mở CAPA cho nhóm lỗi vượt ngưỡng
+                // (Critical ≥1 / Major ≥3 / Minor ≥10 pcs cùng mã lỗi). Lỗi ở đây không chặn việc lưu kết quả.
+                try { await DefectCapaService.AutoOpenAsync(_db, inspection.Id); }
+                catch (Exception capaEx) { Console.Error.WriteLine($"[CAPA] Auto-open failed for #{inspection.Id}: {capaEx.Message}"); }
+
                 // ════════════════════════════════════════════════════════
                 // 4. Gửi email thông báo cho Customer (nếu có email).
                 //    Chạy nền với scope DI RIÊNG — KHÔNG dùng _db của request vì
@@ -1522,6 +1792,7 @@ namespace InticooInspection.API.Controllers
                 //    Nếu gửi hụt, cờ giữ = 0 và worker 10 phút sẽ gửi lại.
                 // ════════════════════════════════════════════════════════
                 var inspectionId = inspection.Id;
+                var tenantInfo   = HttpContext.RequestServices.GetRequiredService<InticooInspection.API.Services.Tenancy.TenantContext>().Tenant;
                 _ = Task.Run(async () =>
                 {
                     try
@@ -1529,6 +1800,8 @@ namespace InticooInspection.API.Controllers
                         if (string.IsNullOrEmpty(inspection.CustomerId)) return;
 
                         using var scope = _scopeFactory.CreateScope();
+                        // Scope mới mặc định nối DB gốc → gắn lại công ty của request (DB riêng của khách)
+                        scope.ServiceProvider.GetRequiredService<InticooInspection.API.Services.Tenancy.TenantContext>().Set(tenantInfo);
                         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
                         var customer = await db.Customers.AsNoTracking()
@@ -1574,13 +1847,16 @@ namespace InticooInspection.API.Controllers
         [AllowAnonymous]
         public async Task<IActionResult> SaveQcResultDraft(int id, [FromBody] QcResultRequest request)
         {
+            if (await HttpContext.RequestServices.GetRequiredService<UserAccess>().RequireAsync((ModuleKeys.InspectionSchedule, PermAction.Use), (ModuleKeys.InspectionSummary, PermAction.Create), (ModuleKeys.InspectionSummary, PermAction.Edit)) is { } denied) return denied;
             try
             {
                 var inspection = await _db.Inspections
                     .Include(i => i.OverallConclusions)
+                    .Include(i => i.ProductSpec)
                     .FirstOrDefaultAsync(i => i.Id == id);
 
                 if (inspection == null) return NotFound(new { error = "Inspection not found" });
+                SyncActualSize(inspection, request.ProductSpec);
 
                 // Cập nhật các field thường lưu (không đổi Status/CompletedAt)
                 inspection.FinalResult       = request.FinalResult;
@@ -1605,6 +1881,8 @@ namespace InticooInspection.API.Controllers
                     aql                = request.Aql,
                     performanceTests   = request.PerformanceTests,
                     defects            = request.Defects,
+                    lastStep            = request.LastStep,
+                    stepSchema          = request.StepSchema,
                 };
                 inspection.QcResultJson = System.Text.Json.JsonSerializer.Serialize(qcData,
                     new System.Text.Json.JsonSerializerOptions { WriteIndented = false });
@@ -1659,7 +1937,7 @@ namespace InticooInspection.API.Controllers
 
             if (string.IsNullOrEmpty(user) || string.IsNullOrEmpty(pass))
                 throw new InvalidOperationException(
-                    "MailSettings chưa cấu hình đầy đủ (Username/Password trống)");
+                    "MailSettings is not fully configured (Username/Password empty)");
 
             var completedDate = (inspection.CompletedAt ?? DateTime.UtcNow).ToString("d MMMM yyyy");
             var inspType = inspection.InspectionType.ToString() switch
@@ -1791,6 +2069,9 @@ namespace InticooInspection.API.Controllers
 
     public class CreateInspectionRequest
     {
+        /// <summary>true = lưu nháp (Draft, chưa giao inspector); false khi job đang Draft = "Assign &amp; Send" → New.
+        /// null (client cũ) = giữ nguyên trạng thái.</summary>
+        public bool?     IsDraft            { get; set; }
         public string    Title              { get; set; } = "";
         public string?   Description        { get; set; }
         public string    CustomerName       { get; set; } = "";
@@ -1810,6 +2091,9 @@ namespace InticooInspection.API.Controllers
         public string?   GeneralRemark      { get; set; }
         public string?   InspectorId        { get; set; }
         public string?   InspectorName      { get; set; }
+        public string?   InspectionStartTime { get; set; }
+        public string?   InspectionEndTime   { get; set; }
+        public string?   InspectorRemarks    { get; set; }
 
         // AQL
         public int    AqlQuantity  { get; set; }
@@ -1841,8 +2125,27 @@ namespace InticooInspection.API.Controllers
         public List<OverallConclusionRequest> OverallConclusions { get; set; } = new();
     }
 
+    public class CartonRequest
+    {
+        public int     CartonIndex     { get; set; }
+        public string? CartonVariant   { get; set; }
+        public string? Description     { get; set; }
+        public string? PackingQuantity { get; set; }
+        public int?    InnerPackingQty { get; set; }
+        public double? InnerL          { get; set; }
+        public double? InnerW          { get; set; }
+        public double? InnerH          { get; set; }
+        public double? InnerWeight     { get; set; }
+        public double? OuterL          { get; set; }
+        public double? OuterW          { get; set; }
+        public double? OuterH          { get; set; }
+        public double? OuterWeight     { get; set; }
+    }
+
     public class PackagingRequest
     {
+        public int?    BurstingTest        { get; set; }
+        public List<CartonRequest> Cartons { get; set; } = new();
         public string? ItemNumber          { get; set; }
         public string? CartonNumber        { get; set; }
         public string? PackagingType       { get; set; }
@@ -1940,6 +2243,8 @@ namespace InticooInspection.API.Controllers
         public string?   Photo2Url           { get; set; }   // → Inspection.Photo2Url
         // ── Serialize vào QcResultJson ───────────────────────
         public int       SchemaVersion       { get; set; } = 1;
+        public int?      StepSchema          { get; set; }   // 2 = bố cục bước có "Product Weight" riêng (bản nháp cũ không có → dịch lastStep)
+        public int?      LastStep            { get; set; }   // bước QC đang làm dở khi Save Draft (để mở lại đúng bước)
         public DateTime? InspectionStartTime { get; set; }   // thời điểm bắt đầu kiểm hàng (màn hình QC). Giờ kết thúc dùng cột Inspection.CompletedAt
 
         public List<QcOverallConclusionDto>  OverallConclusions { get; set; } = new();
@@ -2006,8 +2311,31 @@ namespace InticooInspection.API.Controllers
         public List<string> PkgLabelPhotos     { get; set; } = new();
         public string?      AssemblyResult     { get; set; }
         public List<string> AssemblyPhotos     { get; set; } = new();
-        public string?      HardwareResult     { get; set; }
+        // B-v chi tiết hướng dẫn lắp ráp. Included = "Yes"|"N/A" (N/A → các ô còn lại là N/A)
+        public string?      AssemblyIncluded      { get; set; }
+        public string?      AssemblyType          { get; set; }   // Paper Instruction|Instruction Booklet|Instruction Card|QR Code/Digital Instruction
+        public string?      AssemblyLanguage      { get; set; }
+        public string?      AssemblyPages         { get; set; }
+        public string?      AssemblyPrintQuality  { get; set; }   // Good|Acceptable|Poor|N/A
+        public string?      AssemblyRemark        { get; set; }
+        public string?      HardwareResult     { get; set; }   // Yes|N/A
+        public string?      HardwareQuantity   { get; set; }
+        public string?      HardwarePackaging  { get; set; }
+        public string?      HardwareQuality    { get; set; }   // Good|Acceptable|Poor|N/A
+        public string?      HardwareRemark     { get; set; }
         public List<string> HardwarePhotos     { get; set; } = new();
+        // B-vii Hangtag. HangtagIncluded = "Yes"|"N/A" (N/A → các ô còn lại là N/A)
+        public string?      HangtagIncluded    { get; set; }
+        public string?      HangtagType        { get; set; }
+        public string?      HangtagShape       { get; set; }
+        public string?      HangtagSizeL       { get; set; }
+        public string?      HangtagSizeW       { get; set; }
+        public string?      HangtagMaterial    { get; set; }
+        public string?      HangtagPrintQuality { get; set; }
+        public string?      HangtagLanguage    { get; set; }
+        public string?      HangtagQuantity    { get; set; }
+        public string?      HangtagRemark      { get; set; }
+        public List<string> HangtagPhotos      { get; set; } = new();
     }
 
     public class QcProductSpecResultDto
@@ -2021,6 +2349,15 @@ namespace InticooInspection.API.Controllers
         public List<object>?   SizeRows        { get; set; }   // [{photoUrl, l, w, h, note}]
         public List<string>?   GoldenPhotos    { get; set; }
         public List<string>?   SwatchPhotos    { get; set; }
+        // C-i kích thước thực đo (so với ProductSpec.SizeL/W/H của hồ sơ sản phẩm)
+        public double?         SpecL                { get; set; }
+        public double?         SpecW                { get; set; }
+        public double?         SpecH                { get; set; }
+        // C-ii Product Weight: cân thực tế so với ProductSpec.Weight của hồ sơ sản phẩm
+        public double?         ProductWeight        { get; set; }
+        public string?         ProductWeightResult  { get; set; }
+        public List<string>?   ProductWeightPhotos  { get; set; }
+        public int?            GoldenQty            { get; set; }   // số mẫu so với golden sample
         public List<QcColourSwatchDto> ColourSwatches { get; set; } = new();
     }
 
@@ -2065,6 +2402,7 @@ namespace InticooInspection.API.Controllers
     public class QcDefectDto
     {
         public string       Type     { get; set; } = "";  // "Critical"|"Major"|"Minor"
+        public string?      DefectCode { get; set; }      // F01..F12 (xem DefectCatalog)
         public string?      PhotoUrl { get; set; }        // legacy — giữ tương thích
         public List<string> Photos   { get; set; } = new(); // danh sách ảnh
         public List<string> Remarks  { get; set; } = new(); // remark riêng cho từng ảnh

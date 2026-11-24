@@ -18,6 +18,9 @@ namespace InticooInspection.API.Controllers
                 var key = raw.TrimEnd('*').Trim();
                 if (!map.ContainsKey(key)) map[key] = c;
                 if (!map.ContainsKey(raw)) map[raw] = c;
+                // Template đã dịch: "Tên công ty* (CompanyName)" → nhận theo mã kỹ thuật trong ngoặc
+                var m = System.Text.RegularExpressions.Regex.Match(raw, @"\(([A-Za-z][A-Za-z0-9_]*)\*?\)\s*$");
+                if (m.Success && !map.ContainsKey(m.Groups[1].Value)) map[m.Groups[1].Value] = c;
             }
             return map;
         }
@@ -102,13 +105,19 @@ namespace InticooInspection.API.Controllers
             catch { return false; }
         }
 
-        public static IActionResult ServeTemplate(IWebHostEnvironment env, string fileName)
+        /// <param name="lang">Ngôn ngữ người dùng (en/vi/zh/ms) — dịch tiêu đề cột, xem ImportTemplateLocalizer.</param>
+        /// <param name="headerRow">Dòng tiêu đề cột của template (Inspector = 3, còn lại = 1).</param>
+        public static IActionResult ServeTemplate(IWebHostEnvironment env, string fileName, string? lang = null, int headerRow = 1)
         {
-            var path = Path.Combine(env.WebRootPath ?? "wwwroot", "templates", fileName);
+            // Ưu tiên Templates/ đi kèm bản build API; fallback wwwroot/templates (cách cũ)
+            var path = Path.Combine(AppContext.BaseDirectory, "Templates", fileName);
+            if (!System.IO.File.Exists(path))
+                path = Path.Combine(env.WebRootPath ?? "wwwroot", "templates", fileName);
             if (!System.IO.File.Exists(path))
                 return new NotFoundObjectResult(new { success = false, message = $"Template '{fileName}' not found." });
 
-            var bytes = System.IO.File.ReadAllBytes(path);
+            var bytes = InticooInspection.API.Services.ImportTemplateLocalizer.Localize(
+                System.IO.File.ReadAllBytes(path), lang, headerRow);
             return new FileContentResult(bytes,
                 "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
             {

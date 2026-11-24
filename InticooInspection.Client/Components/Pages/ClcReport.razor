@@ -1,0 +1,285 @@
+@page "/clc/{Id:int}/report"
+@attribute [Microsoft.AspNetCore.Authorization.Authorize]
+@using System.Net.Http.Headers
+@using InticooInspection.Client.Helpers
+@inject HttpClient Http
+@inject NavigationManager Nav
+@inject IJSRuntime JS
+@inject Blazored.SessionStorage.ISessionStorageService SessionStorage
+@inject PageAccessService PageAccess
+@inherits LocalizedComponentBase
+
+<PageTitle>@T("Clc.ReportTitle")</PageTitle>
+
+<PageAccessGuard RequiredPage="ContainerLoadingCheck">
+<div class="clc-page clc-rpt-wrap">
+    <div class="clc-head clc-noprint">
+        <div><h1 class="clc-title">@T("Clc.ReportTitle")</h1><div class="clc-sub">@_m?.JobNumber</div></div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <button class="clc-btn" @onclick='() => Nav.NavigateTo("/clc")'>&larr; @T("Clc.BackToList")</button>
+            @if (_m != null && (PageAccess.IsAdmin || _m.Status != "Submitted"))
+            {
+                <button class="clc-btn" @onclick='() => Nav.NavigateTo($"/clc/{Id}")'>@T("Common.Edit")</button>
+            }
+            @if (PageAccess.CanDownload)
+            {
+                <button class="clc-btn primary" @onclick="Print">@T("PrintReportButton.PrintSaveReport")</button>
+            }
+        </div>
+    </div>
+
+    @if (_loading) { <div class="clc-card" style="text-align:center;color:#6b7c9c">@T("Common.Loading")</div> }
+    else if (_m == null) { <div class="clc-err">@T("Clc.JobNotFound")</div> }
+    else
+    {
+        var m = _m;
+        <div class="rp-paper">
+            @* ───────── PAGE 1 ───────── *@
+            <div class="rp-page">
+                <div class="rp-header">
+                    <img src="/logo.png" class="rp-logo" alt="Inticoo" />
+                    <div class="rp-title"><b>@T("Clc.Title")</b><span>@T("Clc.IncludingSevenPoint")</span><small>@T("Clc.HeaderTags")</small></div>
+                </div>
+
+                <div class="rp-h">1. @T("Clc.ReportInformation")</div>
+                <table class="rp-kv">
+                    <tr><th>@T("Clc.ReportNo")</th><td>@m.JobNumber</td><th>@T("Clc.Inspector")</th><td>@(m.InspectorName ?? "—")</td></tr>
+                    <tr><th>@T("Clc.InspectionDate")</th><td>@D(m.InspectionDate)</td><th>@T("Clc.ReviewedBy")</th><td>@(m.ReviewerSignName ?? "—")</td></tr>
+                    <tr><th>@T("Clc.InspectionTime")</th><td>@Range(m.InspectionStartTime, m.InspectionEndTime)</td><th>@T("Clc.ReportDate")</th><td>@D(m.SubmittedAt?.ToLocalTime() ?? m.CreatedAt?.ToLocalTime())</td></tr>
+                    <tr><th>@T("Clc.InspectionType")</th><td>@T("Clc.Title")<br /><small>@T("Clc.IncludingSevenPoint")</small></td><th>@T("Clc.OverallResult")</th>
+                        <td><span class="rp-res @(m.OverallResult == "PASS" ? "pass" : m.OverallResult == "FAIL" ? "fail" : m.OverallResult == "HOLD" ? "hold" : "")">@(m.OverallResult == "PASS" ? T("Clc.PassCaps") : m.OverallResult == "FAIL" ? T("Clc.FailCaps") : m.OverallResult == "HOLD" ? T("Clc.HoldCaps") : "—")</span></td></tr>
+                </table>
+
+                <div class="rp-h">2. @T("Clc.CustomerSupplierInfo")</div>
+                <table class="rp-kv">
+                    <tr><th>@T("Clc.Customer")</th><td>@m.CustomerName</td><th>@T("Clc.SupplierFactory")</th><td>@m.VendorName</td></tr>
+                    <tr><th>@T("Clc.ContactPerson")</th><td>@(m.CustomerContact ?? "—")</td><th>@T("Clc.FactoryContact")</th><td>@(m.VendorContact ?? "—")</td></tr>
+                    <tr><th>@T("Clc.Phone")</th><td>@(m.CustomerPhone ?? "—")</td><th>@T("Clc.Phone")</th><td>@(m.VendorPhone ?? "—")</td></tr>
+                </table>
+
+                <div class="rp-h">3. @T("Clc.ContainerShipment")</div>
+                <div class="rp-split">
+                    <table class="rp-kv">
+                        <tr><th>@T("Clc.ContainerNo")</th><td>@m.ContainerNo</td><th>@T("Clc.PoNumber")</th><td>@m.PoNumber</td></tr>
+                        <tr><th>@T("Clc.ContainerType")</th><td>@m.ContainerType</td><th>@T("Clc.ShipmentReference")</th><td>@(m.ShipmentReference ?? "—")</td></tr>
+                        <tr><th>@T("Clc.SealNumber")</th><td>@(m.SealNumber ?? "—")</td><th>@T("Clc.Destination")</th><td>@(m.Destination ?? "—")</td></tr>
+                        <tr><th>@T("Clc.TruckNo")</th><td>@(m.TruckNo ?? "—")</td><th>@T("Clc.LoadingDate")</th><td>@D(m.LoadingDate ?? m.PlannedLoadingDate)</td></tr>
+                        <tr><th>@T("Clc.LoadingAddress")</th><td>@(m.LoadingAddress ?? "—")</td><th>@T("Clc.CargoDescription")</th><td>@(m.CargoDescription ?? "—")</td></tr>
+                        <tr><th></th><td></td><th>@T("Clc.TotalCartons")</th><td>@m.TotalPlannedCartons.ToString("N0")</td></tr>
+                        <tr><th></th><td></td><th>@T("Clc.TotalQuantity")</th><td>@m.TotalPlannedQty.ToString("N0") @T("Clc.PcsShort")</td></tr>
+                    </table>
+                    @if (m.Process(5)?.Url is { Length: > 0 } fl)
+                    {
+                        <div class="rp-loaded"><img src="@Img(fl)" alt="" /><small>@T("Clc.ContainerLoaded")</small></div>
+                    }
+                </div>
+
+                <div class="rp-two">
+                    <div>
+                        <div class="rp-h">4. @T("Clc.SevenPointInspection")</div>
+                        <table class="rp-tbl">
+                            <thead><tr><th>@T("Clc.No")</th><th>@T("Clc.InspectionPoint")</th><th>@T("Clc.Result")</th><th>@T("Clc.Remarks")</th></tr></thead>
+                            <tbody>
+                                @for (int i = 1; i <= 7; i++)
+                                {
+                                    var p = m.Points.FirstOrDefault(x => x.PointNo == i);
+                                    <tr><td>@i</td><td>@PointName(i)</td><td>@Pill(p?.Result)</td><td>@(string.IsNullOrWhiteSpace(p?.Remarks) ? "—" : p!.Remarks)</td></tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                    <div>
+                        <div class="rp-h">5. @T("Clc.AdditionalChecks")</div>
+                        <table class="rp-tbl">
+                            <thead><tr><th>@T("Clc.Item")</th><th>@T("Clc.Result")</th></tr></thead>
+                            <tbody>
+                                <tr><td>@T("Clc.CheckClean")</td><td>@YN(m.CheckClean)</td></tr>
+                                <tr><td>@T("Clc.CheckNoMoisture")</td><td>@YN(m.CheckNoMoisture)</td></tr>
+                                <tr><td>@T("Clc.CheckNoOdor")</td><td>@YN(m.CheckNoOdor)</td></tr>
+                                <tr><td>@T("Clc.CheckSuitable")</td><td>@YN(m.CheckSuitable)</td></tr>
+                                <tr><td>@T("Clc.CheckDoorSealable")</td><td>@YN(m.CheckDoorSealable)</td></tr>
+                            </tbody>
+                        </table>
+                        @if (!string.IsNullOrWhiteSpace(m.AdditionalRemarks)) { <div class="rp-note">@m.AdditionalRemarks</div> }
+                    </div>
+                </div>
+
+                <div class="rp-h">6. @T("Clc.LoadingVerification")</div>
+                <table class="rp-tbl">
+                    <thead><tr><th>@T("Clc.No")</th><th>@T("Clc.ProductCode")</th><th>@T("Clc.Description")</th><th>@T("Clc.PlannedCartons")</th><th>@T("Clc.ActualCartons")</th><th>@T("Clc.PlannedQty")</th><th>@T("Clc.ActualQty")</th><th>@T("Clc.Result")</th></tr></thead>
+                    <tbody>
+                        @{ int n = 0; }
+                        @foreach (var p in m.Products)
+                        {
+                            n++;
+                            <tr><td>@n</td><td>@p.ProductCode</td><td>@p.Description</td><td>@p.PlannedCartons.ToString("N0")</td><td>@(p.ActualCartons?.ToString("N0") ?? "—")</td>
+                                <td>@p.PlannedQty.ToString("N0")</td><td>@(p.ActualQty?.ToString("N0") ?? "—")</td><td>@Pill(p.Result)</td></tr>
+                        }
+                    </tbody>
+                    <tfoot><tr><td colspan="3">@T("Clc.Total")</td><td>@m.TotalPlannedCartons.ToString("N0")</td><td>@m.TotalActualCartons.ToString("N0")</td><td>@m.TotalPlannedQty.ToString("N0")</td><td>@m.TotalActualQty.ToString("N0")</td><td>@Pill(m.LoadingResult)</td></tr></tfoot>
+                </table>
+                <table class="rp-tbl" style="margin-top:8px">
+                    <thead><tr><th>@T("Clc.CartonPackagingCheck")</th><th>@T("Clc.Result")</th></tr></thead>
+                    <tbody>
+                        <tr><td>@T("Clc.CartonCondition")</td><td>@Pill(m.CartonCondition)</td></tr>
+                        <tr><td>@T("Clc.MarkingLabel")</td><td>@Pill(m.MarkingLabel)</td></tr>
+                        <tr><td>@T("Clc.PackagingProtection")</td><td>@Pill(m.PackagingProtection)</td></tr>
+                        <tr><td>@T("Clc.PalletCondition")</td><td>@Pill(m.PalletCondition)</td></tr>
+                    </tbody>
+                </table>
+                @if (!string.IsNullOrWhiteSpace(m.LoadingRemarks)) { <div class="rp-note">@m.LoadingRemarks</div> }
+                <div class="rp-foot">@T("InspectionReport.WwwInticooCom")</div>
+            </div>
+
+            @* ───────── PAGE 2 ───────── *@
+            <div class="rp-page">
+                <div class="rp-header slim">
+                    <img src="/logo.png" class="rp-logo" alt="Inticoo" />
+                    <div class="rp-title"><b>@T("Clc.Title")</b><span>@T("Clc.ReportNoLabel", m.JobNumber)</span></div>
+                </div>
+
+                <div class="rp-h">7. @T("Clc.InspectionPhotosSeven")</div>
+                <div class="rp-photos">
+                    @for (int i = 1; i <= 7; i++)
+                    {
+                        var p = m.Points.FirstOrDefault(x => x.PointNo == i);
+                        <div class="rp-ph">
+                            <div class="rp-ph-t">@i. @PointName(i)</div>
+                            @if (p?.Photos.FirstOrDefault() is { Length: > 0 } u) { <img src="@Img(u)" alt="" /> } else { <div class="rp-ph-empty">@T("Clc.NoPhoto")</div> }
+                            <div class="rp-ph-c">@(string.IsNullOrWhiteSpace(p?.Remarks) ? "—" : p!.Remarks)</div>
+                        </div>
+                    }
+                </div>
+
+                <div class="rp-h">8. @T("Clc.LoadingPhotosShort")</div>
+                <div class="rp-photos four">
+                    @for (int s = 1; s <= 6; s++)
+                    {
+                        var ph = m.Process(s);
+                        if (ph == null) continue;
+                        <div class="rp-ph">
+                            <div class="rp-ph-t">@s. @SlotName(s)</div>
+                            <img src="@Img(ph.Url)" alt="" />
+                        </div>
+                    }
+                    @foreach (var ph in m.Additional)
+                    {
+                        <div class="rp-ph"><div class="rp-ph-t">@T("Clc.AdditionalPhotos")</div><img src="@Img(ph.Url)" alt="" /></div>
+                    }
+                </div>
+
+                <div class="rp-two">
+                    <div>
+                        <div class="rp-h">9. @T("Clc.ContainerSeal")</div>
+                        <div class="rp-split">
+                            @if (!string.IsNullOrEmpty(m.SealPhotoUrl)) { <div class="rp-loaded" style="width:120px"><img src="@Img(m.SealPhotoUrl)" alt="" /></div> }
+                            <table class="rp-kv one">
+                                <tr><th>@T("Clc.SealNumber")</th><td>@(m.SealNumber ?? "—")</td></tr>
+                                <tr><th>@T("Clc.SealCondition")</th><td>@(m.SealCondition == "Intact" ? T("Clc.Intact") : m.SealCondition == "Damaged" ? T("Clc.Damaged") : "—")</td></tr>
+                                <tr><th>@T("Clc.SealAppliedBy")</th><td>@(m.SealAppliedBy ?? "—")</td></tr>
+                                <tr><th>@T("Clc.Remarks")</th><td>@(m.SealRemarks ?? "—")</td></tr>
+                            </table>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="rp-h">10. @T("Clc.Summary")</div>
+                        <div class="rp-sum @(m.OverallResult == "PASS" ? "pass" : m.OverallResult == "FAIL" ? "fail" : m.OverallResult == "HOLD" ? "hold" : "")">
+                            <b>@(m.OverallResult == "PASS" ? T("Clc.PassCaps") : m.OverallResult == "FAIL" ? T("Clc.FailCaps") : m.OverallResult == "HOLD" ? T("Clc.HoldCaps") : "—")</b>
+                        </div>
+                        <div class="rp-h">11. @T("Clc.AdditionalRemarks")</div>
+                        <div class="rp-note">@(string.IsNullOrWhiteSpace(m.FinalRemarks) ? "—" : m.FinalRemarks)</div>
+                    </div>
+                </div>
+
+                <div class="rp-sigs">
+                    <div><div class="rp-sig-t">@T("Clc.Inspector")</div>
+                        @if (!string.IsNullOrEmpty(m.InspectorSignatureUrl)) { <img src="@Img(m.InspectorSignatureUrl)" alt="" /> }
+                        <div>@m.InspectorSignName</div><small>@D(m.InspectorSignedAt?.ToLocalTime())</small></div>
+                    <div><div class="rp-sig-t">@T("Clc.ReviewedBy")</div>
+                        @if (!string.IsNullOrEmpty(m.ReviewerSignatureUrl)) { <img src="@Img(m.ReviewerSignatureUrl)" alt="" /> }
+                        <div>@m.ReviewerSignName</div><small>@D(m.ReviewerSignedAt?.ToLocalTime())</small></div>
+                </div>
+                <div class="rp-foot">@T("InspectionReport.WwwInticooCom")</div>
+            </div>
+        </div>
+    }
+</div>
+</PageAccessGuard>
+
+<style>
+    .clc-rpt-wrap { max-width:920px; }
+    .rp-paper { background:#fff; color:#1a2d5a; border-radius:8px; }
+    .rp-page { padding:18px 20px; font-size:12px; page-break-after:always; break-after:page; position:relative; }
+    .rp-page:last-child { page-break-after:auto; break-after:auto; }
+    .rp-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; }
+    .rp-logo { height:44px; width:auto; }
+    .rp-title { text-align:right; } .rp-title b { display:block; font-size:19px; color:#16346b; } .rp-title span { display:block; font-size:13px; } .rp-title small { display:block; font-size:9.5px; color:#51638a; }
+    .rp-h { background:#1f5ea8; color:#fff; font-weight:800; font-size:12.5px; padding:5px 10px; margin:10px 0 0; }
+    .rp-kv { width:100%; border-collapse:collapse; } .rp-kv th { width:18%; text-align:left; background:#f6f9fd; color:#16346b; font-weight:700; padding:5px 8px; border:1px solid #e1eaf5; }
+    .rp-kv td { padding:5px 8px; border:1px solid #e1eaf5; } .rp-kv.one th { width:38%; }
+    .rp-split { display:flex; gap:10px; align-items:stretch; } .rp-split > .rp-kv { flex:1; }
+    .rp-loaded { width:150px; flex-shrink:0; text-align:center; } .rp-loaded img { width:100%; height:130px; object-fit:cover; border:1px solid #e1eaf5; } .rp-loaded small { display:block; font-size:10px; }
+    .rp-two { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+    .rp-tbl { width:100%; border-collapse:collapse; font-size:11.5px; } .rp-tbl th { background:#f1f6fc; color:#16346b; padding:4px 6px; text-align:left; border:1px solid #e1eaf5; }
+    .rp-tbl td { padding:4px 6px; border:1px solid #e1eaf5; } .rp-tbl tfoot td { font-weight:800; background:#f6f9fd; }
+    .rp-res { display:inline-block; padding:3px 14px; font-weight:900; font-size:15px; border-radius:6px; background:#f1f5f9; } .rp-res.pass { background:#dcfce7; color:#15803d; } .rp-res.fail { background:#fee2e2; color:#b91c1c; } .rp-res.hold { background:#fef3c7; color:#92400e; }
+    .rp-note { border:1px solid #e1eaf5; padding:6px 8px; margin-top:6px; font-size:11.5px; background:#fbfdff; }
+    .rp-photos { display:grid; grid-template-columns:repeat(4, 1fr); gap:6px; margin-top:6px; } .rp-photos.four { grid-template-columns:repeat(4,1fr); }
+    .rp-ph { border:1px solid #e1eaf5; } .rp-ph-t { background:#1f5ea8; color:#fff; font-size:10px; font-weight:700; padding:3px 5px; }
+    .rp-ph img { width:100%; height:92px; object-fit:cover; display:block; } .rp-ph-empty { height:92px; display:flex; align-items:center; justify-content:center; color:#94a3b8; font-size:10px; background:#f8fafc; }
+    .rp-ph-c { font-size:10px; padding:3px 5px; color:#51638a; }
+    .rp-sum { margin-top:6px; padding:12px; text-align:center; background:#f1f5f9; border-radius:8px; } .rp-sum b { font-size:26px; } .rp-sum.pass { background:#dcfce7; color:#15803d; } .rp-sum.fail { background:#fee2e2; color:#b91c1c; } .rp-sum.hold { background:#fef3c7; color:#92400e; }
+    .rp-sigs { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:12px; } .rp-sigs > div { border:1px solid #e1eaf5; padding:8px 10px; min-height:110px; }
+    .rp-sig-t { font-weight:800; color:#16346b; margin-bottom:4px; } .rp-sigs img { max-height:56px; max-width:100%; display:block; }
+    .rp-foot { margin-top:12px; text-align:center; color:#51638a; font-size:10.5px; border-top:1px solid #e1eaf5; padding-top:6px; }
+    @@media (max-width:700px) { .rp-two { grid-template-columns:1fr; } .rp-photos { grid-template-columns:repeat(2,1fr); } .rp-split { flex-direction:column; } .rp-loaded { width:100%; } }
+    @@media print {
+        @@page { size:A4 portrait; margin:8mm; }
+        html, body { -webkit-print-color-adjust:exact !important; print-color-adjust:exact !important; background:#fff !important; }
+        .rp-paper { border-radius:0; } .rp-page { padding:0; }
+    }
+</style>
+
+@code {
+    [Parameter] public int Id { get; set; }
+    ClcModel? _m;
+    bool _loading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var token = await SessionStorage.GetItemAsync<string>("auth_token");
+            if (!string.IsNullOrEmpty(token)) Http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        }
+        catch { }
+        await PageAccess.EnsureLoadedAsync();
+        try { _m = await Http.GetFromJsonAsync<ClcModel>($"api/clc/{Id}"); } catch { _m = null; }
+        _loading = false;
+    }
+
+    async Task Print() { try { await JS.InvokeVoidAsync("print"); } catch { } }
+
+    string Img(string? url) => MediaUrl.Resolve(url, Http.BaseAddress?.ToString());
+    string D(DateTime? d) => d.HasValue ? L.Date(d.Value, "d MMM yyyy") : "—";
+    static string Range(string? a, string? b) => string.IsNullOrEmpty(a) && string.IsNullOrEmpty(b) ? "—" : $"{a} - {b}";
+
+    string PointName(int no) => no switch
+    {
+        1 => T("Clc.P1"), 2 => T("Clc.P2"), 3 => T("Clc.P3"), 4 => T("Clc.P4"), 5 => T("Clc.P5"), 6 => T("Clc.P6"), _ => T("Clc.P7")
+    };
+    string SlotName(int s) => s switch
+    {
+        1 => T("Clc.S1"), 2 => T("Clc.S2"), 3 => T("Clc.S3"), 4 => T("Clc.S4"), 5 => T("Clc.S5"), _ => T("Clc.S6")
+    };
+
+    RenderFragment Pill(string? r) => @<text>
+        @if (string.IsNullOrEmpty(r)) { <span>—</span> }
+        else { <span class="clc-pill @(r == "Pass" ? "pass" : r == "Fail" ? "fail" : "na")">@(r == "Pass" ? T("Clc.Pass") : r == "Fail" ? T("Clc.Fail") : "N/A")</span> }
+    </text>;
+
+    RenderFragment YN(bool? v) => @<text>
+        @if (v == null) { <span>—</span> }
+        else { <span class="clc-pill @(v == true ? "pass" : "fail")">@(v == true ? T("Clc.Pass") : T("Clc.Fail"))</span> }
+    </text>;
+}

@@ -25,7 +25,7 @@ namespace InticooInspection.API.Services
         // Gửi mail "Inspection Report Completed" tới Email khách hàng (To),
         // CC = AlternateReportEmail của khách + extraCc nhập thêm (nếu có).
         Task<(bool ok, string? error, string? toEmail)> SendForInspectionAsync(
-            int inspectionId, string? extraCc = null, CancellationToken ct = default);
+            int inspectionId, string? extraCc = null, CancellationToken ct = default, bool automatic = false);
     }
 
     public class MailRunResult
@@ -164,9 +164,9 @@ namespace InticooInspection.API.Services
             var vendor = await _db.Vendors.AsNoTracking()
                 .FirstOrDefaultAsync(v => v.Code == vendorCode, ct);
 
-            if (vendor == null) return (false, "Không tìm thấy vendor", 0);
+            if (vendor == null) return (false, "Vendor not found", 0);
             if (string.IsNullOrWhiteSpace(vendor.ContactEmail))
-                return (false, "Vendor chưa có ContactEmail", 0);
+                return (false, "Vendor has no ContactEmail", 0);
 
             var fromDate = DateTime.Today;
             var toDate   = fromDate.AddDays(cfg.LookAheadDays);
@@ -181,7 +181,7 @@ namespace InticooInspection.API.Services
                 .ToListAsync(ct);
 
             if (inspections.Count == 0)
-                return (false, "Vendor không có inspection nào trong khoảng thời gian này", 0);
+                return (false, "Vendor has no inspection in this period", 0);
 
             var html = BuildVendorEmailHtml(vendor, inspections);
 
@@ -316,11 +316,11 @@ namespace InticooInspection.API.Services
             var customer = await _db.Customers.AsNoTracking()
                 .FirstOrDefaultAsync(c => c.CustomerId == customerId, ct);
 
-            if (customer == null) return (false, "Không tìm thấy customer", 0);
+            if (customer == null) return (false, "Customer not found", 0);
 
             var recipients = ResolveCustomerRecipients(customer);
             if (recipients.Count == 0)
-                return (false, $"Customer chưa có email hợp lệ (Type={customer.ReportEmailType ?? "Registered"})", 0);
+                return (false, $"Customer has no valid email (Type={customer.ReportEmailType ?? "Registered"})", 0);
 
             var fromDate = DateTime.Today;
             var toDate   = fromDate.AddDays(cfg.LookAheadDays);
@@ -335,7 +335,7 @@ namespace InticooInspection.API.Services
                 .ToListAsync(ct);
 
             if (inspections.Count == 0)
-                return (false, "Customer không có inspection nào trong khoảng thời gian này", 0);
+                return (false, "Customer has no inspection in this period", 0);
 
             var html = BuildCustomerEmailHtml(customer, inspections);
 
@@ -367,31 +367,58 @@ namespace InticooInspection.API.Services
         //  .SendCompletionEmailAsync — sửa nội dung mail Done thì sửa cả 2.
         // ═════════════════════════════════════════════════════════════
         public async Task<(bool ok, string? error, string? toEmail)> SendForInspectionAsync(
-            int inspectionId, string? extraCc = null, CancellationToken ct = default)
+            int inspectionId, string? extraCc = null, CancellationToken ct = default, bool automatic = false)
         {
             var cfg = await _configProvider.GetAsync(ct);
 
             var inspection = await _db.Inspections.AsNoTracking()
                 .FirstOrDefaultAsync(i => i.Id == inspectionId, ct);
             if (inspection == null)
-                return (false, "Không tìm thấy inspection", null);
+                return (false, "Inspection not found", null);
 
             if (string.IsNullOrEmpty(inspection.CustomerId))
-                return (false, "Inspection chưa gắn khách hàng (CustomerId trống)", null);
+                return (false, "Inspection has no customer (CustomerId is empty)", null);
 
             var customer = await _db.Customers.AsNoTracking()
                 .FirstOrDefaultAsync(c => c.CustomerId == inspection.CustomerId, ct);
             if (customer == null)
-                return (false, $"Không tìm thấy khách hàng {inspection.CustomerId}", null);
-            if (string.IsNullOrWhiteSpace(customer.Email))
-                return (false, "Khách hàng chưa có email (Email trống)", null);
+                return (false, $"Customer {inspection.CustomerId} not found", null);
 
-            var toEmail = customer.Email.Trim();
+            // Report Settings của customer theo loại inspection (PPI/DPI/PSI):
+            // khi gửi TỰ ĐỘNG chỉ "Send immediately" mới gửi mail; "Save only"/"Scheduled" thì report chỉ lưu trên server
+            // (gửi tay từ màn Mail vẫn gửi bình thường).
+            var kind = inspection.InspectionType switch
+            {
+                InspectionType.PPT => "PPI",
+                InspectionType.PST => "PSI",
+                _                  => "DPI"
+            };
+            var setting = await _db.PartyReportSettings.AsNoTracking()
+                .FirstOrDefaultAsync(s => s.PartyType == "Customer" && s.PartyId == customer.Id && s.Kind == kind, ct);
+            if (automatic && setting != null && (!setting.Enabled || setting.DeliveryMode != "Immediate"))
+                return (true, null, null);
+
+            // Người nhận: contact đang Active + tick "Receive Reports"; chưa khai báo contact thì dùng Email công ty như cũ
+            var contactEmails = await _db.PartyContacts.AsNoTracking()
+                .Where(c => c.PartyType == "Customer" && c.PartyId == customer.Id
+                         && c.IsActive && c.ReceiveReports && c.Email != null && c.Email != "")
+                .OrderByDescending(c => c.IsPrimary).ThenBy(c => c.SortOrder)
+                .Select(c => c.Email!)
+                .ToListAsync(ct);
+
+            var primaryEmail = !string.IsNullOrWhiteSpace(customer.Email) ? customer.Email.Trim() : contactEmails.FirstOrDefault();
+            if (string.IsNullOrWhiteSpace(primaryEmail))
+                return (false, "Customer has no email (Email is empty)", null);
+
+            var toEmail = primaryEmail;
             var baseUrl = _config["Email:ReportBaseUrl"] ?? "https://inticoo.com";
 
-            // CC = AlternateReportEmail của khách + email nhập thêm (extraCc)
+            // CC = AlternateReportEmail của khách + email các contact nhận report + email nhập thêm (extraCc)
             var cc = SplitEmails(customer.AlternateReportEmail)
+                .Concat(contactEmails)
                 .Concat(SplitEmails(extraCc))
+                .Where(e => !string.Equals(e, toEmail, StringComparison.OrdinalIgnoreCase))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
                 .ToList();
 
             var subject = $"[Inticoo] Inspection Report Completed - {inspection.JobNumber}";
@@ -534,7 +561,7 @@ namespace InticooInspection.API.Services
         public async Task<(bool ok, string? error)> SendTestVendorMailAsync(string toEmail, CancellationToken ct = default)
         {
             if (string.IsNullOrWhiteSpace(toEmail))
-                return (false, "Email không được để trống");
+                return (false, "Email is required");
 
             var cfg = await _configProvider.GetAsync(ct);
 
@@ -571,7 +598,7 @@ namespace InticooInspection.API.Services
         public async Task<(bool ok, string? error)> SendTestCustomerMailAsync(string toEmail, CancellationToken ct = default)
         {
             if (string.IsNullOrWhiteSpace(toEmail))
-                return (false, "Email không được để trống");
+                return (false, "Email is required");
 
             var cfg = await _configProvider.GetAsync(ct);
 
@@ -717,7 +744,7 @@ namespace InticooInspection.API.Services
                 }
 
                 if (msg.To.Count == 0)
-                    return (false, "Không có địa chỉ email hợp lệ");
+                    return (false, "No valid email address");
 
                 if (ccEmails != null)
                 {

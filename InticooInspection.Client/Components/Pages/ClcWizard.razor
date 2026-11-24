@@ -1,0 +1,836 @@
+﻿@page "/clc/new"
+@page "/clc/{Id:int}"
+@attribute [Microsoft.AspNetCore.Authorization.Authorize]
+@using System.Net.Http.Headers
+@using InticooInspection.Client.Helpers
+@inject HttpClient Http
+@inject NavigationManager Nav
+@inject Blazored.SessionStorage.ISessionStorageService SessionStorage
+@inject PageAccessService PageAccess
+@inject AuthenticationStateProvider AuthState
+@inherits LocalizedComponentBase
+
+<PageTitle>@T("Clc.PageTitle")</PageTitle>
+
+<PageAccessGuard RequiredPage="ContainerLoadingCheck">
+@if (!_loading && !_canJob && !_canExec)
+{
+    <div style="padding:60px;text-align:center;color:#6b7c9c"><h3>@T("PageAccessGuard.AccessDenied")</h3><p>@T("PageAccessGuard.YouDonTHavePermissionTo")</p></div>
+}
+else
+{
+<div class="clc-page">
+    <div class="clc-head">
+        <div>
+            <h1 class="clc-title">@T("Clc.Title")</h1>
+            <div class="clc-sub">@(string.IsNullOrEmpty(_m.JobNumber) ? T("Clc.NewJobRequest") : T("Clc.JobNoLabel", _m.JobNumber))</div>
+        </div>
+        <button class="clc-btn" @onclick='() => Nav.NavigateTo("/clc")'>&larr; @T("Clc.BackToList")</button>
+    </div>
+
+    @if (_loading)
+    {
+        <div class="clc-card" style="text-align:center;color:#6b7c9c">@T("Common.Loading")</div>
+    }
+    else
+    {
+        @if (!string.IsNullOrEmpty(_m.JobNumber))
+        {
+            <div class="clc-facts">
+                <div><small>@T("Clc.PlannedLoadingDate")</small><b>@(_m.PlannedLoadingDate.HasValue ? L.Date(_m.PlannedLoadingDate.Value, "ddd, d MMM yyyy") : "—")</b></div>
+                <div><small>@T("Clc.ContainerNo")</small><b>@(string.IsNullOrEmpty(_m.ContainerNo) ? "—" : _m.ContainerNo)</b></div>
+                <div><small>@T("Clc.ContainerType")</small><b>@(string.IsNullOrEmpty(_m.ContainerType) ? "—" : _m.ContainerType)</b></div>
+                <div><small>@T("Clc.LoadingLocation")</small><b>@(string.IsNullOrEmpty(_m.LoadingLocation) ? "—" : _m.LoadingLocation)</b></div>
+            </div>
+        }
+        @if (!_jobMode && _m.Products.Count > 0)
+        {
+            <div class="clc-card clc-items">
+                <div class="clc-items-h">&#128230; @T("Clc.Products") <span>(@_m.Products.Count)</span></div>
+                <div class="pf-table-scroll">
+                    <table class="pf-table clc-compact" style="min-width:0">
+                        <thead><tr><th>@T("Common.No")</th><th>@T("Common.ProductCode")</th><th>@T("Common.ProductName")</th><th class="pf-c">@T("Clc.Cartons")</th></tr></thead>
+                        <tbody>
+                            @{ int pn = 0; }
+                            @foreach (var pr in _m.Products)
+                            {
+                                pn++;
+                                <tr><td data-l="@T("Common.No")">@pn</td><td data-l="@T("Common.ProductCode")">@pr.ProductCode</td><td data-l="@T("Common.ProductName")">@pr.Description</td><td class="pf-c" data-l="@T("Clc.Cartons")">@pr.PlannedCartons.ToString("N0")</td></tr>
+                            }
+                            <tr class="clc-items-total"><td colspan="3">@T("Clc.TotalQuantity")</td><td class="pf-c">@_m.TotalPlannedCartons.ToString("N0")</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        }
+        @if (_jobMode)
+        {
+            <div class="clc-ok">@(_jobLocked ? T("Clc.JobLockedNote") : T("Clc.JobModeNote"))</div>
+        }
+        else
+        {
+            <div class="clc-ok">@T("Clc.ExecModeNote")</div>
+        }
+        @if (!_jobMode)
+        {
+        <div class="clc-steps">
+            @for (int i = 1; i <= 4; i++)
+            {
+                var n = i;
+                <button type="button" class="clc-step @(_step == n ? "on" : "") @(_step > n ? "done" : "")" @onclick="() => GoStep(n)">
+                    <b>@(_step > n ? "✓" : n.ToString())</b>@StepLabel(n)
+                </button>
+            }
+        </div>
+        }
+
+        @if (!string.IsNullOrEmpty(_err)) { <div class="clc-err">@_err</div> }
+        @if (!string.IsNullOrEmpty(_ok)) { <div class="clc-ok">@_ok</div> }
+        @if (_readOnly) { <div class="clc-ok">@T("Clc.ReadOnlyNote")</div> }
+
+        <fieldset class="clc-fs" disabled="@(_readOnly || (_jobMode ? _jobLocked : _step == 1))">
+        @if (_jobMode || _step == 1) { @Step1() }
+        else if (_step == 2) { @Step2() }
+        else if (_step == 3) { @Step3() }
+        else { @Step4() }
+        </fieldset>
+    }
+</div>
+
+<SignaturePadModal Visible="@(_signSlot != null)" Title="@(_signSlot == "reviewer" ? T("Clc.ReviewerSignature") : T("Clc.InspectorSignature"))"
+                   SignerName="@_signerName" Busy="@_signing" OnConfirm="ConfirmSign" OnCancel="() => _signSlot = null" />
+}
+</PageAccessGuard>
+
+@code {
+    [Parameter] public int Id { get; set; }
+
+    ClcModel _m = new();
+    bool _loading = true, _saving, _signing;
+    int _step = 1;
+    string _err = "", _ok = "";
+    string? _signSlot;
+    string _signerName = "";
+    int _openPoint;
+    string _uploadKey = "";
+
+    List<CustomerOpt> _customers = new();
+    List<VendorOpt> _vendors = new();
+    List<InspectorOpt> _inspectors = new();
+    List<ProductOpt> _products = new();
+
+    bool _isAdmin => PageAccess.IsAdmin;
+    // Hai vai: admin/quản lý tạo & giao job request; QC/kho thực hiện kiểm (như Inspection).
+    bool _canJob  => PageAccess.IsAdmin || PageAccess.Can("ContainerLoadingCheck", "Create");
+    bool _canExec => PageAccess.IsAdmin || PageAccess.Can("ContainerLoadingCheck", "Edit");
+    // Inspector (chỉ có quyền thực hiện, không tạo job) không được xem thông tin khách hàng
+    bool _hideCustomer => !_canJob;
+    bool _jobMode;                                   // true: màn Job Request (1 form); false: màn thực hiện 4 bước
+    bool _jobLocked => _jobMode && Id > 0 && _m.Status is not ("Draft" or "Pending");
+    bool _readOnly => _m.Status == "Submitted" && !_isAdmin;
+
+    static readonly string[] PointNames = { "FrontWall", "LeftSide", "RightSide", "Floor", "CeilingRoof", "Doors", "OutsideUndercarriage" };
+
+    class CustomerOpt { public string CustomerId { get; set; } = ""; public string CompanyName { get; set; } = ""; public string? ContactPerson { get; set; }
+        public string? Mobile { get; set; } public string? Phone { get; set; } public string? Email { get; set; }
+        public string? Address1 { get; set; } public string? Address2 { get; set; } public string? City { get; set; } public string? State { get; set; } public string? Country { get; set; } }
+    class VendorOpt { public string Code { get; set; } = ""; public string Name { get; set; } = ""; public string? ContactName { get; set; }
+        public string? ContactPhone { get; set; } public string? Phone { get; set; } public string? ContactEmail { get; set; }
+        public string? Address1 { get; set; } public string? Address2 { get; set; } public string? City { get; set; } public string? State { get; set; } public string? Country { get; set; } }
+    class InspectorOpt { public string Id { get; set; } = ""; public string? InspectorId { get; set; } public string FullName { get; set; } = ""; }
+    class ProductOpt { public string ProductCode { get; set; } = ""; public string ProductName { get; set; } = ""; public string ItemNumber { get; set; } = ""; }
+    class ItemsResult<T> { public List<T> Items { get; set; } = new(); }
+    class SaveResult { public bool Success { get; set; } public int Id { get; set; } public string? JobNumber { get; set; } public string? Status { get; set; } public string? OverallResult { get; set; } public string? Message { get; set; } }
+    class UploadResult { [System.Text.Json.Serialization.JsonPropertyName("url")] public string Url { get; set; } = ""; }
+    class SignResult { public string Url { get; set; } = ""; public string? Name { get; set; } public string? Position { get; set; } public DateTime SignedAt { get; set; } }
+    class ErrorBody { public string? Message { get; set; } }
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var token = await SessionStorage.GetItemAsync<string>("auth_token");
+            if (!string.IsNullOrEmpty(token)) Http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        }
+        catch { }
+        await PageAccess.EnsureLoadedAsync();
+        try { _signerName = (await AuthState.GetAuthenticationStateAsync()).User.Identity?.Name ?? ""; } catch { }
+
+        await Task.WhenAll(LoadLookups(), LoadJob());
+        _loading = false;
+    }
+
+    async Task LoadLookups()
+    {
+        try { _customers = (await Http.GetFromJsonAsync<ItemsResult<CustomerOpt>>("api/customers?pageSize=500"))?.Items ?? new(); } catch { }
+        try { _vendors = (await Http.GetFromJsonAsync<ItemsResult<VendorOpt>>("api/vendors?pageSize=500"))?.Items ?? new(); } catch { }
+        try
+        {
+            var all = await Http.GetFromJsonAsync<List<InspectorOpt>>("api/users/dropdown") ?? new();
+            _inspectors = all.Where(u => !string.IsNullOrWhiteSpace(u.InspectorId)).ToList();
+        }
+        catch { }
+        try { _products = await Http.GetFromJsonAsync<List<ProductOpt>>("api/products/dropdown") ?? new(); } catch { }
+    }
+
+    async Task LoadJob()
+    {
+        if (Id <= 0)
+        {
+            _m = new ClcModel { InspectionDate = DateTime.Today, PlannedLoadingDate = DateTime.Today };
+            _m.Products.Add(new ClcProductModel());
+            _jobMode = true;
+            return;
+        }
+        try
+        {
+            var r = await Http.GetAsync($"api/clc/{Id}");
+            if (!r.IsSuccessStatusCode) { _err = T("Clc.JobNotFound"); return; }
+            _m = (await r.Content.ReadFromJsonAsync<ClcModel>())!;
+            bool wantEdit = Nav.Uri.Contains("edit=1", StringComparison.OrdinalIgnoreCase);
+            _jobMode = _m.Status == "Draft" || (wantEdit && _canJob) || !_canExec;
+            _step = _jobMode ? 1 : _m.Status switch { "InProgress" => 2, "Submitted" => 4, _ => 1 };
+        }
+        catch { _err = T("Clc.LoadFailed"); }
+    }
+
+    string StepLabel(int n) => n switch { 1 => T("Clc.StepDetails"), 2 => T("Clc.StepInspection"), 3 => T("Clc.StepLoading"), _ => T("Clc.StepSummary") };
+    string Img(string? url) => MediaUrl.Resolve(url, Http.BaseAddress?.ToString());
+
+    // ── Điều hướng + lưu ────────────────────────────────────────────
+    async Task GoStep(int n)
+    {
+        if (n == _step) return;
+        // sang bước sau cần đã có job (Id) → lưu trước; quay lại bước trước thì không cần
+        if (n > _step && !_readOnly && !await Save(null)) return;
+        _step = n; _err = ""; _ok = "";
+    }
+
+    async Task Next()
+    {
+        if (_step == 1)
+        {
+            // Màn thực hiện: thông tin job do quản lý nhập, QC chỉ bắt đầu kiểm → chuyển InProgress
+            if (_m.Status == "Pending" && !await Save("InProgress")) return;
+        }
+        else if (!_readOnly)
+        {
+            if (!await Save(_m.Status == "Draft" || _m.Status == "Pending" ? "InProgress" : null)) return;
+        }
+        _step = Math.Min(4, _step + 1); _err = ""; _ok = "";
+    }
+
+    void Prev() { _step = Math.Max(1, _step - 1); _err = ""; _ok = ""; }
+
+    bool ValidateStep1()
+    {
+        _err = "";
+        if (string.IsNullOrWhiteSpace(_m.CustomerName)) _err = T("Clc.ErrCustomer");
+        else if (string.IsNullOrWhiteSpace(_m.VendorName)) _err = T("Clc.ErrSupplier");
+        else if (string.IsNullOrWhiteSpace(_m.ContainerNo)) _err = T("Clc.ErrContainerNo");
+        else if (string.IsNullOrWhiteSpace(_m.ContainerType)) _err = T("Clc.ErrContainerType");
+        else if (string.IsNullOrWhiteSpace(_m.PoNumber)) _err = T("Clc.ErrPo");
+        else if (_m.PlannedLoadingDate == null) _err = T("Clc.ErrLoadingDate");
+        else if (_m.Products.Any(p => string.IsNullOrWhiteSpace(p.ProductCode))) _err = T("Clc.ErrProductCode");
+        return _err == "";
+    }
+
+    /// <summary>Lưu toàn bộ job. status = null: giữ trạng thái hiện tại.</summary>
+    async Task<bool> Save(string? status)
+    {
+        if (_readOnly) return true;
+        _err = ""; _ok = "";
+        if (_step == 1 || Id == 0) { if (!ValidateStep1()) return false; }
+        _saving = true; StateHasChanged();
+        try
+        {
+            if (status != null) _m.Status = status;
+            _m.Recompute();
+            HttpResponseMessage r = Id == 0
+                ? await Http.PostAsJsonAsync("api/clc", _m)
+                : await Http.PutAsJsonAsync($"api/clc/{Id}", _m);
+            if (!r.IsSuccessStatusCode)
+            {
+                var e = await r.Content.ReadFromJsonAsync<ErrorBody>();
+                _err = TA(e?.Message) ?? T("Clc.SaveFailed"); return false;
+            }
+            var res = await r.Content.ReadFromJsonAsync<SaveResult>();
+            if (Id == 0 && res != null && res.Id > 0)
+            {
+                Id = res.Id; _m.Id = res.Id; _m.JobNumber = res.JobNumber ?? "";
+                Nav.NavigateTo($"/clc/{res.Id}", replace: true);   // đổi URL sang job vừa tạo
+            }
+            _ok = T("Clc.Saved");
+            return true;
+        }
+        catch { _err = T("Clc.SaveFailed"); return false; }
+        finally { _saving = false; }
+    }
+
+    /// <summary>Quản lý giao job cho inspector: lưu ở trạng thái Pending rồi quay về danh sách.</summary>
+    async Task SendRequest()
+    {
+        if (!ValidateStep1()) return;
+        if (string.IsNullOrWhiteSpace(_m.InspectorId)) { _err = T("Clc.InspectorRequired"); return; }
+        if (await Save(_m.Status == "Draft" || _m.Status == "Pending" ? "Pending" : null)) Nav.NavigateTo("/clc");
+    }
+
+    async Task SaveDraft()
+    {
+        if (_step == 1 && !ValidateStep1()) return;
+        if (await Save(null) && Id > 0) _ok = T("Clc.DraftSaved");
+    }
+
+    async Task Submit()
+    {
+        _err = "";
+        _m.Recompute();
+        var miss = new List<string>();
+        if (Enumerable.Range(1, 7).Any(i => string.IsNullOrEmpty(_m.Points.FirstOrDefault(p => p.PointNo == i)?.Result))) miss.Add(T("Clc.MissPoints"));
+        if (string.IsNullOrWhiteSpace(_m.SealNumber)) miss.Add(T("Clc.MissSealNo"));
+        if (string.IsNullOrWhiteSpace(_m.SealPhotoUrl)) miss.Add(T("Clc.MissSealPhoto"));
+        if (string.IsNullOrWhiteSpace(_m.InspectorSignatureUrl)) miss.Add(T("Clc.MissSign"));
+        if (miss.Count > 0) { _err = T("Clc.CannotSubmit", string.Join("; ", miss)); return; }
+        if (await Save("Submitted")) Nav.NavigateTo($"/clc/{Id}/report");
+    }
+
+    // ── Chọn customer / vendor ──────────────────────────────────────
+    void OnCustomer(ChangeEventArgs e)
+    {
+        var code = e.Value?.ToString() ?? "";
+        var c = _customers.FirstOrDefault(x => x.CustomerId == code);
+        if (c == null) { _m.CustomerCode = null; return; }
+        _m.CustomerCode = c.CustomerId; _m.CustomerName = c.CompanyName;
+        _m.CustomerContact = c.ContactPerson; _m.CustomerPhone = c.Mobile ?? c.Phone; _m.CustomerEmail = c.Email;
+        _m.CustomerAddress = string.Join(", ", new[] { c.Address1, c.Address2, c.City, c.State, c.Country }.Where(x => !string.IsNullOrWhiteSpace(x)));
+    }
+
+    void OnVendor(ChangeEventArgs e)
+    {
+        var code = e.Value?.ToString() ?? "";
+        var v = _vendors.FirstOrDefault(x => x.Code == code);
+        if (v == null) { _m.VendorCode = null; return; }
+        _m.VendorCode = v.Code; _m.VendorName = v.Name;
+        _m.VendorContact = v.ContactName; _m.VendorPhone = v.ContactPhone ?? v.Phone; _m.VendorEmail = v.ContactEmail;
+        _m.VendorAddress = string.Join(", ", new[] { v.Address1, v.Address2, v.City, v.State, v.Country }.Where(x => !string.IsNullOrWhiteSpace(x)));
+        if (string.IsNullOrWhiteSpace(_m.LoadingAddress)) _m.LoadingAddress = _m.VendorAddress;
+    }
+
+    void OnInspector(ChangeEventArgs e)
+    {
+        var id = e.Value?.ToString() ?? "";
+        var u = _inspectors.FirstOrDefault(x => x.Id == id);
+        _m.InspectorId = u?.Id; _m.InspectorName = u?.FullName;
+    }
+
+    void OnProductCode(ClcProductModel p, string code)
+    {
+        p.ProductCode = code;
+        var hit = _products.FirstOrDefault(x => string.Equals(x.ProductCode, code, StringComparison.OrdinalIgnoreCase)
+                                             || string.Equals(x.ItemNumber, code, StringComparison.OrdinalIgnoreCase));
+        if (hit != null && string.IsNullOrWhiteSpace(p.Description)) p.Description = hit.ProductName;
+    }
+
+    // ── Upload ảnh ──────────────────────────────────────────────────
+    async Task<string> Upload(InputFileChangeEventArgs e, string key)
+    {
+        if (e.File == null) return "";
+        _uploadKey = key; StateHasChanged();
+        try
+        {
+            var file = await ImageShrink.ShrinkAsync(e.File);
+            using var content = new MultipartFormDataContent();
+            var sc = new StreamContent(file.OpenReadStream(10 * 1024 * 1024));
+            sc.Headers.ContentType = new MediaTypeHeaderValue(file.ContentType);
+            content.Add(sc, "file", file.Name);
+            var r = await Http.PostAsync("api/upload/photo", content);
+            if (!r.IsSuccessStatusCode) { _err = T("Clc.UploadFailed"); return ""; }
+            return (await r.Content.ReadFromJsonAsync<UploadResult>())?.Url ?? "";
+        }
+        catch { _err = T("Clc.UploadFailed"); return ""; }
+        finally { _uploadKey = ""; StateHasChanged(); }
+    }
+
+    async Task OnProcessPhoto(InputFileChangeEventArgs e, int slot)
+    {
+        var url = await Upload(e, "P" + slot);
+        if (string.IsNullOrEmpty(url)) return;
+        var ph = _m.Process(slot);
+        if (ph == null) _m.Photos.Add(new ClcPhotoModel { Category = "Process", Slot = slot, Url = url });
+        else ph.Url = url;
+    }
+
+    async Task OnAdditionalPhoto(InputFileChangeEventArgs e)
+    {
+        var url = await Upload(e, "ADD");
+        if (!string.IsNullOrEmpty(url)) _m.Photos.Add(new ClcPhotoModel { Category = "Additional", Url = url });
+    }
+
+    async Task OnPointPhoto(InputFileChangeEventArgs e, ClcPointModel p)
+    {
+        var url = await Upload(e, "PT" + p.PointNo);
+        if (!string.IsNullOrEmpty(url)) p.Photos.Add(url);
+    }
+
+    async Task OnSealPhoto(InputFileChangeEventArgs e)
+    {
+        var url = await Upload(e, "SEAL");
+        if (!string.IsNullOrEmpty(url)) _m.SealPhotoUrl = url;
+    }
+
+    // ── Chữ ký ──────────────────────────────────────────────────────
+    async Task OpenSign(string slot)
+    {
+        if (Id == 0 || !await Save(null)) return;
+        _signSlot = slot;
+    }
+
+    async Task ConfirmSign((string Name, string Position, string DataUrl) s)
+    {
+        if (_signSlot == null) return;
+        _signing = true; StateHasChanged();
+        try
+        {
+            var r = await Http.PostAsJsonAsync($"api/clc/{Id}/sign", new { slot = _signSlot, name = s.Name, position = s.Position, signatureDataUrl = s.DataUrl });
+            if (!r.IsSuccessStatusCode)
+            {
+                var e = await r.Content.ReadFromJsonAsync<ErrorBody>();
+                _err = TA(e?.Message) ?? T("Clc.SignFailed"); _signSlot = null; return;
+            }
+            var res = (await r.Content.ReadFromJsonAsync<SignResult>())!;
+            if (_signSlot == "inspector") { _m.InspectorSignatureUrl = res.Url; _m.InspectorSignName = res.Name; _m.InspectorSignPosition = res.Position; _m.InspectorSignedAt = res.SignedAt; }
+            else { _m.ReviewerSignatureUrl = res.Url; _m.ReviewerSignName = res.Name; _m.ReviewerSignPosition = res.Position; _m.ReviewerSignedAt = res.SignedAt; }
+            _signSlot = null;
+        }
+        catch { _err = T("Clc.SignFailed"); _signSlot = null; }
+        finally { _signing = false; }
+    }
+
+    // ── Sản phẩm ────────────────────────────────────────────────────
+    void AddProduct() => _m.Products.Add(new ClcProductModel());
+    void RemoveProduct(ClcProductModel p) => _m.Products.Remove(p);
+
+    // ═════════════ fragments ═════════════
+    RenderFragment Seg(string? cur, Action<string?> set, bool withNA = true, string size = "") => @<text>
+        <div class="clc-seg @size">
+            <button type="button" class="pass @(cur == "Pass" ? "on" : "")" @onclick='() => set(cur == "Pass" ? null : "Pass")'>@T("Clc.Pass")</button>
+            <button type="button" class="fail @(cur == "Fail" ? "on" : "")" @onclick='() => set(cur == "Fail" ? null : "Fail")'>@T("Clc.Fail")</button>
+            @if (withNA) { <button type="button" class="na @(cur == "N/A" ? "on" : "")" @onclick='() => set(cur == "N/A" ? null : "N/A")'>N/A</button> }
+        </div>
+    </text>;
+
+    RenderFragment YesNo(bool? cur, Action<bool?> set) => @<text>
+        <div class="clc-seg sm" style="width:130px">
+            <button type="button" class="yes @(cur == true ? "on" : "")" @onclick="() => set(cur == true ? null : true)">@T("Common.Yes")</button>
+            <button type="button" class="no @(cur == false ? "on" : "")" @onclick="() => set(cur == false ? null : false)">@T("Common.No")</button>
+        </div>
+    </text>;
+
+    RenderFragment Pill(string? r) => @<text>
+        @if (string.IsNullOrEmpty(r)) { <span class="clc-pill none">—</span> }
+        else { <span class="clc-pill @(r == "Pass" ? "pass" : r == "Fail" ? "fail" : "na")">@(r == "Pass" ? T("Clc.Pass") : r == "Fail" ? T("Clc.Fail") : "N/A")</span> }
+    </text>;
+
+    RenderFragment PhotoBox(string? url, string key, Func<InputFileChangeEventArgs, Task> onFile, Action? onRemove) => @<text>
+        <label class="clc-ph @(string.IsNullOrEmpty(url) ? "" : "has")">
+            @if (_uploadKey == key) { <span class="sp">@T("Clc.Uploading")</span> }
+            else if (!string.IsNullOrEmpty(url)) { <img src="@Img(url)" alt="" /> }
+            else { <span>+</span> }
+            @if (string.IsNullOrEmpty(url)) { <InputFile OnChange="onFile" accept="image/*" capture="environment" style="display:none" /> }
+            @if (!string.IsNullOrEmpty(url) && onRemove != null && !_readOnly)
+            {
+                <button type="button" class="x" @onclick:preventDefault @onclick:stopPropagation @onclick="() => onRemove()">✕</button>
+            }
+        </label>
+    </text>;
+
+    // ── Step 1: Job details ─────────────────────────────────────────
+    RenderFragment Step1() => @<text>
+        @if (!_hideCustomer)
+        {
+        <div class="clc-card">
+            <div class="clc-card-t">@T("Clc.CustomerInfo")</div>
+            <div class="clc-grid">
+                @* Theo yêu cầu khách: chỉ còn Customer ID + Customer Name (bỏ Phone / Contact / Address / Email) *@
+                <div class="clc-f"><label>@T("Common.CustomerID")</label>
+                    <input class="clc-in" value="@_m.CustomerCode" readonly disabled /></div>
+                <div class="clc-f"><label>@T("Common.CustomerName") <span class="clc-req">*</span></label>
+                    <select class="clc-in" value="@_m.CustomerCode" @onchange="OnCustomer">
+                        <option value="">@T("Clc.SelectCustomer")</option>
+                        @if (string.IsNullOrEmpty(_m.CustomerCode) && !string.IsNullOrEmpty(_m.CustomerName)) { <option value="" selected>@_m.CustomerName</option> }
+                        @foreach (var c in _customers) { <option value="@c.CustomerId">@c.CompanyName</option> }
+                    </select></div>
+            </div>
+        </div>
+        }
+
+        <div class="clc-card">
+            <div class="clc-card-t">@T("Clc.SupplierInfo")</div>
+            <div class="clc-grid">
+                <div class="clc-f"><label>@T("Clc.SupplierFactory") <span class="clc-req">*</span></label>
+                    <select class="clc-in" value="@_m.VendorCode" @onchange="OnVendor">
+                        <option value="">@T("Clc.SelectSupplier")</option>
+                        @if (string.IsNullOrEmpty(_m.VendorCode) && !string.IsNullOrEmpty(_m.VendorName)) { <option value="" selected>@_m.VendorName</option> }
+                        @foreach (var v in _vendors) { <option value="@v.Code">@v.Name</option> }
+                    </select></div>
+                <div class="clc-f"><label>@T("Clc.Phone")</label><input class="clc-in" @bind="_m.VendorPhone" /></div>
+                <div class="clc-f"><label>@T("Clc.ContactPerson")</label><input class="clc-in" @bind="_m.VendorContact" /></div>
+                <div class="clc-f"><label>@T("Clc.FactoryAddress")</label><input class="clc-in" @bind="_m.VendorAddress" /></div>
+                <div class="clc-f"><label>@T("PartyContacts.Email")</label><input class="clc-in" type="email" @bind="_m.VendorEmail" /></div>
+            </div>
+        </div>
+
+        <div class="clc-card">
+            <div class="clc-card-t">@T("Clc.ContainerShipment")</div>
+            <div class="clc-grid">
+                <div class="clc-f"><label>@T("Clc.ContainerNo") <span class="clc-req">*</span></label>
+                    <input class="clc-in" placeholder="MSKU1234567" value="@_m.ContainerNo" @onchange="e => _m.ContainerNo = (e.Value?.ToString() ?? string.Empty).ToUpperInvariant()" /></div>
+                <div class="clc-f"><label>@T("Clc.PlannedLoadingDate") <span class="clc-req">*</span></label><input class="clc-in" type="date" @bind="_m.PlannedLoadingDate" /></div>
+                <div class="clc-f"><label>@T("Clc.ContainerType") <span class="clc-req">*</span></label>
+                    <select class="clc-in" @bind="_m.ContainerType">
+                        <option value="">@T("Clc.Select")</option>
+                        @foreach (var t in ClcOptions.ContainerTypes) { <option value="@t">@t</option> }
+                    </select></div>
+                <div class="clc-f"><label>@T("Clc.PlannedStartTime")</label><input class="clc-in" type="time" value="@_m.PlannedStartTime" @onchange="e => _m.PlannedStartTime = e.Value?.ToString()" /></div>
+                <div class="clc-f"><label>@T("Clc.PoNumber") <span class="clc-req">*</span></label><input class="clc-in" @bind="_m.PoNumber" /></div>
+                <div class="clc-f"><label>@T("Clc.PlannedEndTime")</label><input class="clc-in" type="time" value="@_m.PlannedEndTime" @onchange="e => _m.PlannedEndTime = e.Value?.ToString()" /></div>
+                <div class="clc-f"><label>@T("Clc.ShipmentReference")</label><input class="clc-in" @bind="_m.ShipmentReference" /></div>
+                <div class="clc-f"><label>@T("Clc.LoadingMethod")</label>
+                    <select class="clc-in" @bind="_m.LoadingMethod">
+                        <option value="">@T("Clc.Select")</option>
+                        @foreach (var t in ClcOptions.LoadingMethods) { <option value="@t">@t</option> }
+                    </select></div>
+                <div class="clc-f"><label>@T("Clc.Destination")</label><input class="clc-in" @bind="_m.Destination" /></div>
+                <div class="clc-f"><label>@T("Clc.TruckNo")</label><input class="clc-in" @bind="_m.TruckNo" /></div>
+                <div class="clc-f"><label>@T("Clc.LoadingLocation")</label>
+                    <select class="clc-in" @bind="_m.LoadingLocation">
+                        <option value="">@T("Clc.Select")</option>
+                        @foreach (var t in ClcOptions.LoadingLocations) { <option value="@t">@t</option> }
+                    </select></div>
+                <div class="clc-f"><label>@T("Clc.LoadingAddress")</label><input class="clc-in" @bind="_m.LoadingAddress" /></div>
+                <div class="clc-f full"><label>@T("Clc.CargoDescription")</label><input class="clc-in" @bind="_m.CargoDescription" /></div>
+            </div>
+        </div>
+
+        <div class="clc-card">
+            <div class="clc-card-t">@T("Clc.ProductInfo")
+                <button type="button" class="clc-btn primary sm" @onclick="AddProduct">+ @T("Clc.AddProduct")</button></div>
+            <datalist id="clc-products">
+                @foreach (var p in _products) { <option value="@p.ProductCode">@p.ProductName</option> }
+            </datalist>
+            <div class="clc-scroll">
+                <table class="clc-table clc-ptable">
+                    <thead><tr><th>@T("Clc.No")</th><th>@T("Clc.ProductCode")</th><th>@T("Clc.Description")</th><th>@T("Clc.PlannedCartons")</th><th>@T("Clc.PlannedQty")</th><th>@T("Clc.Unit")</th><th></th></tr></thead>
+                    <tbody>
+                        @{ int no = 0; }
+                        @foreach (var p in _m.Products)
+                        {
+                            var row = p; no++;
+                            <tr>
+                                <td data-l="@T("Clc.No")">@no</td>
+                                <td data-l="@T("Clc.ProductCode")"><input class="clc-in" list="clc-products" value="@row.ProductCode" @onchange="e => OnProductCode(row, e.Value?.ToString() ?? string.Empty)" /></td>
+                                <td data-l="@T("Clc.Description")"><input class="clc-in" @bind="row.Description" /></td>
+                                <td data-l="@T("Clc.PlannedCartons")"><input class="clc-in" type="number" min="0" style="width:90px" @bind="row.PlannedCartons" /></td>
+                                <td data-l="@T("Clc.PlannedQty")"><input class="clc-in" type="number" min="0" style="width:100px" @bind="row.PlannedQty" /></td>
+                                <td data-l="@T("Clc.Unit")"><input class="clc-in" style="width:70px" @bind="row.Unit" /></td>
+                                <td class="c"><button type="button" class="clc-btn sm danger" @onclick="() => RemoveProduct(row)">✕</button></td>
+                            </tr>
+                        }
+                    </tbody>
+                    <tfoot><tr><td colspan="3">@T("Clc.Total")</td><td data-l="@T("Clc.PlannedCartons")">@_m.TotalPlannedCartons.ToString("N0")</td><td data-l="@T("Clc.PlannedQty")">@_m.TotalPlannedQty.ToString("N0")</td><td colspan="2"></td></tr></tfoot>
+                </table>
+            </div>
+        </div>
+
+        <div class="clc-card clc-card-office">
+            <div class="clc-card-t">@T("Clc.InspectorAssignment")</div>
+            <div class="clc-grid g3">
+                <div class="clc-f"><label>@T("Clc.Inspector")</label>
+                    <select class="clc-in" value="@_m.InspectorId" @onchange="OnInspector">
+                        <option value="">@T("Clc.Select")</option>
+                        @foreach (var u in _inspectors) { <option value="@u.Id">@u.FullName</option> }
+                    </select></div>
+                <div class="clc-f"><label>@T("Clc.InspectionDate")</label><input class="clc-in" type="date" @bind="_m.InspectionDate" /></div>
+                <div class="clc-f"><label>@T("Clc.InspectionTime")</label>
+                    <div style="display:flex;gap:6px;align-items:center">
+                        <input class="clc-in" type="time" value="@_m.InspectionStartTime" @onchange="e => _m.InspectionStartTime = e.Value?.ToString()" />
+                        <span>–</span>
+                        <input class="clc-in" type="time" value="@_m.InspectionEndTime" @onchange="e => _m.InspectionEndTime = e.Value?.ToString()" />
+                    </div></div>
+                <div class="clc-f full"><label>@T("Clc.Remarks")</label>
+                    <textarea class="clc-in" maxlength="500" @bind="_m.JobRemarks" @bind:event="oninput"></textarea>
+                    <div class="clc-cnt">@((_m.JobRemarks ?? "").Length)/500</div></div>
+            </div>
+        </div>
+
+        <div class="clc-nav">
+            @if (_jobMode)
+            {
+                @if (!_jobLocked)
+                {
+                    @if (_m.Status == "Draft" || Id == 0)
+                    {
+                        <button class="clc-btn" @onclick="SaveDraft" disabled="@_saving">@T("Clc.SaveDraft")</button>
+                    }
+                    <button class="clc-btn primary" @onclick="SendRequest" disabled="@_saving">@(_m.Status == "Pending" ? T("Common.Save") : T("Clc.SendToInspector"))</button>
+                }
+            }
+            else
+            {
+                <button class="clc-btn primary" @onclick="Next" disabled="@(_saving || _readOnly && false)">@(_m.Status == "Pending" ? T("Clc.StartInspection") : T("Clc.Next")) &rarr;</button>
+            }
+        </div>
+    </text>;
+
+    // ── Step 2: 7-point + additional checks + seal ──────────────────
+    RenderFragment Step2() => @<text>
+        @{ _m.Recompute(); }
+        <div class="clc-card">
+            <div class="clc-card-t">@T("Clc.SevenPoint")<small>@T("Clc.SevenPointSub")</small></div>
+            @for (int i = 1; i <= 7; i++)
+            {
+                var no = i; var p = _m.Point(no);
+                <div class="clc-point">
+                    <button type="button" class="clc-point-h" @onclick="() => _openPoint = _openPoint == no ? 0 : no">
+                        <span class="clc-point-n">@no</span>
+                        <span class="clc-point-name">@PointName(no)</span>
+                        <span class="clc-point-ph">@T("Clc.PhotoCount", p.Photos.Count)</span>
+                        @Pill(p.Result)
+                    </button>
+                    @if (_openPoint == no)
+                    {
+                        <div class="clc-point-b">
+                            <div class="clc-f" style="margin-top:8px"><label>@T("Clc.InspectionResult") <span class="clc-req">*</span></label>
+                                @Seg(p.Result, v => p.Result = v)</div>
+                            <div class="clc-f"><label>@T("Clc.FindingsIfAny")</label>
+                                <div class="clc-checks">
+                                    @foreach (var f in ClcOptions.Findings)
+                                    {
+                                        var fd = f;
+                                        <label class="clc-check"><input type="checkbox" checked="@p.HasFinding(fd)" @onchange="e => p.ToggleFinding(fd, (bool)(e.Value ?? false))" /> @FindingLabel(fd)</label>
+                                    }
+                                </div></div>
+                            <div class="clc-f"><label>@T("Clc.Remarks")</label>
+                                <textarea class="clc-in" maxlength="500" @bind="p.Remarks" @bind:event="oninput"></textarea></div>
+                            <div class="clc-f"><label>@T("Clc.Photos")</label>
+                                <div class="clc-photos">
+                                    @for (int k = 0; k < p.Photos.Count; k++)
+                                    {
+                                        var idx = k; var pt = p;
+                                        @PhotoBox(pt.Photos[idx], $"PT{no}_{idx}", _ => Task.CompletedTask, () => pt.Photos.RemoveAt(idx))
+                                    }
+                                    @PhotoBox(null, "PT" + no, e => OnPointPhoto(e, p), null)
+                                </div></div>
+                        </div>
+                    }
+                </div>
+            }
+            <div class="clc-overall @(_m.SevenPointResult == "Pass" ? "pass" : _m.SevenPointResult == "Fail" ? "fail" : "")">
+                <span>@T("Clc.SevenPointResult")</span><span>@Pill(_m.SevenPointResult)</span>
+            </div>
+        </div>
+
+        <div class="clc-card">
+            <div class="clc-card-t">@T("Clc.AdditionalChecks")</div>
+            <table class="clc-table" style="min-width:0">
+                <tbody>
+                    <tr><td>@T("Clc.CheckClean")</td><td class="c">@YesNo(_m.CheckClean, v => _m.CheckClean = v)</td></tr>
+                    <tr><td>@T("Clc.CheckNoMoisture")</td><td class="c">@YesNo(_m.CheckNoMoisture, v => _m.CheckNoMoisture = v)</td></tr>
+                    <tr><td>@T("Clc.CheckNoOdor")</td><td class="c">@YesNo(_m.CheckNoOdor, v => _m.CheckNoOdor = v)</td></tr>
+                    <tr><td>@T("Clc.CheckSuitable")</td><td class="c">@YesNo(_m.CheckSuitable, v => _m.CheckSuitable = v)</td></tr>
+                    <tr><td>@T("Clc.CheckDoorSealable")</td><td class="c">@YesNo(_m.CheckDoorSealable, v => _m.CheckDoorSealable = v)</td></tr>
+                </tbody>
+            </table>
+            <div class="clc-f" style="margin-top:10px"><label>@T("Clc.Remarks")</label>
+                <textarea class="clc-in" maxlength="500" @bind="_m.AdditionalRemarks" @bind:event="oninput"></textarea></div>
+        </div>
+
+        <div class="clc-card">
+            <div class="clc-card-t">@T("Clc.ContainerSeal")<small>@T("Clc.SealAfterLoading")</small></div>
+            <div class="clc-grid">
+                <div class="clc-f"><label>@T("Clc.SealNumber") <span class="clc-req">*</span></label><input class="clc-in" @bind="_m.SealNumber" /></div>
+                <div class="clc-f"><label>@T("Clc.SealAppliedBy")</label>
+                    <select class="clc-in" @bind="_m.SealAppliedBy">
+                        <option value="">@T("Clc.Select")</option>
+                        @foreach (var t in ClcOptions.SealAppliedBy) { <option value="@t">@t</option> }
+                    </select></div>
+                <div class="clc-f"><label>@T("Clc.SealCondition")</label>
+                    <div class="clc-seg">
+                        <button type="button" class="pass @(_m.SealCondition == "Intact" ? "on" : "")" @onclick='() => _m.SealCondition = "Intact"'>@T("Clc.Intact")</button>
+                        <button type="button" class="fail @(_m.SealCondition == "Damaged" ? "on" : "")" @onclick='() => _m.SealCondition = "Damaged"'>@T("Clc.Damaged")</button>
+                    </div></div>
+                <div class="clc-f"><label>@T("Clc.SealPhoto") <span class="clc-req">*</span></label>
+                    <div class="clc-photos" style="grid-template-columns:140px">@PhotoBox(_m.SealPhotoUrl, "SEAL", OnSealPhoto, () => _m.SealPhotoUrl = null)</div></div>
+                <div class="clc-f full"><label>@T("Clc.Remarks")</label>
+                    <textarea class="clc-in" maxlength="500" @bind="_m.SealRemarks" @bind:event="oninput"></textarea></div>
+            </div>
+        </div>
+
+        <div class="clc-nav">
+            <button class="clc-btn" @onclick="Prev">&larr; @T("Clc.Previous")</button>
+            <button class="clc-btn primary" @onclick="Next" disabled="@_saving">@T("Clc.Next") &rarr;</button>
+        </div>
+    </text>;
+
+    // ── Step 3: Loading ─────────────────────────────────────────────
+    RenderFragment Step3() => @<text>
+        <div class="clc-card">
+            <div class="clc-card-t">@T("Clc.LoadingVerification")</div>
+            <div class="clc-grid g3">
+                <div class="clc-f"><label>@T("Clc.LoadingDate")</label><input class="clc-in" type="date" @bind="_m.LoadingDate" /></div>
+                <div class="clc-f"><label>@T("Clc.LoadingStartTime")</label><input class="clc-in" type="time" value="@_m.LoadingStartTime" @onchange="e => _m.LoadingStartTime = e.Value?.ToString()" /></div>
+                <div class="clc-f"><label>@T("Clc.LoadingEndTime")</label><input class="clc-in" type="time" value="@_m.LoadingEndTime" @onchange="e => _m.LoadingEndTime = e.Value?.ToString()" /></div>
+                <div class="clc-f"><label>@T("Clc.LoadingMethod")</label>
+                    <select class="clc-in" @bind="_m.LoadingMethodActual">
+                        <option value="">@T("Clc.Select")</option>
+                        @foreach (var t in ClcOptions.LoadingMethods) { <option value="@t">@t</option> }
+                    </select></div>
+            </div>
+        </div>
+
+        <div class="clc-card">
+            <div class="clc-card-t">@T("Clc.ProductLoadingDetails")</div>
+            <div class="clc-scroll">
+                <table class="clc-table">
+                    <thead><tr><th>@T("Clc.ProductCode")</th><th>@T("Clc.Description")</th><th class="c">@T("Clc.PlannedCartons")</th><th class="c">@T("Clc.ActualCartons")</th>
+                        <th class="c">@T("Clc.PlannedQty")</th><th class="c">@T("Clc.ActualQty")</th><th style="min-width:190px">@T("Clc.Result")</th></tr></thead>
+                    <tbody>
+                        @foreach (var p in _m.Products)
+                        {
+                            var row = p;
+                            <tr>
+                                <td>@row.ProductCode</td><td>@row.Description</td>
+                                <td class="c">@row.PlannedCartons.ToString("N0")</td>
+                                <td class="c"><input class="clc-in" type="number" min="0" style="width:90px" @bind="row.ActualCartons" /></td>
+                                <td class="c">@row.PlannedQty.ToString("N0")</td>
+                                <td class="c"><input class="clc-in" type="number" min="0" style="width:100px" @bind="row.ActualQty" /></td>
+                                <td>@Seg(row.Result, v => row.Result = v, true, "sm")</td>
+                            </tr>
+                        }
+                    </tbody>
+                    <tfoot><tr><td colspan="2">@T("Clc.Total")</td><td class="c">@_m.TotalPlannedCartons.ToString("N0")</td><td class="c">@_m.TotalActualCartons.ToString("N0")</td>
+                        <td class="c">@_m.TotalPlannedQty.ToString("N0")</td><td class="c">@_m.TotalActualQty.ToString("N0")</td><td></td></tr></tfoot>
+                </table>
+            </div>
+        </div>
+
+        <div class="clc-card">
+            <div class="clc-card-t">@T("Clc.CartonPackagingCheck")</div>
+            <table class="clc-table" style="min-width:0">
+                <tbody>
+                    <tr><td>@T("Clc.CartonCondition")</td><td>@Seg(_m.CartonCondition, v => _m.CartonCondition = v, true, "sm")</td></tr>
+                    <tr><td>@T("Clc.MarkingLabel")</td><td>@Seg(_m.MarkingLabel, v => _m.MarkingLabel = v, true, "sm")</td></tr>
+                    <tr><td>@T("Clc.PackagingProtection")</td><td>@Seg(_m.PackagingProtection, v => _m.PackagingProtection = v, true, "sm")</td></tr>
+                    <tr><td>@T("Clc.PalletCondition")</td><td>@Seg(_m.PalletCondition, v => _m.PalletCondition = v, true, "sm")</td></tr>
+                </tbody>
+            </table>
+            <div class="clc-f" style="margin-top:10px"><label>@T("Clc.Remarks")</label>
+                <textarea class="clc-in" maxlength="500" @bind="_m.LoadingRemarks" @bind:event="oninput"></textarea></div>
+        </div>
+
+        <div class="clc-card">
+            <div class="clc-card-t">@T("Clc.LoadingPhotos")</div>
+            <div class="clc-slots">
+                @for (int s = 1; s <= 6; s++)
+                {
+                    var slot = s;
+                    <div class="clc-slot">
+                        <div class="clc-slot-t">@slot. @SlotName(slot)</div>
+                        <div class="clc-photos" style="grid-template-columns:1fr;margin:6px">
+                            @PhotoBox(_m.Process(slot)?.Url, "P" + slot, e => OnProcessPhoto(e, slot), () => _m.Photos.RemoveAll(x => x.Category == "Process" && x.Slot == slot))
+                        </div>
+                    </div>
+                }
+            </div>
+            <div class="clc-card-t" style="margin-top:14px">@T("Clc.AdditionalPhotos")</div>
+            <div class="clc-photos">
+                @foreach (var ph in _m.Additional.ToList())
+                {
+                    var item = ph;
+                    @PhotoBox(item.Url, "AD" + item.GetHashCode(), _ => Task.CompletedTask, () => _m.Photos.Remove(item))
+                }
+                @PhotoBox(null, "ADD", OnAdditionalPhoto, null)
+            </div>
+        </div>
+
+        <div class="clc-nav">
+            <button class="clc-btn" @onclick="Prev">&larr; @T("Clc.Previous")</button>
+            <button class="clc-btn primary" @onclick="Next" disabled="@_saving">@T("Clc.Next") &rarr;</button>
+        </div>
+    </text>;
+
+    // ── Step 4: Summary ─────────────────────────────────────────────
+    RenderFragment Step4() => @<text>
+        @{ _m.Recompute(); }
+        <div class="clc-card">
+            <div class="clc-card-t">@T("Clc.InspectionSummary")</div>
+            <table class="clc-table" style="min-width:0">
+                <tbody>
+                    <tr><td>@T("Clc.SevenPoint")</td><td class="c">@Pill(_m.SevenPointResult)</td></tr>
+                    <tr><td>@T("Clc.AdditionalChecks")</td><td class="c">@Pill(_m.AdditionalResult)</td></tr>
+                    <tr><td>@T("Clc.LoadingVerification")</td><td class="c">@Pill(_m.LoadingResult)</td></tr>
+                    <tr><td>@T("Clc.ContainerSeal")</td><td class="c">@Pill(_m.SealResult)</td></tr>
+                </tbody>
+            </table>
+            <div class="clc-overall @(_m.OverallResult == "PASS" ? "pass" : _m.OverallResult == "FAIL" ? "fail" : _m.OverallResult == "HOLD" ? "hold" : "")">
+                <span>@T("Clc.OverallResult")</span>
+                <span>@(_m.OverallResult == "PASS" ? T("Clc.PassCaps") : _m.OverallResult == "FAIL" ? T("Clc.FailCaps") : _m.OverallResult == "HOLD" ? T("Clc.HoldCaps") : "—")</span>
+            </div>
+            <label class="clc-check" style="margin-bottom:10px"><input type="checkbox" checked="@_m.OnHold" @onchange="e => _m.OnHold = (bool)(e.Value ?? false)" /> <span><b>@T("Clc.PutOnHold")</b> — @T("Clc.PutOnHoldHint")</span></label>
+            <div class="clc-f"><label>@T("Clc.FinalRemarks")</label>
+                <textarea class="clc-in" maxlength="500" @bind="_m.FinalRemarks" @bind:event="oninput"></textarea>
+                <div class="clc-cnt">@((_m.FinalRemarks ?? "").Length)/500</div></div>
+        </div>
+
+        <div class="clc-grid">
+            <div class="clc-card">
+                <div class="clc-card-t">@T("Clc.InspectorSignature")</div>
+                <div class="clc-sign">
+                    @if (!string.IsNullOrEmpty(_m.InspectorSignatureUrl))
+                    {
+                        <img src="@Img(_m.InspectorSignatureUrl)" alt="" />
+                        <small>@_m.InspectorSignName @(_m.InspectorSignedAt.HasValue ? "· " + L.Date(_m.InspectorSignedAt.Value.ToLocalTime(), "d MMM yyyy") : "")</small>
+                    }
+                    <button type="button" class="clc-btn sm" disabled="@(!_canExec)" @onclick='() => OpenSign("inspector")'>@(string.IsNullOrEmpty(_m.InspectorSignatureUrl) ? T("Clc.Sign") : T("Clc.ReSign"))</button>
+                </div>
+            </div>
+            <div class="clc-card">
+                <div class="clc-card-t">@T("Clc.ReviewerSignature")</div>
+                <div class="clc-sign">
+                    @if (!string.IsNullOrEmpty(_m.ReviewerSignatureUrl))
+                    {
+                        <img src="@Img(_m.ReviewerSignatureUrl)" alt="" />
+                        <small>@_m.ReviewerSignName @(_m.ReviewerSignedAt.HasValue ? "· " + L.Date(_m.ReviewerSignedAt.Value.ToLocalTime(), "d MMM yyyy") : "")</small>
+                    }
+                    <button type="button" class="clc-btn sm" disabled="@(!_canJob)" @onclick='() => OpenSign("reviewer")'>@(string.IsNullOrEmpty(_m.ReviewerSignatureUrl) ? T("Clc.Sign") : T("Clc.ReSign"))</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="clc-nav">
+            <button class="clc-btn" @onclick="Prev">&larr; @T("Clc.Previous")</button>
+            @if (_m.Status == "Submitted")
+            {
+                <button class="clc-btn primary" @onclick='() => Nav.NavigateTo($"/clc/{Id}/report")'>@T("Clc.ViewReport")</button>
+            }
+            else
+            {
+                <button class="clc-btn green" @onclick="Submit" disabled="@(_saving || _readOnly || !_canExec)">@T("Clc.SubmitForReview")</button>
+            }
+        </div>
+    </text>;
+
+    string PointName(int no) => no switch
+    {
+        1 => T("Clc.P1"), 2 => T("Clc.P2"), 3 => T("Clc.P3"), 4 => T("Clc.P4"), 5 => T("Clc.P5"), 6 => T("Clc.P6"), _ => T("Clc.P7")
+    };
+    string SlotName(int s) => s switch
+    {
+        1 => T("Clc.S1"), 2 => T("Clc.S2"), 3 => T("Clc.S3"), 4 => T("Clc.S4"), 5 => T("Clc.S5"), _ => T("Clc.S6")
+    };
+    string FindingLabel(string f) => f switch
+    {
+        "Structural damage" => T("Clc.FindStructural"), "Holes or modifications" => T("Clc.FindHoles"),
+        "Signs of tampering" => T("Clc.FindTampering"), _ => T("Clc.FindOther")
+    };
+}

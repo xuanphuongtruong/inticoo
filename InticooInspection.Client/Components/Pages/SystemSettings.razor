@@ -1,0 +1,226 @@
+@page "/settings/system"
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Admin")]
+@using InticooInspection.Client.Services
+@inject SettingsClient Settings
+@inject HttpClient Http
+@inject Blazored.SessionStorage.ISessionStorageService SessionStorage
+@inherits LocalizedComponentBase
+
+<PageTitle>@T("Settings.SysTitle")</PageTitle>
+
+<div class="st-page">
+    <div class="st-crumb">@T("Menu.Settings") › <b>@T("Settings.SysTitle")</b></div>
+    <div class="st-top">
+        <div>
+            <h1 class="st-title">@T("Settings.SysTitle")</h1>
+            <div class="st-sub">@T("Settings.SysSub")</div>
+        </div>
+        <button class="st-btn primary" @onclick="Save">@T("Settings.SaveChanges")</button>
+    </div>
+
+    @if (_saved)
+    {
+        <div class="st-toast">@T("Settings.SavedOk")</div>
+    }
+    @if (_failed)
+    {
+        <div class="st-toast err">@T("Settings.SaveFailed")</div>
+    }
+
+    <div class="st-sys-top">
+        <SettingsSection Title="@("1. " + T("Settings.CompanyInfo"))" Subtitle="@T("Settings.CompanyInfoSub")" Icon="@IcoBuilding" DefaultOpen="true">
+            <div class="st-grid c2">
+                <div class="st-field"><label>@T("Settings.CompanyName") <span class="req">*</span></label><input class="st-input" @bind="_m.CompanyName" /></div>
+                <div class="st-field"><label>@T("Settings.CompanyEmail")</label><input class="st-input" type="email" @bind="_m.Email" /></div>
+                <div class="st-field"><label>@T("Settings.CompanyCode")</label><input class="st-input" @bind="_m.Code" /></div>
+                <div class="st-field"><label>@T("Settings.CompanyPhone")</label><input class="st-input" @bind="_m.Phone" /></div>
+                <div class="st-field"><label>@T("Common.Country") <span class="req">*</span></label>
+                    <select class="st-select" @bind="_m.Country">@foreach (var c in new[] { "Vietnam", "Malaysia", "China", "Indonesia", "Cambodia", "United States" }) { <option value="@c">@c</option> }</select></div>
+                <div class="st-field"><label>@T("Common.Address")</label><textarea class="st-text" @bind="_m.Address"></textarea></div>
+                <div class="st-field"><label>@T("Settings.TimeZone") <span class="req">*</span></label>
+                    <select class="st-select" @bind="_m.TimeZone">@foreach (var z in _zones) { <option value="@z">@z</option> }</select></div>
+                <div class="st-field"><label>@T("Settings.Industry")</label>
+                    <select class="st-select" @bind="_m.Industry">@foreach (var i in new[] { "Outdoor Furniture", "Indoor Furniture", "Houseware", "Electronics", "Others" }) { <option value="@i">@i</option> }</select></div>
+                <div class="st-field"><label>@T("Settings.DefaultLanguage") <span class="req">*</span></label>
+                    <select class="st-select" @bind="_m.Lang">@foreach (var l in new[] { "English", "Tiếng Việt", "中文", "Bahasa Melayu" }) { <option value="@l">@l</option> }</select></div>
+                <div class="st-field"><label>@T("Settings.Currency") <span class="req">*</span></label>
+                    <select class="st-select" @bind="_m.Currency">@foreach (var c in new[] { "USD (US Dollar)", "VND (Vietnamese Dong)", "CNY (Chinese Yuan)", "MYR (Malaysian Ringgit)" }) { <option value="@c">@c</option> }</select></div>
+            </div>
+        </SettingsSection>
+
+        <SettingsSection Title="@("2. " + T("Settings.UserMgmt"))" Subtitle="@T("Settings.UserMgmtSub")" Icon="@IcoUsers" DefaultOpen="false">
+            <div class="st-row"><span>@T("Settings.SelfRegistration")</span><label class="st-switch"><input type="checkbox" @bind="_m.SelfReg" /><span></span></label></div>
+            <div class="st-row"><span>@T("Settings.AdminApproval")</span><label class="st-switch"><input type="checkbox" @bind="_m.AdminApproval" /><span></span></label></div>
+            <div class="st-row"><span>@T("Settings.PasswordExpiry")</span><input class="st-input sm" type="number" @bind="_m.PwdExpiry" /></div>
+            <div class="st-row"><span>@T("Settings.MinPasswordLength")</span>
+                <select class="st-select sm" @bind="_m.PwdMin">@foreach (var n in new[] { 6, 8, 10, 12 }) { <option value="@n">@n</option> }</select></div>
+            <div class="st-row"><span>@T("Settings.Require2fa")</span><label class="st-switch"><input type="checkbox" @bind="_m.TwoFa" /><span></span></label></div>
+            <div class="st-row"><span>@T("Settings.SessionTimeout")</span><input class="st-input sm" type="number" @bind="_m.SessionTimeout" /></div>
+        </SettingsSection>
+    </div>
+
+    <div class="st-sys">
+        <SettingsSection Title="@("3. " + T("Settings.Notifications"))" Subtitle="@T("Settings.NotificationsSub")" Icon="@IcoMail" DefaultOpen="false">
+            <div class="st-row"><span>@T("Settings.NotifyAdmin")</span><label class="st-switch"><input type="checkbox" @bind="_m.NotifyAdmin" /><span></span></label></div>
+            <div class="st-row"><span>@T("Settings.EmailLanguage")</span>
+                <select class="st-select sm" style="width:130px" @bind="_m.EmailLang">@foreach (var l in new[] { "English", "Tiếng Việt", "中文", "Bahasa Melayu" }) { <option value="@l">@l</option> }</select></div>
+            <div class="st-lab" style="margin:8px 0 2px">@T("Settings.SendEmailEvents")</div>
+            @foreach (var ev in _events)
+            {
+                var e = ev;
+                <label class="st-check"><input type="checkbox" @bind="e.On" /> @T(e.Key)</label>
+            }
+        </SettingsSection>
+
+        <SettingsSection Title="@("4. " + T("Settings.DataStorage"))" Subtitle="@T("Settings.DataStorageSub")" Icon="@IcoDb" DefaultOpen="false">
+            <div class="st-field" style="margin-bottom:10px"><label>@T("Settings.CloudQuota")</label>
+                @if (_planQuota != null)
+                {
+                    @* Hạn mức dung lượng do gói quyết định (Super Admin quản lý) → chỉ hiển thị *@
+                    <input class="st-input" value="@_planQuota" readonly />
+                }
+                else
+                {
+                    <select class="st-select" @bind="_m.Quota">@foreach (var q in new[] { "100 GB (Starter Plan)", "500 GB (Business Plan)", "2 TB (Enterprise Plan)" }) { <option value="@q">@q</option> }</select>
+                }</div>
+            <div class="st-field" style="margin-bottom:6px"><label>@T("Settings.RetentionYears")</label><input class="st-input" type="number" @bind="_m.Retention" /></div>
+            <div class="st-row"><span>@T("Settings.AllowDownload")</span><label class="st-switch"><input type="checkbox" @bind="_m.AllowDownload" /><span></span></label></div>
+            <div class="st-row"><span>@T("Settings.AllowExport")</span><label class="st-switch"><input type="checkbox" @bind="_m.AllowExport" /><span></span></label></div>
+            <div class="st-row"><span>@T("Settings.AutoDeleteInactive")</span><input class="st-input sm" type="number" @bind="_m.AutoDelete" /></div>
+        </SettingsSection>
+
+        <SettingsSection Title="@("5. " + T("Settings.Security"))" Subtitle="@T("Settings.SecuritySub")" Icon="@IcoShield" DefaultOpen="false">
+            <div class="st-row"><span>@T("Settings.RestrictIp")</span><label class="st-switch"><input type="checkbox" @bind="_m.RestrictIp" /><span></span></label></div>
+            <div class="st-row"><span>@T("Settings.AuditLog")</span><label class="st-switch"><input type="checkbox" @bind="_m.Audit" /><span></span></label></div>
+            <div class="st-row"><span>@T("Settings.EncryptRest")</span><input class="st-input sm" value="@T("Settings.Enabled")" disabled /></div>
+            <div class="st-row"><span>@T("Settings.EncryptTransit")</span><input class="st-input sm" value="@T("Settings.Enabled")" disabled /></div>
+            <div class="st-row"><span>@T("Settings.LoginNotify")</span><label class="st-switch"><input type="checkbox" @bind="_m.LoginNotify" /><span></span></label></div>
+            <div class="st-row"><span>@T("Settings.ConcurrentLogins")</span><label class="st-switch"><input type="checkbox" @bind="_m.Concurrent" /><span></span></label></div>
+        </SettingsSection>
+    </div>
+
+    <div class="st-sys-sec6">
+        <SettingsSection Title="@("6. " + T("Settings.SysPrefs"))" Subtitle="@T("Settings.SysPrefsSub")" Icon="@IcoGear" DefaultOpen="false">
+            <div class="st-grid c3">
+                <div class="st-field"><label>@T("Settings.DateFormat")</label>
+                    <select class="st-select" @bind="_m.DateFmt">@foreach (var f in new[] { "DD MMM YYYY (e.g. 10 Mar 2026)", "DD/MM/YYYY", "MM/DD/YYYY", "YYYY-MM-DD" }) { <option value="@f">@f</option> }</select></div>
+                <div class="st-field"><label>@T("Settings.MeasurementUnit")</label>
+                    <select class="st-select" @bind="_m.Unit">@foreach (var f in new[] { "Metric (mm, kg)", "Imperial (in, lb)" }) { <option value="@f">@f</option> }</select></div>
+                <div class="st-field"><label>@T("Settings.SystemTheme")</label>
+                    <select class="st-select" @bind="_m.Theme">@foreach (var f in new[] { "Light (Default)", "Dark" }) { <option value="@f">@f</option> }</select></div>
+                <div class="st-field"><label>@T("Settings.NumberFormat")</label>
+                    <select class="st-select" @bind="_m.NumFmt">@foreach (var f in new[] { "1,234.56", "1.234,56", "1 234,56" }) { <option value="@f">@f</option> }</select></div>
+                <div class="st-field"><label>@T("Settings.DecimalPlaces")</label>
+                    <select class="st-select" @bind="_m.Decimals">@foreach (var n in new[] { 0, 1, 2, 3, 4 }) { <option value="@n">@n</option> }</select></div>
+                <div class="st-field"><label>@T("Settings.LandingPage")</label>
+                    <select class="st-select" @bind="_m.Landing">@foreach (var f in new[] { "Dashboard", "Inspection Schedule", "Summary Inspections" }) { <option value="@f">@f</option> }</select></div>
+            </div>
+        </SettingsSection>
+    </div>
+
+    <button class="st-btn primary block st-m-save" @onclick="Save">@T("Settings.SaveChanges")</button>
+</div>
+
+@code {
+    private bool _saved;
+    private const string IcoBuilding = "<svg viewBox='0 0 24 24'><rect x='5' y='3' width='14' height='18' rx='1.5'/><path d='M9 7h2M13 7h2M9 11h2M13 11h2M9 15h2M13 15h2'/></svg>";
+    private const string IcoUsers = "<svg viewBox='0 0 24 24'><circle cx='9' cy='8' r='3.5'/><path d='M2.5 20a6.5 6.5 0 0 1 13 0M16 4.5a3.5 3.5 0 0 1 0 7M18 14a6 6 0 0 1 3.5 5.5'/></svg>";
+    private const string IcoMail = "<svg viewBox='0 0 24 24'><rect x='3' y='5' width='18' height='14' rx='2'/><path d='M3 7l9 6 9-6'/></svg>";
+    private const string IcoDb = "<svg viewBox='0 0 24 24'><ellipse cx='12' cy='6' rx='7' ry='3'/><path d='M5 6v6c0 1.7 3.1 3 7 3s7-1.3 7-3V6M5 12v6c0 1.7 3.1 3 7 3s7-1.3 7-3v-6'/></svg>";
+    private const string IcoShield = "<svg viewBox='0 0 24 24'><path d='M12 3l7 3v5c0 4.5-3 8-7 9.5C8 19 5 15.5 5 11V6z'/><path d='M9 11.5l2 2 4-4'/></svg>";
+    private const string IcoGear = "<svg viewBox='0 0 24 24'><circle cx='12' cy='12' r='3'/><path d='M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1'/></svg>";
+
+    private static readonly string[] _zones =
+    {
+        "(UTC+07:00) Bangkok, Hanoi, Jakarta", "(UTC+08:00) Kuala Lumpur, Singapore", "(UTC+08:00) Beijing, Hong Kong", "(UTC+00:00) London",
+    };
+
+    private SysModel _m = new();
+    private bool _failed;
+
+    private class SysModel
+    {
+        // Thông tin công ty: mặc định lấy theo hồ sơ đăng ký (api/billing), không còn dữ liệu mẫu
+        public string CompanyName { get; set; } = "";
+        public string Email { get; set; } = "";
+        public string Code { get; set; } = "";
+        public string Phone { get; set; } = "";
+        public string Country { get; set; } = "";
+        public string Address { get; set; } = "";
+        public string TimeZone { get; set; } = "(UTC+07:00) Bangkok, Hanoi, Jakarta";
+        public string Industry { get; set; } = "Outdoor Furniture";
+        public string Lang { get; set; } = "English";
+        public string Currency { get; set; } = "USD (US Dollar)";
+        public bool SelfReg { get; set; }
+        public bool AdminApproval { get; set; } = true;
+        public int PwdExpiry { get; set; } = 90;
+        public int PwdMin { get; set; } = 8;
+        public bool TwoFa { get; set; } = true;
+        public int SessionTimeout { get; set; } = 60;
+        public bool NotifyAdmin { get; set; } = true;
+        public string EmailLang { get; set; } = "English";
+        public List<bool> EventsOn { get; set; } = new() { true, true, true, true, true, true };
+        public string Quota { get; set; } = "500 GB (Business Plan)";
+        public int Retention { get; set; } = 5;
+        public bool AllowDownload { get; set; } = true;
+        public bool AllowExport { get; set; } = true;
+        public int AutoDelete { get; set; } = 180;
+        public bool RestrictIp { get; set; }
+        public bool Audit { get; set; } = true;
+        public bool LoginNotify { get; set; } = true;
+        public bool Concurrent { get; set; } = true;
+        public string DateFmt { get; set; } = "DD MMM YYYY (e.g. 10 Mar 2026)";
+        public string Unit { get; set; } = "Metric (mm, kg)";
+        public string Theme { get; set; } = "Light (Default)";
+        public string NumFmt { get; set; } = "1,234.56";
+        public int Decimals { get; set; } = 2;
+        public string Landing { get; set; } = "Dashboard";
+    }
+
+    private class Ev { public string Key = ""; public bool On = true; }
+    private readonly List<Ev> _events = new()
+    {
+        new() { Key = "Settings.Ev1" }, new() { Key = "Settings.Ev2" }, new() { Key = "Settings.Ev3" },
+        new() { Key = "Settings.Ev4" }, new() { Key = "Settings.Ev5" }, new() { Key = "Settings.Ev6" },
+    };
+
+    private string? _planQuota;
+    private class BillingLite
+    {
+        public bool Applies { get; set; }
+        public Co? Company { get; set; }
+        public Sub? Subscription { get; set; }
+        public class Co { public string Name { get; set; } = ""; public string Email { get; set; } = ""; public string Phone { get; set; } = ""; public string Country { get; set; } = ""; public string Address { get; set; } = ""; }
+        public class Sub { public string Plan { get; set; } = ""; public int StorageGb { get; set; } }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        BillingLite? b = null;
+        try
+        {
+            var token = await SessionStorage.GetItemAsync<string>("auth_token");
+            if (!string.IsNullOrEmpty(token)) Http.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+            b = await System.Net.Http.Json.HttpClientJsonExtensions.GetFromJsonAsync<BillingLite>(Http, "api/billing");
+        }
+        catch { }
+        if (b?.Applies == true && b.Subscription != null) _planQuota = $"{b.Subscription.StorageGb:N0} GB ({b.Subscription.Plan})";
+        if (b?.Company is { } co) { _m.CompanyName = co.Name; _m.Email = co.Email; _m.Phone = co.Phone; _m.Country = co.Country; _m.Address = co.Address; }
+
+        var m = await Settings.LoadAsync<SysModel>(SettingsClient.SystemSection);
+        if (m == null) return;
+        // bản lưu cũ còn dữ liệu mẫu → thay bằng hồ sơ thật
+        if (m.CompanyName == "TOYABR HOUSEWARE CO., LTD" && b?.Company != null) { m.CompanyName = _m.CompanyName; m.Email = _m.Email; m.Phone = _m.Phone; m.Country = _m.Country; m.Address = _m.Address; m.Code = ""; }
+        _m = m;
+        for (int i = 0; i < _events.Count && i < m.EventsOn.Count; i++) _events[i].On = m.EventsOn[i];
+    }
+
+    private async Task Save()
+    {
+        _m.EventsOn = _events.Select(e => e.On).ToList();
+        var ok = await Settings.SaveAsync(SettingsClient.SystemSection, _m);
+        _saved = ok; _failed = !ok; StateHasChanged();
+        await Task.Delay(2500);
+        _saved = false; _failed = false; StateHasChanged();
+    }
+}

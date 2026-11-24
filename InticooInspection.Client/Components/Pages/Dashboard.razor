@@ -1,636 +1,1025 @@
-@page "/dashboard"
-@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Admin")]
+﻿@page "/dashboard"
+@attribute [Microsoft.AspNetCore.Authorization.Authorize]
 @using System.Net.Http.Json
-@using System.Text.Json.Serialization
+@using System.Globalization
 @inject HttpClient Http
 @inject NavigationManager Navigation
+@inject IJSRuntime JS
+@inherits LocalizedComponentBase
 
-<PageTitle>Dashboard - Inticoo</PageTitle>
+<PageAccessGuard RequiredPage="Dashboard">
+<PageTitle>@T("Dashboard.QualityDashboardInticoo")</PageTitle>
 
-@if (_loading)
-{
-    <div class="db-loading">
-        <div class="db-spinner"></div>
-        <span>Loading dashboard...</span>
+<div class="qd-page">
+
+    <!-- ── Header + Filters ── -->
+    <div class="qd-header">
+        <div class="qd-title-block">
+            <h1 class="qd-title">@T("Dashboard.QualityDashboard")</h1>
+            <div class="qd-subtitle">
+                <span class="qd-live-dot"></span>
+                <span class="qd-hide-m">@T("Dashboard.RealTimeQualityOverviewForYour")</span>
+                <span class="qd-show-m">@T("Dashboard.RealTimeQualityOverview")</span>
+                @if (_data != null)
+                {
+                    <span class="qd-update">@T("Dashboard.Updated", _data.UpdatedAt.ToLocalTime().ToString("hh:mm tt"))</span>
+                }
+            </div>
+        </div>
+        <button type="button" class="qd-ftoggle @(_fOpen ? "on" : "") @(_vendor != "" || _customer != "" ? "has" : "")" @onclick="() => _fOpen = !_fOpen" aria-label="@T("Common.Filters")">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5h18l-7 8v6l-4 2v-8z"/></svg>
+        </button>
+        <div class="qd-filters @(_fOpen ? "qd-fopen" : "")">
+            <div class="qd-filter">
+                <label>@T("Dashboard.Period")</label>
+                <div class="qd-period">
+                    <svg class="qd-cal" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>
+                    <select value="@($"{_year}-{_month:D2}")" @onchange="OnPeriod">
+                        @foreach (var (py, pm) in PeriodOptions())
+                        { <option value="@($"{py}-{pm:D2}")">@MonthAbbr(pm) @py</option> }
+                    </select>
+                </div>
+            </div>
+            <div class="qd-filter">
+                <label>@T("Common.Customer")</label>
+                <select value="@_customer" @onchange="e => OnFilter(() => _customer = e.Value?.ToString() ?? string.Empty)">
+                    <option value="">@T("Dashboard.AllCustomers")</option>
+                    @foreach (var c in _data?.Filters.Customers ?? new()) { <option value="@c.Id">@c.Name</option> }
+                </select>
+            </div>
+            <div class="qd-filter">
+                <label>@T("Dashboard.SupplierVendor")</label>
+                <select value="@_vendor" @onchange="e => OnFilter(() => _vendor = e.Value?.ToString() ?? string.Empty)">
+                    <option value="">@T("Dashboard.AllFactories")</option>
+                    @foreach (var v in _data?.Filters.Vendors ?? new()) { <option value="@v.Id">@v.Name</option> }
+                </select>
+            </div>
+            <div class="qd-filter qd-hide-m">
+                <label>@T("Common.ProductCategory")</label>
+                <select value="@_category" @onchange="e => OnFilter(() => _category = e.Value?.ToString() ?? string.Empty)">
+                    <option value="">@T("Common.AllCategories")</option>
+                    @foreach (var c in _data?.Filters.Categories ?? new()) { <option value="@c">@TE("Opt", c)</option> }
+                </select>
+            </div>
+            <button class="qd-refresh qd-hide-m" @onclick="LoadData" title="@T("Dashboard.Refresh")">
+                <svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                    <path d="M4 4a8 8 0 0 1 12 0M16 16a8 8 0 0 1-12 0M4 4v4h4M16 16v-4h-4"/>
+                </svg>
+            </button>
+        </div>
     </div>
-}
-else if (_error != null)
-{
-    <div class="db-error">⚠ @_error</div>
-}
-else if (_data != null)
-{
-    <div class="db-page">
 
-        <!-- ── Header ── -->
-        <div class="db-header">
-            <div>
-                <h1 class="db-title">Overview</h1>
-                <div class="db-subtitle">
-                    <span class="db-live-dot"></span>
-                    Live data from API
-                    <span class="db-update-time">· Update @_data.UpdatedAt.ToLocalTime().ToString("hh:mmtt")</span>
-                    <button class="db-refresh-btn" @onclick="LoadData" title="Refresh">
-                        <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
-                            <path d="M4 4a8 8 0 0 1 12 0M16 16a8 8 0 0 1-12 0M4 4v4h4M16 16v-4h-4"/>
-                        </svg>
-                    </button>
+    @if (_loading && _data == null)
+    {
+        <div class="qd-loading"><div class="qd-spinner"></div><span>@T("Dashboard.LoadingDashboard")</span></div>
+    }
+    else if (_error != null)
+    {
+        <div class="qd-error">⚠ @_error <button @onclick="LoadData">@T("Common.Retry")</button></div>
+    }
+    else if (_data != null)
+    {
+        var k = _data.Kpi;
+        <div class="@(_loading ? "qd-dim" : "")">
+
+        <div class="qd-kpi-wrap">
+        <!-- ── KPI row 1: Inspection Summary + Defects & CAPA ── -->
+        <div class="qd-kgroups-1">
+            <div class="qd-kgroup g-insp">
+                <div class="qd-kgroup-t">@T("Dashboard.InspectionSummary")</div>
+                <div class="qd-kpis qd-kpis-4">
+                    @Kpi(T("Dashboard.TotalInspections"), k.TotalInspections.ToString("N0"), Delta(k.TotalInspections, k.TotalInspectionsPrev, false, ""), "#3b82f6", "#eff6ff", IconClipboard)
+                    @Kpi(T("Dashboard.AwaitingInspection"), k.Awaiting.ToString("N0"), Delta(k.Awaiting, k.AwaitingPrev, true, ""), "#f59e0b", "#fffbeb", IconClock)
+                    @Kpi(T("Dashboard.PassRate"), $"{k.PassRate:0.#}%", Delta(k.PassRate, k.PassRatePrev, false, "%"), "#16a34a", "#ecfdf5", IconCheck)
+                    @Kpi(T("Dashboard.FailedInspections"), k.Failed.ToString("N0"), Delta(k.Failed, k.FailedPrev, true, ""), "#ef4444", "#fef2f2", IconX)
+                </div>
+            </div>
+            <div class="qd-kgroup g-def">
+                <div class="qd-kgroup-t">@T("Dashboard.DefectsCAPA")</div>
+                <div class="qd-kpis qd-kpis-2">
+                    @Kpi(T("Dashboard.DefectRate"), $"{k.DefectRate:0.##}%", Delta(k.DefectRate, k.DefectRatePrev, true, "%"), "#e11d48", "#fff1f2", IconPercent)
+                    @Kpi(T("Dashboard.OpenCAPA"), k.OpenCapa?.ToString() ?? "0", ((k.OverdueCapa ?? 0) > 0 ? T("Dashboard.Overdue", k.OverdueCapa) : T("Dashboard.NoOverdueCAPA"), (k.OverdueCapa ?? 0) > 0 ? "bad" : "good"), "#dc2626", "#fef2f2", IconDoc)
                 </div>
             </div>
         </div>
 
-        <!-- ── Summary Cards ── -->
-        <div class="db-cards-grid">
-            <div class="db-card" style="--accent:#3b82f6;">
-                <div class="db-card-icon" style="background:#eff6ff;">
-                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="1.8">
-                        <path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/>
-                        <rect x="9" y="3" width="6" height="4" rx="1"/>
-                        <path d="M9 12l2 2 4-4" stroke-linecap="round" stroke-linejoin="round"/>
-                    </svg>
-                </div>
-                <div class="db-card-badge" style="background:#dbeafe;color:#1d4ed8;">@_data.TotalInspections jobs</div>
-                <div class="db-card-value">@_data.TotalInspections</div>
-                <div class="db-card-label">Total Inspections</div>
-            </div>
-
-            <div class="db-card" style="--accent:#f59e0b;">
-                <div class="db-card-icon" style="background:#fffbeb;">
-                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="1.8">
-                        <circle cx="12" cy="12" r="10"/>
-                        <path d="M12 6v6l4 2" stroke-linecap="round"/>
-                    </svg>
-                </div>
-                <div class="db-card-badge" style="background:#fef3c7;color:#b45309;">@_data.PendingInspections active</div>
-                <div class="db-card-value">@_data.PendingInspections</div>
-                <div class="db-card-label">Pending</div>
-            </div>
-
-            <div class="db-card" style="--accent:#8b5cf6;">
-                <div class="db-card-icon" style="background:#f5f3ff;">
-                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#8b5cf6" stroke-width="1.8">
-                        <circle cx="8" cy="7" r="4"/><path d="M2 21c0-4.418 2.686-8 6-8"/>
-                        <circle cx="17" cy="7" r="3"/><path d="M14 21c0-3.314 1.343-6 3-6s3 2.686 3 6"/>
-                    </svg>
-                </div>
-                <div class="db-card-value">@_data.CustomerCount</div>
-                <div class="db-card-label">Customers</div>
-            </div>
-
-            <div class="db-card" style="--accent:#ef4444;">
-                <div class="db-card-icon" style="background:#fef2f2;">
-                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="1.8">
-                        <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
-                        <polyline points="9 22 9 12 15 12 15 22"/>
-                    </svg>
-                </div>
-                <div class="db-card-value">@_data.VendorCount</div>
-                <div class="db-card-label">Vendors</div>
-            </div>
-
-            <div class="db-card" style="--accent:#10b981;">
-                <div class="db-card-icon" style="background:#ecfdf5;">
-                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="1.8">
-                        <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
-                    </svg>
-                </div>
-                <div class="db-card-value">@_data.ProductCount</div>
-                <div class="db-card-label">Products</div>
-            </div>
-
-            <div class="db-card" style="--accent:#06b6d4;">
-                <div class="db-card-icon" style="background:#ecfeff;">
-                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#06b6d4" stroke-width="1.8">
-                        <circle cx="12" cy="8" r="4"/>
-                        <path d="M4 20c0-4 3.582-7 8-7s8 3 8 7"/>
-                        <path d="M16 11l2 2 3-3" stroke-linecap="round" stroke-linejoin="round"/>
-                    </svg>
-                </div>
-                <div class="db-card-value">@_data.InspectorCount</div>
-                <div class="db-card-label">Inspectors</div>
+        <!-- ── KPI row 2: Key Volume & Resources ── -->
+        <div class="qd-kgroup g-vol">
+            <div class="qd-kgroup-t">@T("Dashboard.KeyVolumeResources")</div>
+            <div class="qd-kpis qd-kpis-5">
+                @Kpi(T("Dashboard.TotalProducts"), k.Products.ToString("N0"), NewDelta(k.ProductsNew), "#8b5cf6", "#f5f3ff", IconBox)
+                @Kpi(T("Dashboard.TotalInspectors"), k.Inspectors.ToString("N0"), NewDelta(k.InspectorsNew), "#2563eb", "#eff6ff", IconInspector)
+                @Kpi(T("Dashboard.TotalQuantityShipped"), T("Dashboard.N0N0Pcs", k.ShippedQty), Delta(k.ShippedQty, k.ShippedQtyPrev, false, ""), "#0ea5e9", "#f0f9ff", IconTruck, true)
+                @Kpi(T("Dashboard.TotalVendors"), k.Vendors.ToString("N0"), NewDelta(k.VendorsNew), "#7c3aed", "#f5f3ff", IconFactory)
+                @Kpi(T("Dashboard.TotalCustomers"), k.Customers.ToString("N0"), NewDelta(k.CustomersNew), "#06b6d4", "#ecfeff", IconUsers)
             </div>
         </div>
-
-        <!-- ── Inspections by Month ── -->
-        <div class="db-section-title">Inspections (Monthly)</div>
-        <div class="db-row">
-            <div class="db-chart-card" style="flex:1;">
-                <div class="db-mini-stats">
-                    <div class="db-mini-stat">
-                        <span class="db-mini-val" style="color:#3b82f6;">@_data.MonthCompleted</span>
-                        <span class="db-mini-lbl">Completed</span>
-                    </div>
-                    <div class="db-mini-divider"></div>
-                    <div class="db-mini-stat">
-                        <span class="db-mini-val" style="color:#f59e0b;">@_data.MonthPending</span>
-                        <span class="db-mini-lbl">Pending</span>
-                    </div>
-                </div>
-                <!-- Bar chart by month -->
-                <div class="db-barchart">
-                    @{var maxVal = _data.ByMonth.Max(m => m.Completed + m.Pending);}
-                    @{var months = new[]{"JAN","FEB","MAR","APR","MAY","JUN","JUL","AUG","SEP","OCT","NOV","DEC"};}
-                    @foreach (var m in _data.ByMonth)
-                    {
-                        var total2 = m.Completed + m.Pending;
-                        var heightPct = maxVal > 0 ? (double)total2 / maxVal * 100 : 0;
-                        var compPct   = total2 > 0 ? (double)m.Completed / total2 * 100 : 0;
-                        <div class="db-bar-col">
-                            @if (total2 > 0)
-                            {
-                                <div class="db-bar-num">@total2</div>
-                                <div class="db-bar-wrap" style="height:@((int)heightPct)%">
-                                    <div class="db-bar-seg completed" style="height:@((int)compPct)%;"></div>
-                                    <div class="db-bar-seg pending" style="height:@((int)(100-compPct))%;"></div>
-                                </div>
-                            }
-                            else
-                            {
-                                <div class="db-bar-num" style="opacity:0">0</div>
-                                <div class="db-bar-wrap" style="height:4px;background:#e5e7eb;border-radius:2px;"></div>
-                            }
-                            <div class="db-bar-label">@months[m.Month - 1]</div>
-                        </div>
-                    }
-                </div>
-                <div class="db-legend">
-                    <span class="db-leg-item"><span class="db-leg-dot" style="background:#3b82f6;"></span>Completed</span>
-                    <span class="db-leg-item"><span class="db-leg-dot" style="background:#f59e0b;"></span>Pending</span>
-                </div>
-            </div>
         </div>
 
-        <!-- ── Inspection Types by Month ── -->
-        <div class="db-section-title">Inspection Types (Monthly)
-            <span class="db-section-sub">PPT &nbsp;·&nbsp; DPI &nbsp;·&nbsp; PST</span>
-        </div>
-        <div class="db-row">
-            <div class="db-chart-card" style="flex:1;">
-                <div class="db-mini-stats">
-                    <div class="db-mini-stat">
-                        <span class="db-mini-val" style="color:#3b82f6;">@_data.MonthPpt</span>
-                        <span class="db-mini-lbl">Pre-Production</span>
-                    </div>
-                    <div class="db-mini-divider"></div>
-                    <div class="db-mini-stat">
-                        <span class="db-mini-val" style="color:#f59e0b;">@_data.MonthDpi</span>
-                        <span class="db-mini-lbl">During Production</span>
-                    </div>
-                    <div class="db-mini-divider"></div>
-                    <div class="db-mini-stat">
-                        <span class="db-mini-val" style="color:#10b981;">@_data.MonthPst</span>
-                        <span class="db-mini-lbl">Pre-Shipment</span>
-                    </div>
+        <!-- ── Charts row ── -->
+        <div class="qd-grid-2">
+            <!-- AQL Inspection Quantity & Defects -->
+            <div class="qd-card">
+                <div class="qd-card-head">
+                    <span class="qd-card-title">@T("Dashboard.AQLInspectionQuantityDefectsMonthly")<span class="qd-hide-m"> — @_data.Year</span></span>
+                    @VendorMini()
                 </div>
-                <!-- Type bar chart by month -->
-                <div class="db-barchart">
-                    @{var maxType = _data.TypeByMonth.Max(m => m.Ppt + m.Dpi + m.Pst);}
-                    @foreach (var m in _data.TypeByMonth)
-                    {
-                        var total3 = m.Ppt + m.Dpi + m.Pst;
-                        var hp = maxType > 0 ? (double)total3 / maxType * 100 : 0;
-                        <div class="db-bar-col">
-                            @if (total3 > 0)
-                            {
-                                <div class="db-bar-num">@total3</div>
-                                <div class="db-bar-wrap" style="height:@((int)hp)%">
-                                    @if (m.Ppt > 0) { <div class="db-bar-seg" style="height:@((int)((double)m.Ppt/total3*100))%;background:#3b82f6;"></div> }
-                                    @if (m.Dpi > 0) { <div class="db-bar-seg" style="height:@((int)((double)m.Dpi/total3*100))%;background:#f59e0b;"></div> }
-                                    @if (m.Pst > 0) { <div class="db-bar-seg" style="height:@((int)((double)m.Pst/total3*100))%;background:#10b981;"></div> }
-                                </div>
-                            }
-                            else
-                            {
-                                <div class="db-bar-num" style="opacity:0">0</div>
-                                <div class="db-bar-wrap" style="height:4px;background:#e5e7eb;border-radius:2px;"></div>
-                            }
-                            <div class="db-bar-label">@months[m.Month - 1]</div>
-                        </div>
-                    }
+                @((MarkupString)AqlChartSvg())
+                <div class="qd-legend">
+                    <span><i style="background:#2563eb"></i>@T("Dashboard.AQLQuantityPcs")</span>
+                    <span><i style="background:#ef4444"></i>@T("Dashboard.CriticalDefect")</span>
+                    <span><i style="background:#f59e0b"></i>@T("Dashboard.MajorDefect")</span>
+                    <span><i style="background:#facc15"></i>@T("Dashboard.MinorDefect")</span>
+                    <span><i class="qd-line-ico"></i>@T("Dashboard.DefectRate2")</span>
                 </div>
-                <div class="db-legend">
-                    <span class="db-leg-item"><span class="db-leg-dot" style="background:#3b82f6;"></span>PPT</span>
-                    <span class="db-leg-item"><span class="db-leg-dot" style="background:#f59e0b;"></span>DPI</span>
-                    <span class="db-leg-item"><span class="db-leg-dot" style="background:#10b981;"></span>PST</span>
-                </div>
-            </div>
-        </div>
-
-        <!-- ── Bottom Row: Recent Inspections full width ── -->
-        <div class="db-row" style="align-items:flex-start;gap:20px;flex-wrap:wrap;">
-
-            <!-- Recent Inspections — full width on mobile, 2/3 on desktop -->
-            <div class="db-table-card db-main-col" style="flex:2;min-width:300px;">
-                <div class="db-table-header">
-                    <span class="db-table-title">Recent Inspections</span>
-                    <div class="db-tab-group">
-                        @foreach (var tab in new[]{"All","Completed","Pending","Cancelled"})
-                        {
-                            <button class="db-tab @(_activeTab == tab ? "active" : "")"
-                                    @onclick="() => _activeTab = tab">@tab</button>
-                        }
-                    </div>
-                    <span class="db-table-count">@FilteredInspections.Count()/@(_data.RecentInspections.Count) records</span>
-                </div>
-                <div class="db-table-wrap">
-                    <table class="db-table">
-                        <thead>
-                            <tr>
-                                <th>JOB#</th>
-                                <th>CUSTOMERS / CATEGORY</th>
-                                <th>INSPECTOR NAME</th>
-                            </tr>
-                        </thead>
+                <div class="qd-tbl-wrap qd-hide-m">
+                    <table class="qd-mtbl">
+                        <thead><tr><th></th>@foreach (var mn in StackedBars.MonthLabels) { <th>@mn</th> }</tr></thead>
                         <tbody>
-                            @foreach (var r in FilteredInspections)
-                            {
-                                <tr @onclick="() => GoToReport(r.JobNumber)" style="cursor:pointer;">
-                                    <td>
-                                        <span class="db-type-badge @r.InspType.ToLower()">@r.InspType</span>
-                                        <div class="db-job-num">@(r.JobNumber ?? "—")</div>
-                                        <span class="db-status-badge @r.Status.ToLower()">@r.Status</span>
-                                    </td>
-                                    <td>
-                                        <div class="db-cust-name">@(r.CustomerName ?? "—")</div>
-                                        <div class="db-cust-cat">@(r.ProductCategory ?? "—")</div>
-                                    </td>
-                                    <td>
-                                        <div class="db-inspector">@(r.InspectorName ?? "—")</div>
-                                        <div class="db-date">@r.Date.ToString("d MMM yyyy")</div>
-                                    </td>
-                                </tr>
-                            }
-                            @if (!FilteredInspections.Any())
-                            {
-                                <tr><td colspan="4" style="text-align:center;padding:24px;color:#9ca3af;">No records</td></tr>
-                            }
+                            <tr><td>@T("Dashboard.AQLQuantityPcs")</td>@foreach (var m in _data.Monthly) { <td>@Num(m.AqlQty)</td> }</tr>
+                            <tr class="c-crit"><td>@T("Dashboard.CriticalDefect")</td>@foreach (var m in _data.Monthly) { <td>@Num(m.Critical)</td> }</tr>
+                            <tr class="c-maj"><td>@T("Dashboard.MajorDefect")</td>@foreach (var m in _data.Monthly) { <td>@Num(m.Major)</td> }</tr>
+                            <tr class="c-min"><td>@T("Dashboard.MinorDefect")</td>@foreach (var m in _data.Monthly) { <td>@Num(m.Minor)</td> }</tr>
+                            <tr class="fw"><td>@T("Dashboard.TotalDefects")</td>@foreach (var m in _data.Monthly) { <td>@Num(m.TotalDefects)</td> }</tr>
+                            <tr class="c-rate"><td>@T("Dashboard.DefectRate2")</td>@foreach (var m in _data.Monthly) { <td>@(m.AqlQty > 0 ? $"{m.DefectRate:0.0}%" : "")</td> }</tr>
                         </tbody>
                     </table>
                 </div>
             </div>
 
-            <!-- Right column: Quick Actions + Top Lists -->
-            <div class="db-side-col" style="flex:1;min-width:0;display:flex;flex-direction:column;gap:16px;">
-
-                <!-- Quick Actions -->
-                <div class="db-action-card">
-                    <div class="db-action-title">Quick Actions</div>
-                    <NavLink href="/inspections/new" class="db-action-btn primary">
-                        <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 4v12M4 10h12" stroke-linecap="round"/></svg>
-                        New Inspection
-                    </NavLink>
-                    <NavLink href="/customers" class="db-action-btn">
-                        <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="8" cy="7" r="3"/><path d="M2 17c0-3.314 2.686-6 6-6s6 2.686 6 6"/></svg>
-                        New Customer
-                    </NavLink>
-                    <NavLink href="/suppliers" class="db-action-btn">
-                        <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 9l7-6 7 6v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z"/></svg>
-                        Register New Vendor
-                    </NavLink>
-                    <NavLink href="/users" class="db-action-btn">
-                        <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="10" cy="7" r="3.5"/><path d="M3 18c0-3.866 3.134-7 7-7s7 3.134 7 7"/></svg>
-                        Register New Inspector
-                    </NavLink>
-                </div>
-
-                <!-- Top Customers -->
-                <div class="db-rank-card">
-                    <div class="db-rank-header">
-                        <span class="db-rank-title">Top Customers</span>
-                        <span class="db-rank-sub">Most Inspection</span>
+            <div class="qd-col">
+                <!-- Monthly Inspections by Stage -->
+                <div class="qd-card">
+                    <div class="qd-card-head"><span class="qd-card-title">@T("Dashboard.MonthlyInspectionsByStage")<span class="qd-hide-m"> — @_data.Year</span></span>@VendorMini()</div>
+                    <StackedBars Labels="StackedBars.MonthLabels" Height="@(_compact ? 110 : 130)" BarWidth="@(_compact ? 22 : 28)" MinSeg="@(_compact ? 13 : 15)"
+                                 Series="@(new() {
+                                     new(T("Dashboard.PreProductionPPI"),    "#10b981", _data.Monthly.Select(m => m.Ppi).ToList()),
+                                     new(T("Dashboard.DuringProductionDPI"), "#3b82f6", _data.Monthly.Select(m => m.Dpi).ToList()),
+                                     new(T("Dashboard.PreShipmentPSI"),      "#f59e0b", _data.Monthly.Select(m => m.Psi).ToList()),
+                                     new(T("Dashboard.ContainerLoadingCheckCLC"), "#8b5cf6", _data.Monthly.Select(m => m.Clc).ToList()) })" />
+                    <div class="qd-tbl-wrap">
+                        <table class="qd-mtbl">
+                            <thead><tr><th>@T("Dashboard.Stage")</th>@foreach (var mn in StackedBars.MonthLabels) { <th>@mn</th> }</tr></thead>
+                            <tbody>
+                                <tr><td>@T("Dashboard.PreProductionPPI")</td>@foreach (var m in _data.Monthly) { <td>@Num(m.Ppi)</td> }</tr>
+                                <tr><td>@T("Dashboard.DuringProductionDPI")</td>@foreach (var m in _data.Monthly) { <td>@Num(m.Dpi)</td> }</tr>
+                                <tr><td>@T("Dashboard.PreShipmentPSI")</td>@foreach (var m in _data.Monthly) { <td>@Num(m.Psi)</td> }</tr>
+                                <tr><td>@T("Dashboard.ContainerLoadingCheckCLC")</td>@foreach (var m in _data.Monthly) { <td>@Num(m.Clc)</td> }</tr>
+                                <tr class="fw"><td>@T("Dashboard.TotalInspections")</td>@foreach (var m in _data.Monthly) { <td>@Num(m.Total)</td> }</tr>
+                            </tbody>
+                        </table>
                     </div>
-                    @{ int ci = 1; }
-                    @foreach (var c in _data.TopCustomers)
-                    {
-                        <div class="db-rank-row">
-                            <span class="db-rank-num">@ci</span>
-                            <div class="db-rank-info">
-                                <div class="db-rank-name">@c.CustomerName</div>
-                                <div class="db-rank-id">@c.CustomerId</div>
-                            </div>
-                            <span class="db-rank-count">@c.Count</span>
-                        </div>
-                        ci++;
-                    }
-                    @if (!_data.TopCustomers.Any())
-                    { <div style="text-align:center;padding:12px;color:#9ca3af;font-size:13px;">No data</div> }
                 </div>
 
-                <!-- Top Inspectors -->
-                <div class="db-rank-card">
-                    <div class="db-rank-header">
-                        <span class="db-rank-title">Top Inspectors</span>
-                        <span class="db-rank-sub">Most Jobs</span>
-                    </div>
-                    @{ int ii = 1; }
-                    @foreach (var insp in _data.TopInspectors)
-                    {
-                        <div class="db-rank-row">
-                            <span class="db-rank-num">@ii</span>
-                            <div class="db-rank-info">
-                                <div class="db-rank-name">@insp.InspectorName</div>
-                                <div class="db-rank-id">@insp.InspectorId</div>
-                            </div>
-                            <span class="db-rank-count">@insp.Count</span>
-                        </div>
-                        ii++;
-                    }
-                    @if (!_data.TopInspectors.Any())
-                    { <div style="text-align:center;padding:12px;color:#9ca3af;font-size:13px;">No data</div> }
+                <!-- Monthly Quantity Shipped -->
+                <div class="qd-card">
+                    <div class="qd-card-head"><span class="qd-card-title">@T("Dashboard.MonthlyQuantityShippedPcs")<span class="qd-hide-m"> — @_data.Year</span></span>@CustomerMini()</div>
+                    @((MarkupString)ShippedChartSvg())
                 </div>
-
             </div>
         </div>
 
-    </div>
-}
+        <!-- ── Recent Inspections + Supplier / Vendor Performance ── -->
+        <div class="qd-grid-2eq">
+            <div class="qd-card">
+                <div class="qd-card-head">
+                    <span class="qd-card-title">@T("Dashboard.RecentInspections")</span>
+                    <NavLink href="/inspections" class="qd-link">@T("Dashboard.ViewAll")</NavLink>
+                </div>
+                <div class="qd-tbl-wrap">
+                    <table class="qd-ltbl qd-ltbl-sm">
+                        <thead><tr><th>@T("Dashboard.InspectionNo")</th><th>@T("Common.Date")</th><th>@T("Common.Vendor")</th><th>@T("Common.Product")</th><th>@T("Dashboard.Stage")</th><th>@T("Common.Result")</th></tr></thead>
+                        <tbody>
+                            @foreach (var r in _data.RecentInspections)
+                            {
+                                <tr class="qd-click" @onclick="() => GoReport(r)">
+                                    <td class="fw">@(r.JobNumber ?? "—")</td>
+                                    <td>@r.Date.ToString("yyyy-MM-dd")</td>
+                                    <td class="qd-vname" title="@r.Vendor">@r.Vendor</td>
+                                    <td class="qd-vname" title="@r.Product">@r.Product</td>
+                                    <td><span class="qd-stage @r.Stage.ToLower()">@r.Stage</span></td>
+                                    <td><span class="qd-res @ResultCss(r)">@ResultLabel(r)</span></td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="qd-card">
+                <div class="qd-card-head">
+                    <span class="qd-card-title">@T("Dashboard.SupplierVendorPerformance")</span>
+                    <NavLink href="/vendor-reviews" class="qd-link">@T("Dashboard.ViewAll")</NavLink>
+                </div>
+                <div class="qd-tbl-wrap">
+                <table class="qd-ltbl qd-ltbl-sm qd-vperf">
+                    <thead><tr><th>@T("Common.Vendor")</th><th class="tr">@T("Dashboard.Insp")</th><th class="tr">@T("Dashboard.PassRate")</th><th class="tr">@T("Dashboard.DefectRate")</th><th class="tr">@T("Dashboard.CAPAOverdue")</th><th>@T("Dashboard.Trend")</th></tr></thead>
+                    <tbody>
+                        @if (!_data.VendorPerformance.Any()) { <tr><td colspan="6" class="qd-empty">@T("Dashboard.NoData")</td></tr> }
+                        @foreach (var v in _data.VendorPerformance.Take(6))
+                        {
+                            <tr class="qd-click" @onclick="() => GoVendor(v.VendorId)">
+                                <td class="qd-vname" title="@v.VendorName">@v.VendorName</td>
+                                <td class="tr">@v.Inspections</td>
+                                <td class="tr @(v.PassRate >= 95 ? "ok" : "bad")">@v.PassRate.ToString("0.#")%</td>
+                                <td class="tr @(v.DefectRate <= 5 ? "ok" : "bad")">@v.DefectRate.ToString("0.0")%</td>
+                                <td class="tr @((v.CapaOverdue ?? 0) > 0 ? "bad" : "")">@(v.CapaOverdue ?? 0)</td>
+                                <td class="tc">@(v.Trend == "up" ? "↑" : v.Trend == "down" ? "↓" : "→")</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- ── Top 5 Defect Products + Top 5 Shipment Items ── -->
+        <div class="qd-grid-2eq qd-top">
+            <!-- Top 5 Defect Products -->
+            <div class="qd-card">
+                <div class="qd-card-head">
+                    <span class="qd-card-title">@T("Dashboard.Top5DefectProductsDefects")</span>
+                    <div class="qd-mini-sel">
+                        <select @bind="_severity">
+                            <option value="All">@T("Dashboard.AllSeverity")</option>
+                            <option value="Critical">@T("Common.Critical")</option>
+                            <option value="Major">@T("Common.Major")</option>
+                            <option value="Minor">@T("Common.Minor")</option>
+                        </select>
+                        <select @bind="_defScope">
+                            <option value="Month">@MonthAbbr(_data.Month) @_data.Year</option>
+                            <option value="Year">@T("Dashboard.Year", _data.Year)</option>
+                        </select>
+                    </div>
+                </div>
+                @{
+                    var src = _defScope == "Year" ? _data.TopDefectProductsYear : _data.TopDefectProductsMonth;
+                    var sevTotal = src.Sum(SevValue);
+                    var topDef = src.Where(x => SevValue(x) > 0).OrderByDescending(SevValue).Take(5).ToList();
+                    var maxDef = Math.Max(1, topDef.Select(SevValue).DefaultIfEmpty(0).Max());
+                    var barColors = new[] { "#ef4444", "#f97316", "#facc15", "#3b82f6", "#8b5cf6" };
+                }
+                <div class="qd-tbl-wrap">
+                <table class="qd-ltbl">
+                    <thead><tr><th>#</th><th>@T("Common.Product")</th><th>@T("Dashboard.MainDefect")</th><th class="tr">@T("Dashboard.TotalDefects")</th><th>@T("Dashboard.OfTotal")</th></tr></thead>
+                    <tbody>
+                        @if (!topDef.Any()) { <tr><td colspan="5" class="qd-empty">@T("Dashboard.NoDefectsRecorded")</td></tr> }
+                        @for (int i = 0; i < topDef.Count; i++)
+                        {
+                            var r = topDef[i]; var v = SevValue(r);
+                            <tr>
+                                <td>@(i + 1)</td>
+                                <td>@ProductCell(r.Product, r.ItemNumber, r.PhotoUrl)</td>
+                                <td class="qd-sub2">@r.MainDefect</td>
+                                <td class="tr fw">@v.ToString("N0")</td>
+                                <td><div class="qd-hbar"><div style="width:@Inv(100.0 * v / maxDef)%;background:@barColors[i]"></div><span>@(sevTotal > 0 ? Math.Round(100.0 * v / sevTotal) : 0)%</span></div></td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+                </div>
+            </div>
+
+            <!-- Top 5 Shipment Items -->
+            <div class="qd-card">
+                <div class="qd-card-head">
+                    <span class="qd-card-title">@T("Dashboard.Top5ShipmentItemsQuantity")</span>
+                    <div class="qd-mini-sel">
+                        <select @bind="_shipScope">
+                            <option value="Month">@MonthAbbr(_data.Month) @_data.Year</option>
+                            <option value="Year">@T("Dashboard.Year", _data.Year)</option>
+                        </select>
+                    </div>
+                </div>
+                @{
+                    var ships = _shipScope == "Year" ? _data.TopShipmentsYear : _data.TopShipmentsMonth;
+                    var maxShip = Math.Max(1, ships.Select(x => x.Qty).DefaultIfEmpty(0).Max());
+                }
+                <div class="qd-tbl-wrap">
+                <table class="qd-ltbl">
+                    <thead><tr><th>#</th><th>@T("Common.Product")</th><th class="tr">@T("Dashboard.QtyShipped")</th><th>@T("Dashboard.OfTotal")</th></tr></thead>
+                    <tbody>
+                        @if (!ships.Any()) { <tr><td colspan="4" class="qd-empty">@T("Dashboard.NoShipmentRecorded")</td></tr> }
+                        @for (int i = 0; i < ships.Count; i++)
+                        {
+                            var r = ships[i];
+                            <tr>
+                                <td>@(i + 1)</td>
+                                <td>@ProductCell(r.Product, r.ItemNumber, r.PhotoUrl)</td>
+                                <td class="tr fw">@r.Qty.ToString("N0")</td>
+                                <td><div class="qd-hbar"><div style="width:@Inv(100.0 * r.Qty / maxShip)%;background:#3b82f6"></div><span>@r.Pct.ToString("0")%</span></div></td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- ── Top Customers / Inspectors / Vendors ── -->
+        <div class="qd-grid-3eq">
+            @RankCard(T("Dashboard.TopCustomers"), T("Dashboard.MostInspections") + _data.Year, _data.TopCustomers)
+            @RankCard(T("Dashboard.TopInspectors"), T("Dashboard.MostJobs") + _data.Year, _data.TopInspectors)
+            @RankCard(T("Dashboard.TopVendors"), T("Dashboard.MostInspections") + _data.Year, _data.TopVendors)
+        </div>
+
+        </div>
+    }
+
+</div>
+
+</PageAccessGuard>
 
 @code {
-    private DashboardDto? _data;
-    private bool _loading = true;
-    private string? _error;
-    private string _activeTab = "All";
+    DashboardDto? _data;
+    bool _loading = true;
+    string? _error;
+    int _year = DateTime.Now.Year, _month = DateTime.Now.Month;
+    bool _fOpen;   // điện thoại: ẩn/hiện khối bộ lọc
+    string _vendor = "", _customer = "", _category = "";
+    string _severity = "All", _defScope = "Year", _shipScope = "Month";
+
+    bool _compact;
+    DotNetObjectReference<Dashboard>? _ref;
 
     protected override async Task OnInitializedAsync() => await LoadData();
 
-    void GoToReport(string? jobNumber)
+    // Điện thoại: vẽ lại SVG theo bề ngang hẹp để chữ không bị thu nhỏ
+    protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (!string.IsNullOrEmpty(jobNumber))
-            Navigation.NavigateTo("/inspection-report/" + jobNumber);
+        if (!firstRender) return;
+        try
+        {
+            _ref = DotNetObjectReference.Create(this);
+            await JS.InvokeVoidAsync("eval", @"window.__qdResize = function(ref){
+                var last = null;
+                function chk(){ var c = window.innerWidth < 760; if (c !== last){ last = c; ref.invokeMethodAsync('SetCompact', c); } }
+                window.__qdResizeFn && window.removeEventListener('resize', window.__qdResizeFn);
+                window.__qdResizeFn = chk; window.addEventListener('resize', chk); chk(); };");
+            await JS.InvokeVoidAsync("__qdResize", _ref);
+        }
+        catch { }
     }
+
+    [JSInvokable] public void SetCompact(bool c) { if (_compact != c) { _compact = c; StateHasChanged(); } }
+
+    protected override void Dispose(bool disposing)
+    {
+        base.Dispose(disposing);
+        try { _ = JS.InvokeVoidAsync("eval", "window.__qdResizeFn && window.removeEventListener('resize', window.__qdResizeFn)"); } catch { }
+        _ref?.Dispose();
+    }
+
+    static IEnumerable<(int, int)> PeriodOptions()
+    {
+        var end = new DateTime(DateTime.Now.Year, 12, 1);
+        for (var d = end; d >= new DateTime(2026, 1, 1); d = d.AddMonths(-1)) yield return (d.Year, d.Month);
+    }
+
+    async Task OnPeriod(ChangeEventArgs e)
+    {
+        var parts = (e.Value?.ToString() ?? "").Split('-');
+        if (parts.Length == 2 && int.TryParse(parts[0], out var y) && int.TryParse(parts[1], out var m)) { _year = y; _month = m; }
+        await LoadData();
+    }
+
+    // Ô sản phẩm: ảnh thu nhỏ + tên + mã
+    RenderFragment ProductCell(string name, string? item, string? photo) => __builder =>
+    {
+        <div class="qd-pcell">
+            <div class="qd-pimg">
+                @if (!string.IsNullOrEmpty(photo)) { <img src="@MediaUrl.Resolve(photo, Http.BaseAddress?.ToString())" alt="" loading="lazy" /> }
+                else { <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">@((MarkupString)IconBox)</svg> }
+            </div>
+            <div style="min-width:0"><div class="qd-prod">@name</div><div class="qd-sub">@item</div></div>
+        </div>
+    };
+
+    RenderFragment VendorMini() => __builder =>
+    {
+        <select class="qd-mini" value="@_vendor" @onchange="e => OnFilter(() => _vendor = e.Value?.ToString() ?? string.Empty)">
+            <option value="">@T("Dashboard.AllFactories")</option>
+            @foreach (var v in _data?.Filters.Vendors ?? new()) { <option value="@v.Id">@v.Name</option> }
+        </select>
+    };
+
+    RenderFragment CustomerMini() => __builder =>
+    {
+        <select class="qd-mini" value="@_customer" @onchange="e => OnFilter(() => _customer = e.Value?.ToString() ?? string.Empty)">
+            <option value="">@T("Dashboard.AllCustomers")</option>
+            @foreach (var c in _data?.Filters.Customers ?? new()) { <option value="@c.Id">@c.Name</option> }
+        </select>
+    };
+
+    async Task OnFilter(Action apply) { apply(); await LoadData(); }
 
     async Task LoadData()
     {
         _loading = true;
-        _error   = null;
+        _error = null;
+        StateHasChanged();
         try
         {
-            _data = await Http.GetFromJsonAsync<DashboardDto>("api/inspections/dashboard",
+            var url = $"api/inspections/dashboard?year={_year}&month={_month}"
+                    + $"&vendorId={Uri.EscapeDataString(_vendor)}&customerId={Uri.EscapeDataString(_customer)}&category={Uri.EscapeDataString(_category)}";
+            _data = await Http.GetFromJsonAsync<DashboardDto>(url,
                 new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true });
         }
         catch (Exception ex) { _error = ex.Message; }
         _loading = false;
     }
 
-    IEnumerable<RecentInspectionDto> FilteredInspections => _activeTab switch
+    void GoReport(RecentDto r)
     {
-        "Completed" => _data!.RecentInspections.Where(r => r.Status == "Completed"),
-        "Pending"   => _data!.RecentInspections.Where(r => r.Status == "Pending"),
-        "Cancelled" => _data!.RecentInspections.Where(r => r.Status == "Cancelled"),
-        _           => _data!.RecentInspections
+        if (r.ClcId.HasValue) Navigation.NavigateTo($"/clc/{r.ClcId}/report");
+        else if (!string.IsNullOrEmpty(r.JobNumber)) Navigation.NavigateTo("/inspection-report/" + r.JobNumber);
+    }
+    void GoVendor(string? vendorId)
+    {
+        if (!string.IsNullOrEmpty(vendorId)) Navigation.NavigateTo("/vendor-reviews/" + vendorId);
+    }
+
+    int SevValue(DefectProductDto x) => _severity switch
+    {
+        "Critical" => x.Critical, "Major" => x.Major, "Minor" => x.Minor, _ => x.Defects
     };
+
+    // ResultText giữ tiếng Anh vì dùng làm class CSS; hiển thị qua ResultLabel
+    static string ResultText(RecentDto r) => r.Status == "Completed"
+        ? (r.Result == "PASSED" ? "Passed" : r.Result == "FAILED" ? "Failed" : r.Result == "HOLD" ? "Hold" : r.Result ?? "Done")
+        : r.Status == "Cancelled" ? "Cancelled" : "Awaiting";
+    static string ResultCss(RecentDto r) => ResultText(r).ToLower();
+    string ResultLabel(RecentDto r) => TE("Status", ResultText(r));
+
+    // ── Helpers ───────────────────────────────────────────────────────────────
+    static readonly CultureInfo Inv0 = CultureInfo.InvariantCulture;
+    static string Inv(double v) => v.ToString("0.##", Inv0);
+    string MonthAbbr(int m) => StackedBars.MonthLabels[m - 1];
+    static string Num(int v) => v > 0 ? v.ToString("N0") : "";
+    static string Short(double v) => v >= 1000 ? (v / 1000).ToString(v >= 10000 ? "0" : "0.#", Inv0) + "K" : v.ToString("0", Inv0);
+
+    /// <summary>(text, dir) — dir: up/down/flat; worseWhenUp đảo màu (vd Failed tăng là xấu).</summary>
+    (string Text, string Dir) Delta(double cur, double prev, bool worseWhenUp, string unit)
+    {
+        var d = Math.Round(cur - prev, 2);
+        if (Math.Abs(d) < 0.005) return ("0" + unit + T("Dashboard.VsLastMonth2"), "flat");
+        var good = worseWhenUp ? d < 0 : d > 0;
+        return (T("Dashboard.VsLastMonth", (d > 0 ? "↑" : "↓"), Math.Abs(d).ToString("0.##", Inv0), unit), good ? "good" : "bad");
+    }
+    (string Text, string Dir) NewDelta(int n) => n > 0 ? (T("Dashboard.NewThisMonth", n), "good") : (T("Dashboard.N0NewThisMonth"), "flat");
+
+    RenderFragment Kpi(string label, string value, (string Text, string Dir) delta, string color, string bg, string iconPath, bool wide = false) => __builder =>
+    {
+        var dParts = delta.Text.Split('|');
+        <div class="qd-kpi @(wide ? "wide" : "")">
+            <div class="qd-kpi-ico" style="background:@bg;color:@color">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">@((MarkupString)iconPath)</svg>
+            </div>
+            <div class="qd-kpi-body">
+                <div class="qd-kpi-lbl">@label</div>
+                <div class="qd-kpi-val">@value</div>
+                <div class="qd-kpi-delta @delta.Dir"><b>@dParts[0]</b>@if (dParts.Length > 1) { <span>@dParts[1]</span> }</div>
+            </div>
+        </div>
+    };
+
+    RenderFragment RankCard(string title, string sub, List<RankDto> items) => __builder =>
+    {
+        <div class="qd-card">
+            <div class="qd-card-head"><span class="qd-card-title">@title</span><span class="qd-rank-sub">@sub</span></div>
+            @if (!items.Any()) { <div class="qd-empty">@T("Dashboard.NoData2")</div> }
+            @for (int i = 0; i < items.Count; i++)
+            {
+                var r = items[i];
+                <div class="qd-rank-row">
+                    <span class="qd-rank-num">@(i + 1)</span>
+                    <div class="qd-rank-info"><div class="qd-rank-name">@r.Name</div><div class="qd-rank-id">@r.Id</div></div>
+                    <span class="qd-rank-count">@r.Count</span>
+                </div>
+            }
+        </div>
+    };
+
+    // ── SVG charts (dựng chuỗi để tránh giới hạn thẻ <text> của Razor) ────────
+    static double NiceMax(double v)
+    {
+        if (v <= 0) return 1;
+        var exp = Math.Pow(10, Math.Floor(Math.Log10(v)));
+        foreach (var f in new[] { 1, 2, 2.5, 5, 10 }) if (v <= f * exp) return f * exp;
+        return 10 * exp;
+    }
+    static string X(double v) => v.ToString("0.#", Inv0);
+
+    string AqlChartSvg()
+    {
+        double W = _compact ? 380 : 640, H = _compact ? 230 : 280, L = _compact ? 40 : 50, Rr = _compact ? 36 : 40, T = 18, B = 26;
+        double pw = W - L - Rr, ph = H - T - B, slot = pw / 12, bw = Math.Min(26, slot * 0.62);
+        var ms = _data!.Monthly;
+        var maxQ = NiceMax(ms.Max(m => (double)(m.AqlQty + m.TotalDefects)));
+        var maxR = NiceMax(Math.Max(1, ms.Max(m => m.DefectRate)));
+        var sb = new System.Text.StringBuilder();
+        sb.Append($"<svg viewBox='0 0 {W} {H}' class='qd-svg' preserveAspectRatio='xMidYMid meet'>");
+        for (int g = 0; g <= 5; g++)
+        {
+            var y = T + ph - ph * g / 5;
+            sb.Append($"<line x1='{L}' x2='{W - Rr}' y1='{X(y)}' y2='{X(y)}' stroke='#eef1f6'/>");
+            sb.Append($"<text x='{L - 6}' y='{X(y + 3)}' text-anchor='end' font-size='11' fill='#6b7280'>{Short(maxQ * g / 5)}</text>");
+            sb.Append($"<text x='{W - Rr + 6}' y='{X(y + 3)}' font-size='11' fill='#16a34a'>{X(maxR * g / 5)}%</text>");
+        }
+        var pts = new List<string>();
+        for (int i = 0; i < 12; i++)
+        {
+            var m = ms[i];
+            var cx = L + slot * i + slot / 2;
+            double y0 = T + ph;
+            void Seg(int v, string color, string name)
+            {
+                if (v <= 0) return;
+                var h = ph * v / maxQ;
+                y0 -= h;
+                sb.Append($"<rect x='{X(cx - bw / 2)}' y='{X(y0)}' width='{X(bw)}' height='{X(Math.Max(h, 0.8))}' fill='{color}'><title>{StackedBars.MonthLabels[i]} · {name}: {v:N0}</title></rect>");
+            }
+            Seg(m.AqlQty, "#2563eb", this.L.Get("Dashboard.AQLQuantity"));
+            Seg(m.Critical, "#ef4444", this.L.Get("Common.Critical"));
+            Seg(m.Major, "#f59e0b", this.L.Get("Common.Major"));
+            Seg(m.Minor, "#facc15", this.L.Get("Common.Minor"));
+            if (m.AqlQty + m.TotalDefects > 0)
+                sb.Append($"<text x='{X(cx)}' y='{X(y0 - 4)}' text-anchor='middle' font-size='11.5' font-weight='700' fill='#1a2d5a'>{Short(m.AqlQty)}</text>");
+            sb.Append($"<text x='{X(cx)}' y='{H - 8}' text-anchor='middle' font-size='11.5' fill='#6b7280'>{StackedBars.MonthLabels[i]}</text>");
+            if (m.AqlQty > 0) pts.Add($"{X(cx)},{X(T + ph - ph * m.DefectRate / maxR)}");
+        }
+        if (pts.Count > 1) sb.Append($"<polyline points='{string.Join(' ', pts)}' fill='none' stroke='#10b981' stroke-width='2'/>");
+        foreach (var p in pts) { var xy = p.Split(','); sb.Append($"<circle cx='{xy[0]}' cy='{xy[1]}' r='3.2' fill='#fff' stroke='#10b981' stroke-width='2'/>"); }
+        sb.Append($"<text x='12' y='{X(T + ph / 2)}' font-size='11.5' fill='#2563eb' transform='rotate(-90 12 {X(T + ph / 2)})' text-anchor='middle'>{this.L.Get("Dashboard.QuantityPcs")}</text>");
+        sb.Append($"<text x='{W - 6}' y='{X(T + ph / 2)}' font-size='11.5' fill='#16a34a' transform='rotate(90 {W - 6} {X(T + ph / 2)})' text-anchor='middle'>{this.L.Get("Dashboard.DefectRatePct")}</text>");
+        sb.Append("</svg>");
+        return sb.ToString();
+    }
+
+    string ShippedChartSvg()
+    {
+        double W = _compact ? 380 : 560, H = _compact ? 175 : 190, L = 40, Rr = 8, T = 18, B = 24;
+        double pw = W - L - Rr, ph = H - T - B, slot = pw / 12, bw = Math.Min(24, slot * 0.6);
+        var ms = _data!.Monthly;
+        var maxQ = NiceMax(ms.Max(m => (double)m.ShippedQty));
+        var sb = new System.Text.StringBuilder();
+        sb.Append($"<svg viewBox='0 0 {W} {H}' class='qd-svg' preserveAspectRatio='xMidYMid meet'>");
+        for (int g = 0; g <= 4; g++)
+        {
+            var y = T + ph - ph * g / 4;
+            sb.Append($"<line x1='{L}' x2='{W - Rr}' y1='{X(y)}' y2='{X(y)}' stroke='#eef1f6'/>");
+            sb.Append($"<text x='{L - 6}' y='{X(y + 3)}' text-anchor='end' font-size='11' fill='#6b7280'>{Short(maxQ * g / 4)}</text>");
+        }
+        for (int i = 0; i < 12; i++)
+        {
+            var v = ms[i].ShippedQty;
+            var cx = L + slot * i + slot / 2;
+            if (v > 0)
+            {
+                var h = ph * v / maxQ;
+                sb.Append($"<rect x='{X(cx - bw / 2)}' y='{X(T + ph - h)}' width='{X(bw)}' height='{X(h)}' rx='3' fill='#8b5cf6'><title>{StackedBars.MonthLabels[i]}: {v:N0} {this.L.Get("Common.Pcs")}</title></rect>");
+                sb.Append($"<text x='{X(cx)}' y='{X(T + ph - h - 4)}' text-anchor='middle' font-size='11.5' font-weight='700' fill='#1a2d5a'>{Short(v)}</text>");
+            }
+            sb.Append($"<text x='{X(cx)}' y='{H - 6}' text-anchor='middle' font-size='11.5' fill='#6b7280'>{StackedBars.MonthLabels[i]}</text>");
+        }
+        sb.Append("</svg>");
+        return sb.ToString();
+    }
+
+    // ── Icons (svg path) ──
+    const string IconClipboard = "<path d='M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2'/><rect x='9' y='3' width='6' height='4' rx='1'/><path d='M9 12h6M9 16h4'/>";
+    const string IconClock     = "<circle cx='12' cy='12' r='9'/><path d='M12 7v5l3 2'/>";
+    const string IconCheck     = "<circle cx='12' cy='12' r='9'/><path d='M8 12l3 3 5-6'/>";
+    const string IconX         = "<circle cx='12' cy='12' r='9'/><path d='M9 9l6 6M15 9l-6 6'/>";
+    const string IconPercent   = "<path d='M19 5L5 19'/><circle cx='7' cy='7' r='2.5'/><circle cx='17' cy='17' r='2.5'/>";
+    const string IconDoc       = "<path d='M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z'/><path d='M14 3v5h5M9 13h6M9 17h6'/>";
+    const string IconInspector = "<circle cx='12' cy='8' r='4'/><path d='M4 21c0-4 3.6-7 8-7s8 3 8 7'/><path d='M8 6h8'/>";
+    const string IconBox       = "<path d='M21 16V8a2 2 0 0 0-1-1.7l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.7l7 4a2 2 0 0 0 2 0l7-4a2 2 0 0 0 1-1.7z'/><path d='M3.3 7L12 12l8.7-5M12 22V12'/>";
+    const string IconFactory   = "<path d='M3 21V9l6 4V9l6 4V5h6v16z'/><path d='M7 17h2M12 17h2M17 17h2'/>";
+    const string IconUsers     = "<circle cx='9' cy='8' r='3.5'/><path d='M2 20c0-3.6 3.1-6 7-6s7 2.4 7 6'/><circle cx='17' cy='7' r='2.5'/><path d='M17 13c2.8 0 5 1.8 5 4.5'/>";
+    const string IconTruck     = "<rect x='1' y='6' width='14' height='10' rx='1'/><path d='M15 9h4l3 3v4h-7z'/><circle cx='6' cy='18' r='2'/><circle cx='18' cy='18' r='2'/>";
 
     // ── DTOs ──────────────────────────────────────────────────────────────────
     class DashboardDto
     {
-        public DateTime UpdatedAt           { get; set; }
-        public int  TotalInspections        { get; set; }
-        public int  PendingInspections      { get; set; }
-        public int  CompletedInspections    { get; set; }
-        public int  CustomerCount           { get; set; }
-        public int  VendorCount             { get; set; }
-        public int  ProductCount            { get; set; }
-        public int  InspectorCount          { get; set; }
-        public int  MonthCompleted          { get; set; }
-        public int  MonthPending            { get; set; }
-        public int  MonthPpt                { get; set; }
-        public int  MonthDpi                { get; set; }
-        public int  MonthPst                { get; set; }
-        public int  YearPpt                 { get; set; }
-        public int  YearDpi                 { get; set; }
-        public int  YearPst                 { get; set; }
-        public List<MonthStatDto>       ByMonth          { get; set; } = new();
-        public List<TypeMonthDto>       TypeByMonth      { get; set; } = new();
-        public List<RecentInspectionDto> RecentInspections { get; set; } = new();
-        public List<TopCustomerDto>     TopCustomers     { get; set; } = new();
-        public List<TopInspectorDto>    TopInspectors    { get; set; } = new();
-    }
-
-    class MonthStatDto
-    {
-        public int Month     { get; set; }
-        public int Completed { get; set; }
-        public int Pending   { get; set; }
-    }
-
-    class TypeMonthDto
-    {
+        public DateTime UpdatedAt { get; set; }
+        public int Year  { get; set; }
         public int Month { get; set; }
-        public int Ppt   { get; set; }
-        public int Dpi   { get; set; }
-        public int Pst   { get; set; }
+        public FiltersDto Filters { get; set; } = new();
+        public KpiDto     Kpi     { get; set; } = new();
+        public List<MonthDto>          Monthly                { get; set; } = new();
+        public List<DefectProductDto>  TopDefectProductsMonth { get; set; } = new();
+        public List<DefectProductDto>  TopDefectProductsYear  { get; set; } = new();
+        public List<ShipmentDto>       TopShipmentsMonth      { get; set; } = new();
+        public List<ShipmentDto>       TopShipmentsYear       { get; set; } = new();
+        public List<VendorPerfDto>     VendorPerformance      { get; set; } = new();
+        public List<RecentDto>         RecentInspections      { get; set; } = new();
+        public List<RankDto>           TopCustomers           { get; set; } = new();
+        public List<RankDto>           TopInspectors          { get; set; } = new();
+        public List<RankDto>           TopVendors             { get; set; } = new();
     }
-
-    class RecentInspectionDto
+    class FiltersDto
     {
-        public string? JobNumber       { get; set; }
-        public string? CustomerName    { get; set; }
-        public string? CustomerId      { get; set; }
-        public string? ProductCategory { get; set; }
-        public string? InspectorName   { get; set; }
-        public string? InspectorId     { get; set; }
-        public string  Status          { get; set; } = "";
-        public string  InspType        { get; set; } = "";
-        public string? FinalResult     { get; set; }
-        public DateTime Date           { get; set; }
+        public List<IdName> Vendors    { get; set; } = new();
+        public List<IdName> Customers  { get; set; } = new();
+        public List<string> Categories { get; set; } = new();
     }
-
-    class TopCustomerDto
+    class IdName { public string Id { get; set; } = ""; public string Name { get; set; } = ""; }
+    class KpiDto
     {
-        public string? CustomerId    { get; set; }
-        public string? CustomerName  { get; set; }
-        public int     Count         { get; set; }
+        public int TotalInspections { get; set; } public int TotalInspectionsPrev { get; set; }
+        public int Awaiting { get; set; } public int AwaitingPrev { get; set; }
+        public double PassRate { get; set; } public double PassRatePrev { get; set; }
+        public int Failed { get; set; } public int FailedPrev { get; set; }
+        public double DefectRate { get; set; } public double DefectRatePrev { get; set; }
+        public int? OpenCapa { get; set; } public int? OverdueCapa { get; set; }
+        public int Inspectors { get; set; } public int InspectorsNew { get; set; }
+        public int Products { get; set; } public int ProductsNew { get; set; }
+        public int Vendors { get; set; } public int VendorsNew { get; set; }
+        public int Customers { get; set; } public int CustomersNew { get; set; }
+        public int ShippedQty { get; set; } public int ShippedQtyPrev { get; set; }
     }
-
-    class TopInspectorDto
+    class MonthDto
     {
-        public string? InspectorId   { get; set; }
-        public string? InspectorName { get; set; }
-        public int     Count         { get; set; }
+        public int Month { get; set; } public int AqlQty { get; set; }
+        public int Critical { get; set; } public int Major { get; set; } public int Minor { get; set; }
+        public int TotalDefects { get; set; } public double DefectRate { get; set; }
+        public int Ppi { get; set; } public int Dpi { get; set; } public int Psi { get; set; } public int Clc { get; set; }
+        public int Total { get; set; } public int ShippedQty { get; set; }
     }
+    class DefectProductDto
+    {
+        public string Product { get; set; } = ""; public string? ItemNumber { get; set; } public string? PhotoUrl { get; set; }
+        public string MainDefect { get; set; } = "";
+        public int Critical { get; set; } public int Major { get; set; } public int Minor { get; set; } public int Defects { get; set; }
+    }
+    class ShipmentDto { public string Product { get; set; } = ""; public string? ItemNumber { get; set; } public string? PhotoUrl { get; set; } public int Qty { get; set; } public double Pct { get; set; } }
+    class VendorPerfDto
+    {
+        public string? VendorId { get; set; } public string VendorName { get; set; } = "";
+        public int Inspections { get; set; } public double PassRate { get; set; } public double DefectRate { get; set; }
+        public string Trend { get; set; } = "flat";
+        public int? CapaOverdue { get; set; }
+    }
+    class RecentDto
+    {
+        public string? JobNumber { get; set; } public DateTime Date { get; set; }
+        public string? Customer { get; set; } public string? Vendor { get; set; } public string? Product { get; set; }
+        public string Stage { get; set; } = ""; public string Status { get; set; } = ""; public string? Result { get; set; }
+        public int? ClcId { get; set; }
+    }
+    class RankDto { public string? Id { get; set; } public string? Name { get; set; } public int Count { get; set; } }
 }
 
 <style>
-    /* ── Page ── */
-    .db-page { max-width: 100%; width: 100%; box-sizing: border-box; font-family: "DM Sans", sans-serif; color: #1a2d5a; }
-    .db-loading { display:flex; align-items:center; gap:12px; padding:60px; justify-content:center; color:#ffffff; }
-    .db-spinner { width:24px;height:24px;border:3px solid rgba(255,255,255,0.3);border-top-color:#ffffff;border-radius:50%;animation:spin .7s linear infinite; }
-    .db-error { background:#fff5f5;border:1px solid #fecaca;border-radius:12px;padding:16px 20px;color:#dc2626;margin:20px 0; }
-    @@keyframes spin { to { transform:rotate(360deg); } }
+    .qd-page { width:100%; box-sizing:border-box; font-family:"DM Sans", sans-serif; color:#1a2d5a; }
+    .qd-dim { opacity:.55; transition:opacity .2s; pointer-events:none; }
 
-    /* ── Header ── */
-    .db-header { display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:24px; }
-    .db-title  { font-size:28px; font-weight:800; color:#ffffff; margin:0 0 4px; letter-spacing:-.02em; }
-    .db-subtitle { display:flex; align-items:center; gap:6px; font-size:13px; color:rgba(255,255,255,0.75); }
-    .db-live-dot { width:8px;height:8px;border-radius:50%;background:#22c55e;animation:pulse 2s infinite; }
-    @@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
-    .db-update-time { color:rgba(255,255,255,0.55); }
-    .db-refresh-btn { background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.3);border-radius:6px;padding:3px 6px;cursor:pointer;color:#ffffff;transition:all .15s; }
-    .db-refresh-btn:hover { background:rgba(255,255,255,0.25);border-color:rgba(255,255,255,0.5); }
+    /* Header */
+    .qd-ftoggle { display:none; }   /* chỉ hiện trên điện thoại (xem @@media bên dưới) */
+    .qd-header { display:flex; align-items:flex-end; justify-content:space-between; gap:16px; margin-bottom:18px; flex-wrap:wrap; }
+    .qd-title { font-size:28px; font-weight:800; color:#fff; margin:0 0 4px; letter-spacing:-.02em; }
+    .qd-subtitle { display:flex; align-items:center; gap:6px; font-size:13px; color:rgba(255,255,255,.78); flex-wrap:wrap; }
+    .qd-live-dot { width:8px; height:8px; border-radius:50%; background:#22c55e; animation:qdpulse 2s infinite; }
+    @@keyframes qdpulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+    .qd-update { color:rgba(255,255,255,.55); }
+    .qd-filters { display:flex; gap:10px; align-items:flex-end; flex-wrap:wrap; }
+    .qd-filter { display:flex; flex-direction:column; gap:4px; }
+    .qd-filter label { font-size:11px; font-weight:600; color:rgba(255,255,255,.8); }
+    .qd-filter select { border:1px solid #dbe3ef; border-radius:9px; padding:8px 10px; font-size:13px; font-family:inherit; color:#1a2d5a; background:#fff; min-width:140px; max-width:220px; cursor:pointer; }
+    .qd-period { display:flex; gap:4px; }
+    .qd-period select { min-width:72px; }
+    .qd-refresh { background:rgba(255,255,255,.15); border:1px solid rgba(255,255,255,.35); border-radius:9px; color:#fff; padding:8px 10px; cursor:pointer; }
+    .qd-refresh:hover { background:rgba(255,255,255,.28); }
 
-    /* ── Summary Cards ── */
-    .db-cards-grid { display:grid; grid-template-columns:repeat(6,1fr); gap:14px; margin-bottom:28px; }
-    .db-card { background:#fff; border-radius:14px; padding:18px; border:1px solid #e5e7eb; position:relative; overflow:hidden; transition:box-shadow .2s,transform .2s; }
-    .db-card::before { content:''; position:absolute; top:0;left:0;right:0;height:3px; background:var(--accent); }
-    .db-card:hover { box-shadow:0 8px 24px rgba(0,0,0,0.08); transform:translateY(-2px); }
-    .db-card-icon { width:44px;height:44px;border-radius:10px;display:flex;align-items:center;justify-content:center;margin-bottom:10px; }
-    .db-card-badge { position:absolute;top:14px;right:14px;font-size:10px;font-weight:600;padding:2px 8px;border-radius:20px; }
-    .db-card-value { font-size:28px;font-weight:800;color:#1a2d5a;line-height:1;margin-bottom:4px; }
-    .db-card-label { font-size:12.5px;color:#6b7280;font-weight:500; }
+    .qd-loading { display:flex; align-items:center; gap:12px; padding:60px; justify-content:center; color:#fff; }
+    .qd-spinner { width:24px; height:24px; border:3px solid rgba(255,255,255,.3); border-top-color:#fff; border-radius:50%; animation:qdspin .7s linear infinite; }
+    @@keyframes qdspin { to { transform:rotate(360deg); } }
+    .qd-error { background:#fff5f5; border:1px solid #fecaca; border-radius:12px; padding:16px 20px; color:#dc2626; }
 
-    /* ── Section ── */
-    .db-section-title { font-size:16px;font-weight:700;color:#ffffff;margin:8px 0 14px;display:flex;align-items:center;gap:10px; }
-    .db-section-sub { font-size:12px;font-weight:500;color:rgba(255,255,255,0.6);letter-spacing:.05em; }
+    /* KPI cards */
+    .qd-kpis { display:grid; gap:12px; margin-bottom:12px; }
+    .qd-kpis-6 { grid-template-columns:repeat(6, minmax(0,1fr)); }
+    .qd-kpis-5 { grid-template-columns:repeat(5, minmax(0,1fr)); margin-bottom:16px; }
+    .qd-kpi { background:#fff; border-radius:14px; padding:14px 16px; display:flex; gap:12px; align-items:center; border:1px solid #e5e7eb; box-shadow:0 2px 8px rgba(15,40,90,.06); min-width:0; }
+    .qd-kpi-ico { width:48px; height:48px; border-radius:50%; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+    .qd-kpi-body { min-width:0; }
+    .qd-kpi-lbl { font-size:12.5px; color:#374151; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .qd-kpi-val { font-size:26px; font-weight:800; color:#1a2d5a; line-height:1.15; white-space:nowrap; }
+    .qd-kpi-delta { font-size:11.5px; font-weight:600; color:#6b7280; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .qd-kpi-delta.good { color:#16a34a; }
+    .qd-kpi-delta.bad  { color:#dc2626; }
 
-    /* ── Row layout ── */
-    .db-row { display:flex; gap:16px; margin-bottom:24px; }
+    /* Cards & grid */
+    .qd-card { background:#fff; border-radius:14px; border:1px solid #e5e7eb; padding:14px 16px; box-shadow:0 2px 8px rgba(15,40,90,.06); min-width:0; }
+    .qd-card-head { display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:10px; flex-wrap:wrap; }
+    .qd-card-title { font-size:15px; font-weight:800; color:#1a2d5a; }
+    .qd-grid-2 { display:grid; grid-template-columns:minmax(0,1.15fr) minmax(0,1fr); gap:14px; margin-bottom:14px; }
+    .qd-grid-3 { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr) minmax(0,1.25fr); gap:14px; margin-bottom:14px; }
+    .qd-grid-3eq { display:grid; grid-template-columns:repeat(3, minmax(0,1fr)); gap:14px; margin-bottom:14px; }
+    .qd-col { display:flex; flex-direction:column; gap:14px; min-width:0; }
+    .qd-svg { width:100%; height:auto; display:block; }
 
-    /* ── Chart cards ── */
-    .db-chart-card { background:#fff;border-radius:14px;border:1px solid #e5e7eb;padding:20px; }
-    .db-mini-stats { display:flex;align-items:center;gap:0;margin-bottom:20px;padding-bottom:16px;border-bottom:1px solid #f3f4f6; }
-    .db-mini-stat { flex:1;text-align:center; }
-    .db-mini-val { display:block;font-size:26px;font-weight:800;line-height:1; }
-    .db-mini-lbl { font-size:11.5px;color:#6b7280;margin-top:2px;display:block; }
-    .db-mini-divider { width:1px;height:40px;background:#e5e7eb;flex-shrink:0; }
+    .qd-legend { display:flex; gap:14px; justify-content:center; flex-wrap:wrap; margin:4px 0 8px; font-size:11.5px; color:#4b5563; }
+    .qd-legend span { display:flex; align-items:center; gap:5px; }
+    .qd-legend i { width:11px; height:11px; border-radius:3px; display:inline-block; }
+    .qd-legend i.qd-line-ico { width:16px; height:3px; border-radius:2px; background:#10b981; }
 
-    /* ── Bar chart ── */
-    .db-barchart { display:flex;align-items:flex-end;gap:6px;height:120px;margin-bottom:12px; }
-    .db-bar-col { display:flex;flex-direction:column;flex:1;height:100%;justify-content:flex-end; }
-    .db-bar-num { font-size:10px;color:#6b7280;margin-bottom:3px;font-weight:600; }
-    .db-bar-wrap { width:100%;max-width:20px;display:flex;flex-direction:column-reverse;border-radius:4px;overflow:hidden;min-height:4px; }
-    .db-bar-seg { width:100%; }
-    .db-bar-seg.completed { background:#3b82f6; }
-    .db-bar-seg.pending   { background:#fbbf24; }
-    .db-bar-label { font-size:9px;color:#9ca3af;margin-top:5px;font-weight:600;letter-spacing:.04em; }
+    /* Monthly tables */
+    .qd-tbl-wrap { overflow-x:auto; }
+    .qd-mtbl { width:100%; border-collapse:collapse; font-size:11.5px; margin-top:8px; }
+    .qd-mtbl th { color:#1d4ed8; font-weight:700; padding:5px 4px; text-align:right; border-bottom:1px solid #e5e7eb; text-decoration:underline; }
+    .qd-mtbl th:first-child { text-align:left; text-decoration:none; }
+    .qd-mtbl td { padding:5px 4px; text-align:right; border-bottom:1px solid #f3f4f6; white-space:nowrap; color:#374151; }
+    .qd-mtbl td:first-child { text-align:left; font-weight:600; color:#1a2d5a; }
+    .qd-mtbl tr.fw td { font-weight:800; color:#1a2d5a; background:#f8fafc; }
+    .qd-mtbl tr.c-crit td:first-child { color:#dc2626; }
+    .qd-mtbl tr.c-maj td:first-child  { color:#ea580c; }
+    .qd-mtbl tr.c-min td:first-child  { color:#ca8a04; }
+    .qd-mtbl tr.c-rate td { color:#16a34a; }
 
-    /* ── Legend ── */
-    .db-legend { display:flex;gap:16px;justify-content:center; }
-    .db-leg-item { display:flex;align-items:center;gap:5px;font-size:12px;color:#6b7280; }
-    .db-leg-dot { width:10px;height:10px;border-radius:3px;flex-shrink:0; }
+    /* List tables */
+    .qd-mini-sel { display:flex; gap:6px; }
+    .qd-mini-sel select { border:1px solid #dbe3ef; border-radius:7px; padding:4px 6px; font-size:12px; font-family:inherit; color:#1a2d5a; background:#fff; }
+    .qd-ltbl { width:100%; border-collapse:collapse; font-size:12.5px; }
+    .qd-ltbl th { font-size:11px; font-weight:700; color:#4b5563; text-align:left; padding:6px; background:#f1f5fb; white-space:nowrap; }
+    .qd-ltbl td { padding:7px 6px; border-bottom:1px solid #f1f3f7; vertical-align:middle; }
+    .qd-ltbl .tr { text-align:right; }
+    .qd-ltbl .tc { text-align:center; }
+    .qd-ltbl .fw { font-weight:700; }
+    .qd-ltbl .ok  { color:#16a34a; font-weight:700; }
+    .qd-ltbl .bad { color:#dc2626; font-weight:700; }
+    .qd-ltbl-sm td, .qd-ltbl-sm th { padding:5px; font-size:11.5px; }
+    .qd-prod { font-weight:600; color:#1a2d5a; max-width:170px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .qd-sub  { font-size:11px; color:#9ca3af; }
+    .qd-pcell { display:flex; align-items:center; gap:8px; }
+    .qd-pimg { width:38px; height:38px; border-radius:8px; overflow:hidden; background:#f1f5f9; border:1px solid #e5e7eb; flex-shrink:0; display:flex; align-items:center; justify-content:center; color:#94a3b8; }
+    .qd-pimg img { width:100%; height:100%; object-fit:cover; }
+    .qd-sub2 { font-size:11.5px; color:#4b5563; }
+    .qd-vname { max-width:140px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .qd-na { color:#9ca3af; font-style:italic; }
+    .qd-hbar { position:relative; display:flex; align-items:center; gap:6px; min-width:100px; }
+    .qd-hbar div { height:12px; border-radius:3px; min-width:3px; }
+    .qd-hbar span { font-size:11px; font-weight:700; color:#374151; }
+    .qd-empty { text-align:center; padding:14px; color:#9ca3af; font-size:12.5px; }
+    .qd-link { font-size:12px; font-weight:700; color:#1d4ed8; text-decoration:none; }
+    .qd-click { cursor:pointer; }
+    .qd-click:hover td { background:#f8faff; }
+    .qd-stage { font-size:10px; font-weight:700; padding:2px 6px; border-radius:4px; }
+    .qd-stage.ppi { background:#d1fae5; color:#065f46; }
+    .qd-stage.dpi { background:#dbeafe; color:#1e40af; }
+    .qd-stage.psi { background:#fef3c7; color:#92400e; }
+    .qd-stage.clc { background:#ede9fe; color:#5b21b6; }
+    .qd-res.hold { background:#fef3c7; color:#92400e; }
+    .qd-res { font-size:10.5px; font-weight:700; padding:2px 8px; border-radius:20px; }
+    .qd-res.passed    { background:#dcfce7; color:#166534; }
+    .qd-res.failed    { background:#fee2e2; color:#991b1b; }
+    .qd-res.awaiting  { background:#fef3c7; color:#92400e; }
+    .qd-res.cancelled, .qd-res.na, .qd-res.done { background:#f3f4f6; color:#4b5563; }
 
-    /* ── Pie chart ── */
-    .db-pie-wrap { display:flex;flex-direction:column;align-items:center;gap:16px; }
-    .db-pie-svg { width:130px;height:130px; }
-    .db-pie-labels { display:flex;gap:20px;flex-wrap:wrap;justify-content:center; }
-    .db-pie-label { text-align:center;font-size:13px; }
+    /* Rank cards */
+    .qd-rank-sub { font-size:11px; color:#9ca3af; }
+    .qd-rank-row { display:flex; align-items:center; gap:10px; padding:7px 0; border-bottom:1px solid #f6f7f9; }
+    .qd-rank-row:last-child { border-bottom:none; }
+    .qd-rank-num { width:22px; height:22px; border-radius:50%; background:#eff6ff; color:#1d4ed8; display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:800; flex-shrink:0; }
+    .qd-rank-info { flex:1; min-width:0; }
+    .qd-rank-name { font-size:13px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .qd-rank-id { font-size:11px; color:#9ca3af; }
+    .qd-rank-count { font-size:15px; font-weight:800; color:#3b82f6; }
 
-    /* ── Table card ── */
-    .db-table-card { background:#fff;border-radius:14px;border:1px solid #e5e7eb;overflow:hidden; }
-    .db-table-header { display:flex;align-items:center;gap:12px;padding:16px 20px;border-bottom:1px solid #f3f4f6;flex-wrap:wrap; }
-    .db-table-title { font-size:15px;font-weight:700;color:#1a2d5a;flex-shrink:0; }
-    .db-table-count { font-size:12px;color:#9ca3af;margin-left:auto; }
-    .db-tab-group { display:flex;gap:4px; }
-    .db-tab { background:none;border:1px solid transparent;border-radius:20px;padding:4px 12px;font-size:12px;font-weight:500;color:#6b7280;cursor:pointer;transition:all .15s;font-family:inherit; }
-    .db-tab.active { background:#eff6ff;border-color:#bfdbfe;color:#1d4ed8; }
-    .db-tab:hover:not(.active) { background:#f9fafb; }
-    .db-table-wrap { overflow-x:auto; }
-    .db-table { width:100%;border-collapse:collapse;font-size:13.5px; }
-    .db-table thead th { padding:10px 16px;text-align:left;font-size:11px;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:.06em;border-bottom:1px solid #f3f4f6;background:#fafafa; }
-    .db-table tbody tr { border-bottom:1px solid #f9fafb;transition:background .15s; }
-    .db-table tbody tr:last-child { border-bottom:none; }
-    .db-table tbody tr:hover { background:#f8faff; }
-    .db-table td { padding:12px 16px;vertical-align:middle; }
+    /* Period select có icon lịch, ô lọc nhỏ trong card, tab bar */
+    /* Icon lịch nằm NGOÀI ô select (Safari bỏ qua padding-left của select nên icon từng che chữ "Oct") */
+    .qd-period { display:flex; align-items:center; gap:2px; background:#fff; border:1px solid #dbe3ef; border-radius:9px; padding-left:10px; }
+    .qd-cal { flex-shrink:0; color:#1a2d5a; pointer-events:none; }
+    .qd-filter .qd-period select { border:none; background:transparent; padding-left:6px; min-width:120px; outline:none; }
 
-    .db-type-badge { display:inline-block;font-size:9px;font-weight:700;padding:2px 6px;border-radius:4px;text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px; }
-    .db-type-badge.ppt { background:#dbeafe;color:#1d4ed8; }
-    .db-type-badge.dpi { background:#fef3c7;color:#b45309; }
-    .db-type-badge.pst { background:#d1fae5;color:#065f46; }
-    .db-job-num { font-size:13px;font-weight:600;color:#1a2d5a; }
-    .db-cust-name { font-weight:600;color:#1a2d5a; }
-    .db-cust-cat  { font-size:11.5px;color:#9ca3af;margin-top:2px; }
-    .db-inspector { color:#374151;font-weight:500; }
-    .db-date { font-size:11.5px;color:#9ca3af;margin-top:2px; }
+    /* Nhóm KPI */
+    .qd-kgroups-1 { display:grid; grid-template-columns:minmax(0,2fr) minmax(0,1fr); gap:12px; margin-bottom:12px; }
+    .qd-kgroup { border-radius:16px; padding:12px 12px 12px; border:1px solid rgba(255,255,255,.6); min-width:0; }
+    .qd-kgroup.g-insp { background:#e3eefc; }
+    .qd-kgroup.g-def  { background:#fde8ea; }
+    .qd-kgroup.g-vol  { background:#e2f5ec; margin-bottom:16px; }
+    .qd-kgroup-t { font-size:14px; font-weight:800; letter-spacing:.04em; text-transform:uppercase; margin:0 4px 10px; }
+    .qd-kgroup.g-insp .qd-kgroup-t { color:#1e40af; }
+    .qd-kgroup.g-def  .qd-kgroup-t { color:#9f1239; }
+    .qd-kgroup.g-vol  .qd-kgroup-t { color:#065f46; }
+    .qd-kgroup .qd-kpis { margin-bottom:0; }
+    .qd-kgroup .qd-kpi { border:none; box-shadow:0 1px 6px rgba(15,40,90,.08); }
+    .qd-kpis-4 { grid-template-columns:repeat(4, minmax(0,1fr)); }
+    .qd-kpis-2 { grid-template-columns:repeat(2, minmax(0,1fr)); }
 
-    .db-status-badge { display:inline-block;font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px;text-transform:capitalize; }
-    .db-status-badge.completed { background:#d1fae5;color:#065f46; }
-    .db-status-badge.pending   { background:#fef3c7;color:#92400e; }
-    .db-status-badge.inprogress,.db-status-badge.in_progress { background:#dbeafe;color:#1e40af; }
-    .db-status-badge.cancelled { background:#fee2e2;color:#991b1b; }
+    /* Hàng 2 ô bằng nhau (Recent | Vendor, Top 5 | Top 5) */
+    .qd-grid-2eq { display:grid; grid-template-columns:repeat(2, minmax(0,1fr)); gap:14px; margin-bottom:14px; }
 
-    /* ── Quick Actions ── */
-    .db-action-card { background:#fff;border-radius:14px;border:1px solid #e5e7eb;padding:16px; }
-    .db-action-title { font-size:14px;font-weight:700;color:#1a2d5a;margin-bottom:12px; }
-    .db-action-btn { display:flex;align-items:center;gap:8px;padding:10px 12px;border-radius:9px;font-size:13px;font-weight:500;color:#374151;text-decoration:none;margin-bottom:8px;border:1px solid #e5e7eb;transition:all .15s;background:#fafafa; }
-    .db-action-btn:last-child { margin-bottom:0; }
-    .db-action-btn:hover { background:#eff6ff;border-color:#bfdbfe;color:#1d4ed8; }
-    .db-action-btn.primary { background:#3b82f6;color:#fff;border-color:#3b82f6; }
-    .db-action-btn.primary:hover { background:#2563eb;border-color:#2563eb; }
-    .db-action-btn svg { flex-shrink:0;opacity:.7; }
-    .db-action-btn.primary svg { opacity:1; }
+    /* Chữ / bảng trong các ô lớn hơn cho dễ đọc */
+    .qd-card { padding:16px 18px; }
+    .qd-card-title { font-size:16.5px; }
+    .qd-legend { font-size:13px; }
+    .qd-mtbl { font-size:13px; }
+    .qd-mtbl th, .qd-mtbl td { padding:6px 5px; }
+    .qd-ltbl { font-size:13.5px; }
+    .qd-ltbl th { font-size:12.5px; padding:8px; }
+    .qd-ltbl td { padding:9px 8px; }
+    .qd-ltbl-sm td, .qd-ltbl-sm th { padding:8px 7px; font-size:13px; }
+    .qd-vname { max-width:220px; }
+    .qd-prod { max-width:240px; font-size:14px; }
+    .qd-sub2 { font-size:13px; }
+    .qd-pimg { width:44px; height:44px; }
+    .qd-hbar span { font-size:12.5px; }
+    .qd-hbar div { height:14px; }
+    .qd-stage, .qd-res { font-size:11.5px; }
+    .qd-mini, .qd-mini-sel select { font-size:13px; padding:6px 8px; }
+    .qd-rank-name { font-size:14px; }
+    .qd-rank-id { font-size:12px; }
+    .qd-rank-count { font-size:17px; }
+    .qd-card .sb-total { font-size:12.5px; }
+    .qd-card .sb-seg span { font-size:11.5px; }
+    .qd-card .sb-lbl { font-size:11.5px; }
+    .qd-card .sb-leg { font-size:13px; }
+    .qd-mini { border:1px solid #dbe3ef; border-radius:8px; padding:5px 8px; font-size:12px; font-family:inherit; color:#1a2d5a; background:#fff; max-width:150px; }
+    .qd-show-m { display:none; }
+    .qd-kpi-delta b { font-weight:700; }
+    .qd-kpi-delta span { font-weight:500; color:#6b7280; margin-left:5px; }
+    .qd-tabbar, .qd-more-ov { display:none; }
 
-    /* ── Rank cards ── */
-    .db-rank-card { background:#fff;border-radius:14px;border:1px solid #e5e7eb;padding:16px; }
-    .db-rank-header { display:flex;align-items:center;justify-content:space-between;margin-bottom:12px; }
-    .db-rank-title { font-size:14px;font-weight:700;color:#1a2d5a; }
-    .db-rank-sub { font-size:11px;color:#9ca3af; }
-    .db-rank-row { display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid #f9fafb; }
-    .db-rank-row:last-child { border-bottom:none; }
-    .db-rank-num { width:20px;height:20px;border-radius:50%;background:#f3f4f6;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#6b7280;flex-shrink:0; }
-    .db-rank-info { flex:1;min-width:0; }
-    .db-rank-name { font-size:13px;font-weight:600;color:#1a2d5a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis; }
-    .db-rank-id { font-size:11px;color:#9ca3af; }
-    .db-rank-count { font-size:15px;font-weight:700;color:#3b82f6;flex-shrink:0; }
-
-    /* ── Responsive ── */
-    @@media (max-width:1200px) { .db-cards-grid { grid-template-columns:repeat(3,1fr); } }
-
-    @@media (max-width:900px)  {
-        .db-cards-grid { grid-template-columns:repeat(2,1fr); }
-
-        /* Stack row dọc và force tất cả child chiếm 100% ngang */
-        .db-row {
-            flex-direction: column;
-            flex-wrap: nowrap;
-        }
-        .db-row > * {
-            width: 100% !important;
-            flex: 1 1 auto !important;
-            min-width: 0 !important;
-            max-width: 100% !important;
-        }
-
-        /* Nested flex column cũng phải full width */
-        .db-side-col {
-            width: 100% !important;
-            flex: 1 1 auto !important;
-        }
-        .db-side-col > * {
-            width: 100%;
-            box-sizing: border-box;
-        }
-
-        /* Card chính Recent Inspections */
-        .db-main-col {
-            width: 100% !important;
-            min-width: 0 !important;
-        }
+    /* Responsive — desktop / tablet */
+    @@media (max-width:1400px) {
+        .qd-kpis-6 { grid-template-columns:repeat(3, minmax(0,1fr)); }
+        .qd-kgroups-1 { grid-template-columns:minmax(0,1fr); }
+        .qd-kpis-4 { grid-template-columns:repeat(4, minmax(0,1fr)); }
+        .qd-grid-3 { grid-template-columns:minmax(0,1fr) minmax(0,1fr); }
+        .qd-grid-3 > .qd-col { grid-column:1 / -1; }
+    }
+    @@media (max-width:1100px) {
+        .qd-grid-2 { grid-template-columns:minmax(0,1fr); }
+        .qd-kpis-5 { grid-template-columns:repeat(3, minmax(0,1fr)); }
+        .qd-kpis-4 { grid-template-columns:repeat(2, minmax(0,1fr)); }
+        .qd-grid-2eq { grid-template-columns:minmax(0,1fr); }
     }
 
-    @@media (max-width:600px)  {
-        .db-cards-grid { grid-template-columns:1fr 1fr; }
+    /* Responsive — điện thoại: bố cục theo mẫu mobile */
+    @@media (max-width:760px) {
+        .qd-hide-m { display:none !important; }
+        .qd-show-m { display:inline; }
 
-        /* Page không bị đẩy rộng do table con có min-width */
-        html, body { overflow-x: hidden; }
-        .db-page {
-            padding-left: env(safe-area-inset-left, 0);
-            padding-right: env(safe-area-inset-right, 0);
-            box-sizing: border-box;
-        }
+        /* nền sáng tràn viền như app mobile */
+        .qd-page { background:#eef4fc; margin:-16px -12px 0; padding:12px 10px 84px; min-height:100vh; }
+        .qd-header { margin-bottom:12px; gap:10px; }
+        .qd-title { color:#0f2b6b; font-size:24px; }
+        .qd-subtitle { color:#64748b; font-size:13.5px; }
+        .qd-live-dot, .qd-update { display:none; }
 
-        /* Table Recent Inspections: cho phép scroll ngang trong khung thay vì đẩy card rộng ra */
-        .db-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
-        .db-table { font-size: 12.5px; }
-        .db-table td, .db-table th { padding: 10px 12px; }
+        /* Bộ lọc xếp dọc, hiện nhãn + tên đầy đủ (không bị cắt "DIGITAL FUR…") */
+        .qd-ftoggle { display:inline-flex; position:relative; align-items:center; justify-content:center; width:42px; height:42px; flex-shrink:0; border:1px solid #dbe3ef; border-radius:12px; background:#fff; color:#42557f; box-shadow:0 1px 4px rgba(15,40,90,.08); }
+        .qd-ftoggle.on { background:#1d4ed8; border-color:#1d4ed8; color:#fff; }
+        .qd-ftoggle.has::after { content:""; position:absolute; top:6px; right:6px; width:9px; height:9px; border-radius:50%; background:#ef4444; border:2px solid #fff; }
+        .qd-title-block { flex:1 1 0; min-width:0; }
+        .qd-header { flex-wrap:wrap; align-items:center; }
+        .qd-filters { width:100%; display:none; grid-template-columns:minmax(0,1fr); gap:8px; flex:0 0 100%; }
+        .qd-filters.qd-fopen { display:grid; }
+        .qd-filter { min-width:0; display:flex; flex-direction:row; align-items:center; gap:10px; }
+        .qd-filter label { display:block; flex:0 0 84px; text-align:left; font-size:13px; font-weight:700; color:#1a2d5a; }
+        .qd-filter label::after { content:" :"; }
+        .qd-filter select, .qd-period select { min-width:0; max-width:none; width:100%; height:42px; border-radius:10px; border-color:#e2e8f0;
+            box-shadow:0 1px 4px rgba(15,40,90,.06); font-size:13.5px; font-weight:600; }
+        .qd-period { flex:1; min-width:0; }
+        .qd-period select { padding-left:30px; }
+        .qd-filter select, .qd-filter .qd-period select { -webkit-appearance:none; appearance:none; padding-right:26px;
+            background-color:#fff; background-image:url("data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%231a2d5a' stroke-width='1.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+            background-repeat:no-repeat; background-position:right 10px center; background-size:10px 6px; }
+        .qd-filter > select { padding-left:10px; }
 
-        /* Header table wrap khi chật */
-        .db-table-header { padding: 14px 16px; gap: 8px; }
-        .db-table-title { font-size: 14px; }
-        .db-table-count { font-size: 11px; margin-left: 0; }
+        /* KPI: lưới 3 cột, 2 thẻ cuối rộng */
+        .qd-kpi-wrap { display:grid; grid-template-columns:repeat(6, minmax(0,1fr)); gap:8px; margin-bottom:12px; }
+        .qd-kpis { display:contents; }
+        .qd-kpi { grid-column:span 2; padding:10px 8px; gap:7px; border-radius:12px; border:none; box-shadow:0 1px 6px rgba(15,40,90,.07); align-items:flex-start; }
+        .qd-kpi.wide { grid-column:span 3; padding:12px 12px; gap:12px; }
+        .qd-kpi-ico { width:36px; height:36px; margin-top:2px; }
+        .qd-kpi-ico svg { width:19px; height:19px; }
+        .qd-kpi.wide .qd-kpi-ico { width:46px; height:46px; }
+        .qd-kpi.wide .qd-kpi-ico svg { width:24px; height:24px; }
+        .qd-kpi:not(.wide) .qd-kpi-ico { display:none; }
+        .qd-kpi-lbl { font-size:11px; white-space:normal; line-height:1.2; }
+        .qd-kpi-val { font-size:20px; margin:2px 0; }
+        .qd-kpi.wide .qd-kpi-val { font-size:22px; }
+        .qd-kpi-delta { font-size:10.5px; white-space:normal; line-height:1.25; }
+        .qd-kpi-delta span { display:block; margin-left:0; font-size:10px; }
+        .qd-kpi.wide .qd-kpi-delta span { display:inline; margin-left:8px; }
 
-        /* Card padding nhỏ lại */
-        .db-card { padding: 14px; }
-        .db-card-value { font-size: 22px; }
+        /* Card & biểu đồ */
+        .qd-grid-2 { gap:10px; margin-bottom:10px; }
+        .qd-col { gap:10px; }
+        .qd-card { padding:12px 10px; border:none; border-radius:12px; box-shadow:0 1px 6px rgba(15,40,90,.07); }
+        .qd-card-head { flex-wrap:nowrap; }
+        .qd-card-title { font-size:15px; }
+        .qd-legend { gap:6px 10px; font-size:11px; }
+        .qd-mtbl { font-size:10.5px; }
+        .qd-mtbl th, .qd-mtbl td { padding:4px 3px; }
 
-        .db-chart-card { padding: 16px; }
+        /* Top 5: 2 cột như mẫu */
+        .qd-grid-3.qd-top { grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:8px; }
+        .qd-grid-3.qd-top > .qd-col { grid-column:1 / -1; }
+        .qd-top > .qd-card { padding:10px 6px; overflow-x:auto; }
+        .qd-top .qd-card-head { flex-direction:column; align-items:flex-start; gap:6px; }
+        .qd-top .qd-card-title { font-size:12.5px; }
+        .qd-top .qd-mini-sel select { font-size:10.5px; padding:3px 4px; }
+        .qd-top .qd-ltbl { font-size:9.5px; }
+        .qd-top .qd-ltbl th { font-size:9px; padding:4px 3px; }
+        .qd-top .qd-ltbl td { padding:5px 3px; }
+        .qd-top .qd-prod { max-width:60px; }
+        .qd-top .qd-pcell { gap:4px; }
+        .qd-top .qd-pimg { width:24px; height:24px; border-radius:5px; }
+        .qd-top .qd-sub, .qd-top .qd-sub2 { font-size:9px; }
+        .qd-top .qd-hbar { min-width:46px; gap:3px; }
+        .qd-top .qd-hbar div { height:9px; }
+        .qd-top .qd-hbar span { font-size:9px; }
+        .qd-grid-3eq { grid-template-columns:minmax(0,1fr); gap:10px; }
+
+        /* Tab bar dưới đáy */
+        .qd-tabbar { display:flex; position:fixed; left:0; right:0; bottom:0; z-index:900; background:#fff; border-top:1px solid #e5e7eb;
+            box-shadow:0 -4px 14px rgba(15,40,90,.08); padding:6px 4px calc(6px + env(safe-area-inset-bottom)); }
+        .qd-tabbar a { flex:1; display:flex; flex-direction:column; align-items:center; gap:3px; font-size:11px; color:#94a3b8; text-decoration:none; }
+        .qd-tabbar a svg { width:24px; height:24px; fill:none; stroke:currentColor; stroke-width:1.8; }
+        .qd-tabbar a.active { color:#1d4ed8; text-decoration:underline; text-underline-offset:3px; }
+        .qd-tabbar a.active svg { fill:#1d4ed8; stroke:#1d4ed8; }
+        .qd-tabbar a:last-child svg { fill:currentColor; stroke:none; }
+
+        /* Nhóm KPI trên điện thoại: 2 cột */
+        .qd-kpi-wrap { display:block; }
+        .qd-kgroups-1 { display:flex; flex-direction:column; gap:10px; margin-bottom:10px; }
+        .qd-kgroup { padding:10px 8px 8px; }
+        .qd-kgroup-t { font-size:12px; margin:0 2px 8px; }
+        .qd-kpis { display:grid; gap:8px; margin:0; }
+        .qd-kpis-4, .qd-kpis-5, .qd-kpis-2 { grid-template-columns:repeat(2, minmax(0,1fr)); }
+        .qd-kpi, .qd-kpi.wide { grid-column:auto; }
+        .qd-kpis-5 > .qd-kpi.wide { grid-column:1 / -1; }
+        .qd-grid-2eq { grid-template-columns:minmax(0,1fr); gap:10px; margin-bottom:10px; }
+        .qd-cal { display:none; }
+        .qd-period { padding-left:0; height:42px; border-radius:10px; border-color:#e2e8f0; }
+        .qd-period select { height:auto; box-shadow:none; padding-left:6px; }
+        .qd-grid-2eq.qd-top { grid-template-columns:repeat(2, minmax(0,1fr)); gap:8px; }
+        .qd-more-ov { display:block; position:fixed; inset:0; z-index:950; background:rgba(15,23,42,.35); }
+        .qd-more { position:absolute; right:8px; bottom:72px; background:#fff; border-radius:12px; box-shadow:0 8px 28px rgba(0,0,0,.2); overflow:hidden; min-width:210px; }
+        .qd-more a { display:block; padding:12px 16px; color:#1a2d5a; text-decoration:none; font-size:14px; border-bottom:1px solid #f1f5f9; }
+        .qd-more a:last-child { border-bottom:none; }
+    }
+    /* Điện thoại — bản sửa lỗi hiển thị iPhone */
+    @@media (max-width:760px) {
+        /* width:auto để nền sáng phủ hết bề ngang (width:100% + margin âm để lộ dải xanh bên phải) */
+        .qd-page { width:auto; overflow-x:hidden; }
+        .qd-loading { color:#64748b; }
+        .qd-spinner { border-color:#dbeafe; border-top-color:#1d4ed8; }
+
+        /* Tab bar 5 mục theo mẫu */
+        .qd-tabbar { padding:6px 0 calc(6px + env(safe-area-inset-bottom)); }
+        .qd-tabbar a { min-width:0; gap:4px; font-size:10.5px; font-weight:500; color:#6b7280; text-decoration:none !important; }
+        .qd-tabbar a span { display:block; max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+        .qd-tabbar a svg, .qd-tabbar a:last-child svg { width:23px; height:23px; fill:none; stroke:currentColor; stroke-width:1.7; stroke-linecap:round; stroke-linejoin:round; }
+        .qd-tabbar a.active { color:#0f172a; font-weight:700; }
+        .qd-tabbar a.active svg { fill:none; stroke:#0f172a; stroke-width:2; }
+        .qd-more { min-width:230px; max-height:70vh; overflow-y:auto; }
+        .qd-more-h { padding:8px 16px 4px; font-size:11px; font-weight:800; letter-spacing:.06em; text-transform:uppercase; color:#94a3b8; background:#f8fafc; }
+
+        /* Nhãn tháng biểu đồ không chồng nhau */
+        .qd-card .sb-lbl { font-size:8px; letter-spacing:0; }
+        .qd-card .sb-total { font-size:10px; }
+        .qd-card .sb-seg span { font-size:9px; }
+        .qd-card .sb-leg { font-size:11.5px; }
+
+        /* KPI: không để số tràn khỏi thẻ */
+        .qd-kpi-body { flex:1; }
+        .qd-kpi-val { white-space:normal; overflow-wrap:anywhere; }
+        .qd-kpis-5 > .qd-kpi:nth-child(3) { grid-column:1 / -1; }
+        .qd-kpis-5 > .qd-kpi:last-child { grid-column:auto; }
+
+        /* Bảng: cuộn ngang trong thẻ thay vì bị cắt */
+        .qd-tbl-wrap { overflow-x:auto; -webkit-overflow-scrolling:touch; }
+        .qd-vperf { min-width:420px; }
+        .qd-vname { max-width:150px; }
+
+        /* Top 5: 1 cột, chữ đọc được */
+        .qd-grid-2eq.qd-top, .qd-grid-3.qd-top { grid-template-columns:minmax(0,1fr); gap:10px; }
+        .qd-top > .qd-card { padding:12px 10px; overflow-x:visible; }
+        .qd-top .qd-card-head { flex-direction:row; flex-wrap:wrap; align-items:center; }
+        .qd-top .qd-card-title { font-size:14px; }
+        .qd-top .qd-mini-sel select { font-size:12px; padding:4px 6px; }
+        .qd-top .qd-ltbl { font-size:12px; min-width:420px; }
+        .qd-top .qd-ltbl th { font-size:11px; padding:6px 5px; }
+        .qd-top .qd-ltbl td { padding:7px 5px; }
+        .qd-top .qd-prod { max-width:130px; font-size:12.5px; }
+        .qd-top .qd-pcell { gap:6px; }
+        .qd-top .qd-pimg { width:32px; height:32px; border-radius:6px; }
+        .qd-top .qd-sub, .qd-top .qd-sub2 { font-size:11px; }
+        .qd-top .qd-sub2 { min-width:110px; }
+        .qd-top .qd-hbar { min-width:70px; }
+        .qd-top .qd-hbar div { height:10px; }
+        .qd-top .qd-hbar span { font-size:11px; }
+    }
+    @@media (min-width:481px) and (max-width:760px) {
+        .qd-page { margin:-20px -16px 0; padding-left:14px; padding-right:14px; }
+    }
+    @@media (max-width:360px) {
+        .qd-kpi-ico { display:none; }
+        .qd-kpi.wide .qd-kpi-ico { display:flex; }
     }
 </style>

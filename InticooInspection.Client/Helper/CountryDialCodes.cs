@@ -1,4 +1,4 @@
-using System.Globalization;
+﻿using System.Globalization;
 
 namespace InticooInspection.Client.Helpers
 {
@@ -40,6 +40,27 @@ namespace InticooInspection.Client.Helpers
         ///    (only if the mobile doesn't already start with '+')
         ///  - If the new country has no known code → leaves mobile unchanged
         /// </summary>
+        /// <summary>Danh sách mã vùng để chọn: (mã, "mã – tên các nước"), sắp theo số.</summary>
+        public static List<(string Code, string Label)> All() =>
+            _map.GroupBy(kv => kv.Value)
+                .OrderBy(g => long.TryParse(g.Key.TrimStart('+'), out var n) ? n : long.MaxValue)
+                .Select(g => (g.Key, $"{g.Key}  {string.Join(", ", g.Select(x => x.Key).Take(2))}"))
+                .ToList();
+
+        /// <summary>Mã vùng đang ở đầu số điện thoại (null nếu không có).</summary>
+        public static string? CurrentCode(string? mobile)
+            => string.IsNullOrWhiteSpace(mobile) || !mobile.TrimStart().StartsWith("+") ? null : DetectDialCodePrefix(mobile.TrimStart());
+
+        /// <summary>Đổi mã vùng theo mã được chọn, giữ nguyên các chữ số đã nhập.</summary>
+        public static string ApplyCode(string? mobile, string? code)
+        {
+            mobile = (mobile ?? "").TrimStart();
+            if (string.IsNullOrEmpty(code)) return mobile;
+            var cur = CurrentCode(mobile);
+            var rest = cur != null ? mobile.Substring(cur.Length).TrimStart(' ', '-') : mobile.StartsWith("+") ? mobile : mobile;
+            return string.IsNullOrEmpty(rest) ? code + " " : code + " " + rest;
+        }
+
         public static string ApplyDialCode(string? mobile, string? newCountryName)
         {
             var newCode = GetDialCode(newCountryName);

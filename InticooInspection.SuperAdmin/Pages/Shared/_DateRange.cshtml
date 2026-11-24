@@ -1,0 +1,39 @@
+@* Ô khoảng ngày ở header (theo thiết kế). Trang có lọc ngày (Payments/Invoices/Reports/Audit Log) lọc ngay tại chỗ;
+   các trang khác mở Reports với khoảng đã chọn. *@
+@using System.Globalization
+@{
+    var req = ViewContext.HttpContext.Request;
+    var path = (req.Path.Value ?? "/").ToLowerInvariant().TrimEnd('/');
+    string[] ranged = { "/payments", "/invoices", "/reports", "/auditlog" };
+    var here = ranged.Contains(path);
+    var action = here ? path : "/reports";
+    DateTime? P(string k) => DateTime.TryParse(req.Query[k], CultureInfo.InvariantCulture, DateTimeStyles.None, out var d) ? d.Date : null;
+    var today = DateTime.UtcNow.Date;
+    var mStart = new DateTime(today.Year, today.Month, 1);
+    var from = here ? P("from") : null; var to = here ? P("to") : null;
+    var shownFrom = from ?? mStart; var shownTo = to ?? mStart.AddMonths(1).AddDays(-1);
+    string Iso(DateTime d) => d.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+    string Txt(DateTime d) => d.ToString("MMM d, yyyy", CultureInfo.InvariantCulture);
+    var presets = new (string Label, DateTime F, DateTime T)[]
+    {
+        ("This Month", mStart, mStart.AddMonths(1).AddDays(-1)),
+        ("Last Month", mStart.AddMonths(-1), mStart.AddDays(-1)),
+        ("Last 30 Days", today.AddDays(-29), today),
+        ("This Year", new DateTime(today.Year, 1, 1), new DateTime(today.Year, 12, 31)),
+    };
+    // giữ các bộ lọc khác của trang hiện tại (trừ ngày và số trang)
+    var keep = here ? req.Query.Where(q => q.Key is not ("from" or "to" or "page" or "From" or "To" or "Page")).ToList() : new();
+    string Href(DateTime f, DateTime t) => action + "?" + string.Join("&", keep.Select(k => $"{Uri.EscapeDataString(k.Key)}={Uri.EscapeDataString(k.Value.ToString())}").Append($"from={Iso(f)}&to={Iso(t)}"));
+}
+<details class="range">
+  <summary>@Icons.Svg("calendar", 17) <span>@Txt(shownFrom) - @Txt(shownTo)</span> @Icons.Svg("chevron", 14)</summary>
+  <div class="range-menu">
+    @foreach (var p in presets) { <a href="@Href(p.F, p.T)">@p.Label <small>@Txt(p.F) – @Txt(p.T)</small></a> }
+    <form method="get" action="@action" class="f">
+      @foreach (var k in keep) { <input type="hidden" name="@k.Key" value="@k.Value" /> }
+      <div class="rg"><label>From<input type="date" name="from" value="@Iso(shownFrom)" required /></label><label>To<input type="date" name="to" value="@Iso(shownTo)" required /></label></div>
+      <button class="btn pri sm blk" type="submit">Apply</button>
+      @if (!here) { <small class="muted">Opens Reports for the selected range.</small> }
+    </form>
+  </div>
+</details>

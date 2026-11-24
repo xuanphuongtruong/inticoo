@@ -48,11 +48,12 @@ namespace InticooInspection.API.Services
         private readonly IConfiguration   _config;
         private readonly ILogger<MailConfigProvider> _logger;
 
-        // Cache đơn giản trong memory (1 phút)
-        private MailConfigSnapshot? _cached;
-        private DateTime _cachedAt;
+        // Cache trong memory (1 phút), TÁCH THEO CÔNG TY: mỗi công ty khách có DB riêng → MailConfig riêng.
+        // Service là scoped (theo request/worker scope), cache là static để sống qua các request.
+        private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, (MailConfigSnapshot Snap, DateTime At)> _cache = new();
         private static readonly TimeSpan CacheDuration = TimeSpan.FromMinutes(1);
-        private readonly SemaphoreSlim _lock = new(1, 1);
+        private static readonly SemaphoreSlim _lock = new(1, 1);
+        private readonly string _key;
 
         public MailConfigProvider(
             IServiceProvider sp,
@@ -62,24 +63,25 @@ namespace InticooInspection.API.Services
             _sp     = sp;
             _config = config;
             _logger = logger;
+            _key    = sp.GetRequiredService<Tenancy.TenantContext>().Key;
         }
 
         public async Task<MailConfigSnapshot> GetAsync(CancellationToken ct = default)
         {
             // Cache hit
-            if (_cached != null && DateTime.UtcNow - _cachedAt < CacheDuration)
-                return _cached;
+            if (_cache.TryGetValue(_key, out var hit) && DateTime.UtcNow - hit.At < CacheDuration)
+                return hit.Snap;
 
             await _lock.WaitAsync(ct);
             try
             {
                 // Double-check sau khi lock
-                if (_cached != null && DateTime.UtcNow - _cachedAt < CacheDuration)
-                    return _cached;
+                if (_cache.TryGetValue(_key, out hit) && DateTime.UtcNow - hit.At < CacheDuration)
+                    return hit.Snap;
 
-                _cached    = await BuildSnapshotAsync(ct);
-                _cachedAt  = DateTime.UtcNow;
-                return _cached;
+                var snap = await BuildSnapshotAsync(ct);
+                _cache[_key] = (snap, DateTime.UtcNow);
+                return snap;
             }
             finally
             {
@@ -89,8 +91,7 @@ namespace InticooInspection.API.Services
 
         public void InvalidateCache()
         {
-            _cached   = null;
-            _cachedAt = DateTime.MinValue;
+            _cache.TryRemove(_key, out _);
         }
 
         // ── Build snapshot: ưu tiên DB → fallback Env Var ──
@@ -99,8 +100,8 @@ namespace InticooInspection.API.Services
             MailConfig? dbConfig = null;
             try
             {
-                await using var scope = _sp.CreateAsyncScope();
-                var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+                // AppDbContext của chính scope hiện tại → đúng DB của công ty đang xử lý
+                var db = _sp.GetRequiredService<AppDbContext>();
                 dbConfig = await db.MailConfigs.AsNoTracking().FirstOrDefaultAsync(ct);
             }
             catch (Exception ex)

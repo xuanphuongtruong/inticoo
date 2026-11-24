@@ -1,0 +1,71 @@
+@page
+@model ReportsModel
+@{
+    ViewData["Title"] = "Reports"; ViewData["Sub"] = "Analytics and reports for companies, subscriptions, payments and platform usage.";
+    var req = ViewContext.HttpContext.Request;
+    var d = Model.D;
+    var maxRev = Math.Max(1m, d.MonthlyRevenue.Count == 0 ? 1 : d.MonthlyRevenue.Max(m => m.Value));
+    var maxC = Math.Max(1, Model.ByCountry.Count == 0 ? 1 : Model.ByCountry.Values.Max());
+}
+<div class="panel" style="padding-bottom:6px"><div class="tabs" style="margin:0;border:0">
+  @foreach (var t in ReportsModel.TabList) { <a class="@(Model.Tab == t.Key ? "on" : "")" href="?tab=@t.Key">@Icons.Svg(t.Icon, 16) @t.Title</a> }
+  <a href="/auditlog">@Icons.Svg("log", 16) Audit Log</a>
+</div></div>
+
+@if (Model.Tab == "overview")
+{
+  <div class="kpis">
+    <div class="kpi"><span class="ic b">@Icons.Svg("building", 24)</span><div><small>Total Companies</small><strong>@d.TotalCompanies</strong><div class="sub">+@d.NewCompaniesThisMonth new this month</div></div></div>
+    <div class="kpi"><span class="ic b">@Icons.Svg("users", 24)</span><div><small>Active Subscriptions</small><strong>@d.ActiveSubscriptions</strong><div class="sub">@AdminUi.Pct(d.ActivePercent) of total companies</div></div></div>
+    <div class="kpi"><span class="ic g">@Icons.Svg("dollar", 24)</span><div><small>Total Revenue (MRR)</small><strong>@AdminUi.Money0(d.Mrr)</strong><div class="sub">Last month: @AdminUi.Money0(d.MrrLastMonth)</div></div></div>
+    <div class="kpi"><span class="ic p">@Icons.Svg("receipt", 24)</span><div><small>Total Invoices</small><strong>@Model.TotalInvoices</strong><div class="sub">@Model.PaidInvoices paid</div></div></div>
+    <div class="kpi"><span class="ic b">@Icons.Svg("cloud", 24)</span><div><small>Total Storage Used</small><strong>@UsageReportService.Size(d.StorageUsedGb)</strong><div class="sub">@(d.StorageCapacityGb > 0 ? "of " + UsageReportService.Size(d.StorageCapacityGb) + " capacity" : "of " + UsageReportService.Size(d.Usage?.AllocatedGb ?? 0) + " allocated")</div></div></div>
+  </div>
+  <div class="cols c3">
+    <div class="panel"><h3>Monthly Revenue <small>(USD)</small></h3><div class="chart-bars">@for (var i = 0; i < d.MonthlyRevenue.Count; i++) { var m = d.MonthlyRevenue[i]; <div class="col @(i == d.MonthlyRevenue.Count - 1 ? "last" : "")"><div class="chart-val">@AdminUi.Money0(m.Value)</div><i style="height:@AdminUi.Num((double)(m.Value / maxRev * 100))%"></i></div> }</div><div class="chart-lbl">@foreach (var m in d.MonthlyRevenue) { <span>@m.Label</span> }</div></div>
+    <div class="panel"><h3>Subscriptions by Plan</h3><div class="dwrap"><div class="donut" style="@AdminUi.Slice(d.CompaniesByPlan.Select(p => ((double)p.Count, p.Color)))"><b><span>@d.CompaniesByPlan.Sum(p => p.Count)<small>Active</small></span></b></div>
+      <div class="legend" style="flex:1">@foreach (var p in d.PlanDistribution) { <div><span><i class="dot" style="background:@p.Color"></i>@p.Name</span><span><b>@p.Count</b> <span class="muted">(@AdminUi.Pct(p.Pct))</span></span></div> }</div></div></div>
+    <div class="panel"><h3>Companies by Country</h3>@foreach (var kv in Model.ByCountry) { <div class="hbar"><span class="n" style="width:110px">@kv.Key</span><div class="bar"><i style="width:@AdminUi.Num(100.0 * kv.Value / maxC)%;background:#1666f0"></i></div><span class="v" style="width:30px">@kv.Value</span></div> }</div>
+  </div>
+  <div class="cols c3">
+    <div class="panel"><h3>New Company Registrations</h3><svg class="line" viewBox="0 0 400 150" preserveAspectRatio="none"><polyline fill="none" stroke="#1666f0" stroke-width="2.5" points="@AdminUi.LinePoints(d.NewCompaniesByMonth.Select(x => x.Value).ToList())" /></svg><div class="chart-lbl">@foreach (var m in d.NewCompaniesByMonth) { <span>@m.Label <b>@m.Value</b></span> }</div></div>
+    <div class="panel"><h3>Payment Status <small>(this month)</small></h3><div class="dwrap"><div class="donut" style="@AdminUi.Slice(d.PaymentStatus.Select(p => ((double)p.Count, p.Color)))"><b><span>@d.InvoicesThisMonth<small>Invoices</small></span></b></div>
+      <div class="legend" style="flex:1">@foreach (var p in d.PaymentStatus) { <div><span><i class="dot" style="background:@p.Color"></i>@p.Name</span><b>@p.Count</b></div> }</div></div></div>
+    <div class="panel"><h3>Module Usage <small>(active companies)</small></h3>@foreach (var m in d.ModuleUsage) { <div class="hbar"><span class="n" style="width:120px;font-size:.82rem">@m.Name</span><div class="bar"><i style="width:@AdminUi.Num(m.Pct)%;background:@m.Color"></i></div><span class="v" style="width:40px">@AdminUi.Pct(m.Pct)</span></div> }</div>
+  </div>
+  <div class="cols c2">
+    <div class="panel"><h3>Top 10 Companies by Revenue <small>(MRR)</small></h3><div class="tbl-wrap"><table class="t"><thead><tr><th>#</th><th>Company Name</th><th>Country</th><th>Plan</th><th class="num">Revenue (USD)</th><th>Status</th></tr></thead><tbody>
+      @{ var rk = 1; } @foreach (var t in Model.TopRevenue) { <tr><td>@(rk++)</td><td><a href="/companies?id=@t.Id">@t.Name</a></td><td>@AdminUi.Flag(t.CountryCode) @t.Country</td><td>@t.Plan</td><td class="num">@AdminUi.Money(t.Mrr)</td><td>@AdminUi.Pill(t.Status)</td></tr> }
+      @if (Model.TopRevenue.Count == 0) { <tr><td colspan="6" class="muted">No active subscriptions.</td></tr> }</tbody></table></div></div>
+    <div class="panel"><h3>Recent Payments <a href="/payments" style="float:right;font-size:.82rem">View All</a></h3><div class="tbl-wrap"><table class="t"><thead><tr><th>Invoice</th><th>Company</th><th class="num">Amount</th><th>Status</th><th>Date</th></tr></thead><tbody>
+      @foreach (var p in d.RecentPayments) { <tr><td><a href="/invoices?id=@p.InvoiceId">@p.Invoice?.Number</a></td><td>@p.Company?.Name</td><td class="num">@AdminUi.Money(p.Amount)</td><td>@AdminUi.Pill(p.Status)</td><td>@AdminUi.D(p.CreatedAt)</td></tr> }
+      @if (d.RecentPayments.Count == 0) { <tr><td colspan="5" class="muted">No payments yet.</td></tr> }</tbody></table></div></div>
+  </div>
+}
+else
+{
+  <div class="panel">
+    <form class="filters" method="get"><input type="hidden" name="tab" value="@Model.Tab" />
+      <div><label>From</label><input type="date" name="from" value="@Model.RangeFrom.ToString("yyyy-MM-dd")" /></div><div><label>To</label><input type="date" name="to" value="@Model.RangeTo.ToString("yyyy-MM-dd")" /></div>
+      <div><label>Country</label><select name="country"><option value="">All Countries</option>@foreach (var c in Model.Countries) { <option value="@c" selected="@(Model.Country == c)">@c</option> }</select></div>
+      <div><label>Plan</label><select name="plan"><option value="">All Plans</option>@foreach (var p in Model.Plans) { <option value="@p.Name" selected="@(Model.Plan == p.Name)">@p.Name</option> }</select></div>
+      <div><label>Status</label><input name="status" value="@Model.Status" placeholder="e.g. Paid, Active" maxlength="30" /></div>
+      <button class="btn pri">@Icons.Svg("chart", 15) Generate Report</button><a class="btn" href="?tab=@Model.Tab">Reset</a>
+    </form>
+    <p class="muted">@Model.Summary</p>
+    <div class="tbl-wrap"><table class="t"><thead><tr>@for (var i = 0; i < Model.Headers.Length; i++) { <th class="@(Model.Rows.Count > 0 && Model.Rows[0][i] is decimal or int or double ? "num" : "")">@Model.Headers[i]</th> }</tr></thead><tbody>
+    @foreach (var r in Model.Rows.Take(500))
+    {
+      <tr>@foreach (var c in r) { <td class="@(c is decimal or int or double ? "num" : "")">@(c switch { DateTime dt => AdminUi.D(dt), decimal m => AdminUi.Money(m), double v => AdminUi.Num(v), null => "-", var o => o.ToString() })</td> }</tr>
+    }
+    @if (Model.Rows.Count == 0) { <tr><td colspan="@Model.Headers.Length" class="muted" style="padding:20px;text-align:center">No data for the selected filters.</td></tr> }
+    </tbody></table></div>
+    @if (Model.Rows.Count > 500) { <p class="muted">Showing the first 500 of @Model.Rows.Count rows — export to get everything.</p> }
+  </div>
+}
+
+  <div class="panel no-print" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px"><div><b>Export Reports</b><div class="muted">Export data for analysis or share with your team.</div></div>
+    <div style="display:flex;gap:10px">
+      <button type="button" class="btn" id="printbtn">@Icons.Svg("doc", 15) Print / PDF</button>
+      <a class="btn" href="@AdminUi.Qs(req, ("handler", "Export"), ("format", "xlsx"))">@Icons.Svg("download", 15) Export as Excel</a>
+      <a class="btn" href="@AdminUi.Qs(req, ("handler", "Export"), ("format", "csv"))">@Icons.Svg("download", 15) Export as CSV</a></div></div>

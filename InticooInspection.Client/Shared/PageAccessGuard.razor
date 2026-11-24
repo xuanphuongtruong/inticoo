@@ -1,4 +1,4 @@
-@* 
+﻿@* 
   PageAccessGuard — wrap the body of any route-level component to restrict
   access based on the current user's Page Access list.
 
@@ -21,13 +21,13 @@
 @using InticooInspection.Client.Services
 @inject PageAccessService PageAccess
 @inject NavigationManager Nav
-@implements IDisposable
+@inherits LocalizedComponentBase
 
 @if (!PageAccess.IsLoaded)
 {
     <div style="padding:40px;text-align:center;color:rgba(255,255,255,.6);">
         <span class="spinner" style="width:18px;height:18px;border:2.5px solid rgba(30,144,214,.3);border-top-color:#1e90d6;border-radius:50%;display:inline-block;animation:spin .7s linear infinite;vertical-align:middle;margin-right:8px;"></span>
-        Checking permissions...
+        @T("PageAccessGuard.CheckingPermissions")
     </div>
 }
 else if (_allowed)
@@ -37,14 +37,16 @@ else if (_allowed)
 else
 {
     <div style="padding:60px;text-align:center;color:rgba(255,255,255,.7);">
-        <h3 style="color:#fff;">Access Denied</h3>
-        <p>You don't have permission to view this page. Redirecting...</p>
+        <h3 style="color:#fff;">@T("PageAccessGuard.AccessDenied")</h3>
+        <p>@T("PageAccessGuard.YouDonTHavePermissionTo")</p>
     </div>
 }
 
 @code {
     [Parameter] public string RequiredPage { get; set; } = "";
-    [Parameter] public string RedirectTo   { get; set; } = "/dashboard";
+    [Parameter] public string RedirectTo   { get; set; } = "/";
+    /// <summary>Hành động bắt buộc trên module (vd "Create", "Edit"); nhiều giá trị cách nhau "|" = chỉ cần 1.</summary>
+    [Parameter] public string? RequiredAction { get; set; }
     [Parameter] public RenderFragment? ChildContent { get; set; }
 
     private bool _allowed = false;
@@ -68,6 +70,9 @@ else
         if (!PageAccess.IsLoaded) return;
 
         _allowed = string.IsNullOrEmpty(RequiredPage) || PageAccess.HasAccess(RequiredPage);
+        if (_allowed && !string.IsNullOrWhiteSpace(RequiredAction))
+            _allowed = RequiredAction.Split('|', StringSplitOptions.RemoveEmptyEntries)
+                                     .Any(a => PageAccess.Can(RequiredPage, a.Trim()));
 
         if (!_allowed && !_redirected)
         {
@@ -81,8 +86,9 @@ else
         }
     }
 
-    public void Dispose()
+    protected override void Dispose(bool disposing)
     {
+        base.Dispose(disposing);
         PageAccess.OnChange -= OnAccessChanged;
     }
 }

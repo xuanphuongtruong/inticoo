@@ -1,0 +1,156 @@
+﻿@page "/defects/inspection/{InspectionId:int}"
+@attribute [Microsoft.AspNetCore.Authorization.Authorize]
+@using System.Net.Http.Json
+@inject HttpClient Http
+@inject NavigationManager Navigation
+@inject PageAccessService PageAccess
+@inherits LocalizedComponentBase
+
+<PageTitle>@T("DefectInspection.InspectionDefectsInticoo")</PageTitle>
+
+<div class="di-page">
+    <div class="di-head">
+        <button class="di-back" @onclick='() => Navigation.NavigateTo("/defects")'>‹</button>
+        <h1>@T("DefectInspection.DefectManagement")</h1>
+    </div>
+
+    @if (_d == null)
+    {
+        <div class="di-loading">@(_err ?? T("DefectInspection.Loading"))</div>
+    }
+    else
+    {
+        <div class="di-card">
+            <div class="di-row1">
+                <span class="di-ins">@_d.JobNumber</span>
+                <span class="di-badge @(_d.Status == "Completed" ? "done" : "prog")">@(_d.Status == "Completed" ? T("Common.Completed") : T("DefectInspection.InProgress"))</span>
+            </div>
+            <div class="di-info">
+                <span>@T("Common.Factory")</span><b>@_d.Factory</b>
+                <span>@T("Common.Product")</span><b>@_d.Product @(string.IsNullOrEmpty(_d.ItemNumber) ? "" : $"({_d.ItemNumber})")</b>
+                <span>@T("Common.InspectionDate")</span><b>@L.Date(_d.InspectionDate, "dd MMM yyyy")</b>
+                <span>@T("Common.Inspector")</span><b>@(_d.Inspector ?? "—")</b>
+                <span>@T("DefectInspection.FinalResult")</span><b>@(_d.FinalResult ?? "—")</b>
+            </div>
+            <div class="di-totals">
+                <div class="di-total"><span>@T("DefectInspection.TotalDefects")</span><b>@(_d.Critical + _d.Major + _d.Minor)</b></div>
+                <div class="di-dot crit"><i>@_d.Critical</i><span>@T("Common.Critical")</span></div>
+                <div class="di-dot maj"><i>@_d.Major</i><span>@T("Common.Major")</span></div>
+                <div class="di-dot min"><i>@_d.Minor</i><span>@T("Common.Minor")</span></div>
+            </div>
+            @if (PageAccess.Can("DefectManagement", "Create"))
+            {
+                <button class="di-add" @onclick='() => Navigation.NavigateTo($"/defects/new/{InspectionId}")'>@T("DefectInspection.AddDefect")</button>
+            }
+        </div>
+
+        <div class="di-card">
+            <input class="di-search" placeholder="@T("DefectInspection.SearchDefects")" @bind="_q" @bind:event="oninput" />
+            @{ var list = _d.Defects.Where(x => _q == "" || $"{x.DefectNo} {x.DefectType} {x.Description}".Contains(_q, StringComparison.OrdinalIgnoreCase)).ToList(); }
+            @if (!list.Any())
+            {
+                <div class="di-empty">@T("DefectInspection.NoCAPADefectForThisInspection")<br/>
+                    @T("DefectInspection.DefectsAreOpenedAutomaticallyWhenQuantity")</div>
+            }
+            @foreach (var x in list)
+            {
+                <div class="di-item" @onclick='() => Navigation.NavigateTo($"/defects/{x.Id}/edit")'>
+                    <div class="di-thumb">
+                        @if (!string.IsNullOrEmpty(x.Photo)) { <img src="@MediaUrl.Resolve(x.Photo, Http.BaseAddress?.ToString())" /> }
+                        else { <span>📷</span> }
+                    </div>
+                    <div class="di-item-body">
+                        <div><b>@x.DefectNo</b> <span class="di-sev @DefectOptions.SeverityCss(x.Severity)">@TE("Status", x.Severity)</span></div>
+                        <div class="di-desc">@(x.DefectType)@(string.IsNullOrWhiteSpace(x.Description) ? "" : " — " + x.Description)</div>
+                        <div class="di-mute">@T("DefectInspection.QtyPcsStatus", x.Quantity) <span class="di-st @DefectOptions.StatusCss(x.Status)">@TE("Status", x.Status)</span> @T("DefectInspection.Due", L.Date(x.DueDate, "dd MMM") ?? "—")</div>
+                    </div>
+                    <span class="di-chev">›</span>
+                </div>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public int InspectionId { get; set; }
+    Data? _d;
+    string _q = "";
+    string? _err;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await PageAccess.EnsureLoadedAsync();
+        if (!PageAccess.HasAccess("DefectManagement")) { Navigation.NavigateTo("/", replace: true); return; }
+        try
+        {
+            _d = await Http.GetFromJsonAsync<Data>($"api/defects/inspection/{InspectionId}",
+                new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+        }
+        catch (Exception ex) { _err = ex.Message; }
+    }
+
+    class Data
+    {
+        public int InspectionId { get; set; } public string? JobNumber { get; set; } public string? Factory { get; set; }
+        public string? Product { get; set; } public string? ItemNumber { get; set; } public DateTime InspectionDate { get; set; }
+        public string? Inspector { get; set; } public string? Status { get; set; } public string? FinalResult { get; set; }
+        public int Critical { get; set; } public int Major { get; set; } public int Minor { get; set; }
+        public List<Item> Defects { get; set; } = new();
+    }
+    class Item
+    {
+        public int Id { get; set; } public string? DefectNo { get; set; } public string? DefectType { get; set; }
+        public string? Severity { get; set; } public int Quantity { get; set; } public string? Status { get; set; }
+        public string? Description { get; set; } public string? Photo { get; set; } public DateTime? DueDate { get; set; }
+    }
+}
+
+<style>
+    .di-page { max-width:720px; margin:0 auto; font-family:"DM Sans",sans-serif; color:#1a2d5a; }
+    .di-head { display:flex; align-items:center; gap:12px; margin-bottom:12px; }
+    .di-head h1 { color:#fff; font-size:22px; margin:0; }
+    .di-back { width:34px; height:34px; border-radius:8px; border:none; background:rgba(255,255,255,.2); color:#fff; font-size:22px; cursor:pointer; }
+    .di-loading { color:#fff; padding:40px; text-align:center; }
+    .di-card { background:#fff; border-radius:14px; padding:16px; margin-bottom:12px; box-shadow:0 2px 10px rgba(15,40,90,.08); }
+    .di-row1 { display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; }
+    .di-ins { font-size:20px; font-weight:800; }
+    .di-badge { font-size:12px; font-weight:700; padding:3px 10px; border-radius:20px; }
+    .di-badge.done { background:#dcfce7; color:#166534; } .di-badge.prog { background:#dcfce7; color:#15803d; }
+    .di-info { display:grid; grid-template-columns:130px 1fr; gap:6px 10px; font-size:13px; padding-bottom:12px; border-bottom:1px solid #eef1f6; }
+    .di-info span { color:#6b7280; } .di-info b { font-weight:600; }
+    .di-totals { display:flex; align-items:center; gap:18px; padding:12px 0; }
+    .di-total { display:flex; flex-direction:column; margin-right:auto; }
+    .di-total span { font-size:12px; color:#6b7280; } .di-total b { font-size:26px; }
+    .di-dot { display:flex; flex-direction:column; align-items:center; gap:3px; font-size:11.5px; color:#374151; }
+    .di-dot i { font-style:normal; width:34px; height:34px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight:800; color:#fff; }
+    .di-dot.crit i { background:#ef4444; } .di-dot.maj i { background:#f97316; } .di-dot.min i { background:#facc15; color:#1a2d5a; }
+    .di-add { width:100%; background:#1d4ed8; color:#fff; border:none; border-radius:10px; padding:12px; font-size:15px; font-weight:700; cursor:pointer; }
+    .di-search { width:100%; box-sizing:border-box; border:1px solid #dbe3ef; border-radius:9px; padding:9px 12px; font-size:13px; margin-bottom:8px; font-family:inherit; }
+    .di-empty { text-align:center; color:#94a3b8; font-size:13px; padding:20px; }
+    .di-item { display:flex; gap:12px; align-items:center; padding:10px 4px; border-bottom:1px solid #f1f3f7; cursor:pointer; }
+    .di-item:hover { background:#f8faff; }
+    .di-thumb { width:64px; height:64px; border-radius:10px; overflow:hidden; background:#f1f5f9; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+    .di-thumb img { width:100%; height:100%; object-fit:cover; }
+    .di-item-body { flex:1; min-width:0; font-size:13px; }
+    .di-desc { color:#374151; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .di-mute { font-size:12px; color:#6b7280; }
+    .di-sev { font-size:11px; font-weight:700; padding:2px 8px; border-radius:20px; margin-left:6px; }
+    .di-sev.critical { background:#fee2e2; color:#b91c1c; } .di-sev.major { background:#ffedd5; color:#c2410c; } .di-sev.minor { background:#fef9c3; color:#a16207; }
+    .di-st.open { color:#16a34a; font-weight:700; } .di-st.inprogress { color:#2563eb; font-weight:700; } .di-st.closed { color:#dc2626; font-weight:700; }
+    .di-chev { font-size:22px; color:#94a3b8; }
+
+    /* ══ Giao diện nền sáng (đồng bộ Defect Management) ══ */
+    .di-page { max-width:none; margin:-28px; padding:24px max(28px, calc((100% - 720px) / 2)) 32px; min-height:calc(100vh - 44px); background:#f3f6fb; box-sizing:border-box; }
+    .di-head h1 { color:#0f2552; }
+    .di-back { background:#fff; color:#1a2d5a; border:1px solid #dbe3ef; flex-shrink:0; }
+    .di-loading { color:#64748b; }
+    .di-card { border:1px solid #e5eaf2; box-shadow:0 1px 4px rgba(15,40,90,.05); }
+    @@media (max-width:900px) { .di-page { margin:-20px -16px; padding:18px 16px 28px; } }
+    @@media (max-width:600px) {
+        .di-page { margin:-16px -12px; padding:14px 12px 24px; }
+        .di-info { grid-template-columns:110px minmax(0,1fr); }
+        .di-info b { overflow-wrap:anywhere; }
+        .di-totals { gap:10px; }
+        .di-search { font-size:16px; }
+    }
+</style>

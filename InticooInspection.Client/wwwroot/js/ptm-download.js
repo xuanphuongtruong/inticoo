@@ -4,7 +4,8 @@
 //  Helper tải/ mở file từ byte[] (blob) — dùng từ Razor để bypass
 //  Azure Static Web Apps auth gateway (vốn chặn <a target="_blank">).
 // ============================================================
-window.ptmDownloadBlob = function (bytesBase64Or, contentType, fileName, openInline) {
+// errorPrefix: câu báo lỗi đã dịch theo ngôn ngữ người dùng (truyền từ Razor)
+window.ptmDownloadBlob = function (bytesBase64Or, contentType, fileName, openInline, errorPrefix) {
     try {
         // Blazor truyền byte[] sang JS dạng Uint8Array → blob trực tiếp.
         let blob;
@@ -37,7 +38,7 @@ window.ptmDownloadBlob = function (bytesBase64Or, contentType, fileName, openInl
         setTimeout(() => URL.revokeObjectURL(url), 60_000);
     } catch (err) {
         console.error('[ptmDownloadBlob] error:', err);
-        alert('Open file failed: ' + (err && err.message ? err.message : err));
+        alert((errorPrefix || 'Open file failed: ') + (err && err.message ? err.message : err));
     }
 
     function triggerDownload(url, name) {

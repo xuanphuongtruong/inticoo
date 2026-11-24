@@ -1,0 +1,81 @@
+@page "/register/complete/{id:guid}"
+@model RegisterCompleteModel
+@inject Microsoft.Extensions.Configuration.IConfiguration Cfg
+@{
+    ViewData["Title"] = L["Registration"];
+    var inv = Model.Invoice!; var co = Model.Company!;
+    var paid = inv.Status == InvoiceStatus.Paid;
+    var ready = paid && co.ProvisionStatus == ProvisionStatus.Provisioned;
+    var bank = !paid && Model.LastPayment is { Method: "BankTransfer" };
+    var total = inv.Amount + inv.Tax;
+}
+<div class="wrap" style="max-width:760px;padding:50px 20px">
+  <div class="form-card">
+    @if (ready)
+    {
+      <span class="ico" style="background:#d1fae5;color:#059669">@Icons.Svg("check")</span>
+      <h1 style="font-size:2rem">@L["Your account is ready!"]</h1>
+      <p>@L.F("Welcome, {0}. Your Inticoo account for {1} has been created and the {2} plan is active.", co.ContactPerson, co.Name, inv.PlanName)</p>
+      <p>@L["Sign in with the administrator email and the password you chose."]</p>
+      <a class="btn lg" href="@(Cfg["Portal:AppUrl"] ?? "#")">@L["Sign In"] →</a>
+    }
+    else if (paid)
+    {
+      <span class="ico" style="background:#d1fae5;color:#059669">@Icons.Svg("check")</span>
+      <h1 style="font-size:2rem">@L["Payment received"]</h1>
+      <p>@L["Thank you. Your account is being prepared and we will email you as soon as it is ready."]</p>
+    }
+    else if (bank)
+    {
+      <span class="ico">@Icons.Svg("receipt")</span>
+      <h1 style="font-size:2rem">@L["Invoice created — awaiting bank transfer"]</h1>
+      <p>@L["Please transfer the amount below. Your account is activated as soon as we confirm the payment."]</p>
+    }
+    else
+    {
+      <span class="ico" style="background:#fee2e2;color:#dc2626">@Icons.Svg("alert")</span>
+      <h1 style="font-size:2rem">@L["Payment not completed"]</h1>
+      <p>@L["Your registration is saved, but the payment did not go through. You can try again below."]</p>
+      @if (Model.LastPayment?.FailureReason is { } why) { <div class="alert err">@L[why]</div> }
+    }
+
+    <table class="cmp" style="margin:18px 0">
+      <tr><td>@L["Invoice"]</td><td style="text-align:right"><b>@inv.Number</b></td></tr>
+      <tr><td>@L["Company"]</td><td style="text-align:right">@co.Name</td></tr>
+      <tr><td>@L["Plan"]</td><td style="text-align:right">@inv.PlanName (@inv.BillingCycle)</td></tr>
+      <tr><td>@L["Total (USD)"]</td><td style="text-align:right"><b>$@total.ToString("N2")</b></td></tr>
+      <tr><td>@L["Due date"]</td><td style="text-align:right">@inv.DueDate.ToString("dd MMM yyyy")</td></tr>
+    </table>
+
+    @if (bank)
+    {
+      <h3>@L["Bank details"]</h3>
+      <pre style="background:var(--bg);padding:14px;border-radius:10px;white-space:pre-wrap;font-family:inherit">@Model.BankInfo
+Reference: @inv.Number</pre>
+    }
+    @if (!paid && !bank)
+    {
+      @if (Model.Error != null) { <div class="alert err">@Model.Error</div> }
+      @if (Model.PayPalEnabled)
+      {
+        <form method="post" asp-page-handler="PayPal" asp-route-id="@Model.Reg!.Id" style="margin-bottom:18px">
+          <button class="btn lg" type="submit">@L["Pay with PayPal / Card"]</button>
+          <div class="hint muted" style="margin-top:6px">@L["You will be taken to PayPal. No PayPal account is needed to pay by Visa or Mastercard."]</div>
+        </form>
+      }
+      @if (Model.CardEnabled)
+      {
+        <form method="post" asp-page-handler="Retry" asp-route-id="@Model.Reg!.Id" autocomplete="off">
+          <div class="field"><label>@L["Card Number"]</label><input type="text" name="number" inputmode="numeric" maxlength="23" placeholder="1234 1234 1234 1234" /></div>
+          <div class="row3">
+            <div class="field"><label>@L["Expiration Date"]</label><input type="text" name="expiry" maxlength="7" placeholder="MM/YY" /></div>
+            <div class="field"><label>CVC</label><input type="text" name="cvc" inputmode="numeric" maxlength="4" /></div>
+            <div class="field"><label>@L["Name on Card"]</label><input type="text" name="holder" maxlength="150" /></div>
+          </div>
+          <button class="btn" type="submit">@L["Pay now"]</button>
+        </form>
+      }
+    }
+    <p class="muted" style="margin-top:20px">@L["Questions?"] <a href="/contact">@L["Contact Us"]</a></p>
+  </div>
+</div>

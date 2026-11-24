@@ -1,6 +1,7 @@
-using System.Net.Http.Headers;
+﻿using System.Net.Http.Headers;
 using System.Text.Json;
 using Blazored.SessionStorage;
+using InticooInspection.Domain.Security;
 
 namespace InticooInspection.Client.Services
 {
@@ -14,6 +15,8 @@ namespace InticooInspection.Client.Services
 
         private HashSet<string>? _cachedPages;
         private List<string>     _cachedRoles = new();
+        private ModulePermissionSet _perms    = new();
+        private HashSet<string>? _customerScope;      // null = không giới hạn khách hàng
         private bool             _loaded      = false;
         private Task?            _inflight;
 
@@ -29,6 +32,19 @@ namespace InticooInspection.Client.Services
         public IReadOnlyCollection<string> Roles => _cachedRoles;
         public bool IsLoaded => _loaded;
         public bool IsAdmin  => _cachedRoles.Contains("Admin", StringComparer.OrdinalIgnoreCase);
+
+        // ── Quyền chi tiết theo module (màn Create/Edit User) ──
+        /// <summary>Mức quyền của module (Admin = Edit).</summary>
+        public PermLevel Level(string module) => !_loaded ? PermLevel.None : IsAdmin ? PermLevel.Edit : _perms.Level(module);
+        public bool CanView(string module) => _loaded && (IsAdmin || _perms.CanView(module));
+        /// <summary>Được làm hành động (Create/Edit/Delete/Export/Download) trên module không. Admin luôn được.</summary>
+        public bool Can(string module, string action) => _loaded && (IsAdmin || _perms.Can(module, action));
+        public bool CanExport   => Can(ModuleKeys.ReportsExport, PermAction.Export);
+        public bool CanDownload => Can(ModuleKeys.ReportsExport, PermAction.Download);
+        /// <summary>Danh sách mã khách hàng được xem (null = tất cả).</summary>
+        public IReadOnlyCollection<string>? CustomerScope => IsAdmin ? null : _customerScope;
+        public bool AllowsCustomer(string? customerId) =>
+            CustomerScope == null || (!string.IsNullOrEmpty(customerId) && _customerScope!.Contains(customerId));
 
         public bool HasAccess(string pageKey)
         {
@@ -48,14 +64,14 @@ namespace InticooInspection.Client.Services
 
         public async Task ReloadAsync()
         {
-            _loaded = false; _cachedPages = null; _cachedRoles = new();
+            _loaded = false; _cachedPages = null; _cachedRoles = new(); _perms = new(); _customerScope = null;
             await EnsureLoadedAsync();
             OnChange?.Invoke();
         }
 
         public void Clear()
         {
-            _loaded = false; _cachedPages = null; _cachedRoles = new();
+            _loaded = false; _cachedPages = null; _cachedRoles = new(); _perms = new(); _customerScope = null;
             OnChange?.Invoke();
         }
 
@@ -121,6 +137,9 @@ namespace InticooInspection.Client.Services
                                              .Select(x => x.Trim()),
                               StringComparer.OrdinalIgnoreCase);
                     _cachedRoles = dto.Roles ?? new();
+                    _perms = ModulePermissionSet.Effective(dto.ModulePermissions, dto.PageAccess);
+                    _customerScope = dto.CustomerScope == null ? null
+                        : new HashSet<string>(dto.CustomerScope, StringComparer.OrdinalIgnoreCase);
 
                     Console.WriteLine($"[PageAccess] Loaded pages: [{string.Join(", ", _cachedPages)}]");
                     Console.WriteLine($"[PageAccess] Loaded roles: [{string.Join(", ", _cachedRoles)}]");
@@ -148,6 +167,8 @@ namespace InticooInspection.Client.Services
         {
             public string?      PageAccess { get; set; }
             public List<string> Roles      { get; set; } = new();
+            public string?      ModulePermissions { get; set; }
+            public List<string>? CustomerScope    { get; set; }
         }
     }
 }

@@ -1,0 +1,16 @@
+@page
+@model AuditLogModel
+@{ ViewData["Title"] = "Audit Log"; ViewData["Crumb"] = "Audit Log"; ViewData["Sub"] = "Every sensitive action taken in this console, with who, what and when."; var req = ViewContext.HttpContext.Request; }
+<div class="panel">
+  <form class="filters" method="get">
+    <div><label>Search</label><input type="search" name="q" value="@Model.Q" placeholder="Actor, action, detail..." maxlength="100" /></div>
+    <div><label>Entity</label><select name="entity" data-autosubmit><option value="">All</option>@foreach (var e in Model.Entities) { <option value="@e" selected="@(Model.Entity == e)">@e</option> }</select></div>
+    <div><label>From</label><input type="date" name="from" value="@Model.From?.ToString("yyyy-MM-dd")" /></div><div><label>To</label><input type="date" name="to" value="@Model.To?.ToString("yyyy-MM-dd")" /></div>
+    <button class="btn">Filter</button><a class="btn" href="/auditlog">Reset</a><a class="btn" href="@AdminUi.Qs(req, ("handler", "Export"))">@Icons.Svg("download", 16) Export</a>
+  </form>
+  <div class="tbl-wrap"><table class="t"><thead><tr><th>Time (UTC)</th><th>Actor</th><th>Action</th><th>Entity</th><th>Detail</th><th>IP</th></tr></thead><tbody>
+  @foreach (var a in Model.Rows) { <tr><td>@AdminUi.DT(a.At)</td><td>@a.Actor</td><td><b>@a.Action</b></td><td>@a.Entity @if (a.EntityId != null) { <span class="muted">@(a.EntityId.Length > 14 ? a.EntityId[..8] + "…" : a.EntityId)</span> }</td><td>@a.Detail</td><td>@a.IpAddress</td></tr> }
+  @if (Model.Rows.Count == 0) { <tr><td colspan="6" class="muted" style="padding:20px;text-align:center">No entries.</td></tr> }
+  </tbody></table></div>
+  <partial name="_Pager" model="Model.Pager" />
+</div>

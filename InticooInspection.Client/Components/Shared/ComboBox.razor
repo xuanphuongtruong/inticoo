@@ -1,5 +1,5 @@
 @* Reusable searchable ComboBox — works consistently on macOS, Windows, Linux *@
-@implements IDisposable
+@inherits LocalizedComponentBase
 
 <div class="cmb-root @CssClass" @onfocusout="OnFocusOut" tabindex="-1">
     <div class="cmb-control @(IsOpen ? "cmb-open" : "")" @onclick="ToggleOpen">
@@ -13,7 +13,7 @@
                @ref="_inputRef" />
         @if (AllowClear && !string.IsNullOrEmpty(Value))
         {
-            <button type="button" class="cmb-clear" @onclick="Clear" @onclick:stopPropagation="true" tabindex="-1" title="Clear">✕</button>
+            <button type="button" class="cmb-clear" @onclick="Clear" @onclick:stopPropagation="true" tabindex="-1" title="@T("Common.Clear")">✕</button>
         }
         <span class="cmb-arrow">
             <svg width="10" height="6" viewBox="0 0 10 6" xmlns="http://www.w3.org/2000/svg">
@@ -30,7 +30,7 @@
                 <div class="cmb-item cmb-item-empty @(string.IsNullOrEmpty(Value) ? "cmb-selected" : "")"
                      @onclick="@(() => SelectItem(""))"
                      @onclick:stopPropagation="true">
-                    @EmptyOptionLabel
+                    @(EmptyOptionLabel ?? T("Common.All"))
                 </div>
             }
             @{
@@ -43,12 +43,12 @@
                     <div class="cmb-item cmb-item-create"
                          @onclick="@(() => SelectItem(_query.Trim()))"
                          @onclick:stopPropagation="true">
-                        <span class="cmb-create-tag">Add</span> "@_query"
+                        <span class="cmb-create-tag">@T("Common.Add")</span> "@_query"
                     </div>
                 }
                 else
                 {
-                    <div class="cmb-empty">No matches</div>
+                    <div class="cmb-empty">@T("ComboBox.NoMatches")</div>
                 }
             }
             else
@@ -71,7 +71,7 @@
                     <div class="cmb-item cmb-item-create"
                          @onclick="@(() => SelectItem(_query.Trim()))"
                          @onclick:stopPropagation="true">
-                        <span class="cmb-create-tag">Add</span> "@_query"
+                        <span class="cmb-create-tag">@T("Common.Add")</span> "@_query"
                     </div>
                 }
             }
@@ -88,7 +88,7 @@
     [Parameter] public bool AllowCreate { get; set; } = false;
     [Parameter] public bool AllowClear { get; set; } = true;
     [Parameter] public bool AllowEmptyOption { get; set; } = false;
-    [Parameter] public string EmptyOptionLabel { get; set; } = "All";
+    [Parameter] public string? EmptyOptionLabel { get; set; }   // null → "All" theo ngôn ngữ
 
     private bool IsOpen { get; set; }
     private string _query = "";
@@ -204,7 +204,9 @@
         }
     }
 
-    public void Dispose() { }
+    protected override void Dispose(bool disposing)
+    {
+        base.Dispose(disposing); }
 }
 
 <style>

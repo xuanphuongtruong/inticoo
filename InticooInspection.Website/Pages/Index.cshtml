@@ -1,0 +1,104 @@
+@page
+@inject PortalDbContext Db
+@{
+    ViewData["Title"] = "";
+    var plans = await Db.Plans.AsNoTracking().Include(p => p.Modules).ThenInclude(m => m.Module).Where(p => p.IsActive).ToListAsync();
+}
+<section class="hero">
+  <div class="wrap">
+    <div>
+      <span class="eyebrow">@L["Inspection App"]</span>
+      <h1>@L["Simple Inspections."]<br />@L["Better Quality."]</h1>
+      <p class="lead">@L["A powerful inspection platform to manage product inspections, loading container checks, suppliers, CAPA and quality data — built on more than 20 years of quality experience for US & European standards."]</p>
+      <div class="hero-actions">
+        <a class="btn lg" href="/register">@L["Start Free Trial"] →</a>
+        <a class="btn lg ghost" href="/resources#learning">@Icons.Svg("play", 20) @L["Watch Video"]</a>
+      </div>
+      <partial name="_Badges" model="@("home")" />
+    </div>
+    <div class="hero-shot"><img src="/img/photos/hero-dashboard.png" alt="@L["Inticoo dashboard on laptop and mobile"]" width="1080" height="638" /></div>
+  </div>
+</section>
+
+<section class="sec">
+  <div class="wrap">
+    <div class="sec-head"><span class="eyebrow">@L["Key Features"]</span><h2>@L["Everything You Need for Quality Management"]</h2><p>@L["From product inspection to container loading check — all in one platform."]</p></div>
+    <div class="grid g5">
+      <div class="card kf"><span class="ico plain">@Icons.Svg("clipboard")</span><h3>@L["Product Inspections"]</h3><p>@L["PPI, DPI and PST customised checklists, capture photos and record findings on web or mobile."]</p>
+        <div class="vis"><img src="/img/photos/home-inspection.jpg" alt="" loading="lazy" /></div></div>
+      <div class="card kf"><span class="ico plain">@Icons.Svg("container")</span><h3>@L["Loading Container Check (CLC)"]</h3><p>@L["Manage container loading inspections, verify packing quantity and container condition."]</p>
+        <div class="vis"><img src="/img/photos/home-container.jpg" alt="" loading="lazy" /></div></div>
+      <div class="card kf"><span class="ico plain">@Icons.Svg("users-s")</span><h3>@L["Supplier Management"]</h3><p>@L["Manage suppliers, track performance and monitor supplier quality."]</p>
+        <div class="vis mini"><div class="hd"><span>@L["Suppliers"]</span><span style="color:var(--green)">↻</span></div>
+          @foreach (var (n, s, c) in new[] { ("A", 92, "g"), ("B", 85, "a"), ("C", 78, "a"), ("D", 65, "r"), ("E", 88, "g") })
+          { <div class="r"><span>@L["Supplier"] @n</span><span class="chip @c">@s</span></div> }
+        </div></div>
+      <div class="card kf"><span class="ico plain" style="color:#10b981">@Icons.Svg("target")</span><h3>@L["CAPA Management"]</h3><p>@L["Record, track and manage corrective and preventive actions from issue to closure."]</p>
+        <div class="vis mini"><div class="hd"><span>CAPA</span></div>
+          <div class="r"><span><i class="dot" style="background:#ef4444"></i>@L["Open"]</span><b>12</b></div>
+          <div class="r"><span><i class="dot" style="background:#f5a524"></i>@L["In Progress"]</span><b>8</b></div>
+          <div class="r"><span><i class="dot" style="background:#22b866"></i>@L["Closed"]</span><b>45</b></div>
+        </div></div>
+      <div class="card kf"><span class="ico plain">@Icons.Svg("bar-s")</span><h3>@L["Quality Analytics"]</h3><p>@L["Real-time dashboards and reports to monitor quality performance and trends."]</p>
+        <div class="vis mini"><div class="hd"><span>@L["Pass Rate"]</span><span style="color:var(--green);font-size:1.15rem">96.1%</span></div>
+          <svg class="spark" viewBox="0 0 160 58" preserveAspectRatio="none"><polyline points="4,46 30,40 54,32 80,34 104,22 130,18 156,8" fill="none" stroke="#1565f0" stroke-width="2"/>@foreach (var (x, y) in new[] { (4, 46), (30, 40), (54, 32), (80, 34), (104, 22), (130, 18), (156, 8) }) { <circle cx="@x" cy="@y" r="2.6" fill="#1565f0"/> }</svg>
+          <div class="r" style="font-size:.62rem;color:var(--muted)"><span>Jan</span><span>Feb</span><span>Mar</span><span>Apr</span><span>May</span><span>Jun</span></div>
+        </div></div>
+    </div>
+  </div>
+</section>
+
+<section class="sec alt tight">
+  <div class="wrap">
+    <div class="sec-head"><span class="eyebrow">@L["Multi-language Support"]</span><h2>@L["4 Languages for Global Teams"]</h2><p>@L["Easy to switch between languages. Suitable for buyers, suppliers and factory teams."]</p></div>
+    <div class="langs-row">
+      <div class="card lang-card">@Ui.Flag("en")<strong>English</strong><p class="muted">For global customers and suppliers</p></div>
+      <div class="card lang-card">@Ui.Flag("zh")<strong>中文</strong><p class="muted">适合中国团队和供应商</p></div>
+      <div class="card lang-card">@Ui.Flag("vi")<strong>Tiếng Việt</strong><p class="muted">Phù hợp cho nhà máy và đội ngũ kiểm tra</p></div>
+      <div class="card lang-card">@Ui.Flag("ms")<strong>Bahasa Melayu</strong><p class="muted">Sesuai untuk pasukan tempatan dan rakan pembekal</p></div>
+      <div class="lang-mock" aria-hidden="true">
+        <div class="t">@Icons.Svg("globe", 18) @Ui.Short(L.Lang) @Icons.Svg("chevron", 14)</div>
+        @foreach (var l in LocalizationStore.Supported) { <div class="i">@Ui.Flag(l) @LocalizationStore.Meta[l].Native</div> }
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="sec tight">
+  <div class="wrap">
+    <div class="sec-head"><span class="eyebrow">@L["How It Works"]</span><h2>@L["From Inspection to Action in 4 Simple Steps"]</h2><p>@L["A simple workflow to help you conduct inspections efficiently and ensure consistent quality."]</p></div>
+    <div class="steps">
+      @{
+        var steps = new[] {
+          ("clipboard", "Plan Inspection", "Schedule and assign inspections to your team."),
+          ("doc", "Conduct Inspection", "Use digital checklists, capture photos and record findings."),
+          ("barchart", "Generate Report", "Create professional reports with photos and results instantly."),
+          ("checkcircle", "Follow Up with CAPA", "Track corrective and preventive actions until closure.") };
+      }
+      @for (var i = 0; i < steps.Length; i++)
+      {
+        if (i > 0) { <div class="step-arrow">@Icons.Svg("arrow")</div> }
+        <div class="card step"><span class="num">@(i + 1)</span><span class="ico plain">@Icons.Svg(steps[i].Item1)</span><h3>@L[steps[i].Item2]</h3><p class="muted">@L[steps[i].Item3]</p></div>
+      }
+    </div>
+  </div>
+</section>
+
+<section class="sec alt tight">
+  <div class="wrap">
+    <div class="sec-head"><span class="eyebrow">@L["Built for Your Industry"]</span><h2>@L["Suitable for Furniture and Hardline Products"]</h2></div>
+    <div class="grid g6">
+      @foreach (var (img, name) in new[] { ("furniture", "Furniture"), ("homegoods", "Home Goods"), ("consumer", "Consumer Products"), ("toys", "Toys & Children Products"), ("electronics", "Electronics"), ("building", "Building Materials") })
+      {
+        <div class="industry"><img src="/img/photos/ind-@(img).jpg" alt="" loading="lazy" /><span>@L[name]</span></div>
+      }
+    </div>
+  </div>
+</section>
+
+<section class="sec">
+  <div class="wrap">
+    <div class="sec-head"><span class="eyebrow">@L["Pricing"]</span><h2>@L["Flexible Plans for Every Business"]</h2><p>@L["Choose the plan that fits your needs. All plans include secure cloud storage, multi-language support (EN/CN/VI/MS) and regular updates."]</p></div>
+    <partial name="_Plans" model="plans" />
+  </div>
+</section>

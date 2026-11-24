@@ -1,0 +1,48 @@
+@page
+@{ ViewData["Title"] = L["Features"]; }
+<section class="hero small">
+  <div class="wrap">
+    <div>
+      <span class="eyebrow">@L["Features"]</span>
+      <h1>@L["Everything You Need for Quality Management"]</h1>
+      <p class="lead">@L["A complete inspection platform to manage product inspections, loading container checks, suppliers, CAPA and quality data — designed for real manufacturing needs."]</p>
+    </div>
+  </div>
+</section>
+<section class="sec">
+  <div class="wrap">
+    <div class="sec-head"><span class="eyebrow">@L["Main Features"]</span><h2>@L["Comprehensive Tools for the Entire Quality Process"]</h2></div>
+    <div class="grid g3">
+      <div class="card"><span class="ico">@Icons.Svg("clipboard")</span><h3>@L["Product Inspections"]</h3><p>@L["Plan and conduct PPI, DPI and PST with customised checklists, capture photos and record findings on web or mobile."]</p>
+        <ul class="ticks"><li>@L["Pre-Production Inspection (PPI)"]</li><li>@L["During Production Inspection (DPI)"]</li><li>@L["Pre-Shipment Inspection (PST)"]</li><li>@L["Customised checklists"]</li><li>@L["Photo & annotation"]</li></ul></div>
+      <div class="card"><span class="ico">@Icons.Svg("container")</span><h3>@L["Loading Container Check (CLC)"] <span class="tag">@L["Professional Only"]</span></h3><p>@L["Manage container loading inspections, verify packing quantity and container condition to ensure products are shipped correctly."]</p>
+        <ul class="ticks"><li>@L["Container loading checklist"]</li><li>@L["Packing quantity verification"]</li><li>@L["Container condition check"]</li><li>@L["Seal number & report"]</li></ul></div>
+      <div class="card"><span class="ico">@Icons.Svg("users")</span><h3>@L["Supplier Management"]</h3><p>@L["Maintain supplier profiles, track performance and monitor issues for better supplier control."]</p>
+        <ul class="ticks"><li>@L["Supplier profiles"]</li><li>@L["Quality performance score"]</li><li>@L["Inspection history"]</li><li>@L["Defect trends"]</li></ul></div>
+      <div class="card"><span class="ico">@Icons.Svg("alert")</span><h3>@L["Defect Management"]</h3><p>@L["Record, categorise and track defects with photos and root cause information."]</p>
+        <ul class="ticks"><li>@L["Defect classification"]</li><li>@L["Critical / Major / Minor"]</li><li>@L["Link to CAPA"]</li><li>@L["Export to reports"]</li></ul></div>
+      <div class="card"><span class="ico">@Icons.Svg("shield")</span><h3>@L["CAPA Management"]</h3><p>@L["Manage corrective and preventive actions from issue identification to closure."]</p>
+        <ul class="ticks"><li>@L["Assign and track actions"]</li><li>@L["Responsible person & due date"]</li><li>@L["Status monitoring"]</li><li>@L["Effectiveness verification"]</li></ul></div>
+      <div class="card"><span class="ico">@Icons.Svg("chart")</span><h3>@L["Quality Analytics Dashboard"]</h3><p>@L["Get real-time insights with visual dashboards to monitor quality performance and trends."]</p>
+        <ul class="ticks"><li>@L["Pass rate & defect rate"]</li><li>@L["Inspections by type"]</li><li>@L["Supplier performance"]</li><li>@L["Customisable date range"]</li></ul></div>
+      <div class="card"><span class="ico">@Icons.Svg("lock")</span><h3>@L["User & Permission Control"]</h3><p>@L["Control what each user can see and do with role-based permissions."]</p>
+        <ul class="ticks"><li>@L["View Only / Create / Edit / Delete"]</li><li>@L["Control by module"]</li><li>@L["Multi-level user roles"]</li></ul></div>
+      <div class="card"><span class="ico">@Icons.Svg("globe")</span><h3>@L["Multi-language Support"]</h3><p>@L["Support 4 languages for global buyers, teams and factory users."]</p>
+        <ul class="ticks"><li>English</li><li>中文 (Chinese)</li><li>Tiếng Việt (Vietnamese)</li><li>Bahasa Melayu</li></ul></div>
+      <div class="card"><span class="ico">@Icons.Svg("cloud")</span><h3>@L["Secure & Independent Company Accounts"]</h3><p>@L["Each company has its own secure and independent account. Your data is separated and protected."]</p>
+        <ul class="ticks"><li>@L["Data separation between companies"]</li><li>@L["Role-based access control"]</li><li>@L["Regular data backup"]</li></ul></div>
+    </div>
+  </div>
+</section>
+<section class="sec alt">
+  <div class="wrap">
+    <div class="sec-head"><span class="eyebrow">@L["Additional Features"]</span></div>
+    <div class="grid g4">
+      <div class="card"><h3>@L["Inspection Scheduling"]</h3><p>@L["Set inspection schedules with email templates and reminders."]</p></div>
+      <div class="card"><h3>@L["Performance Test"]</h3><p>@L["Manage product performance tests and results."]</p></div>
+      <div class="card"><h3>@L["Directory Management"]</h3><p>@L["Manage customers, vendors, inspectors and product profiles."]</p></div>
+      <div class="card"><h3>@L["Inspection Reports"]</h3><p>@L["Professional reports with photos and findings."]</p></div>
+    </div>
+    <div class="center" style="margin-top:32px"><a class="btn lg" href="/register">@L["Register & Subscribe"] →</a></div>
+  </div>
+</section>

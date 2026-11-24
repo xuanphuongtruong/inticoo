@@ -1,0 +1,140 @@
+@* Khung ký tay (ngón tay trên điện thoại / chuột trên máy tính).
+   Trả về ảnh PNG nền trắng dạng data URL qua OnConfirm(name, dataUrl). *@
+@inject IJSRuntime JS
+@inherits LocalizedComponentBase
+
+@if (Visible)
+{
+    <div class="sp-overlay" @onclick="Cancel">
+        <div class="sp-box" @onclick:stopPropagation="true">
+            <div class="sp-head">
+                <div>
+                    <div class="sp-title">@(Title ?? T("SignaturePadModal.Signature"))</div>
+                    <div class="sp-sub">@T("SignaturePadModal.SignInsideBoxBelow")</div>
+                </div>
+                <button class="sp-x" @onclick="Cancel">✕</button>
+            </div>
+            <label class="sp-lbl">@T("SignaturePadModal.FullName") <i>*</i></label>
+            <input class="sp-name" @bind="_name" @bind:event="oninput" placeholder="@T("SignaturePadModal.EnterYourFullName")" />
+            <div class="sp-hint">@T("SignaturePadModal.FilledFromYourLoginAccountYou")</div>
+            <label class="sp-lbl">@T("Common.Position")</label>
+            <input class="sp-name" @bind="_position" @bind:event="oninput" placeholder="@T("SignaturePadModal.EGQAManager")" />
+            <div class="sp-canvas-wrap">
+                <canvas id="@_canvasId" class="sp-canvas"></canvas>
+                <span class="sp-baseline">@T("SignaturePadModal.SignHere")</span>
+            </div>
+            @if (!string.IsNullOrEmpty(_err)) { <div class="sp-err">@_err</div> }
+            <div class="sp-actions">
+                <button class="sp-btn ghost" @onclick="Clear">@T("Common.Clear")</button>
+                <button class="sp-btn ghost" @onclick="Cancel">@T("Common.Cancel")</button>
+                <button class="sp-btn primary" @onclick="Confirm" disabled="@Busy">@(Busy ? T("SignaturePadModal.Saving") : T("SignaturePadModal.ConfirmSignature"))</button>
+            </div>
+            <div class="sp-note">@T("SignaturePadModal.ByConfirmingYouAgreeThisElectronic")</div>
+        </div>
+    </div>
+}
+
+<style>
+    .sp-overlay { position:fixed; inset:0; z-index:2000; background:rgba(15,23,42,.55); display:flex; align-items:center; justify-content:center; padding:12px; }
+    .sp-box { background:#fff; color:#1a2d5a; border-radius:16px; width:560px; max-width:100%; padding:16px; box-shadow:0 20px 50px rgba(0,0,0,.3); font-family:"DM Sans",sans-serif; }
+    .sp-head { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:10px; }
+    .sp-title { font-size:17px; font-weight:800; }
+    .sp-sub { font-size:12.5px; color:#64748b; }
+    .sp-x { border:none; background:#f1f5f9; border-radius:8px; width:32px; height:32px; cursor:pointer; font-size:14px; }
+    .sp-lbl { font-size:12.5px; font-weight:700; color:#334155; } .sp-lbl i { color:#ef4444; font-style:normal; }
+    .sp-hint { font-size:11px; color:#94a3b8; margin:-6px 0 10px; }
+    .sp-signer { display:flex; align-items:center; gap:10px; background:#f1f5fb; border-radius:10px; padding:8px 12px; margin-bottom:10px; }
+    .sp-signer-ava { width:34px; height:34px; border-radius:50%; background:#2563eb; color:#fff; font-weight:800; font-size:13px; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+    .sp-signer-lbl { font-size:11px; color:#64748b; }
+    .sp-signer-name { font-size:15px; font-weight:800; color:#0f1f47; }
+    .sp-name { width:100%; box-sizing:border-box; border:1.5px solid #dde4ef; border-radius:9px; padding:10px 12px; font-size:15px; margin:4px 0 10px; font-family:inherit; }
+    .sp-canvas-wrap { position:relative; border:2px dashed #93c5fd; border-radius:12px; background:#fbfdff; height:220px; touch-action:none; }
+    .sp-canvas { width:100%; height:100%; display:block; border-radius:10px; touch-action:none; cursor:crosshair; }
+    .sp-baseline { position:absolute; left:16px; right:16px; bottom:38px; border-bottom:1px solid #cbd5e1; font-size:10.5px; color:#94a3b8; padding-bottom:2px; pointer-events:none; }
+    .sp-err { margin-top:8px; background:#fee2e2; color:#991b1b; border-radius:8px; padding:7px 10px; font-size:13px; }
+    .sp-actions { display:flex; gap:8px; margin-top:12px; }
+    .sp-btn { border:none; border-radius:10px; padding:12px 14px; font-size:14px; font-weight:700; cursor:pointer; font-family:inherit; }
+    .sp-btn.ghost { background:#f1f5f9; color:#334155; }
+    .sp-btn.primary { background:#16a34a; color:#fff; flex:1; }
+    .sp-btn:disabled { opacity:.6; }
+    .sp-note { font-size:11px; color:#94a3b8; margin-top:10px; }
+    @@media (max-width:600px) {
+        .sp-overlay { padding:0; align-items:stretch; }
+        .sp-box { border-radius:0; width:100%; display:flex; flex-direction:column; }
+        .sp-canvas-wrap { flex:1; height:auto; min-height:260px; }
+    }
+</style>
+
+@code {
+    [Parameter] public bool Visible { get; set; }
+    [Parameter] public string? Title { get; set; }   // null → "Signature" theo ngôn ngữ
+    /// <summary>Họ tên tài khoản đang đăng nhập — server cũng tự lấy tên này khi lưu chữ ký.</summary>
+    [Parameter] public string? SignerName { get; set; }
+    /// <summary>Tên điền sẵn khi mở khung (ký lại thì dùng tên đã ký trước đó, nếu có).</summary>
+    [Parameter] public string? DefaultName { get; set; }
+    /// <summary>Chức vụ điền sẵn (ký lại thì dùng chức vụ đã ký trước đó).</summary>
+    [Parameter] public string? DefaultPosition { get; set; }
+    [Parameter] public bool Busy { get; set; }
+    [Parameter] public EventCallback<(string Name, string Position, string DataUrl)> OnConfirm { get; set; }
+    [Parameter] public EventCallback OnCancel { get; set; }
+
+    readonly string _canvasId = "sp-" + Guid.NewGuid().ToString("N")[..8];
+    string _name = "", _position = "";
+    string? _err;
+    bool _wasVisible;
+
+    protected override void OnParametersSet()
+    {
+        if (Visible && !_wasVisible) { _err = null; _name = !string.IsNullOrWhiteSpace(DefaultName) ? DefaultName! : SignerName ?? ""; _position = DefaultPosition ?? ""; }
+        _wasVisible = Visible;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!Visible) return;
+        try
+        {
+            await JS.InvokeVoidAsync("eval", @"window.__sigPad = window.__sigPad || {
+                init: function(id){
+                    var c = document.getElementById(id); if(!c || c._sp) return; c._sp = { empty:true };
+                    var dpr = window.devicePixelRatio || 1, r = c.getBoundingClientRect();
+                    c.width = Math.max(1, r.width * dpr); c.height = Math.max(1, r.height * dpr);
+                    var ctx = c.getContext('2d'); ctx.scale(dpr, dpr);
+                    ctx.lineWidth = 2.4; ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.strokeStyle = '#0f1f47';
+                    var down = false, lx = 0, ly = 0;
+                    function pos(e){ var b = c.getBoundingClientRect(); var p = e.touches ? e.touches[0] : e; return [p.clientX - b.left, p.clientY - b.top]; }
+                    function start(e){ e.preventDefault(); down = true; var p = pos(e); lx = p[0]; ly = p[1]; ctx.beginPath(); ctx.arc(lx, ly, 1.1, 0, 6.3); ctx.fillStyle = '#0f1f47'; ctx.fill(); c._sp.empty = false; }
+                    function move(e){ if(!down) return; e.preventDefault(); var p = pos(e); ctx.beginPath(); ctx.moveTo(lx, ly); ctx.lineTo(p[0], p[1]); ctx.stroke(); lx = p[0]; ly = p[1]; c._sp.empty = false; }
+                    function end(){ down = false; }
+                    c.addEventListener('pointerdown', start); c.addEventListener('pointermove', move);
+                    window.addEventListener('pointerup', end); c.addEventListener('pointerleave', end);
+                },
+                clear: function(id){ var c = document.getElementById(id); if(!c) return; c.getContext('2d').clearRect(0, 0, c.width, c.height); if(c._sp) c._sp.empty = true; },
+                data: function(id){
+                    var c = document.getElementById(id); if(!c || !c._sp || c._sp.empty) return '';
+                    var t = document.createElement('canvas'); t.width = c.width; t.height = c.height;
+                    var x = t.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, t.width, t.height); x.drawImage(c, 0, 0);
+                    return t.toDataURL('image/png');
+                }
+            };");
+            await JS.InvokeVoidAsync("__sigPad.init", _canvasId);
+        }
+        catch { }
+    }
+
+    static string Initials(string? n) =>
+        string.Concat((n ?? "").Split(' ', StringSplitOptions.RemoveEmptyEntries).Take(2).Select(w => char.ToUpper(w[0])));
+
+    async Task Clear() { _err = null; try { await JS.InvokeVoidAsync("__sigPad.clear", _canvasId); } catch { } }
+
+    async Task Cancel() => await OnCancel.InvokeAsync();
+
+    async Task Confirm()
+    {
+        _err = null;
+        if (string.IsNullOrWhiteSpace(_name)) { _err = T("SignaturePadModal.PleaseEnterYourFullName"); return; }
+        var data = await JS.InvokeAsync<string>("__sigPad.data", _canvasId);
+        if (string.IsNullOrEmpty(data)) { _err = T("SignaturePadModal.PleaseSignInsideBox"); return; }
+        await OnConfirm.InvokeAsync((_name.Trim(), _position.Trim(), data));
+    }
+}

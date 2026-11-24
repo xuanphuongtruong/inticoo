@@ -1,0 +1,8 @@
+@* Thẻ bài viết/video của Learning Center (trang Resources và /resources/articles) *@
+@model ResourceItem
+@{ var t = Ui.Res(Model, L); var video = Model.Kind == "Video"; }
+<a class="card rcard learn" href="/resources/@Model.Slug">
+  <span class="media">@if (Model.CoverPath != null) { <img src="@Model.CoverPath" alt="" loading="lazy" /> } else { <span class="noimg">@Icons.Svg(video ? "play" : "doc", 40)</span> }
+    <span class="badge @(video ? "v" : "")">@(video ? L["VIDEO"] : L["ARTICLE"])</span>@if (video) { <span class="playbtn">@Icons.Svg("play", 44)</span> }</span>
+  <span class="b"><h3>@t.Title</h3><p class="muted">@t.Summary</p><span class="lnk">@(t.Button ?? L[Ui.DefaultButton(Model)]) →</span></span>
+</a>

@@ -2,6 +2,7 @@ using InticooInspection.API.Helpers;
 using InticooInspection.API.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using SixLabors.ImageSharp;
 
 namespace InticooInspection.API.Controllers
 {
@@ -27,13 +28,21 @@ namespace InticooInspection.API.Controllers
             if (file == null || file.Length == 0)
                 return BadRequest(new { error = "No file provided." });
 
-            var allowedTypes = new[] { "image/jpeg", "image/jpg", "image/png", "image/webp", "image/gif" };
-            if (!allowedTypes.Contains(file.ContentType.ToLower()))
-                return BadRequest(new { error = "Only image files are allowed." });
+            if (!ImageCompressor.IsImage(file.ContentType))
+                return BadRequest(new { error = "Only JPG, PNG or WEBP images are allowed." });
 
             // Nén ảnh về ~300-400 KB
             await using var inputStream = file.OpenReadStream();
-            var (compressed, ext) = await ImageCompressor.CompressAsync(inputStream);
+            MemoryStream compressed;
+            string ext;
+            try
+            {
+                (compressed, ext) = await ImageCompressor.CompressAsync(inputStream);
+            }
+            catch (ImageFormatException)
+            {
+                return BadRequest(new { error = "Only JPG, PNG or WEBP images are allowed." });
+            }
 
             // Tên file luôn là .jpg sau khi nén
             var baseName = Path.GetFileNameWithoutExtension(file.FileName);

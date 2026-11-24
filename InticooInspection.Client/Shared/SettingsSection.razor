@@ -1,0 +1,36 @@
+@* Khối cài đặt có tiêu đề + icon. Desktop luôn mở; điện thoại bấm tiêu đề để thu gọn/mở. *@
+<section class="st-sec @(_open ? "open" : "")">
+    <button type="button" class="st-sec-head" @onclick="() => _open = !_open">
+        <span class="st-sec-ico">@((MarkupString)Icon)</span>
+        <span class="st-sec-titles">
+            <span class="st-sec-title">@Title</span>
+            @if (!string.IsNullOrEmpty(Subtitle))
+            {
+                <span class="st-sec-sub">@Subtitle</span>
+            }
+        </span>
+        @if (HeaderContent != null)
+        {
+            <span class="st-sec-extra" @onclick:stopPropagation="true">@HeaderContent</span>
+        }
+        <svg class="st-sec-caret" width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M5 8l5 5 5-5"/></svg>
+    </button>
+    <div class="st-sec-body">@ChildContent</div>
+</section>
+
+@code {
+    [Parameter] public string Title { get; set; } = "";
+    [Parameter] public string? Subtitle { get; set; }
+    [Parameter] public string Icon { get; set; } = "";
+    [Parameter] public bool DefaultOpen { get; set; } = true;
+    [Parameter] public RenderFragment? HeaderContent { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    private bool _open;
+    private bool _init;
+
+    protected override void OnParametersSet()
+    {
+        if (!_init) { _open = DefaultOpen; _init = true; }
+    }
+}

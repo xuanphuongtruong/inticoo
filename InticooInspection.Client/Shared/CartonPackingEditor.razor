@@ -1,0 +1,86 @@
+@inherits LocalizedComponentBase
+@* Inner / Outer packing lặp theo Carton Number — dùng chung cho InspectionNew & InspectionEdit.
+   Markup dùng lại class của trang cha (pkg-sub-section, ni-grid-4, field-group). *@
+
+@foreach (var row in Cartons)
+{
+    var r = row;
+    <div class="cpe-carton">
+        @if (Cartons.Count > 1)
+        {
+            <div class="cpe-carton-title">@T("CartonPackingEditor.Carton", r.CartonIndex, Cartons.Count)</div>
+        }
+
+        <!-- Inner Packing -->
+        <div class="pkg-sub-section">
+            <span class="pkg-sub-title">@T("CartonPackingEditor.InnerPacking")</span>
+            <div class="field-group inner-qty-full">
+                <label>@T("Common.Quantity")</label>
+                <input type="number" @bind="r.InnerPackingQty" placeholder="0" />
+            </div>
+            <div class="ni-grid-4" style="margin-top:12px;">
+                <div class="field-group"><label>@T("Common.LMmInch")</label><input type="number" @bind="r.InnerL" placeholder="0" /></div>
+                <div class="field-group"><label>@T("Common.WMmInch")</label><input type="number" @bind="r.InnerW" placeholder="0" /></div>
+                <div class="field-group"><label>@T("Common.HMmInch")</label><input type="number" @bind="r.InnerH" placeholder="0" /></div>
+                <div class="field-group"><label>@T("Common.WeightKgs")</label><input type="number" step="0.01" @bind="r.InnerWeight" placeholder="0.00" /></div>
+            </div>
+        </div>
+
+        <!-- Outer Packing -->
+        <div class="pkg-sub-section">
+            <span class="pkg-sub-title">@T("CartonPackingEditor.OuterPacking")</span>
+            <div class="cpe-grid-3">
+                <div class="field-group">
+                    <label>@T("Common.CartonVariant")</label>
+                    @if (Options.Any())
+                    {
+                        <select value="@r.CartonVariant" @onchange="e => OnVariantChanged(r, e.Value?.ToString())">
+                            <option value="">@T("Common.Select")</option>
+                            @foreach (var o in Options)
+                            { <option value="@o.CartonVariant">@o.CartonVariant</option> }
+                        </select>
+                    }
+                    else
+                    {
+                        <input @bind="r.CartonVariant" placeholder="@T("CartonPackingEditor.EGCarton")" />
+                    }
+                </div>
+                <div class="field-group">
+                    <label>@T("Common.Description")</label>
+                    <input @bind="r.Description" placeholder="@T("Common.AutoFilledFromProductProfile")" />
+                </div>
+                <div class="field-group">
+                    <label>@T("CartonPackingEditor.PackingQuantity")</label>
+                    <input @bind="r.PackingQuantity" placeholder="@T("Common.AutoFilledFromProductProfile")" />
+                </div>
+            </div>
+            <div class="ni-grid-4" style="margin-top:12px;">
+                <div class="field-group"><label>@T("Common.LMmInch")</label><input type="number" @bind="r.OuterL" placeholder="0" /></div>
+                <div class="field-group"><label>@T("Common.WMmInch")</label><input type="number" @bind="r.OuterW" placeholder="0" /></div>
+                <div class="field-group"><label>@T("Common.HMmInch")</label><input type="number" @bind="r.OuterH" placeholder="0" /></div>
+                <div class="field-group"><label>@T("Common.WeightKgs")</label><input type="number" step="0.01" @bind="r.OuterWeight" placeholder="0.00" /></div>
+            </div>
+        </div>
+    </div>
+}
+
+<style>
+    .cpe-carton { margin-top: 14px; }
+    .cpe-carton + .cpe-carton { margin-top: 18px; padding-top: 6px; border-top: 2px dashed #d6e4f5; }
+    .cpe-carton-title { display:inline-block; font-size: 12px; font-weight: 700; color: #1e6fc2; background: #e8f2fd; border-radius: 6px; padding: 3px 10px; margin-top: 10px; }
+    .pkg-burst-select { padding: 7px 10px; border: 1.5px solid #dde4ef; border-radius: 8px; font-size: 13px; color: #1a2d5a; background: #fff; min-width: 140px; font-family: inherit; }
+    .cpe-grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; margin-top: 8px; }
+    @@media (max-width: 700px) { .cpe-grid-3 { grid-template-columns: 1fr; } }
+</style>
+
+@code {
+    [Parameter] public List<CartonPackingRow>    Cartons { get; set; } = new();
+    [Parameter] public List<ProductCartonOption> Options { get; set; } = new();
+
+    void OnVariantChanged(CartonPackingRow row, string? variant)
+    {
+        row.CartonVariant = variant ?? "";
+        var opt = Options.FirstOrDefault(o => o.CartonVariant == row.CartonVariant);
+        if (opt != null) CartonPacking.ApplyOption(row, opt);
+    }
+}

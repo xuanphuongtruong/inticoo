@@ -1,0 +1,86 @@
+/* Sửa lỗi hiển thị chung trên điện thoại (iOS Safari / Android Chrome).
+   Nạp sau app.css trong index.html; style riêng từng trang vẫn đứng sau và có thể đè lại. */
+
+html {
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+    -webkit-tap-highlight-color: transparent;
+}
+
+/* Không cho trang tràn ngang (ví dụ bảng rộng) kéo cả layout lệch */
+html, body { max-width: 100%; overflow-x: hidden; }
+
+img, video, canvas, svg { max-width: 100%; }
+
+a, button, [role="button"], select, label, summary { touch-action: manipulation; }
+
+/* 100vh trên iOS/Android tính cả thanh địa chỉ → dùng dvh khi trình duyệt hỗ trợ */
+@supports (min-height: 100dvh) {
+    body, .app-layout, .main-wrap, .login-page { min-height: 100dvh; }
+}
+
+@media (max-width: 900px) {
+    /* iOS Safari tự phóng to trang khi focus vào ô nhập có chữ < 16px */
+    input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="button"]):not([type="submit"]),
+    select,
+    textarea {
+        font-size: 16px !important;
+    }
+
+    /* Ô date/time trên iOS có chiều cao & căn lề khác ô text */
+    input[type="date"], input[type="time"], input[type="datetime-local"], input[type="month"] {
+        -webkit-appearance: none;
+        appearance: none;
+        min-height: 40px;
+        text-align: left;
+    }
+    input[type="date"]::-webkit-date-and-time-value,
+    input[type="time"]::-webkit-date-and-time-value,
+    input[type="datetime-local"]::-webkit-date-and-time-value {
+        text-align: left;
+        min-height: 1.2em;
+    }
+
+    /* Vùng chạm tối thiểu ~40px cho nút thao tác chính */
+    .btn, button.btn-new, .side-link, .side-sublink { min-height: 40px; }
+
+    /* Tai thỏ / thanh home: viewport-fit=cover đã bật trong index.html */
+    .mobile-topbar {
+        padding-top: env(safe-area-inset-top);
+        height: calc(56px + env(safe-area-inset-top));
+        padding-left: max(14px, env(safe-area-inset-left));
+        padding-right: max(14px, env(safe-area-inset-right));
+    }
+    .side-nav {
+        padding-top: env(safe-area-inset-top);
+        padding-bottom: env(safe-area-inset-bottom);
+    }
+    .mobile-menu { padding-top: env(safe-area-inset-top); padding-bottom: calc(40px + env(safe-area-inset-bottom)); }
+    #blazor-error-ui { padding-bottom: calc(0.7rem + env(safe-area-inset-bottom)); }
+
+    /* Hộp thoại không cao hơn vùng nhìn thấy thật (trừ thanh địa chỉ) */
+    @supports (max-height: 100dvh) {
+        .modal-card { max-height: 92dvh !important; }
+        .perf-detail-box, .dm-modal { max-height: 88dvh !important; }
+    }
+}
+
+/* Các trang có thanh tab đáy cố định: chừa chỗ để nội dung cuối không bị che */
+@media (max-width: 760px) {
+    body:has(.mtb) .main-wrap .main-content { padding-bottom: calc(84px + env(safe-area-inset-bottom)); }
+    .mtb-menu { bottom: calc(76px + env(safe-area-inset-bottom)) !important; max-height: 70dvh; }
+}
+
+/* Bảng/báo cáo rộng: cho cuộn ngang trong khung thay vì làm vỡ trang */
+@media (max-width: 760px) {
+    .table-responsive, .ptable-wrap, .tbl-wrap, .table-wrap { -webkit-overflow-scrolling: touch; overflow-x: auto; }
+}
+
+/* Lưới dùng "1fr" có min-width ngầm = nội dung (ô <select> với option dài, bảng...) nên cột phình
+   rộng hơn thẻ chứa → ô nhập tràn ra ngoài màn hình. Cho phép ô lưới co lại. */
+@media (max-width: 900px) {
+    :where([class*="grid"], [class*="layout"], [class*="fields"], [class*="body"], [class*="card"]) > * { min-width: 0; }
+    :where(.main-content, .ni-page, .ni-body, .ni-card, .modal-card) { min-width: 0; max-width: 100%; }
+    select, input, textarea { min-width: 0; max-width: 100%; }
+    select { text-overflow: ellipsis; }
+}

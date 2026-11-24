@@ -1,0 +1,153 @@
+@page
+@model CompaniesModel
+@{
+    ViewData["Title"] = "Companies"; ViewData["Sub"] = "Manage all registered companies, subscriptions, payments and access.";
+    var req = ViewContext.HttpContext.Request;
+    string Tab(string? s) => AdminUi.Qs(req, ("status", s), ("page", null), ("id", null), ("mode", null));
+    var cur = Model.Status ?? "";
+    var sel = Model.Sel; var sub = Model.SelSub;
+    var dt = Model.Dt ?? "overview";
+    var adding = Model.Mode == "add"; var editing = Model.Mode == "edit" && sel != null;
+}
+<div class="kpis">
+  <div class="kpi"><span class="ic b">@Icons.Svg("building", 24)</span><div><small>Total Companies</small><strong>@Model.All</strong><div class="sub">+@Model.NewThisMonth new this month</div></div></div>
+  <div class="kpi"><span class="ic b">@Icons.Svg("users", 24)</span><div><small>Active</small><strong>@Model.ActiveN</strong><div class="sub">@(Model.All == 0 ? 0 : Math.Round(100.0 * Model.ActiveN / Model.All, 1))% of total</div></div></div>
+  <div class="kpi"><span class="ic r">@Icons.Svg("clock", 24)</span><div><small>Pending Payment</small><strong>@Model.PendingN</strong><div class="sub">Require follow up</div></div></div>
+  <div class="kpi"><span class="ic a">@Icons.Svg("pause", 24)</span><div><small>Paused</small><strong>@Model.PausedN</strong><div class="sub">@(Model.All == 0 ? 0 : Math.Round(100.0 * Model.PausedN / Model.All, 1))% of total</div></div></div>
+  <div class="kpi"><span class="ic r">@Icons.Svg("x", 24)</span><div><small>Cancelled</small><strong>@Model.CancelledN</strong><div class="sub">@(Model.All == 0 ? 0 : Math.Round(100.0 * Model.CancelledN / Model.All, 1))% of total</div></div></div>
+</div>
+
+<div class="split">
+<div class="panel">
+  <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap">
+    <div class="tabs" style="flex:1;border:0;margin:0">
+      <a class="@(cur == "" ? "on" : "")" href="@Tab(null)">All Companies (@Model.All)</a>
+      <a class="@(cur == "Active" ? "on" : "")" href="@Tab("Active")">Active (@Model.ActiveN)</a>
+      <a class="@(cur == "Pending" ? "on" : "")" href="@Tab("Pending")">Pending (@Model.PendingN)</a>
+      <a class="@(cur == "Overdue" ? "on" : "")" href="@Tab("Overdue")">Overdue (@Model.OverdueN)</a>
+      <a class="@(cur == "Paused" ? "on" : "")" href="@Tab("Paused")">Paused (@Model.PausedN)</a>
+      <a class="@(cur == "Cancelled" ? "on" : "")" href="@Tab("Cancelled")">Cancelled (@Model.CancelledN)</a>
+    </div>
+    <a class="btn pri" href="?mode=add">@Icons.Svg("plus", 16) Add Company</a>
+  </div>
+  <form class="filters" method="get">
+    <div><label>Search</label><input type="search" name="q" value="@Model.Q" placeholder="Search company name, email, contact..." maxlength="100" /></div>
+    <div><label>Plan</label><select name="plan" data-autosubmit><option value="">All Plans</option>@foreach (var p in Model.Plans) { <option value="@p.Code" selected="@(Model.Plan == p.Code)">@p.Name</option> }</select></div>
+    <div><label>Status</label><select name="status" data-autosubmit><option value="">All Status</option>@foreach (var s in CompanyStatus.All) { <option value="@s" selected="@(Model.Status == s)">@AdminUi.StatusLabel(s)</option> }</select></div>
+    <div><label>Country</label><select name="country" data-autosubmit><option value="">All Countries</option>@foreach (var c in Model.Countries) { <option value="@c" selected="@(Model.Country == c)">@c</option> }</select></div>
+    <a class="btn" href="/admin/companies">Reset</a>
+    <a class="btn" href="@AdminUi.Qs(req, ("handler", "Export"))">@Icons.Svg("download", 16) Export</a>
+  </form>
+  <div class="tbl-wrap"><table class="t">
+    <thead><tr><th>Company Name</th><th>Country</th><th>Plan</th><th>Status</th><th>Registration Date</th><th>Next Billing</th><th class="num">Users</th><th class="num">Storage</th><th></th></tr></thead>
+    <tbody>
+    @foreach (var r in Model.Rows)
+    {
+        var c = r.C;
+        <tr class="@(sel?.Id == c.Id ? "sel" : "")">
+          <td><div class="co"><span class="logo-sq" style="background:@AdminUi.Color(c.Name)">@AdminUi.Initial(c.Name)</span><a href="@AdminUi.Qs(req, ("id", c.Id.ToString()), ("mode", null), ("dt", null))">@c.Name</a></div></td>
+          <td><span class="cc">@c.CountryCode</span>@c.Country</td>
+          <td>@(r.PlanName ?? "-")</td><td>@AdminUi.Pill(c.Status)</td><td>@AdminUi.D(c.RegisteredAt)</td>
+          <td>@AdminUi.D(r.Next)</td><td class="num">@r.Users</td><td class="num">@AdminUi.Num(c.StorageUsedGb) GB</td>
+          <td><a class="btn sm" href="@AdminUi.Qs(req, ("id", c.Id.ToString()), ("mode", null))" title="View">@Icons.Svg("eye", 15)</a></td>
+        </tr>
+    }
+    @if (Model.Rows.Count == 0) { <tr><td colspan="9" class="muted" style="padding:24px;text-align:center">No companies match the filters.</td></tr> }
+    </tbody></table></div>
+  <partial name="_Pager" model="Model.Pager" />
+</div>
+
+<div class="panel detail">
+@if (adding || editing)
+{
+  <h2>@(adding ? "Add Company" : "Edit Company")</h2>
+  <form method="post" asp-page-handler="Save" asp-route-id="@(adding ? null : sel?.Id)" class="f" style="margin-top:12px">
+    <div style="margin-bottom:10px"><label>Company name *</label><input asp-for="Form.Name" required maxlength="200" /></div>
+    <div class="row"><div><label>Country *</label><select asp-for="Form.CountryCode" required><option value="">Select</option>@foreach (var c in CountryList.All) { <option value="@c.Code" selected="@(Model.Form.CountryCode == c.Code)">@c.Name</option> }</select></div>
+      <div><label>Contact person *</label><input asp-for="Form.ContactPerson" required maxlength="150" /></div></div>
+    <div class="row"><div><label>Email *</label><input type="email" asp-for="Form.Email" required maxlength="200" /></div><div><label>Phone</label><input asp-for="Form.Phone" maxlength="40" /></div></div>
+    <div style="margin-bottom:10px"><label>Address</label><input asp-for="Form.Address" maxlength="300" /></div>
+    <div style="margin-bottom:10px"><label>Website</label><input asp-for="Form.Website" maxlength="200" placeholder="https://" /></div>
+    <div style="margin-bottom:10px"><label>Notes</label><textarea asp-for="Form.Notes" maxlength="1000"></textarea></div>
+    @if (adding)
+    {
+      <div class="row"><div><label>Plan</label><select asp-for="Form.PlanCode">@foreach (var p in Model.Plans) { <option value="@p.Code">@p.Name — @AdminUi.Money0(p.MonthlyPrice)/mo</option> }</select></div>
+        <div><label>Billing cycle</label><select asp-for="Form.BillingCycle"><option value="Monthly">Monthly</option><option value="Annual">Annual</option></select></div></div>
+      <div style="margin-bottom:10px"><label>Initial admin password *</label><input type="password" asp-for="Form.AdminPassword" autocomplete="new-password" maxlength="100" /><div class="muted" style="font-size:.76rem">8+ chars, upper &amp; lower case, number, symbol. Stored only as a hash.</div></div>
+      <label class="check"><input type="checkbox" asp-for="Form.MarkPaid" /> Payment already received (activate now &amp; create database)</label>
+    }
+    <div class="acts"><button class="btn pri" type="submit">Save</button><a class="btn" href="@AdminUi.Qs(req, ("mode", null))">Cancel</a></div>
+  </form>
+}
+else if (sel == null) { <p class="muted">Select a company to see its details.</p> }
+else
+{
+  <div class="head"><span class="logo-sq" style="background:@AdminUi.Color(sel.Name);width:46px;height:46px;font-size:1.3rem">@AdminUi.Initial(sel.Name)</span>
+    <div style="flex:1"><h2>@sel.Name</h2>@AdminUi.Pill(sel.Status)</div><a class="btn pri sm" href="@AdminUi.Qs(req, ("mode", "edit"))">@Icons.Svg("edit", 14) Edit</a></div>
+  <div class="tabs">
+    @foreach (var (k, t) in new[] { ("overview", "Overview"), ("subscription", "Subscription"), ("users", "Users"), ("modules", "Modules"), ("invoices", "Invoices") })
+    { <a class="@(dt == k ? "on" : "")" href="@AdminUi.Qs(req, ("dt", k), ("mode", null))">@t</a> }
+  </div>
+  @if (dt == "overview")
+  {
+    <dl class="dl">
+      <dt>Company Email</dt><dd><a href="mailto:@sel.Email">@sel.Email</a></dd><dt>Contact Person</dt><dd>@sel.ContactPerson</dd><dt>Phone</dt><dd>@sel.Phone</dd>
+      <dt>Country</dt><dd><span class="cc">@sel.CountryCode</span>@sel.Country</dd><dt>Address</dt><dd>@sel.Address</dd>
+      <dt>Website</dt><dd>@if (sel.Website != null) { <a href="@sel.Website" rel="noopener noreferrer" target="_blank">@sel.Website</a> } else { <text>-</text> }</dd>
+      <dt>Registration Date</dt><dd>@AdminUi.D(sel.RegisteredAt)</dd><dt>Notes</dt><dd>@(sel.Notes ?? "-")</dd>
+      <dt>Database</dt><dd>@if (sel.DatabaseName != null) { <text>@sel.DatabaseName @AdminUi.Pill(sel.ProvisionStatus)</text> } else { @AdminUi.Pill(sel.ProvisionStatus) } @if (sel.ProvisionError != null) { <div class="muted" style="color:#b91c1c">@sel.ProvisionError</div> }</dd>
+    </dl>
+  }
+  else if (dt == "subscription")
+  {
+    @if (sub == null) { <p class="muted">No subscription.</p> }
+    else {
+    <dl class="dl"><dt>Plan</dt><dd>@sub.Plan?.Name</dd><dt>Billing Cycle</dt><dd>@sub.BillingCycle</dd><dt>Price</dt><dd>@AdminUi.Money(sub.Price) / @(sub.BillingCycle == "Annual" ? "year" : "month")</dd>
+      <dt>Status</dt><dd>@AdminUi.Pill(sub.Status)</dd><dt>Start Date</dt><dd>@AdminUi.D(sub.StartDate)</dd><dt>Next Billing</dt><dd>@AdminUi.D(sub.NextBillingDate)</dd>
+      <dt>Auto Renew</dt><dd>@(sub.AutoRenew ? "On" : "Off")</dd><dt>Included Storage</dt><dd>@sub.Plan?.StorageGb GB (used @AdminUi.Num(sel.StorageUsedGb) GB)</dd><dt>Admin Users</dt><dd>up to @sub.Plan?.MaxUsers</dd></dl>
+    <a href="/admin/subscriptions?id=@sub.Id">Manage subscription →</a> }
+  }
+  else if (dt == "users")
+  {
+    <div class="tbl-wrap"><table class="t"><thead><tr><th>Name</th><th>Role</th><th>Status</th></tr></thead><tbody>
+    @foreach (var u in sel.Users.OrderBy(u => u.FullName)) { <tr><td>@u.FullName<div class="muted">@u.Email</div></td><td>@u.Role</td><td>@AdminUi.Pill(u.Status)</td></tr> }
+    @if (sel.Users.Count == 0) { <tr><td colspan="3" class="muted">No users.</td></tr> }</tbody></table></div>
+    <a href="/admin/users?company=@sel.Id">All users →</a>
+  }
+  else if (dt == "modules")
+  {
+    var allowed = sub == null ? new HashSet<string>() : (await Model.PlanModuleCodes(sub.PlanId));
+    <form method="post" asp-page-handler="Modules" asp-route-id="@sel.Id">
+      @foreach (var m in Model.AllModules)
+      {
+        var en = sel.Modules.Any(x => x.ModuleCode == m.Code && x.Enabled); var ok = allowed.Contains(m.Code);
+        <label class="check" style="@(ok ? "" : "opacity:.45")"><input type="checkbox" name="modules" value="@m.Code" checked="@en" disabled="@(!ok)" /> <i class="dot" style="background:@m.Color"></i>@m.Name @if (!ok) { <span class="muted">(not in plan)</span> }</label>
+      }
+      <button class="btn pri sm" style="margin-top:10px" type="submit">Save modules</button>
+    </form>
+  }
+  else if (dt == "invoices")
+  {
+    <div class="tbl-wrap"><table class="t"><thead><tr><th>Invoice</th><th class="num">Amount</th><th>Status</th></tr></thead><tbody>
+    @foreach (var i in Model.SelInvoices) { <tr><td><a href="/admin/invoices?id=@i.Id">@i.Number</a><div class="muted">@AdminUi.D(i.InvoiceDate)</div></td><td class="num">@AdminUi.Money(i.Amount + i.Tax)</td><td>@AdminUi.Pill(i.Status)</td></tr> }
+    @if (Model.SelInvoices.Count == 0) { <tr><td colspan="3" class="muted">No invoices.</td></tr> }</tbody></table></div>
+  }
+
+  <h4>Quick Actions</h4>
+  <div class="acts">
+    @if (sel.Status is CompanyStatus.PendingPayment) { <form method="post" asp-page-handler="Action"><input type="hidden" name="id" value="@sel.Id" /><button class="btn pri blk" name="act" value="paymentlink">@Icons.Svg("mail", 15) Show Payment Link</button></form> }
+    @if (sel.Status is CompanyStatus.PendingPayment or CompanyStatus.PendingReview) { <form method="post" asp-page-handler="Action" data-confirm="Activate this company without payment?"><input type="hidden" name="id" value="@sel.Id" /><button class="btn blk" name="act" value="approve">@Icons.Svg("check", 15) Approve &amp; Activate</button></form> }
+    @if (sel.Status is CompanyStatus.Active or CompanyStatus.Overdue) { <form method="post" asp-page-handler="Action" data-confirm="Pause this company?"><input type="hidden" name="id" value="@sel.Id" /><button class="btn blk" name="act" value="pause">@Icons.Svg("pause", 15) Pause</button></form> }
+    @if (sel.Status is CompanyStatus.Paused or CompanyStatus.Cancelled) { <form method="post" asp-page-handler="Action"><input type="hidden" name="id" value="@sel.Id" /><button class="btn blk" name="act" value="resume">@Icons.Svg("check", 15) Resume</button></form> }
+    @if (sel.Status != CompanyStatus.Cancelled) { <form method="post" asp-page-handler="Action" data-confirm="Cancel this company's subscription?"><input type="hidden" name="id" value="@sel.Id" /><button class="btn dng blk" name="act" value="cancel">@Icons.Svg("x", 15) Cancel</button></form> }
+    <a class="btn blk" href="/admin/invoices?company=@sel.Id">@Icons.Svg("doc", 15) View Invoices</a>
+    @if (sel.ProvisionStatus != ProvisionStatus.Provisioned && sel.Status == CompanyStatus.Active) { <form method="post" asp-page-handler="Provision"><input type="hidden" name="id" value="@sel.Id" /><button class="btn pri blk">@Icons.Svg("cloud", 15) Provision Database</button></form> }
+  </div>
+  <form method="post" asp-page-handler="Delete" class="acts" style="grid-template-columns:1fr" data-confirm="Delete this company permanently? This cannot be undone.">
+    <input type="hidden" name="id" value="@sel.Id" />
+    @if (sel.DatabaseName != null) { <label class="check muted"><input type="checkbox" name="dropDatabase" value="true" /> also delete its database (@sel.DatabaseName)</label> }
+    <button class="btn dng blk" type="submit">@Icons.Svg("trash", 15) Delete Company</button>
+  </form>
+}
+</div>
+</div>

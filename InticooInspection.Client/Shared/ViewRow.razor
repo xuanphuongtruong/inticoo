@@ -1,0 +1,16 @@
+@* Một dòng nhãn – giá trị (giá trị căn phải) trong ViewSection. Value rỗng → "—". *@
+<div class="vc-row">
+    <span class="vc-l">@Label</span>
+    <span class="vc-v">
+        @if (ChildContent != null) { @ChildContent }
+        else if (!string.IsNullOrWhiteSpace(Href) && !string.IsNullOrWhiteSpace(Value)) { <a href="@Href" target="_blank" rel="noopener">@Value</a> }
+        else { @(string.IsNullOrWhiteSpace(Value) ? "—" : Value) }
+    </span>
+</div>
+
+@code {
+    [Parameter] public string Label { get; set; } = "";
+    [Parameter] public string? Value { get; set; }
+    [Parameter] public string? Href { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+}

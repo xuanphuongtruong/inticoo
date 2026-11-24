@@ -1,0 +1,140 @@
+User not found.	Không tìm thấy người dùng.	未找到用户。	Pengguna tidak ditemui.
+Username already exists.	Tên đăng nhập đã tồn tại.	用户名已存在。	Nama pengguna sudah wujud.
+Username and password are required.	Vui lòng nhập tên đăng nhập và mật khẩu.	请输入用户名和密码。	Nama pengguna dan kata laluan diperlukan.
+Vendor code already exists.	Mã nhà cung cấp đã tồn tại.	供应商编号已存在。	Kod pembekal sudah wujud.
+VendorName is required.	Bắt buộc nhập VendorName (tên nhà cung cấp).	VendorName（供应商名称）为必填项。	VendorName (nama pembekal) diperlukan.
+Verification Date, Verified By and Effectiveness Result are required.	Cần nhập Ngày xác minh, Người xác minh và Kết quả hiệu quả.	必须填写验证日期、验证人和有效性结果。	Tarikh pengesahan, Disahkan oleh dan Keputusan keberkesanan diperlukan.
+You do not have permission to view performance reviews.	Bạn không có quyền xem đánh giá hiệu suất.	您无权查看绩效评估。	Anda tiada kebenaran untuk melihat semakan prestasi.
+Cancel	Hủy	取消	Batal
+PASSED	ĐẠT	合格	LULUS
+FAILED	KHÔNG ĐẠT	不合格	GAGAL
+N/A	N/A	不适用	N/A
+Awaiting	Đang chờ	等待中	Menunggu
+Effective	Hiệu quả	有效	Berkesan
+Partially Effective	Hiệu quả một phần	部分有效	Berkesan separa
+Not Effective	Không hiệu quả	无效	Tidak berkesan
+Yes	Có	是	Ya
+No	Không	否	Tidak
+Draft	Nháp	草稿	Draf
+Workmanship	Tay nghề	工艺	Mutu kerja
+Appearance	Ngoại quan	外观	Penampilan
+Hardware / Components	Phụ kiện / Linh kiện	五金 / 部件	Perkakasan / Komponen
+Function	Chức năng	功能	Fungsi
+Dimension	Kích thước	尺寸	Dimensi
+Front Leg	Chân trước	前腿	Kaki hadapan
+Back Leg	Chân sau	后腿	Kaki belakang
+Seat	Mặt ngồi	座面	Tempat duduk
+Backrest	Tựa lưng	靠背	Sandaran
+Armrest	Tay vịn	扶手	Tempat letak tangan
+Top	Mặt trên	顶部	Bahagian atas
+Frame	Khung	框架	Rangka
+Drawer	Ngăn kéo	抽屉	Laci
+Door	Cửa	门	Pintu
+Human Error	Lỗi con người	人为失误	Kesilapan manusia
+Process Failure	Lỗi quy trình	流程失效	Kegagalan proses
+Material Defect	Lỗi nguyên vật liệu	材料缺陷	Kecacatan bahan
+Machine Issue	Sự cố máy móc	设备问题	Masalah mesin
+Packaging Issue	Vấn đề đóng gói	包装问题	Masalah pembungkusan
+Supplier Issue	Vấn đề nhà cung cấp	供应商问题	Masalah pembekal
+Design Issue	Vấn đề thiết kế	设计问题	Masalah reka bentuk
+Production	Sản xuất	生产	Pengeluaran
+Quality	Chất lượng	质量	Kualiti
+Warehouse	Kho	仓库	Gudang
+Purchasing	Mua hàng	采购	Pembelian
+Engineering	Kỹ thuật	工程	Kejuruteraan
+Management	Ban quản lý	管理层	Pengurusan
+Daily	Hằng ngày	每天	Harian
+Weekly	Hằng tuần	每周	Mingguan
+Monthly	Hằng tháng	每月	Bulanan
+Quarterly	Hằng quý	每季度	Suku tahunan
+Per Shipment	Mỗi lô hàng	每批出货	Setiap penghantaran
+Scratch / Surface Damage	Trầy xước / Hư bề mặt	划痕 / 表面损伤	Calar / Kerosakan permukaan
+Dent / Deformation	Móp / Biến dạng	凹痕 / 变形	Kemek / Perubahan bentuk
+Crack / Breakage	Nứt / Gãy vỡ	裂纹 / 破损	Retak / Pecah
+Colour Variation / Appearance Defect	Lệch màu / Lỗi ngoại quan	色差 / 外观缺陷	Variasi warna / Kecacatan penampilan
+Poor Finish / Coating Defect	Hoàn thiện kém / Lỗi sơn phủ	表面处理不良 / 涂层缺陷	Kemasan lemah / Kecacatan salutan
+Loose Hardware / Component	Lỏng phụ kiện / linh kiện	五金 / 部件松动	Perkakasan / Komponen longgar
+Missing Parts / Accessories	Thiếu chi tiết / phụ kiện	缺少零件 / 配件	Bahagian / Aksesori hilang
+Assembly Error	Lỗi lắp ráp	组装错误	Kesilapan pemasangan
+Instability / Functional Defect	Không ổn định / Lỗi chức năng	不稳定 / 功能缺陷	Tidak stabil / Kecacatan fungsi
+Dimension Out of Specification	Kích thước sai thông số	尺寸超出规格	Dimensi di luar spesifikasi
+Packaging Damage	Hư hỏng bao bì	包装损坏	Kerosakan pembungkusan
+Importer	Nhà nhập khẩu	进口商	Pengimport
+Wholesalers	Nhà bán sỉ	批发商	Pemborong
+Retailers	Nhà bán lẻ	零售商	Peruncit
+Trading Company	Công ty thương mại	贸易公司	Syarikat perdagangan
+Tools & Hardware	Dụng cụ & Kim khí	工具与五金	Alatan & Perkakasan
+Garden & Outdoor	Sân vườn & Ngoài trời	园艺与户外	Taman & Luar
+Outdoor Furniture	Nội thất ngoài trời	户外家具	Perabot luar
+Indoor Furniture	Nội thất trong nhà	室内家具	Perabot dalaman
+Office Furniture	Nội thất văn phòng	办公家具	Perabot pejabat
+Lighting	Đèn chiếu sáng	照明	Pencahayaan
+Home Decor	Trang trí nhà cửa	家居装饰	Hiasan rumah
+Toys & Games	Đồ chơi & Trò chơi	玩具与游戏	Mainan & Permainan
+Clothing & Apparel	Quần áo & May mặc	服装	Pakaian
+Footwear	Giày dép	鞋类	Kasut
+Bags & Luggage	Túi xách & Hành lý	箱包	Beg & Bagasi
+Kitchenware	Đồ dùng nhà bếp	厨具	Peralatan dapur
+Sportswear	Đồ thể thao	运动服	Pakaian sukan
+Hardware & Tools	Kim khí & Dụng cụ	五金与工具	Perkakasan & Alatan
+Quality Assurance	Đảm bảo chất lượng	质量保证	Jaminan kualiti
+Quality Control	Kiểm soát chất lượng	质量控制	Kawalan kualiti
+Merchandising	Merchandising	跟单	Pemasaran barangan
+Sales	Kinh doanh	销售	Jualan
+Admin	Quản trị	管理员	Pentadbir
+Male	Nam	男	Lelaki
+Female	Nữ	女	Perempuan
+ID	CCCD/CMND	身份证	Kad pengenalan
+Passport	Hộ chiếu	护照	Pasport
+English	Tiếng Anh	英语	Bahasa Inggeris
+Chinese	Tiếng Trung	中文	Bahasa Cina
+Vietnamese	Tiếng Việt	越南语	Bahasa Vietnam
+Indonesian	Tiếng Indonesia	印尼语	Bahasa Indonesia
+Thai	Tiếng Thái	泰语	Bahasa Thai
+Filipino	Tiếng Philippines	菲律宾语	Bahasa Filipina
+Malay	Tiếng Malaysia	马来语	Bahasa Melayu
+Hindi	Tiếng Hindi	印地语	Bahasa Hindi
+Arabic	Tiếng Ả Rập	阿拉伯语	Bahasa Arab
+Bengali	Tiếng Bengal	孟加拉语	Bahasa Bengali
+Russian	Tiếng Nga	俄语	Bahasa Rusia
+Japanese	Tiếng Nhật	日语	Bahasa Jepun
+Korean	Tiếng Hàn	韩语	Bahasa Korea
+Packaging Test	Thử nghiệm bao bì	包装测试	Ujian pembungkusan
+Product Test	Thử nghiệm sản phẩm	产品测试	Ujian produk
+Moisture Content Test	Thử nghiệm độ ẩm	含水率测试	Ujian kandungan lembapan
+Adhesive Test	Thử nghiệm keo dán	粘合剂测试	Ujian pelekat
+Packaging & Identification	Đóng gói & Nhận diện	包装与标识	Pembungkusan & Pengenalan
+Product Specification Compliance	Đánh giá thông số sản phẩm	产品规格符合性	Pematuhan spesifikasi produk
+Appearance & Craftsmanship	Ngoại quan & Tay nghề	外观与工艺	Penampilan & Ketukangan
+Registered	Đã đăng ký	注册邮箱	Berdaftar
+Alternate	Thay thế	备用邮箱	Alternatif
+Jan	Th1	1月	Jan
+Feb	Th2	2月	Feb
+Mar	Th3	3月	Mac
+Apr	Th4	4月	Apr
+May	Th5	5月	Mei
+Jun	Th6	6月	Jun
+Jul	Th7	7月	Jul
+Aug	Th8	8月	Ogo
+Sep	Th9	9月	Sep
+Oct	Th10	10月	Okt
+Nov	Th11	11月	Nov
+Dec	Th12	12月	Dis
+January	Tháng 1	一月	Januari
+February	Tháng 2	二月	Februari
+March	Tháng 3	三月	Mac
+April	Tháng 4	四月	April
+June	Tháng 6	六月	Jun
+July	Tháng 7	七月	Julai
+August	Tháng 8	八月	Ogos
+September	Tháng 9	九月	September
+October	Tháng 10	十月	Oktober
+November	Tháng 11	十一月	November
+December	Tháng 12	十二月	Disember
+Sun	CN	周日	Ahd
+Mon	T2	周一	Isn
+Tue	T3	周二	Sel
+Wed	T4	周三	Rab
+Thu	T5	周四	Kha
+Fri	T6	周五	Jum
+Sat	T7	周六	Sab

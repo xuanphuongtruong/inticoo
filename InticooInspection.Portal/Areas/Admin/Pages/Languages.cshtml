@@ -1,0 +1,17 @@
+@page
+@model LanguagesModel
+@{ ViewData["Title"] = "Languages"; ViewData["Sub"] = "Languages available to companies and users on the Inticoo platform."; }
+<div class="panel" style="max-width:860px">
+  <form method="post" class="f">
+    <div class="tbl-wrap"><table class="t"><thead><tr><th>Enabled</th><th>Language</th><th>Code</th><th class="num">Companies</th><th class="num">Users</th><th>Default</th></tr></thead><tbody>
+    @foreach (var l in LocalizationStore.Supported)
+    {
+      var m = LocalizationStore.Meta[l];
+      <tr><td><input type="checkbox" name="enabled" value="@l" checked="@(Model.S["lang." + l] == "true")" /></td><td><b>@m.Native</b> <span class="muted">@m.English</span></td><td>@l</td>
+        <td class="num">@Model.Companies[l]</td><td class="num">@Model.Users[l]</td><td><input type="radio" name="defaultLanguage" value="@l" checked="@(Model.S["default.language"] == l)" /></td></tr>
+    }
+    </tbody></table></div>
+    <p class="muted">The public website and each company workspace support all four languages. Disabling a language hides it from the registration form; the default language is always enabled.</p>
+    <button class="btn pri">Save</button>
+  </form>
+</div>

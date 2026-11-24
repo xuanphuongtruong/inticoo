@@ -2,6 +2,7 @@ using InticooInspection.API.Helpers;
 using InticooInspection.API.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using SixLabors.ImageSharp;
 
 namespace InticooInspection.API.Controllers
 {
@@ -13,10 +14,19 @@ namespace InticooInspection.API.Controllers
         private readonly AzureBlobService _blobService;
 
         private static readonly string[] AllowedCvExtensions    = { ".pdf", ".doc", ".docx" };
-        private static readonly string[] AllowedImageExtensions = { ".jpg", ".jpeg", ".png", ".webp", ".gif" };
+        private static readonly string[] AllowedImageExtensions = { ".jpg", ".jpeg", ".png", ".webp" };
         private const long MaxCvSize    = 10 * 1024 * 1024;  // 10 MB
         private const long MaxImageSize =  5 * 1024 * 1024;  //  5 MB
         private const long MaxFileSize  = 20 * 1024 * 1024;  // 20 MB
+
+        // File tham chiếu: chỉ ảnh + tài liệu văn phòng/PDF (chặn .html/.svg/.exe/.js... lên server)
+        private static readonly HashSet<string> AllowedReferenceExtensions = new(StringComparer.OrdinalIgnoreCase)
+        {
+            ".jpg", ".jpeg", ".png", ".webp", ".gif", ".bmp",
+            ".pdf", ".doc", ".docx", ".xls", ".xlsx", ".ppt", ".pptx", ".csv", ".txt",
+            ".zip", ".rar", ".7z", ".mp4", ".mov"
+        };
+
 
         public FileController(AzureBlobService blobService)
         {
@@ -56,11 +66,20 @@ namespace InticooInspection.API.Controllers
 
             var ext = Path.GetExtension(file.FileName).ToLowerInvariant();
             if (!AllowedImageExtensions.Contains(ext))
-                return BadRequest(new { error = "Only JPG, PNG, WEBP or GIF images are allowed." });
+                return BadRequest(new { error = "Only JPG, PNG or WEBP images are allowed." });
 
             // Nén ảnh về ~300-400 KB
             await using var inputStream = file.OpenReadStream();
-            var (compressed, compressedExt) = await ImageCompressor.CompressAsync(inputStream);
+            MemoryStream compressed;
+            string compressedExt;
+            try
+            {
+                (compressed, compressedExt) = await ImageCompressor.CompressAsync(inputStream);
+            }
+            catch (ImageFormatException)
+            {
+                return BadRequest(new { error = "Only JPG, PNG or WEBP images are allowed." });
+            }
 
             var safeName   = Path.GetFileNameWithoutExtension(file.FileName)
                                  .Replace(" ", "_").Replace("..", "");
@@ -84,8 +103,11 @@ namespace InticooInspection.API.Controllers
                 return BadRequest(new { error = "File exceeds 20 MB limit." });
 
             var ext      = Path.GetExtension(file.FileName).ToLowerInvariant();
+            if (!AllowedReferenceExtensions.Contains(ext))
+                return BadRequest(new { error = "File type is not allowed." });
             var safeName = Path.GetFileNameWithoutExtension(file.FileName)
                                .Replace(" ", "_").Replace("..", "");
+            safeName = string.Concat(safeName.Where(c => char.IsLetterOrDigit(c) || c is '_' or '-' or '.'));
             string uniqueName;
             string url;
 
@@ -93,7 +115,16 @@ namespace InticooInspection.API.Controllers
             {
                 // Ảnh → nén trước khi upload
                 await using var inputStream = file.OpenReadStream();
-                var (compressed, compressedExt) = await ImageCompressor.CompressAsync(inputStream);
+                MemoryStream compressed;
+                string compressedExt;
+                try
+                {
+                    (compressed, compressedExt) = await ImageCompressor.CompressAsync(inputStream);
+                }
+                catch (ImageFormatException)
+                {
+                    return BadRequest(new { error = "Image content is not a valid JPG, PNG or WEBP file." });
+                }
 
                 uniqueName = $"{safeName}_{Guid.NewGuid():N}{compressedExt}";
 

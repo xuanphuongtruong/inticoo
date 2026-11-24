@@ -1,0 +1,38 @@
+@page "/resources/articles"
+@inject PortalDbContext Db
+@{
+    ViewData["Title"] = L["Learning Center"];
+    const int size = 12;
+    var kind = Request.Query["type"].ToString() is "Article" or "Video" ? Request.Query["type"].ToString() : null;
+    var page = int.TryParse(Request.Query["page"], out var p) && p > 0 ? p : 1;
+    var q = Db.ResourceItems.AsNoTracking().Include(r => r.Translations)
+        .Where(r => r.Section == ResourceSection.Learning && r.IsPublished && r.PublishedAt <= DateTime.UtcNow);
+    if (kind != null) q = q.Where(r => r.Kind == kind);
+    var total = await q.CountAsync();
+    var pages = Math.Max(1, (int)Math.Ceiling(total / (double)size));
+    page = Math.Min(page, pages);
+    var rows = await q.OrderByDescending(r => r.PublishedAt).ThenBy(r => r.SortOrder).Skip((page - 1) * size).Take(size).ToListAsync();
+    string Url(int pg, string? k) => "/resources/articles?" + (k != null ? "type=" + k + "&" : "") + "page=" + pg;
+}
+<section class="art-head">
+  <div class="wrap">
+    <a class="back" href="/resources">← @L["Resources"]</a>
+    <span class="eyebrow">@L["Learning Center"]</span>
+    <h1>@L["Articles, guides and videos to help you build better quality processes."]</h1>
+    <div class="chips">
+      <a class="@(kind == null ? "on" : "")" href="@Url(1, null)">@L["All"]</a>
+      <a class="@(kind == "Article" ? "on" : "")" href="@Url(1, "Article")">@L["ARTICLE"]</a>
+      <a class="@(kind == "Video" ? "on" : "")" href="@Url(1, "Video")">@L["VIDEO"]</a>
+    </div>
+  </div>
+</section>
+<section class="sec tight">
+  <div class="wrap">
+    @if (rows.Count == 0) { <p class="muted center">@L["No articles yet."]</p> }
+    <div class="grid g4">@foreach (var r in rows) { <partial name="_LearnCard" model="r" /> }</div>
+    @if (pages > 1)
+    {
+      <div class="pager">@for (var i = 1; i <= pages; i++) { <a class="@(i == page ? "on" : "")" href="@Url(i, kind)">@i</a> }</div>
+    }
+  </div>
+</section>

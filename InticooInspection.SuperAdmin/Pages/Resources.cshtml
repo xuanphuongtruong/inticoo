@@ -1,0 +1,116 @@
+@page
+@model ResourcesModel
+@{
+    ViewData["Title"] = "Resources"; ViewData["Sub"] = "Guides, PDFs, articles, videos and FAQs shown on the website Resources page.";
+    var req = ViewContext.HttpContext.Request;
+    var it = Model.Item;
+    var total = Model.Counts.Values.Sum();
+    string Cover(string? p) => p ?? "";
+}
+@if (it == null)
+{
+  <div class="panel">
+    <div class="tabs">
+      <a class="@(Model.Section == null ? "on" : "")" href="/resources">All (@total)</a>
+      @foreach (var s in ResourceSection.All) { <a class="@(Model.Section == s ? "on" : "")" href="?section=@s">@ResourcesModel.SectionNames[s] (@Model.Counts.GetValueOrDefault(s))</a> }
+    </div>
+    <form class="filters" method="get">
+      @if (Model.Section != null) { <input type="hidden" name="section" value="@Model.Section" /> }
+      <div><label>Search</label><input type="search" name="q" value="@Model.Q" placeholder="Search title, summary..." maxlength="100" /></div>
+      <button class="btn">Filter</button>
+      <a class="btn pri" style="margin-left:auto" href="?mode=add&section=@(Model.Section ?? ResourceSection.Learning)">@Icons.Svg("plus", 15) Add Resource</a>
+    </form>
+    <div class="tbl-wrap"><table class="t"><thead><tr><th></th><th>Title</th><th>Section</th><th>Type</th><th>Attachments</th><th>Status</th><th>Updated</th><th class="num">Order</th><th></th></tr></thead><tbody>
+    @foreach (var r in Model.Rows)
+    {
+      <tr>
+        <td style="width:64px">@if (r.CoverPath != null) { <img class="thumb" src="@r.CoverPath" alt="" /> } else if (r.Icon != null) { <span class="thumb ic">@Icons.Svg(r.Icon, 20)</span> } else { <span class="thumb ic">@Icons.Svg(r.Section == ResourceSection.Faq ? "help" : "doc", 20)</span> }</td>
+        <td style="white-space:normal;min-width:220px"><a href="?mode=edit&id=@r.Id"><b>@r.Title</b></a><div class="muted" style="font-size:.76rem">/resources/@r.Slug</div></td>
+        <td>@ResourcesModel.SectionNames[r.Section]</td><td>@r.Kind</td>
+        <td>@if (r.FilePath != null) { <span class="pill blue">PDF</span> } @if (r.VideoUrl != null) { <span class="pill purple">Video</span> } @if (r.Body != null) { <span class="pill grey">Article</span> }</td>
+        <td>
+          <form method="post" asp-page-handler="Publish" style="display:inline"><input type="hidden" name="id" value="@r.Id" /><input type="hidden" name="on" value="@(!r.IsPublished)" />
+            <button class="pill @(r.IsPublished ? "green" : "grey")" style="border:0;cursor:pointer" title="Click to @(r.IsPublished ? "hide" : "publish")">@(r.IsPublished ? "Published" : "Hidden")</button></form></td>
+        <td>@AdminUi.D(r.UpdatedAt)</td><td class="num">@r.SortOrder</td>
+        <td><a class="btn sm" href="?mode=edit&id=@r.Id">@Icons.Svg("edit", 14)</a>
+          @if (Model.PublicUrl != "" && r.Section != ResourceSection.Faq) { <a class="btn sm" href="@Model.PublicUrl/resources/@r.Slug" target="_blank" rel="noopener" title="View on website">@Icons.Svg("eye", 14)</a> }</td>
+      </tr>
+    }
+    @if (Model.Rows.Count == 0) { <tr><td colspan="9" class="muted" style="padding:20px;text-align:center">No resources yet.</td></tr> }
+    </tbody></table></div>
+  </div>
+}
+else
+{
+  var isNew = it.Id == 0;
+  <form method="post" asp-page-handler="Save" enctype="multipart/form-data" class="f res-form" id="resform">
+    @if (!isNew) { <input type="hidden" name="id" value="@it.Id" /> }
+    <div class="split">
+      <div>
+        <div class="panel">
+          <h3>@(isNew ? "Add Resource" : "Edit Resource") <a href="/resources?section=@it.Section" style="float:right;font-size:.85rem">← Back to list</a></h3>
+          <div class="row"><div><label>Section *</label><select name="section" id="secSel">@foreach (var s in ResourceSection.All) { <option value="@s" selected="@(it.Section == s)">@ResourcesModel.SectionNames[s]</option> }</select></div>
+            <div><label>Type *</label><select name="kind" id="kindSel">@foreach (var kv in ResourcesModel.KindsBySection) { foreach (var k in kv.Value) { <option value="@k" data-sec="@kv.Key" selected="@(it.Section == kv.Key && it.Kind == k)">@k</option> } }</select></div></div>
+          <div style="margin:10px 0"><label>Title (English) *</label><input name="title" value="@it.Title" maxlength="200" required style="width:100%" /></div>
+          <div style="margin:10px 0"><label>Summary</label><textarea name="summary" maxlength="500" style="height:64px">@it.Summary</textarea><div class="muted hint">Shown on the card. For FAQ this is the answer.</div></div>
+          <div style="margin:10px 0" data-hide-for="Faq Reference"><label>Article content</label>
+            <div class="rte" data-upload="?handler=Image"><textarea name="body" hidden>@it.Body</textarea></div>
+            <div class="muted hint">Use the toolbar for headings, lists, links and images. Leave empty if the card only links to a PDF or video.</div></div>
+        </div>
+
+        <div class="panel">
+          <h3>Translations <small>(optional — empty fields show the English text)</small></h3>
+          <div class="tabs" id="trTabs">@foreach (var l in ResourcesModel.Langs) { <a href="#tr-@l" class="@(l == "vi" ? "on" : "")" data-tr="@l">@AdminUi.Flag(l == "vi" ? "vn" : l == "zh" ? "cn" : "my") @LocalizationStore.Meta[l].Native</a> }</div>
+          @foreach (var l in ResourcesModel.Langs)
+          {
+            var tr = it.Translations.FirstOrDefault(x => x.Lang == l);
+            <div class="tr-pane" id="tr-@l" hidden="@(l != "vi")">
+              <div style="margin:8px 0"><label>Title</label><input name="tr.@(l).title" value="@tr?.Title" maxlength="200" style="width:100%" /></div>
+              <div style="margin:8px 0"><label>Summary</label><textarea name="tr.@(l).summary" maxlength="500" style="height:56px">@tr?.Summary</textarea></div>
+              <div style="margin:8px 0" data-hide-for="Faq"><label>Button text</label><input name="tr.@(l).button" value="@tr?.ButtonText" maxlength="60" /></div>
+              <div style="margin:8px 0" data-hide-for="Faq Reference"><label>Article content</label><div class="rte" data-upload="?handler=Image"><textarea name="tr.@(l).body" hidden>@tr?.Body</textarea></div></div>
+            </div>
+          }
+        </div>
+      </div>
+
+      <div>
+        <div class="panel">
+          <h3>Publishing</h3>
+          <label class="switch"><span><b>Published</b><small>Visible on the website.</small></span><input type="checkbox" name="published" value="true" checked="@it.IsPublished" /></label>
+          <div class="row" style="margin-top:10px"><div><label>Publish date</label><input type="date" name="publishedAt" value="@it.PublishedAt.ToString("yyyy-MM-dd")" /></div>
+            <div><label>Order</label><input type="number" name="sortOrder" value="@it.SortOrder" min="0" max="100000" /></div></div>
+          <div style="margin:10px 0"><label>URL slug</label><input name="slug" value="@it.Slug" maxlength="160" placeholder="auto from title" style="width:100%" /></div>
+          <div style="margin:10px 0" data-hide-for="Faq"><label>Button text</label><input name="buttonText" value="@it.ButtonText" maxlength="60" placeholder="View Guide / Read More..." style="width:100%" /></div>
+          <div style="margin:10px 0" data-show-for="Reference"><label>Icon</label><select name="icon"><option value="">(none)</option>@foreach (var i in ResourcesModel.IconChoices) { <option value="@i" selected="@(it.Icon == i)">@i</option> }</select></div>
+        </div>
+
+        <div class="panel" data-hide-for="Faq">
+          <h3>Files</h3>
+          <div data-hide-for="Reference" style="margin-bottom:14px"><label>Cover image (JPG/PNG/WEBP, max 5 MB)</label>
+            @if (it.CoverPath != null) { <img class="cover-prev" src="@Cover(it.CoverPath)" alt="" /><label class="chk"><input type="checkbox" name="removeCover" value="true" /> Remove cover</label> }
+            <input type="file" name="cover" accept="@ContentStore.Accept(ContentStore.Kind.Image)" /></div>
+          <div style="margin-bottom:14px"><label>PDF document (max 30 MB)</label>
+            @if (it.FilePath != null) { <div><a href="@it.FilePath" target="_blank" rel="noopener">@Icons.Svg("doc", 14) @(it.FileName ?? "document.pdf")</a></div><label class="chk"><input type="checkbox" name="removeFile" value="true" /> Remove PDF</label> }
+            <input type="file" name="file" accept=".pdf" /></div>
+          <div data-hide-for="Reference"><label>Video — YouTube / Vimeo link</label>
+            <input name="videoUrl" value="@(ResourceContent.IsUploadedVideo(it.VideoUrl) ? "" : it.VideoUrl)" maxlength="300" placeholder="https://www.youtube.com/watch?v=..." style="width:100%" />
+            <label style="margin-top:8px">…or upload MP4 (max 200 MB)</label>
+            @if (ResourceContent.IsUploadedVideo(it.VideoUrl)) { <video src="@it.VideoUrl" controls preload="metadata" class="cover-prev"></video><label class="chk"><input type="checkbox" name="removeVideo" value="true" /> Remove video</label> }
+            <input type="file" name="video" accept=".mp4" /></div>
+        </div>
+
+        <div class="panel acts">
+          <button class="btn pri blk" type="submit">@Icons.Svg("check", 15) Save</button>
+          @if (!isNew && Model.PublicUrl != "" && it.Section != ResourceSection.Faq) { <a class="btn blk" href="@Model.PublicUrl/resources/@it.Slug" target="_blank" rel="noopener">@Icons.Svg("eye", 15) View on website</a> }
+        </div>
+      </div>
+    </div>
+  </form>
+  @if (!isNew)
+  {
+    <form method="post" asp-page-handler="Delete" data-confirm="Delete this resource and its files? This cannot be undone." style="margin-top:-4px">
+      <input type="hidden" name="id" value="@it.Id" /><button class="btn dng">@Icons.Svg("trash", 15) Delete resource</button></form>
+  }
+  <script src="/js/editor.js?v=1"></script>
+}

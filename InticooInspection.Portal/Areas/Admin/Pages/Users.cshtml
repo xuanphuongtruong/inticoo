@@ -1,0 +1,72 @@
+@page
+@model UsersModel
+@{
+    ViewData["Title"] = "Users"; ViewData["Sub"] = "Manage all users across companies. View access, roles, status and activity.";
+    var req = ViewContext.HttpContext.Request;
+    string Tab(string? s) => AdminUi.Qs(req, ("status", s), ("page", null), ("id", null));
+    var cur = Model.Status ?? ""; var sel = Model.Sel; var dt = Model.Dt ?? "details";
+    string Share(int n) => Model.TotalN == 0 ? "0%" : Math.Round(100.0 * n / Model.TotalN, 1) + "% of total";
+}
+<div class="kpis">
+  <div class="kpi"><span class="ic b">@Icons.Svg("users", 24)</span><div><small>Total Users</small><strong>@Model.TotalN</strong><div class="sub">+@Model.NewThisMonth new this month</div></div></div>
+  <div class="kpi"><span class="ic g">@Icons.Svg("user", 24)</span><div><small>Active Users</small><strong>@Model.ActiveN</strong><div class="sub">@Share(Model.ActiveN)</div></div></div>
+  <div class="kpi"><span class="ic a">@Icons.Svg("clock", 24)</span><div><small>Pending Activation</small><strong>@Model.PendingN</strong><div class="sub">Awaiting first sign-in</div></div></div>
+  <div class="kpi"><span class="ic r">@Icons.Svg("x", 24)</span><div><small>Inactive Users</small><strong>@Model.InactiveN</strong><div class="sub">@Share(Model.InactiveN)</div></div></div>
+</div>
+<div class="split">
+<div class="panel">
+  <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap">
+    <div class="tabs" style="flex:1;border:0;margin:0">
+      <a class="@(cur == "" ? "on" : "")" href="@Tab(null)">All Users (@Model.TotalN)</a><a class="@(cur == "Active" ? "on" : "")" href="@Tab("Active")">Active (@Model.ActiveN)</a>
+      <a class="@(cur == "Pending" ? "on" : "")" href="@Tab("Pending")">Pending (@Model.PendingN)</a><a class="@(cur == "Inactive" ? "on" : "")" href="@Tab("Inactive")">Inactive (@Model.InactiveN)</a>
+    </div>
+    <a class="btn" href="@AdminUi.Qs(req, ("handler", "Export"))">@Icons.Svg("download", 16) Export</a>
+  </div>
+  <form class="filters" method="get">
+    <div><label>Search</label><input type="search" name="q" value="@Model.Q" placeholder="Search name, email, company..." maxlength="100" /></div>
+    <div><label>Company</label><select name="company" data-autosubmit><option value="">All Companies</option>@foreach (var c in Model.Companies) { <option value="@c.Id" selected="@(Model.Company == c.Id)">@c.Name</option> }</select></div>
+    <div><label>Role</label><select name="role" data-autosubmit><option value="">All Roles</option>@foreach (var r in Model.Roles) { <option value="@r" selected="@(Model.Role == r)">@r</option> }</select></div>
+    <div><label>Status</label><select name="status" data-autosubmit><option value="">All Status</option>@foreach (var s in new[] { "Active", "Pending", "Inactive" }) { <option value="@s" selected="@(Model.Status == s)">@s</option> }</select></div>
+    <a class="btn" href="/admin/users">Reset</a>
+  </form>
+  <div class="tbl-wrap"><table class="t"><thead><tr><th>Name</th><th>Email</th><th>Company</th><th>Role</th><th>Status</th><th>Last Login</th><th></th></tr></thead><tbody>
+  @foreach (var u in Model.Rows)
+  {
+    <tr class="@(sel?.Id == u.Id ? "sel" : "")"><td><div class="co"><span class="ava">@AdminUi.Initials(u.FullName)</span><a href="@AdminUi.Qs(req, ("id", u.Id.ToString()), ("dt", null))">@u.FullName</a></div></td><td>@u.Email</td>
+      <td><a href="/admin/companies?id=@u.CompanyId">@u.Company!.Name</a></td><td>@u.Role</td><td>@AdminUi.Pill(u.Status)</td><td>@(u.LastLoginAt == null ? "-" : AdminUi.DT(u.LastLoginAt))</td>
+      <td><a class="btn sm" href="@AdminUi.Qs(req, ("id", u.Id.ToString()))">@Icons.Svg("eye", 15)</a></td></tr>
+  }
+  @if (Model.Rows.Count == 0) { <tr><td colspan="7" class="muted" style="padding:24px;text-align:center">No users match the filters.</td></tr> }
+  </tbody></table></div>
+  <partial name="_Pager" model="Model.Pager" />
+</div>
+<div class="panel detail">
+@if (sel == null) { <p class="muted">Select a user.</p> }
+else
+{
+  <div class="head"><span class="ava" style="width:50px;height:50px;font-size:1rem">@AdminUi.Initials(sel.FullName)</span><div style="flex:1"><h2>@sel.FullName @AdminUi.Pill(sel.Status)</h2><div class="muted">@sel.Company!.Name</div></div></div>
+  <div class="tabs">@foreach (var (k, t) in new[] { ("details", "Details"), ("roles", "Roles & Access"), ("activity", "Activity Log") }) { <a class="@(dt == k ? "on" : "")" href="@AdminUi.Qs(req, ("dt", k))">@t</a> }</div>
+  @if (dt == "details")
+  {
+    <dl class="dl"><dt>Email</dt><dd><a href="mailto:@sel.Email">@sel.Email</a></dd><dt>Phone</dt><dd>@(sel.Phone ?? "-")</dd><dt>Job Title</dt><dd>@(sel.JobTitle ?? "-")</dd><dt>Department</dt><dd>@(sel.Department ?? "-")</dd>
+      <dt>Language</dt><dd>@sel.Language</dd><dt>Joined Date</dt><dd>@AdminUi.D(sel.CreatedAt)</dd><dt>Last Login</dt><dd>@(sel.LastLoginAt == null ? "-" : AdminUi.DT(sel.LastLoginAt))</dd></dl>
+  }
+  else if (dt == "roles")
+  {
+    <p><b>@sel.Role</b></p><h4>Module Access (company plan)</h4>
+    @foreach (var m in Model.Modules) { <div class="check"><span class="dot" style="background:@(Model.SelModules.Contains(m.Code) ? m.Color : "#cbd5e1")"></span>@m.Name @if (!Model.SelModules.Contains(m.Code)) { <span class="muted">(not enabled)</span> }</div> }
+  }
+  else
+  {
+    <ul class="tl">@foreach (var a in Model.Activity) { <li><span>@a.Action</span><em>@AdminUi.DT(a.At)</em></li> }</ul>
+    @if (Model.Activity.Count == 0) { <p class="muted">No recorded activity from this console.</p> }
+  }
+  <div class="acts">
+    <form method="post" asp-page-handler="Reset" data-confirm="Generate a new temporary password for this user?"><input type="hidden" name="id" value="@sel.Id" /><button class="btn pri blk">@Icons.Svg("key", 15) Reset Password</button></form>
+    <form method="post" asp-page-handler="Sync"><input type="hidden" name="companyId" value="@sel.CompanyId" /><button class="btn blk">@Icons.Svg("mail", 15) Sync from Company DB</button></form>
+    <form method="post" asp-page-handler="Toggle" data-confirm="@(sel.Status == "Active" ? "Deactivate this user? They will be signed out." : "Activate this user?")"><input type="hidden" name="id" value="@sel.Id" /><button class="btn @(sel.Status == "Active" ? "dng" : "") blk">@Icons.Svg(sel.Status == "Active" ? "x" : "check", 15) @(sel.Status == "Active" ? "Deactivate User" : "Activate User")</button></form>
+  </div>
+  <p class="muted" style="font-size:.78rem;margin-top:10px">Users are created and edited by each company inside its own Inticoo workspace. Actions here apply to the company's database when it has one.</p>
+}
+</div>
+</div>

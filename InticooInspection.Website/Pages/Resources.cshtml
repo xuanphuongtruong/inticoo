@@ -1,0 +1,99 @@
+@page
+@inject PortalDbContext Db
+@{
+    ViewData["Title"] = L["Resources"];
+    // Nội dung do Super Admin › Resources quản lý (thêm bài, upload PDF/ảnh/video)
+    var items = await Db.ResourceItems.AsNoTracking().Include(r => r.Translations)
+        .Where(r => r.IsPublished && r.PublishedAt <= DateTime.UtcNow).OrderBy(r => r.SortOrder).ThenByDescending(r => r.PublishedAt).ToListAsync();
+    List<ResourceItem> Sec(string s) => items.Where(r => r.Section == s).ToList();
+    var featured = Sec(ResourceSection.Featured); var refs = Sec(ResourceSection.Reference);
+    var learning = items.Where(r => r.Section == ResourceSection.Learning).OrderByDescending(r => r.PublishedAt).ThenBy(r => r.SortOrder).ToList();
+    var faqs = Sec(ResourceSection.Faq);
+    const string req = "/contact?subject=Request a Resource";
+    // Mục chỉ có tiêu đề/tóm tắt (chưa có bài, PDF, video) → nút dẫn tới form yêu cầu tài liệu
+    string Link(ResourceItem r) => r.Body != null || r.VideoUrl != null || r.FilePath != null ? "/resources/" + r.Slug : req;
+}
+<section class="hero">
+  <div class="wrap">
+    <div>
+      <span class="eyebrow">@L["Resources"]</span>
+      <h1>@L["Knowledge and Tools for Better Quality"]</h1>
+      <p class="lead">@L["Practical resources to help you improve inspection processes, meet international standards and build a stronger supply chain."]</p>
+      <div class="badges">
+        <div class="badge-i"><span class="bi">@Icons.Svg("book")</span><b>@L["Inspection Guides"]</b>@L["Step-by-step guidance"]</div>
+        <div class="badge-i"><span class="bi">@Icons.Svg("doc")</span><b>@L["AQL Standards"]</b>@L["Reference tables"]</div>
+        <div class="badge-i"><span class="bi">@Icons.Svg("clipboard")</span><b>@L["Checklists"]</b>@L["Ready-to-use lists"]</div>
+        <div class="badge-i"><span class="bi">@Icons.Svg("cap")</span><b>@L["Learning Center"]</b>@L["Articles, videos and tips"]</div>
+      </div>
+    </div>
+    <div class="hero-shot"><img src="/img/photos/res-hero.jpg" alt="" style="border-radius:12px;filter:none" /></div>
+  </div>
+</section>
+
+@if (featured.Count > 0)
+{
+<section class="sec tight" id="guides">
+  <div class="wrap">
+    <div class="sec-left"><h2>@L["Featured Resources"]</h2><p>@L["Start with our most popular resources for quality inspection and supply chain management."]</p></div>
+    <div class="grid g4">
+      @foreach (var r in featured)
+      {
+        var t = Ui.Res(r, L);
+        <div class="card rcard">@if (r.CoverPath != null) { <img src="@r.CoverPath" alt="" loading="lazy" /> }
+          <div class="b"><h3>@t.Title</h3><p class="muted">@t.Summary</p><a class="btn ghost block" href="@Link(r)">@(t.Button ?? L[Ui.DefaultButton(r)]) →</a></div></div>
+      }
+    </div>
+  </div>
+</section>
+}
+
+@if (refs.Count > 0)
+{
+<section class="sec alt tight" id="standards">
+  <div class="wrap">
+    <div class="sec-left"><h2>@L["Inspection Standards & References"]</h2><p>@L["Useful reference materials to support your inspection process."]</p></div>
+    <div class="grid g5">
+      @foreach (var r in refs)
+      {
+        var t = Ui.Res(r, L);
+        <div class="card ref"><div class="top">@Icons.Svg(r.Icon ?? "doc")<div><h3>@t.Title</h3><p class="muted">@t.Summary</p></div></div>
+          @if (r.FilePath != null) { <a class="btn ghost sm block" href="@r.FilePath" download="@(r.FileName ?? r.Slug + ".pdf")">@(t.Button ?? L["Download PDF"])</a> }
+          else { <a class="btn ghost sm block" href="@Link(r)">@(t.Button ?? L["Download PDF"])</a> }</div>
+      }
+    </div>
+  </div>
+</section>
+}
+
+@if (learning.Count > 0)
+{
+<section class="sec tight" id="learning">
+  <div class="wrap">
+    <div class="sec-left" style="display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap">
+      <div><h2>@L["Learning Center"]</h2><p>@L["Articles, guides and videos to help you build better quality processes."]</p></div>
+      <a class="btn ghost sm" href="/resources/articles">@L["View All Articles"] →</a>
+    </div>
+    <div class="grid g4">
+      @foreach (var r in learning.Take(4)) { <partial name="_LearnCard" model="r" /> }
+    </div>
+  </div>
+</section>
+}
+
+<section class="sec alt tight" id="faq">
+  <div class="wrap">
+    <div class="sec-left"><h2>@L["Support & FAQ"]</h2><p>@L["Find answers to common questions or get in touch with our team."]</p></div>
+    <div class="grid g4">
+      <div class="card sup"><div class="top">@Icons.Svg("help")<div><h3>@L["Frequently Asked Questions"]</h3><p class="muted">@L["Find quick answers about features, pricing, payment and technical support."]</p></div></div><a class="btn ghost block" href="#faq-list">@L["View FAQs"] →</a></div>
+      <div class="card sup"><div class="top">@Icons.Svg("headset")<div><h3>@L["Help Center"]</h3><p class="muted">@L["Step-by-step guides and articles."]</p></div></div><a class="btn ghost block" href="/resources/articles">@L["Visit Help Center"] →</a></div>
+      <div class="card sup"><div class="top">@Icons.Svg("chat")<div><h3>@L["Contact Support"]</h3><p class="muted">@L["Our team is here to help you with any questions."]</p></div></div><a class="btn ghost block" href="/contact?subject=Technical Support">@L["Contact Us"] →</a></div>
+      <div class="card sup"><div class="top">@Icons.Svg("bulb")<div><h3>@L["Request a Resource"]</h3><p class="muted">@L["Can't find what you need? Let us know and we'll help you."]</p></div></div><a class="btn ghost block" href="@req">@L["Send Request"] →</a></div>
+    </div>
+    @if (faqs.Count > 0)
+    {
+      <div class="faq" id="faq-list" style="max-width:860px;margin:30px auto 0">
+        @foreach (var r in faqs) { var t = Ui.Res(r, L); <details><summary>@t.Title</summary>@if (t.Body != null) { <div class="prose">@Html.Raw(t.Body)</div> } else { <p>@t.Summary</p> }</details> }
+      </div>
+    }
+  </div>
+</section>

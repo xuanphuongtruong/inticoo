@@ -1,0 +1,76 @@
+@inject PortalDbContext Db
+@inject SettingsService Settings
+@{
+    var path = ViewContext.HttpContext.Request.Path.Value?.ToLowerInvariant().TrimEnd('/') ?? "";
+    if (path == "") path = "/";
+    string On(string seg) => seg == "/" ? (path == "/" ? "on" : "") : (path.StartsWith(seg) ? "on" : "");
+    var title = ViewData["Title"] as string ?? "Super Admin";
+    var sub = ViewData["Sub"] as string ?? "";
+    var crumb = ViewData["Crumb"] as string ?? title;
+    var name = User.FindFirst("fullname")?.Value ?? User.Identity?.Name ?? "";
+    var role = User.FindFirst("title")?.Value ?? "Super Admin";
+    var pendingCompanies = await Db.Companies.CountAsync(c => c.Status == CompanyStatus.PendingPayment || c.Status == CompanyStatus.PendingReview);
+    var unread = await Db.ContactMessages.CountAsync(m => !m.IsRead);
+    // Settings › General › Support Email; trống → cấu hình Portal:SupportEmail
+    var supportEmail = await Settings.GetAsync("platform.supportEmail");
+    if (string.IsNullOrWhiteSpace(supportEmail)) supportEmail = Cfg("Portal:SupportEmail");
+    // công ty đang thuê đã chạm hạn mức gói (dung lượng / người dùng đang hoạt động) theo số đo gần nhất
+    var overLimit = await Db.Companies.CountAsync(c => (c.Status == CompanyStatus.Active || c.Status == CompanyStatus.Overdue) && c.Subscriptions
+        .Where(s => s.Status != SubscriptionStatus.Cancelled).OrderByDescending(s => s.Id).Take(1)
+        .Any(s => (s.Plan!.StorageGb > 0 && c.StorageUsedGb >= s.Plan.StorageGb) || (s.Plan.MaxUsers > 0 && c.ActiveUserCount >= s.Plan.MaxUsers)));
+    var bell = pendingCompanies + unread + overLimit;
+    (string Href, string Icon, string Text)[] items =
+    {
+        ("/", "home", "Dashboard"), ("/companies", "building", "Companies"), ("/subscriptions", "card", "Subscriptions"),
+        ("/payments", "wallet", "Payments"), ("/invoices", "receipt", "Invoices"), ("/users", "users", "Users"),
+        ("/modules", "grid", "Modules"), ("/languages", "globe", "Languages"), ("/storage", "cloud", "Storage"),
+        ("/reports", "chart", "Reports"), ("/auditlog", "log", "Audit Log"), ("/resources", "book", "Resources"), ("/messages", "mail", "Messages"), ("/settings", "settings", "Settings")
+    };
+}
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="robots" content="noindex,nofollow" />
+<title>@title — Inticoo Super Admin</title>
+<link rel="icon" href="/img/favicon.png" />
+<link rel="stylesheet" href="/css/admin.css?v=3" />
+</head>
+<body class="adm">
+<div class="shell">
+  <aside class="side">
+    <a class="logo" href="/"><svg viewBox="0 0 40 40" aria-hidden="true"><rect x="2" y="3" width="14" height="15" rx="5" fill="#38bdf8"/><rect x="2" y="21" width="14" height="16" rx="5" fill="#2563eb"/><rect x="18" y="3" width="20" height="34" rx="8" fill="#1d6ff2"/><path d="M24.5 12.5l9 7.5-9 7.5z" fill="#7dd3fc"/></svg><span><b>INTICOO</b><small>GLOBAL SERVICES</small></span></a>
+    <nav>
+      <div class="role">@Icons.Svg("crown", 20) Super Admin</div>
+      @foreach (var it in items) { <a href="@it.Href" class="@On(it.Href)">@Icons.Svg(it.Icon, 19) @it.Text</a> }
+    </nav>
+    <div class="foot">
+      <a href="mailto:@supportEmail">@Icons.Svg("headset", 19) Support</a>
+      <form method="post" action="/logout"><button type="submit">@Icons.Svg("logout", 19) Logout</button></form>
+    </div>
+  </aside>
+  <div class="main">
+    <header class="top">
+      <div class="ttl">
+        <div class="crumb">Super Admin @if (crumb != "Dashboard") { <text> › @crumb</text> }</div>
+        <h1>@title</h1>
+        @if (sub != "") { <p>@sub</p> }
+      </div>
+      <div class="tools">
+        <form class="search" method="get" action="/companies" role="search">@Icons.Svg("search", 17)<input type="search" name="q" placeholder="Search companies, contact, email..." maxlength="100" /></form>
+        <partial name="_DateRange" />
+        <a class="bell" href="@(pendingCompanies == 0 && unread == 0 && overLimit > 0 ? "/storage?filter=over" : pendingCompanies == 0 && unread > 0 ? "/messages?filter=unread" : "/companies?status=PendingPayment")" title="@pendingCompanies pending, @unread unread messages, @overLimit over plan limit">@Icons.Svg("bell", 19)@if (bell > 0) { <i>@bell</i> }</a>
+        <a class="me" href="/account" style="text-decoration:none"><span class="av">@AdminUi.Initials(name)</span><span><b>@name</b><small>@role</small></span></a>
+      </div>
+    </header>
+    @if (TempData["flash"] is string f) { <div class="alert ok">@f</div> }
+    @if (TempData["flashErr"] is string fe) { <div class="alert err">@fe</div> }
+    @RenderBody()
+  </div>
+</div>
+<script src="/js/admin.js?v=2"></script>
+</body>
+</html>
+@functions {
+    string Cfg(string key) => ViewContext.HttpContext.RequestServices.GetRequiredService<IConfiguration>()[key] ?? "";
+}

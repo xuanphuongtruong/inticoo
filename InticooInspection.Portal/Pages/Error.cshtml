@@ -1,0 +1,11 @@
+@page "/error"
+@{
+    ViewData["Title"] = "Error";
+    var code = ViewContext.HttpContext.Request.Query["code"].ToString();
+    var notFound = code == "404";
+}
+<div class="wrap center" style="padding:90px 20px">
+  <h1>@(notFound ? "404" : "Oops")</h1>
+  <p class="lead muted">@(notFound ? "This page could not be found." : "Something went wrong. Please try again later.")</p>
+  <a class="btn" href="/">← Home</a>
+</div>

@@ -1,0 +1,112 @@
+.lang-code {
+    font-weight: 700;
+    font-size: 11px;
+    letter-spacing: .04em;
+}
+
+/* ── Dải nút (sidebar, nền tối) ── */
+.lang-picker {
+    display: flex;
+    gap: 2px;
+    padding: 3px;
+    border-radius: 10px;
+}
+
+.lang-dark {
+    background: rgba(255, 255, 255, .06);
+    width: 100%;
+}
+
+.lang-btn {
+    flex: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    height: 28px;
+    padding: 0 6px;
+    border: none;
+    border-radius: 8px;
+    background: transparent;
+    color: #b8c8e8;
+    font-family: inherit;
+    line-height: 1;
+    cursor: pointer;
+    transition: background .15s, color .15s;
+}
+
+.lang-btn:hover { background: rgba(255, 255, 255, .08); color: #fff; }
+.lang-btn.active { background: #2563eb; color: #fff; }
+
+/* ── Menu thả xuống (Login, nền sáng) ── */
+.lang-dd { position: relative; display: inline-block; }
+
+.lang-dd-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    height: 36px;
+    padding: 0 12px;
+    border: 1px solid #d6e2f0;
+    border-radius: 10px;
+    background: #fff;
+    color: #1a3a6b;
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    line-height: 1;
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(17, 92, 210, .08);
+}
+
+.lang-dd-btn:hover { border-color: #115cd2; }
+
+.lang-globe, .lang-caret {
+    width: 16px;
+    height: 16px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.8;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    flex-shrink: 0;
+}
+
+.lang-globe { color: #115cd2; }
+.lang-caret { width: 12px; height: 12px; opacity: .6; }
+
+.lang-dd-backdrop { position: fixed; inset: 0; z-index: 9; }
+
+.lang-dd-menu {
+    position: absolute;
+    right: 0;
+    top: calc(100% + 6px);
+    z-index: 10;
+    min-width: 190px;
+    margin: 0;
+    padding: 6px;
+    list-style: none;
+    background: #fff;
+    border: 1px solid #d6e2f0;
+    border-radius: 12px;
+    box-shadow: 0 10px 28px rgba(17, 45, 90, .16);
+}
+
+.lang-dd-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 10px;
+    border-radius: 8px;
+    color: #1a3a6b;
+    font-size: 13.5px;
+    cursor: pointer;
+}
+
+.lang-dd-item .lang-code {
+    min-width: 30px;
+    color: #6b7d99;
+}
+
+.lang-dd-item:hover { background: #eef5fc; }
+.lang-dd-item.active { background: #115cd2; color: #fff; }
+.lang-dd-item.active .lang-code { color: #dbe8ff; }

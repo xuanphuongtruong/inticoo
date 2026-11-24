@@ -1,0 +1,264 @@
+@page "/settings/inspection-defect"
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Admin")]
+@using InticooInspection.Client.Services
+@inject SettingsClient Settings
+@inherits LocalizedComponentBase
+
+<PageTitle>@T("Settings.IdTitle")</PageTitle>
+
+<div class="st-page">
+    <div class="st-crumb">@T("Menu.Settings") › <b>@T("Settings.IdCrumb")</b></div>
+    <div class="st-top">
+        <div>
+            <h1 class="st-title">@T("Settings.IdTitle")</h1>
+            <div class="st-sub">@T("Settings.IdSub")</div>
+        </div>
+        <button class="st-btn primary" @onclick="Save">@T("Settings.SaveChanges")</button>
+    </div>
+
+    @if (_saved)
+    {
+        <div class="st-toast">@T("Settings.SavedOk")</div>
+    }
+    @if (_failed)
+    {
+        <div class="st-toast err">@T("Settings.SaveFailed")</div>
+    }
+
+    <SettingsSection Title="@("1. " + T("Settings.InspectionTypes"))" Subtitle="@T("Settings.InspectionTypesSub")" Icon="@IcoDoc" DefaultOpen="true">
+        <ChildContent>
+            <div class="st-types">
+                @foreach (var t in _types)
+                {
+                    var ty = t;
+                    <div class="st-type @(ty.Open ? "open" : "")">
+                        <div class="st-type-head">
+                            <div>
+                                <div class="st-type-name">@T(ty.NameKey)</div>
+                                <div class="st-type-desc">@T(ty.DescKey)</div>
+                            </div>
+                            <button type="button" class="st-m-chevbtn" @onclick="() => ty.Open = !ty.Open" aria-label="@T("Settings.TypicalChecks")"><svg class="st-m-chev" width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M7 5l5 5-5 5"/></svg></button>
+                            <div class="st-type-en">
+                                <label class="st-switch"><input type="checkbox" @bind="ty.Enabled" /><span></span></label>
+                                @(ty.Enabled ? T("Settings.Enabled") : T("Settings.Disabled"))
+                            </div>
+                        </div>
+                        <div class="st-checks">
+                            <b>@T("Settings.TypicalChecks")</b>
+                            <ul>
+                                @foreach (var c in ty.ChecksKeys)
+                                {
+                                    <li>@T(c)</li>
+                                }
+                            </ul>
+                        </div>
+                    </div>
+                }
+            </div>
+            <div class="st-note" style="margin-top:12px">@T("Settings.InspectionTypesNote")</div>
+        </ChildContent>
+    </SettingsSection>
+
+    <SettingsSection Title="@("2. " + T("Settings.AqlSettings"))" Subtitle="@T("Settings.AqlSub")" Icon="@IcoTarget" DefaultOpen="false">
+        <HeaderContent>
+            <button type="button" class="st-btn outline st-sm" @onclick="ApplyDefaultAql">@T("Settings.ApplyGlobalAql")</button>
+        </HeaderContent>
+        <ChildContent>
+            <div class="st-aql">
+                <div class="st-aql-head">
+                    <div>@T("Settings.InspectionType")</div>
+                    <div>@T("Settings.InspectionLevel")</div>
+                    <div>@T("Settings.Critical")</div>
+                    <div>@T("Settings.Major")</div>
+                    <div>@T("Settings.Minor")</div>
+                    <div>@T("Settings.SamplingPlan")</div>
+                </div>
+                @foreach (var r in _aql)
+                {
+                    var row = r;
+                    <div class="st-aql-row @(row.Open ? "open" : "")">
+                        <button type="button" class="st-m-sum" @onclick="() => row.Open = !row.Open">
+                            <b>@row.Code</b>
+                            <span>@((MarkupString)AqlSummary(row))<br /><small>@row.Plan</small></span>
+                            <svg class="st-m-chev" width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M7 5l5 5-5 5"/></svg>
+                        </button>
+                        <div class="st-aql-name">@T(row.NameKey)</div>
+                        <div class="st-aql-sel"><span class="cl">@T("Settings.InspectionLevel")</span>
+                            <select class="st-select" @bind="row.Level">@foreach (var o in _levels) { <option value="@o">@o</option> }</select></div>
+                        <div class="st-aql-sel"><span class="cl">@T("Settings.Critical")</span>
+                            <select class="st-select" @bind="row.Critical">@foreach (var o in _critOpts) { <option value="@o">@o</option> }</select></div>
+                        <div class="st-aql-sel"><span class="cl">@T("Settings.Major")</span>
+                            <select class="st-select" @bind="row.Major">@foreach (var o in _majorOpts) { <option value="@o">@o</option> }</select></div>
+                        <div class="st-aql-sel"><span class="cl">@T("Settings.Minor")</span>
+                            <select class="st-select" @bind="row.Minor">@foreach (var o in _minorOpts) { <option value="@o">@o</option> }</select></div>
+                        <div class="st-aql-plan"><span class="cl">@T("Settings.SamplingPlan")</span>
+                            <select class="st-select" @bind="row.Plan">@foreach (var o in _plans) { <option value="@o">@o</option> }</select></div>
+                    </div>
+                }
+            </div>
+        </ChildContent>
+    </SettingsSection>
+
+    <SettingsSection Title="@("3. " + T("Settings.DefectRules"))" Subtitle="@T("Settings.DefectRulesSub")" Icon="@IcoShield" DefaultOpen="false">
+        <ChildContent>
+            <div class="st-capa">
+                <div>
+                    <div class="st-row" style="border:none;padding-top:0">
+                        <div style="display:flex;align-items:center;gap:12px">
+                            <label class="st-switch"><input type="checkbox" @bind="_capaEnabled" /><span></span></label>
+                            <div>
+                                <div style="font-weight:700">@T("Settings.EnableAutoCapa")</div>
+                                <div class="st-sub" style="font-size:12.5px">@T("Settings.EnableAutoCapaSub")</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="st-sevtable">
+                        <div class="st-sev-head"><div>@T("Settings.DefectLevel")</div><div>@T("Settings.Threshold")</div><div>@T("Settings.Description")</div></div>
+                        @foreach (var s in _sev)
+                        {
+                            var sv = s;
+                            <div class="st-sev-row @(sv.Open ? "open" : "")">
+                                <button type="button" class="st-m-sum st-m-sev @sv.Css" @onclick="() => sv.Open = !sv.Open">
+                                    <span class="st-sev-name @sv.Css"><span class="st-sev-badge">!</span>@T(sv.NameKey)</span>
+                                    <span class="st-m-val">@sv.Threshold @T("Settings.Cases")</span>
+                                    <svg class="st-m-chev" width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M7 5l5 5-5 5"/></svg>
+                                </button>
+                                <div class="st-sev-name @sv.Css"><span class="st-sev-badge">!</span>@T(sv.NameKey)</div>
+                                <div class="st-sev-th"><input class="st-input" type="number" min="1" @bind="sv.Threshold" disabled="@(!_capaEnabled)" /> @T("Settings.Cases")</div>
+                                <div class="st-sev-desc">@T(sv.DescKey, sv.Threshold)</div>
+                            </div>
+                        }
+                    </div>
+                </div>
+                <div>
+                    <div class="st-box">
+                        <h4>@T("Settings.CapaScope")</h4>
+                        <div class="st-sub" style="font-size:12.5px;margin-bottom:6px">@T("Settings.CapaScopeSub")</div>
+                        @foreach (var sc in new[] { "Product", "PO", "ProductVendor" })
+                        {
+                            var key = sc;
+                            <label class="st-radio"><input type="radio" name="capaScope" checked="@(_scope == key)" @onchange="() => _scope = key" /> @ScopeLabel(key)</label>
+                        }
+                    </div>
+                    <div class="st-box">
+                        <h4>@T("Settings.CapaBehaviour")</h4>
+                        <label class="st-check"><input type="checkbox" @bind="_linkExisting" /> @T("Settings.LinkExisting")</label>
+                        <label class="st-check"><input type="checkbox" @bind="_includeSummary" /> @T("Settings.IncludeSummary")</label>
+                    </div>
+                </div>
+            </div>
+        </ChildContent>
+    </SettingsSection>
+
+    <button class="st-btn primary block st-m-save" @onclick="Save">@T("Settings.SaveChanges")</button>
+</div>
+
+@code {
+    private bool _saved, _failed;
+    private bool _capaEnabled = true, _linkExisting = true, _includeSummary = true;
+    private string _scope = "Product";
+
+    private const string IcoDoc = "<svg viewBox='0 0 24 24'><rect x='5' y='3' width='14' height='18' rx='2'/><path d='M9 8h6M9 12h6M9 16h3'/></svg>";
+    private const string IcoTarget = "<svg viewBox='0 0 24 24'><circle cx='12' cy='12' r='9'/><circle cx='12' cy='12' r='5'/><circle cx='12' cy='12' r='1.5'/></svg>";
+    private const string IcoShield = "<svg viewBox='0 0 24 24'><path d='M12 3l7 3v5c0 4.5-3 8-7 9.5C8 19 5 15.5 5 11V6z'/><path d='M9 11.5l2 2 4-4'/></svg>";
+
+    private class InspType
+    {
+        public string NameKey = "", DescKey = ""; public bool Enabled = true, Open; public string[] ChecksKeys = Array.Empty<string>();
+    }
+    private class AqlRow { public bool Open; public string Code = "", NameKey = "", Level = "Level II", Critical = "0.0", Major = "2.5", Minor = "4.0", Plan = "ANSI/ASQ Z1.4 (Single)"; }
+    private class Sev { public bool Open; public string NameKey = "", DescKey = "", Css = ""; public int Threshold; }
+
+    private readonly List<InspType> _types = new()
+    {
+        new() { NameKey = "Settings.PpiName", DescKey = "Settings.PpiDesc", ChecksKeys = new[] { "Settings.PpiC1", "Settings.PpiC2", "Settings.PpiC3", "Settings.PpiC4" } },
+        new() { NameKey = "Settings.DpiName", DescKey = "Settings.DpiDesc", ChecksKeys = new[] { "Settings.DpiC1", "Settings.DpiC2", "Settings.DpiC3", "Settings.DpiC4" } },
+        new() { NameKey = "Settings.PsiName", DescKey = "Settings.PsiDesc", ChecksKeys = new[] { "Settings.PsiC1", "Settings.PsiC2", "Settings.PsiC3", "Settings.PsiC4" } },
+    };
+
+    private readonly List<AqlRow> _aql = new()
+    {
+        new() { Code = "PPI", NameKey = "Settings.PpiShort" }, new() { Code = "DPI", NameKey = "Settings.DpiShort" }, new() { Code = "PSI", NameKey = "Settings.PsiShort" },
+    };
+
+    private readonly List<Sev> _sev = new()
+    {
+        new() { NameKey = "Settings.Critical", DescKey = "Settings.CapaDescCritical", Css = "crit", Threshold = 1 },
+        new() { NameKey = "Settings.Major", DescKey = "Settings.CapaDescMajor", Css = "maj", Threshold = 3 },
+        new() { NameKey = "Settings.Minor", DescKey = "Settings.CapaDescMinor", Css = "min", Threshold = 10 },
+    };
+
+    private static readonly string[] _levels = { "Level I", "Level II", "Level III", "S-1", "S-2", "S-3", "S-4" };
+    private static readonly string[] _critOpts = { "0.0", "0.065", "0.10", "0.15", "0.25", "0.40", "0.65", "1.0" };
+    private static readonly string[] _majorOpts = { "0.65", "1.0", "1.5", "2.5", "4.0", "6.5" };
+    private static readonly string[] _minorOpts = { "1.5", "2.5", "4.0", "6.5", "10" };
+    private static readonly string[] _plans = { "ANSI/ASQ Z1.4 (Single)", "ANSI/ASQ Z1.4 (Double)", "ISO 2859-1 (Single)" };
+
+    private string ScopeLabel(string key) => key switch
+    {
+        "Product" => T("Settings.ScopeProduct"),
+        "PO" => T("Settings.ScopePO"),
+        _ => T("Settings.ScopeProductVendor"),
+    };
+
+    private static string AqlSummary(AqlRow r) => $"<em>{r.Level}</em> | C: {r.Critical} | M: {r.Major} | m: {r.Minor}";
+
+    private void ApplyDefaultAql()
+    {
+        foreach (var r in _aql) { r.Level = "Level II"; r.Critical = "0.0"; r.Major = "2.5"; r.Minor = "4.0"; r.Plan = "ANSI/ASQ Z1.4 (Single)"; }
+    }
+
+    private class IdSettings
+    {
+        public List<bool> TypeEnabled { get; set; } = new() { true, true, true };
+        public List<AqlDto> Aql { get; set; } = new();
+        public bool CapaEnabled { get; set; } = true;
+        public int CapaCritical { get; set; } = 1;
+        public int CapaMajor { get; set; } = 3;
+        public int CapaMinor { get; set; } = 10;
+        public string CapaScope { get; set; } = "Product";
+        public bool LinkExisting { get; set; } = true;
+        public bool IncludeSummary { get; set; } = true;
+    }
+    private class AqlDto { public string Level { get; set; } = ""; public string Critical { get; set; } = ""; public string Major { get; set; } = ""; public string Minor { get; set; } = ""; public string Plan { get; set; } = ""; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        var m = await Settings.LoadAsync<IdSettings>(SettingsClient.InspectionDefect);
+        if (m == null) return;
+        for (int i = 0; i < _types.Count && i < m.TypeEnabled.Count; i++) _types[i].Enabled = m.TypeEnabled[i];
+        for (int i = 0; i < _aql.Count && i < m.Aql.Count; i++)
+        {
+            var a = m.Aql[i];
+            if (!string.IsNullOrEmpty(a.Level)) _aql[i].Level = a.Level;
+            if (!string.IsNullOrEmpty(a.Critical)) _aql[i].Critical = a.Critical;
+            if (!string.IsNullOrEmpty(a.Major)) _aql[i].Major = a.Major;
+            if (!string.IsNullOrEmpty(a.Minor)) _aql[i].Minor = a.Minor;
+            if (!string.IsNullOrEmpty(a.Plan)) _aql[i].Plan = a.Plan;
+        }
+        _capaEnabled = m.CapaEnabled;
+        _sev[0].Threshold = Math.Max(1, m.CapaCritical);
+        _sev[1].Threshold = Math.Max(1, m.CapaMajor);
+        _sev[2].Threshold = Math.Max(1, m.CapaMinor);
+        _scope = string.IsNullOrEmpty(m.CapaScope) ? "Product" : m.CapaScope;
+        _linkExisting = m.LinkExisting;
+        _includeSummary = m.IncludeSummary;
+    }
+
+    private async Task Save()
+    {
+        foreach (var sv in _sev) if (sv.Threshold < 1) sv.Threshold = 1;
+        var m = new IdSettings
+        {
+            TypeEnabled = _types.Select(t => t.Enabled).ToList(),
+            Aql = _aql.Select(a => new AqlDto { Level = a.Level, Critical = a.Critical, Major = a.Major, Minor = a.Minor, Plan = a.Plan }).ToList(),
+            CapaEnabled = _capaEnabled,
+            CapaCritical = _sev[0].Threshold, CapaMajor = _sev[1].Threshold, CapaMinor = _sev[2].Threshold,
+            CapaScope = _scope, LinkExisting = _linkExisting, IncludeSummary = _includeSummary,
+        };
+        var ok = await Settings.SaveAsync(SettingsClient.InspectionDefect, m);
+        _saved = ok; _failed = !ok; StateHasChanged();
+        await Task.Delay(2500);
+        _saved = false; _failed = false; StateHasChanged();
+    }
+}

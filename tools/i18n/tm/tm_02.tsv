@@ -1,0 +1,170 @@
+Same as Registered Email	Giống email đã đăng ký	与注册邮箱相同	Sama seperti e-mel berdaftar
+If enabled, the inspection report (PDF) will be auto-emailed to the customer once an inspection is marked complete.	Nếu bật, báo cáo kiểm hàng (PDF) sẽ tự động gửi email cho khách hàng khi đơn kiểm được đánh dấu hoàn thành.	启用后，验货完成时系统会自动将验货报告 (PDF) 发送给客户。	Jika didayakan, laporan pemeriksaan (PDF) akan dihantar secara automatik melalui e-mel kepada pelanggan apabila pemeriksaan ditanda selesai.
+Do Not Receive Inspection Report	Không nhận báo cáo kiểm hàng	不接收验货报告	Tidak menerima laporan pemeriksaan
+Receive Inspection Report	Nhận báo cáo kiểm hàng	接收验货报告	Terima laporan pemeriksaan
+Remove	Gỡ bỏ	移除	Buang
+PDF, PNG, JPG, WEBP · Max 20 MB each	PDF, PNG, JPG, WEBP · Tối đa 20 MB mỗi tệp	PDF, PNG, JPG, WEBP · 每个文件最大 20 MB	PDF, PNG, JPG, WEBP · Maksimum 20 MB setiap fail
+Click or drag files here	Bấm hoặc kéo thả tệp vào đây	点击或拖放文件到此处	Klik atau seret fail ke sini
+Enter remarks...	Nhập ghi chú...	输入备注...	Masukkan catatan...
+Enter email address	Nhập địa chỉ email	输入邮箱地址	Masukkan alamat e-mel
+Enter title or position	Nhập chức danh hoặc chức vụ	输入头衔或职位	Masukkan gelaran atau jawatan
+Enter contact name	Nhập tên người liên hệ	输入联系人姓名	Masukkan nama hubungan
+Enter postal code	Nhập mã bưu chính	输入邮政编码	Masukkan poskod
+Enter state or province	Nhập tỉnh hoặc bang	输入州或省	Masukkan negeri atau wilayah
+Street address line 2 (optional)	Địa chỉ dòng 2 (không bắt buộc)	街道地址第 2 行（可选）	Alamat jalan baris 2 (pilihan)
+Enter phone number	Nhập số điện thoại	输入电话号码	Masukkan nombor telefon
+Enter business reference number	Nhập số đăng ký kinh doanh	输入营业执照号	Masukkan nombor pendaftaran perniagaan
+Enter tax code	Nhập mã số thuế	输入税号	Masukkan kod cukai
+(Multi-select)	(Chọn nhiều)	（可多选）	(Pilihan berbilang)
+Enter short name	Nhập tên viết tắt	输入简称	Masukkan nama ringkas
+Enter company name	Nhập tên công ty	输入公司名称	Masukkan nama syarikat
+Page {0} of {1}	Trang {0} / {1}	第 {0} 页，共 {1} 页	Halaman {0} daripada {1}
+View Detail	Xem chi tiết	查看详情	Lihat butiran
+Upload	Tải lên	上传	Muat naik
+Upload files	Tải tệp lên	上传文件	Muat naik fail
+States / Province	Tỉnh / Bang	州 / 省	Negeri / Wilayah
+Files	Tệp	文件	Fail
+No customers found.	Không tìm thấy khách hàng.	未找到客户。	Tiada pelanggan ditemui.
+New Customer	Thêm khách hàng	新建客户	Pelanggan baharu
+{0} customers	{0} khách hàng	{0} 个客户	{0} pelanggan
+Search by company, contact, phone, email...	Tìm theo công ty, người liên hệ, điện thoại, email...	按公司、联系人、电话、邮箱搜索...	Cari mengikut syarikat, hubungan, telefon, e-mel...
+Manage customer accounts and contacts	Quản lý khách hàng và người liên hệ	管理客户账户和联系人	Urus akaun pelanggan dan kenalan
+Customers - Inticoo	Khách hàng - Inticoo	客户 - Inticoo	Pelanggan - Inticoo
+Deleting customer...	Đang xóa khách hàng...	正在删除客户...	Sedang memadam pelanggan...
+Connection error.	Lỗi kết nối.	连接错误。	Ralat sambungan.
+An error occurred.	Đã xảy ra lỗi.	发生错误。	Ralat berlaku.
+Saving customer...	Đang lưu khách hàng...	正在保存客户...	Sedang menyimpan pelanggan...
+Creating customer...	Đang tạo khách hàng...	正在创建客户...	Sedang mencipta pelanggan...
+Please enter the alternate email address.	Vui lòng nhập email thay thế.	请输入备用邮箱地址。	Sila masukkan alamat e-mel alternatif.
+Company name is required.	Bắt buộc nhập tên công ty.	公司名称为必填项。	Nama syarikat diperlukan.
+ (Registered)	 (Đã đăng ký)	 (注册邮箱)	 (Berdaftar)
+(Registered email — none set)	(Chưa có email đăng ký)	（未设置注册邮箱）	(E-mel berdaftar — belum ditetapkan)
+Save Changes	Lưu thay đổi	保存更改	Simpan perubahan
+Create Customer	Tạo khách hàng	创建客户	Cipta pelanggan
+Edit Customer	Sửa khách hàng	编辑客户	Sunting pelanggan
+No shipment recorded.	Chưa có lô hàng nào.	暂无出货记录。	Tiada penghantaran direkodkan.
+% of Total	% trên tổng	占总数 %	% daripada jumlah
+Qty Shipped	SL đã giao	出货数量	Kuantiti dihantar
+Year {0}	Năm {0}	{0} 年	Tahun {0}
+Top 5 Shipment Items Quantity	Top 5 mặt hàng giao nhiều nhất	出货数量前 5 的货品	5 item penghantaran teratas mengikut kuantiti
+No defects recorded.	Chưa ghi nhận lỗi nào.	暂无缺陷记录。	Tiada kecacatan direkodkan.
+Total Defects	Tổng số lỗi	缺陷总数	Jumlah kecacatan
+Main Defect	Lỗi chính	主要缺陷	Kecacatan utama
+All Severity	Tất cả mức độ	所有严重程度	Semua tahap keterukan
+No data.	Không có dữ liệu.	暂无数据。	Tiada data.
+Trend	Xu hướng	趋势	Trend
+CAPA Overdue	CAPA quá hạn	CAPA 逾期	CAPA tertunggak
+Defect Rate	Tỷ lệ lỗi	缺陷率	Kadar kecacatan
+Pass Rate	Tỷ lệ đạt	合格率	Kadar lulus
+Insp.	Lượt kiểm	验货	Pemeriksaan
+View All →	Xem tất cả →	查看全部 →	Lihat semua →
+Supplier / Vendor Performance	Hiệu suất nhà cung cấp	供应商绩效	Prestasi pembekal
+Stage	Giai đoạn	阶段	Peringkat
+Inspection No.	Số kiểm hàng	验货编号	No. pemeriksaan
+Recent Inspections	Kiểm hàng gần đây	最近验货	Pemeriksaan terkini
+Monthly Quantity Shipped (pcs)	Số lượng giao hàng theo tháng (cái)	每月出货数量 (件)	Kuantiti dihantar bulanan (pcs)
+Total Inspections	Tổng số lượt kiểm	验货总数	Jumlah pemeriksaan
+Pre-shipment (PSI)	Trước khi giao hàng (PSI)	出货前 (PSI)	Pra-penghantaran (PSI)
+During Production (DPI)	Trong sản xuất (DPI)	生产中 (DPI)	Semasa pengeluaran (DPI)
+Pre-production (PPI)	Trước sản xuất (PPI)	产前 (PPI)	Pra-pengeluaran (PPI)
+Monthly Inspections by Stage	Lượt kiểm theo tháng và giai đoạn	按阶段统计的每月验货	Pemeriksaan bulanan mengikut peringkat
+Defect Rate (%)	Tỷ lệ lỗi (%)	缺陷率 (%)	Kadar kecacatan (%)
+Minor Defect	Lỗi nhỏ	轻微缺陷	Kecacatan minor
+Major Defect	Lỗi lớn	严重缺陷	Kecacatan major
+Critical Defect	Lỗi nghiêm trọng	致命缺陷	Kecacatan kritikal
+AQL Quantity (pcs)	Số lượng AQL (cái)	AQL 数量 (件)	Kuantiti AQL (pcs)
+Inspection Summary	Tổng hợp kiểm hàng	验货汇总	Ringkasan pemeriksaan
+Loading dashboard...	Đang tải bảng tổng quan...	正在加载仪表板...	Sedang memuatkan papan pemuka...
+Refresh	Làm mới	刷新	Muat semula
+All Customers	Tất cả khách hàng	所有客户	Semua pelanggan
+All Factories	Tất cả nhà máy	所有工厂	Semua kilang
+Supplier / Vendor	Nhà cung cấp	供应商	Pembekal
+Period	Kỳ	期间	Tempoh
+· Updated {0}	· Cập nhật {0}	· 更新于 {0}	· Dikemas kini {0}
+Real-time quality overview	Tổng quan chất lượng theo thời gian thực	实时质量概览	Gambaran kualiti masa nyata
+Real-time quality overview for your products, vendors and customers	Tổng quan chất lượng theo thời gian thực cho sản phẩm, nhà cung cấp và khách hàng	产品、供应商和客户的实时质量概览	Gambaran kualiti masa nyata untuk produk, pembekal dan pelanggan anda
+Quality Dashboard	Bảng tổng quan chất lượng	质量仪表板	Papan pemuka kualiti
+Quality Dashboard - Inticoo	Bảng tổng quan chất lượng - Inticoo	质量仪表板 - Inticoo	Papan pemuka kualiti - Inticoo
+No data	Không có dữ liệu	暂无数据	Tiada data
+AQL Quantity	Số lượng AQL	AQL 数量	Kuantiti AQL
+0|new this month	0|mới trong tháng	0|本月新增	0|baharu bulan ini
+↑ {0}|new this month	↑ {0}|mới trong tháng	↑ {0}|本月新增	↑ {0}|baharu bulan ini
+{0} {1}{2}|vs last month	{0} {1}{2}|so với tháng trước	{0} {1}{2}|较上月	{0} {1}{2}|berbanding bulan lepas
+|vs last month	|so với tháng trước	|较上月	|berbanding bulan lepas
+Most Inspections · 	Nhiều lượt kiểm nhất · 	验货最多 · 	Pemeriksaan terbanyak ·
+Top Vendors	Nhà cung cấp hàng đầu	主要供应商	Pembekal teratas
+Most Jobs · 	Nhiều đơn nhất · 	任务最多 · 	Tugasan terbanyak ·
+Top Inspectors	Kiểm hàng viên hàng đầu	主要验货员	Pemeriksa teratas
+Top Customers	Khách hàng hàng đầu	主要客户	Pelanggan teratas
+Total Customers	Tổng số khách hàng	客户总数	Jumlah pelanggan
+Total Vendors	Tổng số nhà cung cấp	供应商总数	Jumlah pembekal
+{0:N0} pcs	{0:N0} cái	{0:N0} 件	{0:N0} pcs
+Total Quantity Shipped	Tổng số lượng đã giao	出货总数量	Jumlah kuantiti dihantar
+Total Inspectors	Tổng số kiểm hàng viên	验货员总数	Jumlah pemeriksa
+Total Products	Tổng số sản phẩm	产品总数	Jumlah produk
+No overdue CAPA	Không có CAPA quá hạn	无逾期 CAPA	Tiada CAPA tertunggak
+↓ {0} overdue	↓ {0} quá hạn	↓ {0} 项逾期	↓ {0} tertunggak
+Open CAPA	CAPA đang mở	未关闭 CAPA	CAPA terbuka
+Failed Inspections	Lượt kiểm không đạt	不合格验货	Pemeriksaan gagal
+Awaiting Inspection	Chờ kiểm hàng	待验货	Menunggu pemeriksaan
+Quantity (pcs)	Số lượng (cái)	数量 (件)	Kuantiti (pcs)
+Quality People | Reliable Results | Sustainable Supply Chain	Con người chất lượng | Kết quả tin cậy | Chuỗi cung ứng bền vững	优质团队 | 可靠结果 | 可持续供应链	Insan Berkualiti | Keputusan Boleh Dipercayai | Rantaian Bekalan Mampan
+Thank you for partnering with Inticoo.	Cảm ơn quý khách đã hợp tác cùng Inticoo.	感谢您与 Inticoo 合作。	Terima kasih kerana bekerjasama dengan Inticoo.
+No recurrence was observed during follow-up inspection.	Không phát hiện tái diễn trong lần kiểm tra theo dõi.	跟进检验中未发现问题再次发生。	Tiada pengulangan diperhatikan semasa pemeriksaan susulan.
+Corrective and preventive actions have been verified and deemed effective.	Các hành động khắc phục và phòng ngừa đã được xác minh và đánh giá là hiệu quả.	纠正和预防措施已经验证并确认有效。	Tindakan pembetulan dan pencegahan telah disahkan dan dianggap berkesan.
+✔ DEFECT CLOSED	✔ ĐÃ ĐÓNG LỖI	✔ 缺陷已关闭	✔ KECACATAN DITUTUP
+Date: {0}	Ngày: {0}	日期：{0}	Tarikh: {0}
+Signature:	Chữ ký:	签名：	Tandatangan:
+Position:	Chức vụ:	职位：	Jawatan:
+Name:	Họ tên:	姓名：	Nama:
+No reference.	Không có tài liệu tham chiếu.	无参考资料。	Tiada rujukan.
+Attached	Đính kèm	附件	Dilampirkan
+Verification Findings	Kết quả xác minh	验证发现	Penemuan pengesahan
+Effectiveness Result	Kết quả hiệu quả	有效性结果	Keputusan keberkesanan
+Verified By	Người xác minh	验证人	Disahkan oleh
+Verification Date	Ngày xác minh	验证日期	Tarikh pengesahan
+Effectiveness Verification	Xác minh hiệu quả	有效性验证	Pengesahan keberkesanan
+Remarks: {0}	Ghi chú: {0}	备注：{0}	Catatan: {0}
+No preventive action recorded.	Chưa ghi nhận hành động phòng ngừa.	暂无预防措施记录。	Tiada tindakan pencegahan direkodkan.
+Frequency	Tần suất	频率	Kekerapan
+Preventive Actions	Hành động phòng ngừa	预防措施	Tindakan pencegahan
+No corrective action recorded.	Chưa ghi nhận hành động khắc phục.	暂无纠正措施记录。	Tiada tindakan pembetulan direkodkan.
+Completion Date	Ngày hoàn thành	完成日期	Tarikh siap
+Target Date	Ngày mục tiêu	目标日期	Tarikh sasaran
+Corrective Actions · Progress {0}%	Hành động khắc phục · Tiến độ {0}%	纠正措施 · 进度 {0}%	Tindakan pembetulan · Kemajuan {0}%
+CAPA Tracking	Theo dõi CAPA	CAPA 跟踪	Penjejakan CAPA
+Corrective Action	Hành động khắc phục	纠正措施	Tindakan pembetulan
+Open / Due Date	Ngày mở / Hạn	开立 / 到期日期	Tarikh dibuka / Tarikh akhir
+Responsible Person	Người chịu trách nhiệm	负责人	Orang bertanggungjawab
+Target Completion Date	Ngày hoàn thành mục tiêu	目标完成日期	Tarikh sasaran siap
+Responsible Department	Bộ phận chịu trách nhiệm	责任部门	Jabatan bertanggungjawab
+Priority	Mức ưu tiên	优先级	Keutamaan
+Corrective Action Request (CAR)	Yêu cầu hành động khắc phục (CAR)	纠正措施要求 (CAR)	Permintaan tindakan pembetulan (CAR)
+Why {0}	Tại sao {0}	为什么 {0}	Mengapa {0}
+Findings	Phát hiện	发现	Penemuan
+Why	Tại sao	为什么	Mengapa
+5 Why Analysis	Phân tích 5 Why	5 Why 分析	Analisis 5 Mengapa
+Final Root Cause	Nguyên nhân gốc cuối cùng	最终根本原因	Punca akar muktamad
+Root Cause Type	Loại nguyên nhân gốc	根本原因类型	Jenis punca akar
+Root Cause Analysis	Phân tích nguyên nhân gốc	根本原因分析	Analisis punca akar
+No photo	Không có ảnh	无照片	Tiada foto
+Photo {0}	Ảnh {0}	照片 {0}	Foto {0}
+After Corrective Action (During Re-inspection)	Sau khắc phục (khi tái kiểm)	纠正后（复检时）	Selepas tindakan pembetulan (semasa pemeriksaan semula)
+Before Corrective Action (During Inspection)	Trước khắc phục (khi kiểm hàng)	纠正前（验货时）	Sebelum tindakan pembetulan (semasa pemeriksaan)
+Photo Evidence	Ảnh minh chứng	照片证据	Bukti foto
+No image	Không có hình	无图片	Tiada imej
+Product Reference Image	Ảnh tham chiếu sản phẩm	产品参考图片	Imej rujukan produk
+Product Quantity Checked	Số lượng sản phẩm đã kiểm	已检产品数量	Kuantiti produk diperiksa
+AQL Classification	Phân loại AQL	AQL 分类	Klasifikasi AQL
+Defect Location	Vị trí lỗi	缺陷位置	Lokasi kecacatan
+Defect Description	Mô tả lỗi	缺陷描述	Penerangan kecacatan
+Defect Details	Chi tiết lỗi	缺陷详情	Butiran kecacatan
+Risk Level	Mức rủi ro	风险等级	Tahap risiko
+Verification Result	Kết quả xác minh	验证结果	Keputusan pengesahan
+Defect Quantity	Số lượng lỗi	缺陷数量	Kuantiti kecacatan
+Defect Category	Nhóm lỗi	缺陷类别	Kategori kecacatan
+Executive Summary	Tóm tắt	执行摘要	Ringkasan eksekutif
+Report Date	Ngày báo cáo	报告日期	Tarikh laporan
+Closure Date	Ngày đóng	关闭日期	Tarikh penutupan
+PO Number	Số PO	订单号 (PO)	Nombor PO
+Report No.: {0}	Số báo cáo: {0}	报告编号：{0}	No. laporan: {0}

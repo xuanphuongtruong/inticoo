@@ -4,20 +4,44 @@
 @using Microsoft.AspNetCore.Authorization
 @using Microsoft.AspNetCore.Components.Authorization
 @attribute [Authorize]
+@inherits LocalizedComponentBase
+@if (_none)
+{
+    <div style="padding:60px;text-align:center;color:#fff;"><h3>@T("PageAccessGuard.AccessDenied")</h3></div>
+}
 
 @code {
+    [Inject] private InticooInspection.Client.Services.PageAccessService PageAccess { get; set; } = default!;
+
+    // Trang đầu tiên user được phép vào (theo thứ tự menu). Tránh vòng lặp /dashboard ⇄ Access Denied
+    // khi tài khoản không có quyền Dashboard.
+    private static readonly (string Key, string Url)[] _landing =
+    {
+        ("Dashboard", "/dashboard"),
+        ("InspectionSchedule", "/inspection-schedule"),
+        ("SummaryInspections", "/inspections"),
+        ("DefectManagement", "/defects"),
+        ("Directory", "/customers"),
+        ("PerformanceReview", "/vendor-reviews"),
+        ("PerformanceTest", "/admin/performance-test-master"),
+    };
+
     protected override async Task OnInitializedAsync()
     {
         var authState = await AuthStateProvider.GetAuthenticationStateAsync();
         var user = authState.User;
+        await PageAccess.EnsureLoadedAsync();
 
-        if (user.IsInRole("Admin"))
+        if (user.IsInRole("Admin") || PageAccess.IsAdmin)
+        {
             Navigation.NavigateTo("/dashboard", replace: true);
-        else if (user.IsInRole("Inspector"))
-            Navigation.NavigateTo("/inspection-schedule", replace: true);
-        else if (user.IsInRole("Customer"))
-            Navigation.NavigateTo("/inspection-schedule", replace: true);
-        else
-            Navigation.NavigateTo("/dashboard", replace: true);
+            return;
+        }
+        foreach (var (key, url) in _landing)
+            if (PageAccess.HasAccess(key)) { Navigation.NavigateTo(url, replace: true); return; }
+        // Không có trang nào: ở lại, hiển thị thông báo
+        _none = true;
     }
+
+    private bool _none;
 }

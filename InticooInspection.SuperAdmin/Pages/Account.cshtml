@@ -1,0 +1,22 @@
+@page
+@model AccountModel
+@{ ViewData["Title"] = "My Account"; ViewData["Sub"] = "Your sign-in, password and the other Super Admin accounts."; }
+<div class="cols c2">
+<div class="panel"><h3>Change Password</h3>
+  <form method="post" asp-page-handler="Password" class="f" autocomplete="off">
+    <div style="margin-bottom:10px"><label>Current password</label><input type="password" name="current" autocomplete="current-password" required /></div>
+    <div style="margin-bottom:10px"><label>New password</label><input type="password" name="next" autocomplete="new-password" required /></div>
+    <div style="margin-bottom:10px"><label>Confirm new password</label><input type="password" name="confirm" autocomplete="new-password" required /></div>
+    <p class="muted" style="font-size:.8rem">8+ characters with upper and lower case letters, a number and a symbol. You will be signed out everywhere after changing it.</p>
+    <button class="btn pri">Change Password</button></form></div>
+<div class="panel"><h3>Super Admin Accounts</h3>
+  <div class="tbl-wrap"><table class="t"><thead><tr><th>Name</th><th>Email</th><th>Status</th><th>Last login</th><th></th></tr></thead><tbody>
+  @foreach (var a in Model.Admins) { <tr><td>@a.FullName</td><td>@a.Email</td><td>@AdminUi.Pill(a.IsActive ? "Active" : "Inactive")</td><td>@(a.LastLoginAt == null ? "-" : AdminUi.DT(a.LastLoginAt))</td>
+    <td>@if (a.Id != Model.Uid) { <form method="post" asp-page-handler="Toggle" data-confirm="Change this account's access?"><input type="hidden" name="id" value="@a.Id" /><button class="btn sm">@(a.IsActive ? "Deactivate" : "Activate")</button></form> } else { <span class="muted">You</span> }</td></tr> }
+  </tbody></table></div>
+  <h4>Add administrator</h4>
+  <form method="post" asp-page-handler="AddAdmin" class="f" autocomplete="off">
+    <div class="row"><div><label>Full name</label><input name="fullName" required maxlength="150" /></div><div><label>Email</label><input type="email" name="email" required maxlength="200" /></div></div>
+    <div style="margin-bottom:10px"><label>Initial password</label><input type="password" name="password" autocomplete="new-password" required /></div>
+    <button class="btn">Add</button></form></div>
+</div>

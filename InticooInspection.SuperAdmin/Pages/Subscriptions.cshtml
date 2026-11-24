@@ -1,0 +1,92 @@
+@page
+@model SubscriptionsModel
+@{
+    ViewData["Title"] = "Subscriptions"; ViewData["Sub"] = "Manage all company subscriptions, billing cycle, upgrades and renewals.";
+    var req = ViewContext.HttpContext.Request;
+    string Tab(string? s) => AdminUi.Qs(req, ("status", s), ("page", null), ("id", null));
+    var cur = Model.Status ?? "";
+    var sel = Model.Sel;
+    var dt = Model.Dt ?? "details";
+    string Pct(int n) => Model.All == 0 ? "0%" : Math.Round(100.0 * n / Model.All, 1) + "% of total";
+}
+<div class="kpis">
+  <div class="kpi"><span class="ic b">@Icons.Svg("building", 24)</span><div><small>Total Subscriptions</small><strong>@Model.All</strong></div></div>
+  <div class="kpi"><span class="ic g">@Icons.Svg("users", 24)</span><div><small>Active</small><strong>@Model.ActiveN</strong><div class="sub">@Pct(Model.ActiveN)</div></div></div>
+  <div class="kpi"><span class="ic a">@Icons.Svg("clock", 24)</span><div><small>Pending Payment</small><strong>@Model.PendingN</strong><div class="sub">Require follow up</div></div></div>
+  <div class="kpi"><span class="ic r">@Icons.Svg("x", 24)</span><div><small>Overdue</small><strong>@Model.OverdueN</strong><div class="sub">Payment failed</div></div></div>
+  <div class="kpi"><span class="ic x">@Icons.Svg("pause", 24)</span><div><small>Cancelled</small><strong>@Model.CancelledN</strong><div class="sub">@Pct(Model.CancelledN)</div></div></div>
+</div>
+<div class="split">
+<div class="panel">
+  <div class="tabs">
+    <a class="@(cur == "" ? "on" : "")" href="@Tab(null)">All Subscriptions (@Model.All)</a><a class="@(cur == "Active" ? "on" : "")" href="@Tab("Active")">Active (@Model.ActiveN)</a>
+    <a class="@(cur == "Pending" ? "on" : "")" href="@Tab("Pending")">Pending (@Model.PendingN)</a><a class="@(cur == "Overdue" ? "on" : "")" href="@Tab("Overdue")">Overdue (@Model.OverdueN)</a>
+    <a class="@(cur == "Cancelled" ? "on" : "")" href="@Tab("Cancelled")">Cancelled (@Model.CancelledN)</a>
+  </div>
+  <form class="filters" method="get">
+    <div><label>Search</label><input type="search" name="q" value="@Model.Q" placeholder="Search company, plan, email..." maxlength="100" /></div>
+    <div><label>Plan</label><select name="plan" data-autosubmit><option value="">All Plans</option>@foreach (var p in Model.Plans) { <option value="@p.Code" selected="@(Model.Plan == p.Code)">@p.Name</option> }</select></div>
+    <div><label>Status</label><select name="status" data-autosubmit><option value="">All Status</option>@foreach (var s in SubscriptionStatus.All) { <option value="@s" selected="@(Model.Status == s)">@AdminUi.StatusLabel(s)</option> }</select></div>
+    <div><label>Billing Cycle</label><select name="cycle" data-autosubmit><option value="">All Cycles</option><option value="Monthly" selected="@(Model.Cycle == "Monthly")">Monthly</option><option value="Annual" selected="@(Model.Cycle == "Annual")">Annual</option></select></div>
+    <div><label>Country</label><select name="country" data-autosubmit><option value="">All Countries</option>@foreach (var c in Model.Countries) { <option value="@c" selected="@(Model.Country == c)">@c</option> }</select></div>
+    <a class="btn" href="/subscriptions">Reset</a>
+    <a class="btn" href="@AdminUi.Qs(req, ("handler", "Export"))">@Icons.Svg("download", 16) Export</a>
+  </form>
+  <div class="tbl-wrap"><table class="t">
+    <thead><tr><th>Company Name</th><th>Plan</th><th>Billing Cycle</th><th class="num">Price (USD)</th><th>Start Date</th><th>Next Billing</th><th>Status</th><th>Auto Renew</th><th></th></tr></thead><tbody>
+    @foreach (var s in Model.Rows)
+    {
+      <tr class="@(sel?.Id == s.Id ? "sel" : "")">
+        <td><div class="co"><span class="logo-sq" style="background:@AdminUi.Color(s.Company!.Name)">@AdminUi.Initial(s.Company.Name)</span><a href="@AdminUi.Qs(req, ("id", s.Id.ToString()), ("dt", null), ("mode", null))">@s.Company.Name</a></div></td>
+        <td>@s.Plan?.Name</td><td>@s.BillingCycle</td><td class="num">@AdminUi.Money(s.Price)</td><td>@AdminUi.D(s.StartDate)</td><td>@AdminUi.D(s.NextBillingDate)</td>
+        <td>@AdminUi.Pill(s.Status)</td><td>@(s.AutoRenew ? "On" : "Off")</td>
+        <td><a class="btn sm" href="@AdminUi.Qs(req, ("id", s.Id.ToString()))">@Icons.Svg("eye", 15)</a></td></tr>
+    }
+    @if (Model.Rows.Count == 0) { <tr><td colspan="9" class="muted" style="padding:24px;text-align:center">No subscriptions match the filters.</td></tr> }
+    </tbody></table></div>
+  <partial name="_Pager" model="Model.Pager" />
+</div>
+
+<div class="panel detail">
+@if (sel == null) { <p class="muted">Select a subscription.</p> }
+else
+{
+  <div class="head"><span class="logo-sq" style="background:@AdminUi.Color(sel.Company!.Name);width:46px;height:46px;font-size:1.3rem">@AdminUi.Initial(sel.Company.Name)</span>
+    <div style="flex:1"><h2>@sel.Company.Name</h2>@AdminUi.Pill(sel.Status)</div></div>
+  <div class="tabs">@foreach (var (k, t) in new[] { ("details", "Details"), ("invoices", "Payment & Invoice"), ("modules", "Modules") }) { <a class="@(dt == k ? "on" : "")" href="@AdminUi.Qs(req, ("dt", k))">@t</a> }</div>
+  @if (dt == "details")
+  {
+    <dl class="dl"><dt>Company Email</dt><dd>@sel.Company.Email</dd><dt>Contact Person</dt><dd>@sel.Company.ContactPerson</dd><dt>Country</dt><dd>@AdminUi.Flag(sel.Company.CountryCode) @sel.Company.Country</dd></dl>
+    <h4>Subscription Details</h4>
+    <dl class="dl"><dt>Plan</dt><dd>@sel.Plan?.Name</dd><dt>Billing Cycle</dt><dd>@sel.BillingCycle</dd><dt>Price</dt><dd>@AdminUi.Money(sel.Price) / @(sel.BillingCycle == "Annual" ? "year" : "month")</dd>
+      <dt>Status</dt><dd>@AdminUi.Pill(sel.Status)</dd><dt>Start Date</dt><dd>@AdminUi.D(sel.StartDate)</dd><dt>Next Billing</dt><dd>@AdminUi.D(sel.NextBillingDate)</dd>
+      <dt>Included Storage</dt><dd>@sel.Plan?.StorageGb GB</dd><dt>Max Users</dt><dd>@sel.Plan?.MaxUsers</dd></dl>
+    <form method="post" asp-page-handler="AutoRenew" class="switch"><input type="hidden" name="id" value="@sel.Id" /><span><b>Auto Renew</b><small>@(sel.AutoRenew ? "Renews automatically" : "Will not renew")</small></span><button class="btn sm">@(sel.AutoRenew ? "Turn off" : "Turn on")</button></form>
+  }
+  else if (dt == "invoices")
+  {
+    <div class="tbl-wrap"><table class="t"><thead><tr><th>Invoice</th><th class="num">Amount</th><th>Status</th></tr></thead><tbody>
+    @foreach (var i in Model.SelInvoices) { <tr><td><a href="/invoices?id=@i.Id">@i.Number</a><div class="muted">@AdminUi.D(i.InvoiceDate)</div></td><td class="num">@AdminUi.Money(i.Amount + i.Tax)</td><td>@AdminUi.Pill(i.Status)</td></tr> }
+    @if (Model.SelInvoices.Count == 0) { <tr><td colspan="3" class="muted">No invoices.</td></tr> }</tbody></table></div>
+  }
+  else
+  {
+    @foreach (var m in Model.SelModules) { <div class="check">@Icons.Svg("check", 16) @m</div> }
+    @if (Model.SelModules.Count == 0) { <p class="muted">No modules enabled.</p> }
+  }
+  <h4>Quick Actions</h4>
+  <form method="post" asp-page-handler="ChangePlan" class="f">
+    <input type="hidden" name="id" value="@sel.Id" />
+    <div class="row" style="grid-template-columns:1fr 1fr auto;align-items:end">
+      <div><label>Plan</label><select name="planCode">@foreach (var p in Model.Plans) { <option value="@p.Code" selected="@(sel.PlanId == p.Id)">@p.Name</option> }</select></div>
+      <div><label>Cycle</label><select name="cycle"><option value="Monthly" selected="@(sel.BillingCycle == "Monthly")">Monthly</option><option value="Annual" selected="@(sel.BillingCycle == "Annual")">Annual</option></select></div>
+      <button class="btn pri">Change Plan</button></div>
+  </form>
+  <div class="acts">
+    <form method="post" asp-page-handler="Invoice"><input type="hidden" name="id" value="@sel.Id" /><button class="btn blk">@Icons.Svg("doc", 15) Create Invoice</button></form>
+    <a class="btn blk" href="/companies?id=@sel.CompanyId">@Icons.Svg("building", 15) View Company</a>
+    @if (sel.Status != SubscriptionStatus.Cancelled) { <form method="post" asp-page-handler="Cancel" data-confirm="Cancel this subscription? The company will be marked Cancelled."><input type="hidden" name="id" value="@sel.Id" /><button class="btn dng blk">@Icons.Svg("trash", 15) Cancel Subscription</button></form> }
+  </div>
+}
+</div>
+</div>

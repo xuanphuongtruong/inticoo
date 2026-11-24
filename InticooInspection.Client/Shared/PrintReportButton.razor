@@ -1,0 +1,41 @@
+﻿@* Nút "Print / Save Report": mở hộp thoại in của trình duyệt (chọn "Save as PDF" để lưu file).
+   Kèm CSS in ấn: ẩn navbar/footer/nút bấm, giữ nguyên màu nền & biểu đồ. *@
+@inject IJSRuntime JS
+@inject InticooInspection.Client.Services.PageAccessService PageAccess
+@inherits LocalizedComponentBase
+
+@if (PageAccess.CanDownload)
+{
+<button class="prb-btn no-print" @onclick="Print" title="@T("PrintReportButton.PrintOrSaveThisReportAs")">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M6 9V2h12v7"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/>
+    </svg>
+    @(Label ?? T("PrintReportButton.PrintSaveReport"))
+</button>
+}
+
+<style>
+    .prb-btn { display:inline-flex; align-items:center; gap:6px; background:#fff; color:#1d4ed8; border:1px solid #bfdbfe;
+               border-radius:8px; padding:6px 12px; font-size:13px; font-weight:600; font-family:inherit; cursor:pointer; white-space:nowrap; }
+    .prb-btn:hover { background:#eff6ff; }
+    .print-only { display:none; }
+    @@media print {
+        @@page { size: A4 landscape; margin: 8mm; }
+        html, body { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+        .top-navbar, .bottom-footer, .mobile-drawer-overlay, .no-print, select { display: none !important; }
+        .main-content { padding: 6px !important; }
+        .print-only { display: inline-block !important; }
+        .print-avoid-break { break-inside: avoid; page-break-inside: avoid; }
+    }
+</style>
+
+@code {
+    [Parameter] public string? Label { get; set; }   // null → "Print / Save Report" theo ngôn ngữ
+
+    protected override Task OnInitializedAsync() => PageAccess.EnsureLoadedAsync();
+
+    async Task Print()
+    {
+        try { await JS.InvokeVoidAsync("print"); } catch { }
+    }
+}

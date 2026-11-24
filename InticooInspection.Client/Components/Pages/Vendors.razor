@@ -1,57 +1,86 @@
-@page "/suppliers"
+﻿@page "/suppliers"
 @attribute [Microsoft.AspNetCore.Authorization.Authorize]
 @using System.Net.Http.Json
 @using System.Net.Http.Headers
 @inject HttpClient Http
+@inject NavigationManager Navigation
 @inject Blazored.SessionStorage.ISessionStorageService SessionStorage
 @using InticooInspection.Client.Services
 @using InticooInspection.Client.Helpers
 @inject WaitingService Waiting
 @inject InticooInspection.Client.Services.PageAccessService PageAccess
 @using InticooInspection.Client.Shared
+@inherits LocalizedComponentBase
 
-<PageTitle>Vendors - Inticoo</PageTitle>
+<PageTitle>@T("Vendors.VendorsInticoo")</PageTitle>
 
-<div class="top-bar">
+<div class="lp-head">
     <div class="title-block">
-        <h1 class="page-title">Vendors</h1>
-        <span class="page-sub">Manage supplier and vendor information</span>
+        <h1 class="page-title">@T("Vendors.Vendors2")</h1>
+        <span class="page-sub">@T("Vendors.ManageSupplierAndVendorInformation")</span>
     </div>
-    <div class="tb-divider"></div>
+</div>
+<div class="top-bar lp-filters @(_fOpen ? "fopen" : "")">
     <div class="search-wrap">
         <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5">
             <circle cx="9" cy="9" r="5.5"/><path d="M15 15l-2.5-2.5" stroke-linecap="round"/>
         </svg>
-        <input class="search-input" type="text" placeholder="Search by code, name, tax code, contact..."
+        <input class="search-input" type="text" placeholder="@T("Vendors.SearchByCodeNameTaxCode")"
                @bind="_search" @bind:event="oninput" @onkeyup="OnSearchKey" />
     </div>
-    <select class="filter-select" @bind="_filterType" @bind:after="() => LoadPage(1)">
-        <option value="">All Types</option>
-        <option value="Material">Material</option>
-        <option value="Accessory">Accessory</option>
-        <option value="Service">Service</option>
-        <option value="Logistics">Logistics</option>
-        <option value="Manufacturing">Manufacturing</option>
-    </select>
-    <select class="filter-select" @bind="_filterStatus" @bind:after="() => LoadPage(1)">
-        <option value="">All Status</option>
-        <option value="Active">Active</option>
-        <option value="Inactive">Inactive</option>
-        <option value="Suspended">Suspended</option>
-    </select>
-    <span class="total-count">@_total vendors</span>
+    <button type="button" class="lp-filter-toggle @(_fOpen ? "on" : "")" @onclick="() => _fOpen = !_fOpen" aria-label="@T("Common.Filters")"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5h18l-7 8v6l-4 2v-8z"/></svg></button>
+    <div class="lp-selects">
+        <select class="filter-select" @bind="_category" @bind:after="() => LoadPage(1)">
+            <option value="">@T("Common.AllCategories")</option>
+            @foreach (var c in _catOpts) { <option value="@c">@TE("Opt", c)</option> }
+        </select>
+        <select class="filter-select" @bind="_country" @bind:after="() => LoadPage(1)">
+            <option value="">@T("Common.AllCountries")</option>
+            @foreach (var c in _countryOpts) { <option value="@c">@c</option> }
+        </select>
+        <select class="filter-select" @bind="_filterType" @bind:after="() => LoadPage(1)">
+            <option value="">@T("Vendors.AllTypes")</option>
+            @foreach (var bt in _btOpts) { <option value="@bt">@TE("Opt", bt)</option> }
+        </select>
+        <select class="filter-select" @bind="_filterStatus" @bind:after="() => LoadPage(1)">
+            <option value="">@T("Common.AllStatus")</option>
+            <option value="Active">@T("Common.Active")</option>
+            <option value="Inactive">@T("Common.Inactive")</option>
+            <option value="Suspended">@T("Vendors.Suspended")</option>
+        </select>
+    </div>
+    <div class="lp-dates">
+        <span class="lp-lbl">@T("Vendors.DateCreated")</span>
+        <DateFilter @bind-Value="_dFrom" @bind-Value:after="() => LoadPage(1)" Placeholder="@T("Common.StartDate")" />
+        <span class="lp-arrow">&rarr;</span>
+        <DateFilter @bind-Value="_dTo" @bind-Value:after="() => LoadPage(1)" Placeholder="@T("Common.EndDate")" />
+        <button type="button" class="lp-btn-reset" @onclick="ClearFilters">@T("Common.Clear")</button>
+    </div>
+    <span class="total-count">@T("Vendors.Vendors", _total)</span>
     <AuthorizeView Roles="Admin">
         <ImportExcelButton ApiBase="api/vendors" OnImported="() => LoadPage(_page)" />
         <button class="btn-new" @onclick="async () => await OpenCreate()">
             <svg width="13" height="13" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M10 4v12M4 10h12"/></svg>
-            New Vendor
+            @T("Vendors.NewVendor")
         </button>
     </AuthorizeView>
 </div>
 
+<div class="m-kpis">
+    <div class="m-kpi"><span class="m-kpi-ico k-blue"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M16 4.5a3.5 3.5 0 0 1 0 7M18 14a6 6 0 0 1 3.5 5.5"/></svg></span><b>@(_totalAll)</b><small>@T("Customers.KpiTotal")</small></div>
+    <div class="m-kpi"><span class="m-kpi-ico k-green"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M8 12l3 3 5-6"/></svg></span><b>@(_activeCount)</b><small>@T("Common.Active")</small></div>
+    <div class="m-kpi"><span class="m-kpi-ico k-orange"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M10 9v6M14 9v6"/></svg></span><b class="red">@(_inactiveCount)</b><small>@T("Common.Inactive")</small></div>
+    <div class="m-kpi lp-kpi-extra"><span class="m-kpi-ico k-blue"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M20 12l-8 8-9-9V3h8z"/><circle cx="7.5" cy="7.5" r="1.2"/></svg></span><b>@_categoryCount</b><small>@T("Vendors.Categories")</small></div>
+</div>
+<div class="m-chips">
+    <button type="button" class="@(_filterStatus == "" ? "on" : "")" @onclick='() => SetStatus("")'>@T("Customers.ChipAll") (@_totalAll)</button>
+    <button type="button" class="@(_filterStatus == "Active" ? "on" : "")" @onclick='() => SetStatus("Active")'>@T("Common.Active") (@_activeCount)</button>
+    <button type="button" class="@(_filterStatus == "Inactive" ? "on" : "")" @onclick='() => SetStatus("Inactive")'>@T("Common.Inactive") (@_inactiveCount)</button>
+</div>
+
 @if (_loading)
 {
-    <div class="loading-wrap"><div class="spinner"></div><span>Loading...</span></div>
+    <div class="loading-wrap"><div class="spinner"></div><span>@T("Common.Loading")</span></div>
 }
 else if (_vendors.Count == 0)
 {
@@ -60,35 +89,66 @@ else if (_vendors.Count == 0)
             <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
             <polyline points="9 22 9 12 15 12 15 22"/>
         </svg>
-        <p>No vendors found.</p>
+        <p>@T("Vendors.NoVendorsFound")</p>
     </div>
 }
 else
 {
+    <div class="m-cards">
+        @foreach (var mv in _vendors)
+        {
+            var item = mv;
+            <div class="m-card">
+                <div class="m-card-head">
+                    <div class="m-card-name">@item.Name</div>
+                    <span class="status-badge status-@GetStatusCss(item.Status)">@GetStatusLabel(item.Status)</span>
+                </div>
+                <div class="m-card-code">@item.Code@(string.IsNullOrEmpty(item.ShortName) ? "" : " · " + item.ShortName)</div>
+                @if (!string.IsNullOrEmpty(item.Category))
+                {
+                    <span class="cat-badge">@TE("Opt", item.Category)</span>
+                }
+                <div class="m-card-rows">
+                    @if (!string.IsNullOrEmpty(item.ContactName))
+                    {
+                        <div><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>@item.ContactName@(string.IsNullOrEmpty(item.ContactTitle) ? "" : $" ({item.ContactTitle})")</div>
+                    }
+                    @if (!string.IsNullOrEmpty(item.ContactPhone ?? item.Phone))
+                    {
+                        <div><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2z"/></svg>@(item.ContactPhone ?? item.Phone)</div>
+                    }
+                    @if (!string.IsNullOrEmpty(item.State) || !string.IsNullOrEmpty(item.Country))
+                    {
+                        <div><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 21s7-6 7-11a7 7 0 0 0-14 0c0 5 7 11 7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>@string.Join(", ", new[] { item.State, item.Country }.Where(x => !string.IsNullOrEmpty(x)))</div>
+                    }
+                    <div><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>@L.Date(item.CreatedAt, "d MMM yyyy")</div>
+                </div>
+                <div class="m-card-actions">
+                    <button type="button" class="m-btn-outline" @onclick="() => OpenDetail(item)">@T("Common.View")</button>
+                    @if (PageAccess.IsAdmin)
+                    {
+                        <button type="button" class="m-btn-fill" @onclick="async () => await OpenEdit(item)">@T("Common.Edit")</button>
+                    }
+                </div>
+            </div>
+        }
+    </div>
+
     <div class="table-wrap">
         <table class="ptable">
             <thead>
                 <tr>
-                    <th rowspan="2" class="tc th-y">No</th>
-                    <th rowspan="2" class="tc th-y">Vendor Name</th>
-                    <th rowspan="2" class="tc th-y">Vendor ID</th>
-                    <th rowspan="2" class="tc th-y">Category</th>
-                    <th colspan="2" class="tc th-y">Vendor Address</th>
-                    <th colspan="2" class="tc th-y">Contact Information</th>
-                    <th rowspan="2" class="tc th-y">Factory Evaluation</th>
-                    <th rowspan="2" class="tc th-y">Files</th>
-                    <th rowspan="2" class="tc th-y">Status</th>
-                    <th rowspan="2" class="tc th-y">Full Detail</th>
-                    @if (PageAccess.IsAdmin)
-                    {
-                        <th rowspan="2" class="tc th-y">Action</th>
-                    }
-                </tr>
-                <tr>
-                    <th class="tc th-y">States / Province</th>
-                    <th class="tc th-y">Country</th>
-                    <th class="tc th-y">Contact Name</th>
-                    <th class="tc th-y">Position</th>
+                    <th class="tc th-y th-chk"><input type="checkbox" checked="@(_vendors.Count > 0 && _vendors.All(x => _sel.Contains(x.Id)))" @onchange="e => ToggleAll((bool)(e.Value ?? false))" /></th>
+                    <th class="tc th-y">No</th>
+                    <th class="tc th-y">@T("Common.VendorName")</th>
+                    <th class="tc th-y">@T("Common.VendorID")</th>
+                    <th class="tc th-y">@T("Common.Category")</th>
+                    <th class="tc th-y">@T("Common.Country")</th>
+                    <th class="tc th-y">@T("Common.ContactName")</th>
+                    <th class="tc th-y">@T("Common.Position")</th>
+                    <th class="tc th-y">@T("Vendors.FactoryEvaluation")</th>
+                    <th class="tc th-y">@T("Common.Status")</th>
+                    <th class="tc th-y">@T("Common.Actions")</th>
                 </tr>
             </thead>
             <tbody>
@@ -97,6 +157,7 @@ else
                     var item = v;
                     var rowNo = (_page - 1) * _pageSize + _vendors.IndexOf(v) + 1;
                     <tr class="@(rowNo % 2 == 0 ? "table-row tr-alt" : "table-row")">
+                        <td class="tc"><input type="checkbox" checked="@_sel.Contains(item.Id)" @onchange="e => ToggleOne(item.Id, (bool)(e.Value ?? false))" /></td>
                         <td class="tc muted">@rowNo</td>
                         <td>
                             <div class="vendor-cell">
@@ -107,13 +168,12 @@ else
                                 </div>
                             </div>
                         </td>
-                        <td class="tc"><span class="code-badge">@item.Code</span></td>
+                        <td class="tc mono">@(string.IsNullOrEmpty(item.Code) ? "—" : item.Code)</td>
                         <td>
                             @if (!string.IsNullOrEmpty(item.Category))
-                            { <span class="cat-badge">@item.Category</span> }
+                            { <span class="cat-badge">@TE("Opt", item.Category)</span> }
                             else { <span class="muted">-</span> }
                         </td>
-                        <td class="tc muted small-td">@(string.IsNullOrEmpty(item.State)   ? "-" : item.State)</td>
                         <td class="tc muted small-td">@(string.IsNullOrEmpty(item.Country) ? "-" : item.Country)</td>
                         <td class="tc small-td">@(string.IsNullOrEmpty(item.ContactName)  ? "-" : item.ContactName)</td>
                         <td class="tc muted small-td">@(string.IsNullOrEmpty(item.ContactTitle) ? "-" : item.ContactTitle)</td>
@@ -131,9 +191,9 @@ else
                             {
                                 <AuthorizeView Roles="Admin">
                                     <Authorized>
-                                        <label class="upload-inline-btn" title="Upload factory evaluation file">
+                                        <label class="upload-inline-btn" title="@T("Vendors.UploadFactoryEvaluationFile")">
                                             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-                                            Upload
+                                            @T("Vendors.Upload")
                                             <InputFile OnChange="(e) => HandleInlineFactoryEvalUpload(e, item)" style="display:none" accept=".pdf,.jpg,.jpeg,.png,.xlsx,.docx" multiple />
                                         </label>
                                     </Authorized>
@@ -144,57 +204,31 @@ else
                             }
                         </td>
                         <td class="tc">
-                            @if (item.Attachments.Count > 0)
-                            {
-                                <span class="file-count-badge file-count-btn"
-                                      @onclick="(e) => ToggleFilePopup(e, item)"
-                                      @onclick:stopPropagation="true">
-                                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-                                    @item.Attachments.Count
-                                </span>
-                            }
-                            else
-                            {
-                                <label class="upload-inline-btn" title="Upload file">
-                                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-                                    Upload
-                                    <InputFile OnChange="(e) => HandleInlineUpload(e, item)" style="display:none" accept=".pdf,.jpg,.jpeg,.png" multiple />
-                                </label>
-                            }
-                        </td>
-                        <td class="tc">
                             <span class="status-badge status-@GetStatusCss(item.Status)">@GetStatusLabel(item.Status)</span>
                         </td>
                         <td class="tc">
-                            <button class="action-btn view" @onclick="() => OpenDetail(item)">
-                                <svg width="13" height="13" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 10s3.5-6 8-6 8 6 8 6-3.5 6-8 6-8-6-8-6Z"/><circle cx="10" cy="10" r="2.5"/></svg>
-                                View
-                            </button>
+                            <div class="action-btns">
+                                <button class="bico bview" @onclick="() => OpenDetail(item)" title="@T("Common.View")">
+                                    <svg width="13" height="13" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 10s3.5-6 8-6 8 6 8 6-3.5 6-8 6-8-6-8-6Z"/><circle cx="10" cy="10" r="2.5"/></svg>
+                                </button>
+                                @if (PageAccess.IsAdmin)
+                                {
+                                    <button class="bico bedit" @onclick="async () => await OpenEdit(item)" title="@T("Common.Edit")">
+                                        <svg width="13" height="13" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 2l4 4-10 10H4v-4L14 2z" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                                    </button>
+                                    <button class="bico bdel" @onclick="() => ConfirmDelete(item)" title="@T("Common.Delete")">
+                                        <svg width="13" height="13" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 6h14M8 6V4h4v2M5 6l1 11h8l1-11" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                                    </button>
+                                }
+                            </div>
                         </td>
-                        @if (PageAccess.IsAdmin)
-                        {
-                            <td class="tc">
-                                <div class="action-btns">
-                                    <button class="bico bedit" @onclick="async () => await OpenEdit(item)">
-                                            <svg width="13" height="13" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 2l4 4-10 10H4v-4L14 2z" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
-                                    <button class="bico bdel" @onclick="() => ConfirmDelete(item)"><svg width="13" height="13" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 6h14M8 6V4h4v2M5 6l1 11h8l1-11" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
-                                </div>
-                            </td>
-                        }
                     </tr>
                 }
             </tbody>
         </table>
     </div>
 
-    @if (_total > _pageSize)
-    {
-        <div class="pagination">
-            <button class="page-btn" disabled="@(_page == 1)" @onclick="PrevPage">&#8592; Prev</button>
-            <span class="page-info">Page @_page of @TotalPages()</span>
-            <button class="page-btn" disabled="@(_page >= TotalPages())" @onclick="NextPage">Next &#8594;</button>
-        </div>
-    }
+    <ListPager Total="_total" Page="_page" PageSize="_pageSize" Noun="@T("Pager.Vendors")" OnPage="LoadPage" OnPageSize="SetPageSize" />
 }
 
 <!-- File popup -->
@@ -205,7 +239,7 @@ else
         <div class="fp-header">
             <span class="fp-title">
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-                @_filePopupVendor.Attachments.Count file(s) — @_filePopupVendor.Name
+                @T("Vendors.FileS3", _filePopupVendor.Attachments.Count, _filePopupVendor.Name)
             </span>
             <button class="fp-close" @onclick="CloseFilePopup">&#x2715;</button>
         </div>
@@ -221,14 +255,14 @@ else
                     <div class="fp-actions">
                         @if (att.ContentType.StartsWith("image/") || att.ContentType == "application/pdf")
                         {
-                            <a href="@att.DownloadUrl" target="_blank" class="fp-btn fp-btn-view" title="View">
+                            <a href="@att.DownloadUrl" target="_blank" class="fp-btn fp-btn-view" title="@T("Common.View")">
                                 <svg width="13" height="13" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 10s3.5-6 8-6 8 6 8 6-3.5 6-8 6-8-6-8-6Z"/><circle cx="10" cy="10" r="2.5"/></svg>
-                                View
+                                @T("Common.View")
                             </a>
                         }
-                        <a href="@att.DownloadUrl" download="@att.OriginalName" class="fp-btn fp-btn-dl" title="Download">
+                        <a href="@att.DownloadUrl" download="@att.OriginalName" class="fp-btn fp-btn-dl" title="@T("Common.Download")">
                             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-                            Download
+                            @T("Common.Download")
                         </a>
                     </div>
                 </div>
@@ -245,7 +279,7 @@ else
         <div class="fp-header">
             <span class="fp-title">
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
-                Factory Eval — @_fePopupVendor.Name
+                @T("Vendors.FactoryEval", _fePopupVendor.Name)
             </span>
             <button class="fp-close" @onclick="CloseFePopup">&#x2715;</button>
         </div>
@@ -269,12 +303,12 @@ else
                             {
                                 <a href="@f.DownloadUrl" target="_blank" class="fp-btn fp-btn-view">
                                     <svg width="12" height="12" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 10s3.5-6 8-6 8 6 8 6-3.5 6-8 6-8-6-8-6Z"/><circle cx="10" cy="10" r="2.5"/></svg>
-                                    View
+                                    @T("Common.View")
                                 </a>
                             }
                             <a href="@f.DownloadUrl" download="@f.OriginalName" class="fp-btn fp-btn-dl">
                                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-                                Download
+                                @T("Common.Download")
                             </a>
                         </div>
                     </div>
@@ -291,58 +325,68 @@ else
         <div class="modal-card modal-lg" @onclick:stopPropagation="true">
             <div class="modal-header">
                 <div>
-                    <h2>@(_editId == null ? "New Vendor" : "Edit Vendor")</h2>
+                    <h2>@(_editId == null ? T("Vendors.NewVendor") : T("Vendors.EditVendor"))</h2>
                     @if (_editId != null)
                     { <span style="font-size:12px;color:rgba(255,255,255,0.3);margin-top:2px;display:block;">@_f.Code</span> }
                 </div>
                 <button class="modal-close" @onclick="CloseModal">&#x2715;</button>
             </div>
 
+            <div class="vf-head">
+                <div class="vf-avatar">@VendorInitials(_f.Name)</div>
+                <div class="vf-head-main">
+                    <div class="vf-head-name">@(string.IsNullOrWhiteSpace(_f.Name) ? T("Vendors.NewVendor") : _f.Name)</div>
+                    <div class="vf-head-sub">@(string.IsNullOrEmpty(_f.Code) ? "" : _f.Code)@(string.IsNullOrEmpty(_f.Country) ? "" : " · " + _f.Country)</div>
+                </div>
+                <span class="status-badge status-@GetStatusCss(_f.Status)">@GetStatusLabel(_f.Status)</span>
+            </div>
+
             @if (!string.IsNullOrEmpty(_formError))
             { <div class="error-alert">@_formError</div> }
 
+            <div class="pf-cols">
+            <div class="pf-card2">
             <!-- Vendor ID + Status -->
             <div class="fg-row">
                 <div class="fg fg-1">
-                    <label>Vendor ID</label>
+                    <label>@T("Common.VendorID")</label>
                     <input class="form-input input-readonly" type="text" @bind="_f.Code" readonly="true" />
-                </div>
-                <div class="fg fg-1">
-                    <label>Status</label>
-                    <select class="form-input" @bind="_f.Status">
-                        <option value="0">Active</option>
-                        <option value="1">Inactive</option>
-                        <option value="2">Suspended</option>
-                    </select>
                 </div>
             </div>
 
             <!-- Vendor Profile -->
-            <div class="section-title">Vendor Profile</div>
+            <div class="section-title">@T("Vendors.VendorProfile")</div>
             <div class="fg-row">
                 <div class="fg fg-2">
-                    <label>Vendor Name <span class="required">*</span></label>
-                    <input class="form-input" type="text" placeholder="Full company name" @bind="_f.Name" @bind:event="oninput" />
+                    <label>@T("Common.VendorName") <span class="required">*</span></label>
+                    <input class="form-input" type="text" placeholder="@T("Vendors.FullCompanyName")" @bind="_f.Name" @bind:event="oninput" />
                 </div>
                 <div class="fg fg-1">
-                    <label>Short Name</label>
-                    <input class="form-input" type="text" placeholder="Abbreviation" @bind="_f.ShortName" @bind:event="oninput" />
+                    <label>@T("Common.ShortName")</label>
+                    <input class="form-input" type="text" placeholder="@T("Vendors.Abbreviation")" @bind="_f.ShortName" @bind:event="oninput" />
                 </div>
                 <div class="fg fg-3" style="grid-column:span 3;">
-                    <label>Product Category <span style="font-size:11px;color:#9baac8;font-weight:400;">(Multi-select)</span></label>
+                    <label>@T("Customers.BusinessType")</label>
+                    <div class="btype-group">
+                        @foreach (var bt in Taxonomy.VendorBusinessTypes)
+                        {
+                            var btVal = bt;
+                            <label class="btype-label @(VbtHas(_f.BusinessType, btVal) ? "btype-active" : "")" @onclick="() => ToggleVendorBt(btVal)">@TE("Opt", btVal)</label>
+                        }
+                    </div>
+                </div>
+            </div>
+            <div class="fg-row">
+                <div class="fg fg-3" style="grid-column:span 3;">
+                    <label>@T("Common.ProductCategory") <span style="font-size:11px;color:#9baac8;font-weight:400;">@T("Vendors.MultiSelect")</span></label>
                     <div class="cat-check-list">
-                        @foreach (var _catOpt in new[] {
-                            "Furniture","Outdoor Furniture","Indoor Furniture","Office Furniture",
-                            "Lighting","Home Decor","Electronics","Toys & Games",
-                            "Clothing & Apparel","Footwear","Bags & Luggage","Kitchenware",
-                            "Sportswear","Hardware & Tools","Other"
-                        })
+                        @foreach (var _catOpt in Taxonomy.MainCategories)
                         {
                             var catVal = _catOpt;
                             var isChecked = _formCategories.Contains(catVal);
                             <label class="cat-check-item @(isChecked ? "cat-check-active" : "")">
                                 <input type="checkbox" checked="@isChecked" @onchange="() => ToggleVendorCategory(catVal)" />
-                                @catVal
+                                @TE("Opt", catVal)
                             </label>
                         }
                     </div>
@@ -358,54 +402,56 @@ else
                     }
                 </div>
                 <div class="fg fg-1">
-                    <label>Tax Code</label>
-                    <input class="form-input" type="text" placeholder="Tax code" @bind="_f.TaxCode" @bind:event="oninput" />
+                    <label>@T("Vendors.TaxCode")</label>
+                    <input class="form-input" type="text" placeholder="@T("Vendors.TaxCode2")" @bind="_f.TaxCode" @bind:event="oninput" />
                 </div>
                 <div class="fg fg-1">
-                    <label>Business Ref. No.</label>
-                    <input class="form-input" type="text" placeholder="Business Reg. No." @bind="_f.BusinessRegNo" @bind:event="oninput" />
+                    <label>@T("Vendors.BusinessRefNo")</label>
+                    <input class="form-input" type="text" placeholder="@T("Vendors.BusinessRegNo")" @bind="_f.BusinessRegNo" @bind:event="oninput" />
                 </div>
                 <div class="fg fg-1">
-                    <label>Phone</label>
-                    <input class="form-input" type="text" placeholder="Company main phone" @bind="_f.Phone" @bind:event="oninput" />
+                    <label>@T("Vendors.Phone")</label>
+                    <input class="form-input" type="text" placeholder="@T("Vendors.CompanyMainPhone")" @bind="_f.Phone" @bind:event="oninput" />
                 </div>
                 <div class="fg fg-1">
-                    <label>Website</label>
+                    <label>@T("Vendors.Website")</label>
                     <input class="form-input" type="text" placeholder="https://example.com" @bind="_f.Website" @bind:event="oninput" />
                 </div>
             </div>
 
+            </div>
+            <div class="pf-card2">
             <!-- Vendor Address -->
-            <div class="section-title">Vendor Address</div>
+            <div class="section-title">@T("Vendors.VendorAddress")</div>
             <div class="fg-row">
                 <div class="fg fg-3">
-                    <label>Address 1</label>
-                    <input class="form-input" type="text" placeholder="Street address line 1" @bind="_f.Address1" @bind:event="oninput" />
+                    <label>@T("Common.Address1")</label>
+                    <input class="form-input" type="text" placeholder="@T("Common.StreetAddressLine1")" @bind="_f.Address1" @bind:event="oninput" />
                 </div>
                 <div class="fg fg-3">
-                    <label>Address 2</label>
-                    <input class="form-input" type="text" placeholder="Street address line 2 (optional)" @bind="_f.Address2" @bind:event="oninput" />
+                    <label>@T("Common.Address2")</label>
+                    <input class="form-input" type="text" placeholder="@T("Vendors.StreetAddressLine2Optional")" @bind="_f.Address2" @bind:event="oninput" />
                 </div>
                 <div class="fg fg-1">
-                    <label>City</label>
-                    <input class="form-input" type="text" placeholder="Enter city" @bind="_f.City" @bind:event="oninput" />
+                    <label>@T("Common.City")</label>
+                    <input class="form-input" type="text" placeholder="@T("Common.EnterCity")" @bind="_f.City" @bind:event="oninput" />
                 </div>
                 <div class="fg fg-1">
-                    <label>State / Province</label>
-                    <input class="form-input" type="text" placeholder="State or province" @bind="_f.State" @bind:event="oninput" />
+                    <label>@T("Common.StateProvince")</label>
+                    <input class="form-input" type="text" placeholder="@T("Vendors.StateOrProvince")" @bind="_f.State" @bind:event="oninput" />
                 </div>
                 <div class="fg fg-1">
-                    <label>Country</label>
+                    <label>@T("Common.Country")</label>
                     @if (_loadingCountries)
                     {
-                        <div class="form-input" style="color:#9baac8;font-style:italic;">Loading...</div>
+                        <div class="form-input" style="color:#9baac8;font-style:italic;">@T("Common.Loading")</div>
                     }
                     else
                     {
                         <select class="form-input"
                                 value="@_f.Country"
                                 @onchange="OnCountryChanged">
-                            <option value="">-- Select Country --</option>
+                            <option value="">@T("Common.SelectCountry")</option>
                             @foreach (var c in _countries)
                             {
                                 <option value="@c.Name">@c.Name</option>
@@ -414,54 +460,41 @@ else
                     }
                 </div>
                 <div class="fg fg-1">
-                    <label>Postal / ZIP</label>
-                    <input class="form-input" type="text" placeholder="Postal code" @bind="_f.PostalCode" @bind:event="oninput" />
+                    <label>@T("Common.PostalZIP")</label>
+                    <input class="form-input" type="text" placeholder="@T("Vendors.PostalCode")" @bind="_f.PostalCode" @bind:event="oninput" />
                 </div>
             </div>
 
-            <!-- Contact Information -->
-            <div class="section-title">Contact Information</div>
-            <div class="fg-row">
-                <div class="fg fg-2">
-                    <label>Contact Name</label>
-                    <input class="form-input" type="text" placeholder="Full name" @bind="_f.ContactName" @bind:event="oninput" />
-                </div>
-                <div class="fg fg-1">
-                    <label>Title / Position</label>
-                    <input class="form-input" type="text" placeholder="e.g. Sales Manager" @bind="_f.ContactTitle" @bind:event="oninput" />
-                </div>
-                <div class="fg fg-1">
-                    <label>Mobile</label>
-                    <input class="form-input" type="text" placeholder="Mobile number" @bind="_f.ContactPhone" @bind:event="oninput" />
-                </div>
-                <div class="fg fg-2">
-                    <label>Email</label>
-                    <input class="form-input" type="email" placeholder="Email address" @bind="_f.ContactEmail" @bind:event="oninput" />
-                </div>
+            </div>
             </div>
 
+            <!-- Vendor Contacts -->
+            <PartyContactsEditor Contacts="_contacts" ShowScheduleEmail="true" />
+
+            <div class="pf-cols">
+            <div class="pf-card2">
             <!-- Remark -->
-            <div class="section-title">Remark</div>
+            <div class="section-title">@T("Common.Remark")</div>
             <div class="fg-row">
                 <div class="fg fg-3">
-                    <textarea class="form-input" rows="3" placeholder="Additional notes..." @bind="_f.Notes" @bind:event="oninput"></textarea>
+                    <textarea class="form-input" rows="3" placeholder="@T("Vendors.AdditionalNotes")" @bind="_f.Notes" @bind:event="oninput"></textarea>
                 </div>
             </div>
 
             <!-- Factory Evaluation -->
-            <div class="section-title">Factory Evaluation</div>
+            <div class="section-title">@T("Vendors.FactoryEvaluation")</div>
             <div class="fg-row">
                 <div class="fg fg-3">
-                    <label>Evaluation Notes</label>
-                    <textarea class="form-input" rows="3" placeholder="Factory evaluation summary, audit findings..." @bind="_f.FactoryEvaluationNotes" @bind:event="oninput"></textarea>
+                    <label>@T("Vendors.EvaluationNotes")</label>
+                    <textarea class="form-input" rows="3" placeholder="@T("Vendors.FactoryEvaluationSummaryAuditFindings")" @bind="_f.FactoryEvaluationNotes" @bind:event="oninput"></textarea>
                 </div>
             </div>
             @{ int totalFe = _factoryEvalFiles.Count + _pendingFactoryFiles.Count; }
             @if (totalFe > 0)
             {
                 <div class="section-subtitle">
-                    Factory Evaluation Files
-                    <span class="att-count-label">@totalFe file(s)</span>
+                    @T("Vendors.FactoryEvaluationFiles")
+                    <span class="att-count-label">@T("Vendors.FileS2", totalFe)</span>
                 </div>
             }
             @if (_factoryEvalFiles.Count > 0)
@@ -476,7 +509,7 @@ else
                                 <a href="@_fa.DownloadUrl" target="_blank" class="att-name">@_fa.OriginalName</a>
                                 <span class="att-meta">@FormatFileSize(_fa.FileSize) · @_fa.UploadedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</span>
                             </div>
-                            <a href="@_fa.DownloadUrl" target="_blank" class="att-action-btn att-download" title="Download">
+                            <a href="@_fa.DownloadUrl" target="_blank" class="att-action-btn att-download" title="@T("Common.Download")">
                                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
                             </a>
                             <button class="att-action-btn att-delete" @onclick="() => DeleteFactoryEvalFile(_fa)" disabled="@_uploadLoading">
@@ -496,7 +529,7 @@ else
                             <div class="att-icon">@((MarkupString)GetFileIconSvgByName(_pf.Name))</div>
                             <div class="att-info">
                                 <span class="att-name" style="color:rgba(255,255,255,0.75);cursor:default">@_pf.Name</span>
-                                <span class="att-meta">@FormatFileSize(_pf.Size) &nbsp;·&nbsp; <span class="pending-badge">Pending</span></span>
+                                <span class="att-meta">@FormatFileSize(_pf.Size) &nbsp;·&nbsp; <span class="pending-badge">@T("Vendors.Pending")</span></span>
                             </div>
                             <button class="att-action-btn att-delete" @onclick="() => _pendingFactoryFiles.Remove(_pf)">
                                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
@@ -515,22 +548,24 @@ else
                         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
                     </div>
                     <div class="upload-text">
-                        Drag &amp; drop factory evaluation files, or
+                        @T("Vendors.DragDropFactoryEvaluationFilesOr")
                         <label class="browse-link">
-                            choose files
+                            @T("Vendors.ChooseFiles")
                             <InputFile OnChange="HandleFactoryEvalUpload" style="display:none" accept=".pdf,.jpg,.jpeg,.png,.xlsx,.docx" multiple disabled="@_uploadLoading" />
                         </label>
                     </div>
-                    <span class="upload-hint">PDF, JPG, PNG, XLSX, DOCX &nbsp;·&nbsp; Max 20 MB / file</span>
+                    <span class="upload-hint">@T("Vendors.PDFJPGPNGXLSXDOCXMax")</span>
                 </div>
             </div>
 
+            </div>
+            <div class="pf-card2">
             <!-- Reference (Attachments) -->
             <div class="section-title">
-                Reference
+                @T("Common.Reference")
                 @{ int totalAtt = _attachments.Count + _pendingFiles.Count; }
                 @if (totalAtt > 0)
-                { <span class="att-count-label">@totalAtt file(s)</span> }
+                { <span class="att-count-label">@T("Vendors.FileS2", totalAtt)</span> }
             </div>
 
             @if (_attachments.Count > 0)
@@ -545,7 +580,7 @@ else
                                 <a href="@a.DownloadUrl" target="_blank" class="att-name">@a.OriginalName</a>
                                 <span class="att-meta">@FormatFileSize(a.FileSize) · @a.UploadedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</span>
                             </div>
-                            <a href="@a.DownloadUrl" target="_blank" class="att-action-btn att-download" title="Download">
+                            <a href="@a.DownloadUrl" target="_blank" class="att-action-btn att-download" title="@T("Common.Download")">
                                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
                             </a>
                             <button class="att-action-btn att-delete" @onclick="() => DeleteAttachment(a)" disabled="@_uploadLoading">
@@ -565,7 +600,7 @@ else
                             <div class="att-icon">@((MarkupString)GetFileIconSvgByName(p.Name))</div>
                             <div class="att-info">
                                 <span class="att-name" style="color:rgba(255,255,255,0.75);cursor:default">@p.Name</span>
-                                <span class="att-meta">@FormatFileSize(p.Size) &nbsp;·&nbsp; <span class="pending-badge">Pending</span></span>
+                                <span class="att-meta">@FormatFileSize(p.Size) &nbsp;·&nbsp; <span class="pending-badge">@T("Vendors.Pending")</span></span>
                             </div>
                             <button class="att-action-btn att-delete" @onclick="() => RemovePendingFile(p)">
                                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
@@ -584,7 +619,7 @@ else
                 {
                     <div class="upload-zone-inner">
                         <div class="spinner" style="width:24px;height:24px;border-width:3px;"></div>
-                        <span>Uploading @_uploadingCount file(s)...</span>
+                        <span>@T("Vendors.UploadingFileS", _uploadingCount)</span>
                     </div>
                 }
                 else
@@ -594,33 +629,53 @@ else
                             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
                         </div>
                         <div class="upload-text">
-                            Drag &amp; drop files here, or
+                            @T("Vendors.DragDropFilesHereOr")
                             <label class="browse-link">
-                                choose files
+                                @T("Vendors.ChooseFiles")
                                 <InputFile OnChange="HandleFileUpload" style="display:none" accept=".pdf,.jpg,.jpeg,.png" multiple disabled="@_uploadLoading" />
                             </label>
                         </div>
-                        <span class="upload-hint">PDF, JPG, PNG &nbsp;·&nbsp; Max 10 MB / file</span>
+                        <span class="upload-hint">@T("Vendors.PDFJPGPNGMax10MB")</span>
                     </div>
                 }
             </div>
 
             @if (!string.IsNullOrEmpty(_uploadError))
             { <div class="error-alert" style="margin-top:8px">@_uploadError</div> }
+            <div style="margin-top:14px;">
+            @* ── Account Status: cùng vị trí (cuối form) ở Customer/Vendor/Inspector/Product ── *@
+            <div class="section-title" style="margin-top:16px;">@T("Common.AccountStatus")</div>
+            <div class="btype-group" style="padding:8px 0 4px;">
+                    <label class="btype-label @(_f.Status == 0 ? "btype-active" : "")" @onclick="() => _f.Status = 0">@T("Common.Active")</label>
+                    <label class="btype-label @(_f.Status == 1 ? "btype-active" : "")" @onclick="() => _f.Status = 1">@T("Common.Inactive")</label>
+                    <label class="btype-label @(_f.Status == 2 ? "btype-active" : "")" @onclick="() => _f.Status = 2">@T("Vendors.Suspended")</label>
+                    </div>
+
+            </div>
+            </div>
+            </div>
+            <div class="form-section-title" style="margin-top:22px;">@T("Vendors.TabReportSettings")</div>
+            <PartyReportSettings PartyType="Vendor" Settings="_reportSettings"
+
+                                     PartyName="@_f.Name" PartyCode="@_f.Code"
+
+                                     ContactName="@(_contacts.FirstOrDefault(c => c.IsPrimary)?.Name ?? "")"
+
+                                     PreviewTo="@PreviewTo()" OnSaveTemplate="@SaveVendor" />
 
             <div class="modal-footer">
-                <button class="btn-cancel" @onclick="CloseModal">Cancel</button>
+                <button class="btn-cancel" @onclick="CloseModal">@T("Common.Cancel")</button>
                 <button class="btn-submit" @onclick="SaveVendor" disabled="@_saving">
                     @if (_saving)
                     {
                         <span class="spinner"></span>
-                        <span>@(_editId == null && _pendingFiles.Count > 0 ? "Creating & Uploading..." : "Saving...")</span>
+                        <span>@(_editId == null && _pendingFiles.Count > 0 ? T("Vendors.CreatingUploading") : "Saving...")</span>
                     }
                     else
                     {
-                        <span>@(_editId == null ? "Create Vendor" : "Save Changes")</span>
+                        <span>@(_editId == null ? T("Vendors.CreateVendor") : T("Vendors.SaveChanges"))</span>
                         @if (_editId == null && _pendingFiles.Count > 0)
-                        { <span class="btn-file-hint">+ @_pendingFiles.Count file(s)</span> }
+                        { <span class="btn-file-hint">@T("Vendors.FileS", _pendingFiles.Count)</span> }
                     }
                 </button>
             </div>
@@ -633,63 +688,50 @@ else
 {
     var d = _detailItem;
     <div class="modal-overlay" @onclick="() => _detailItem = null">
-        <div class="modal-card modal-lg" @onclick:stopPropagation="true">
+        <div class="modal-card modal-lg modal-detail" @onclick:stopPropagation="true">
             <div class="modal-header">
-                <div>
-                    <h2>@d.Name</h2>
-                    <span class="code-badge" style="margin-top:4px;display:inline-block;">@d.Code</span>
-                </div>
+                <h2>@T("Vendors.ViewTitle")</h2>
                 <button class="modal-close" @onclick="() => _detailItem = null">&#x2715;</button>
             </div>
-            <div class="detail-grid">
-                <!-- Vendor Profile -->
-                <div class="detail-section">
-                    <div class="detail-section-title">Vendor Profile</div>
-                    <div class="detail-row"><span>Short Name</span><span>@(d.ShortName ?? "-")</span></div>
-                    <div class="detail-row"><span>Status</span><span class="status-badge status-@GetStatusCss(d.Status)">@GetStatusLabel(d.Status)</span></div>
-                    <div class="detail-row"><span>Category</span><span>@(d.Category ?? "-")</span></div>
-                    <div class="detail-row"><span>Tax Code</span><span class="mono">@(d.TaxCode ?? "-")</span></div>
-                    <div class="detail-row"><span>Business Ref.</span><span class="mono">@(d.BusinessRegNo ?? "-")</span></div>
-                    <div class="detail-row"><span>Phone</span><span class="mono">@(d.Phone ?? "-")</span></div>
-                    <div class="detail-row"><span>Website</span>
-                        @if (!string.IsNullOrEmpty(d.Website))
-                        { <a href="@d.Website" target="_blank" class="detail-link">@d.Website</a> }
-                        else { <span>-</span> }
-                    </div>
+            <div class="vc-grid">
+                <div class="vc-col">
+                    <ViewSection Title="@T("Vendors.ViewSection")" Icon="building">
+                        <ViewRow Label="@T("Common.VendorID")" Value="@d.Code" />
+                        <ViewRow Label="@T("Common.VendorName")" Value="@d.Name" />
+                        <ViewRow Label="@T("Common.ShortName")" Value="@d.ShortName" />
+                        <ViewRow Label="@T("Common.Status")"><span class="vc-badge @(GetStatusCss(d.Status) == "active" ? "" : "off")">@GetStatusLabel(d.Status)</span></ViewRow>
+                        <ViewRow Label="@T("Common.Category")" Value="@d.Category" />
+                        <ViewRow Label="@T("Vendors.TaxCode")" Value="@d.TaxCode" />
+                        <ViewRow Label="@T("Vendors.BusinessRef")" Value="@d.BusinessRegNo" />
+                        <ViewRow Label="@T("Vendors.Phone")" Value="@d.Phone" />
+                        <ViewRow Label="@T("Vendors.Website")" Value="@d.Website" Href="@d.Website" />
+                    </ViewSection>
                 </div>
-                <!-- Vendor Address -->
-                <div class="detail-section">
-                    <div class="detail-section-title">Vendor Address</div>
-                    <div class="detail-row"><span>Address 1</span><span>@(d.Address1 ?? "-")</span></div>
-                    <div class="detail-row"><span>Address 2</span><span>@(d.Address2 ?? "-")</span></div>
-                    <div class="detail-row"><span>City</span><span>@(d.City ?? "-")</span></div>
-                    <div class="detail-row"><span>State / Province</span><span>@(d.State ?? "-")</span></div>
-                    <div class="detail-row"><span>Country</span><span>@(d.Country ?? "-")</span></div>
-                    <div class="detail-row"><span>Postal / ZIP</span><span>@(d.PostalCode ?? "-")</span></div>
-                </div>
-                <!-- Contact Information -->
-                <div class="detail-section">
-                    <div class="detail-section-title">Contact Information</div>
-                    <div class="detail-row"><span>Contact Name</span><span>@(d.ContactName ?? "-")</span></div>
-                    <div class="detail-row"><span>Title / Position</span><span>@(d.ContactTitle ?? "-")</span></div>
-                    <div class="detail-row"><span>Mobile</span><span class="mono">@(d.ContactPhone ?? "-")</span></div>
-                    <div class="detail-row"><span>Email</span>
-                        @if (!string.IsNullOrEmpty(d.ContactEmail))
-                        { <a href="mailto:@d.ContactEmail" class="detail-link">@d.ContactEmail</a> }
-                        else { <span>-</span> }
-                    </div>
+                <div class="vc-col">
+                    <ViewSection Title="@T("Vendors.VendorAddress")" Icon="pin">
+                        <ViewRow Label="@T("Common.Address1")" Value="@d.Address1" />
+                        <ViewRow Label="@T("Common.Address2")" Value="@d.Address2" />
+                        <ViewRow Label="@T("Common.City")" Value="@d.City" />
+                        <ViewRow Label="@T("Common.StateProvince")" Value="@d.State" />
+                        <ViewRow Label="@T("Common.Country")" Value="@d.Country" />
+                        <ViewRow Label="@T("Common.PostalZIP")" Value="@d.PostalCode" />
+                    </ViewSection>
+                    <ViewSection Title="@T("Vendors.ContactInformation")" Icon="user">
+                        <ViewRow Label="@T("Common.ContactName")" Value="@d.ContactName" />
+                        <ViewRow Label="@T("Vendors.TitlePosition")" Value="@d.ContactTitle" />
+                        <ViewRow Label="@T("Common.Mobile")" Value="@d.ContactPhone" />
+                        <ViewRow Label="Email" Value="@d.ContactEmail" Href="@(string.IsNullOrEmpty(d.ContactEmail) ? null : "mailto:" + d.ContactEmail)" />
+                    </ViewSection>
                 </div>
                 @if (!string.IsNullOrEmpty(d.Notes))
                 {
-                    <div class="detail-section col-2">
-                        <div class="detail-section-title">Remark</div>
-                        <p class="detail-notes">@d.Notes</p>
-                    </div>
+                    <ViewSection Title="@T("Common.Remark")" Icon="doc" Class="vc-wide">
+                        <div class="vc-note">@d.Notes</div>
+                    </ViewSection>
                 }
                 @if (d.Attachments.Count > 0)
                 {
-                    <div class="detail-section col-2">
-                        <div class="detail-section-title">Reference (@d.Attachments.Count file(s))</div>
+                    <ViewSection Title="@T("Vendors.ReferenceFileS", d.Attachments.Count)" Icon="doc" Class="vc-wide">
                         <div class="att-list">
                             @foreach (var att in d.Attachments)
                             {
@@ -705,15 +747,15 @@ else
                                 </div>
                             }
                         </div>
-                    </div>
+                    </ViewSection>
                 }
             </div>
             <div class="modal-footer">
-                <button class="btn-cancel" @onclick="() => _detailItem = null">Close</button>
+                <button class="btn-cancel" @onclick="() => _detailItem = null">@T("Common.Close")</button>
                 <AuthorizeView Roles="Admin">
                     <button class="btn-submit" @onclick="async () => { _detailItem = null; await OpenEdit(d); }">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-                        Edit
+                        @T("Common.Edit")
                     </button>
                 </AuthorizeView>
             </div>
@@ -727,12 +769,12 @@ else
     <div class="modal-overlay" @onclick="() => _deleteItem = null">
         <div class="modal-card confirm-card" @onclick:stopPropagation="true">
             <div class="confirm-icon">&#9888;</div>
-            <h2>Delete Vendor</h2>
-            <p>Are you sure you want to delete <strong>@_deleteItem.Name</strong>?<br/>This action cannot be undone.</p>
+            <h2>@T("Vendors.DeleteVendor")</h2>
+            <p>@T("Vendors.AreYouSureYouWantTo") <strong>@_deleteItem.Name</strong>?<br/>@T("Vendors.ThisActionCannotBeUndone")</p>
             <div class="modal-footer">
-                <button class="btn-cancel" @onclick="() => _deleteItem = null">Cancel</button>
+                <button class="btn-cancel" @onclick="() => _deleteItem = null">@T("Common.Cancel")</button>
                 <button class="btn-delete" @onclick="DeleteVendor" disabled="@_saving">
-                    @if (_saving) { <span class="spinner"></span> } else { <span>Delete</span> }
+                    @if (_saving) { <span class="spinner"></span> } else { <span>@T("Common.Delete")</span> }
                 </button>
             </div>
         </div>
@@ -740,15 +782,35 @@ else
 }
 
 @code {
+    private bool _fOpen;
     private List<VendorDto> _vendors = new();
     private bool   _loading = true;
     private string _search = "", _filterType = "", _filterStatus = "";
-    private int    _page = 1, _pageSize = 20, _total = 0;
+    private int _activeCount, _inactiveCount, _totalAll;
+    private async Task SetStatus(string st) { _filterStatus = st; await LoadPage(1); }
+    private int    _page = 1, _pageSize = 10, _total = 0;
+    private string _category = "", _country = "";
+    private DateTime? _dFrom, _dTo;
+    private int _categoryCount;
+    private List<string> _catOpts = new(), _countryOpts = new(), _btOpts = new();
+    private readonly HashSet<int> _sel = new();
+    private void ToggleAll(bool on) { foreach (var x in _vendors) { if (on) _sel.Add(x.Id); else _sel.Remove(x.Id); } }
+    private void ToggleOne(int id, bool on) { if (on) _sel.Add(id); else _sel.Remove(id); }
+    private async Task SetPageSize(int n) { _pageSize = n; await LoadPage(1); }
+    private async Task ClearFilters() { _search = _filterType = _filterStatus = _category = _country = ""; _dFrom = _dTo = null; await LoadPage(1); }
 
     private bool   _showModal = false;
     private int?   _editId   = null;
     private VendorForm _f    = new();
     private string _formError = "";
+
+    // Tab trong modal: 0 = General Information & Contacts, 1 = Report Settings
+    private int _modalTab = 0;
+    private List<PartyContactVm>       _contacts       = new();
+    private List<PartyReportSettingVm> _reportSettings = new();
+
+    private string PreviewTo() => string.Join("; ", _contacts
+        .Where(c => c.IsActive && c.ReceiveReports && !string.IsNullOrWhiteSpace(c.Email)).Select(c => c.Email!.Trim()));
 
     // Country/City dropdowns
     private List<CountryItem> _countries      = new();
@@ -817,6 +879,12 @@ else
     {
         await SetAuthHeader();
         await PageAccess.EnsureLoadedAsync();
+        // Page Access guard: Admin luon duoc vao, role khac phai co "Directory"
+        if (!PageAccess.HasAccess("Directory"))
+        {
+            Navigation.NavigateTo("/", replace: true);
+            return;
+        }
         await Task.WhenAll(LoadPage(1), LoadCountries());
     }
 
@@ -848,9 +916,15 @@ else
         _loading = true; _page = page;
         try
         {
-            var url = $"api/vendors?page={page}&pageSize={_pageSize}&search={Uri.EscapeDataString(_search)}&type={_filterType}&status={_filterStatus}";
+            var url = $"api/vendors?page={page}&pageSize={_pageSize}&search={Uri.EscapeDataString(_search)}&businessType={Uri.EscapeDataString(_filterType)}&status={_filterStatus}" +
+                      $"&category={Uri.EscapeDataString(_category)}&country={Uri.EscapeDataString(_country)}" +
+                      (_dFrom.HasValue ? $"&dateFrom={_dFrom.Value:yyyy-MM-dd}" : "") + (_dTo.HasValue ? $"&dateTo={_dTo.Value:yyyy-MM-dd}" : "");
             var result = await Http.GetFromJsonAsync<VendorPageResult>(url);
-            if (result != null) { _vendors = result.Items; _total = result.Total; }
+            if (result != null)
+            {
+                _vendors = result.Items; _total = result.Total; _activeCount = result.ActiveCount; _inactiveCount = result.InactiveCount; _totalAll = result.AllCount;
+                _categoryCount = result.CategoryCount; _catOpts = result.Categories; _btOpts = result.BusinessTypes; _countryOpts = result.Countries;
+            }
         }
         catch { }
         finally { _loading = false; }
@@ -867,6 +941,7 @@ else
         _attachments.Clear(); _pendingFiles.Clear(); _uploadError = "";
         _factoryEvalFiles.Clear(); _pendingFactoryFiles.Clear();
         _formCategories = new();
+        _contacts = new(); _reportSettings = new(); _modalTab = 0;
         try
         {
             var result = await Http.GetFromJsonAsync<NextCodeResult>("api/vendors/next-code");
@@ -887,6 +962,7 @@ else
             Type          = v.Type,
             Status        = v.Status,
             Category      = v.Category      ?? "",
+            BusinessType  = v.BusinessType  ?? "",
             TaxCode       = v.TaxCode       ?? "",
             BusinessRegNo = v.BusinessRegNo ?? "",
             Phone         = v.Phone         ?? "",
@@ -914,6 +990,11 @@ else
             var feFiles = await Http.GetFromJsonAsync<List<AttachmentDto>>($"api/vendors/{v.Id}/factory-eval/files");
             if (feFiles != null) _factoryEvalFiles = feFiles;
         } catch { }
+        _modalTab = 0;
+        try { _contacts = await Http.GetFromJsonAsync<List<PartyContactVm>>($"api/party/vendor/{v.Id}/contacts") ?? new(); }
+        catch { _contacts = new(); }
+        try { _reportSettings = await Http.GetFromJsonAsync<List<PartyReportSettingVm>>($"api/party/vendor/{v.Id}/report-settings") ?? new(); }
+        catch { _reportSettings = new(); }
         _showModal = true;
         _f.City = v.City ?? "";
     }
@@ -927,19 +1008,30 @@ else
     /// </summary>
     private void OnCountryChanged(ChangeEventArgs e)
     {
-        _f.Country      = e.Value?.ToString() ?? "";
-        _f.ContactPhone = CountryDialCodes.ApplyDialCode(_f.ContactPhone, _f.Country);
+        _f.Country = e.Value?.ToString() ?? "";
     }
 
     // ── Save ─────────────────────────────────────────────────────────
     private async Task SaveVendor()
     {
         _formError = "";
-        if (string.IsNullOrWhiteSpace(_f.Code)) { _formError = "Vendor code is required."; return; }
-        if (string.IsNullOrWhiteSpace(_f.Name)) { _formError = "Vendor name is required."; return; }
+        if (string.IsNullOrWhiteSpace(_f.Code)) { _formError = T("Vendors.VendorCodeIsRequired"); return; }
+        if (string.IsNullOrWhiteSpace(_f.Name)) { _formError = T("Vendors.VendorNameIsRequired"); return; }
+        if (_contacts.Any(c => string.IsNullOrWhiteSpace(c.Name)))
+        {
+            _modalTab = 0; _formError = T("PartyContacts.NameRequired"); return;
+        }
+        if (_reportSettings.Any(r => string.IsNullOrWhiteSpace(r.Subject)))
+        {
+            _modalTab = 1; _formError = T("PartyReport.SubjectRequired"); return;
+        }
+
+        var primary = _contacts.FirstOrDefault(c => c.IsPrimary) ?? _contacts.FirstOrDefault();
+        _f.ContactName = primary?.Name ?? ""; _f.ContactTitle = primary?.Position ?? "";
+        _f.ContactPhone = primary?.Phone ?? ""; _f.ContactEmail = primary?.Email ?? "";
 
         _saving = true;
-        Waiting.Show(_editId == 0 ? "Creating vendor..." : "Saving vendor...");
+        Waiting.Show(_editId == 0 ? T("Vendors.CreatingVendor") : T("Vendors.SavingVendor"));
         try
         {
             var payload = new
@@ -950,6 +1042,7 @@ else
                 type          = _f.Type,
                 status        = _f.Status,
                 category      = string.Join(", ", _formCategories),
+                businessType  = _f.BusinessType,
                 factoryEvaluationNotes = _f.FactoryEvaluationNotes,
                 taxCode       = _f.TaxCode,
                 businessRegNo = _f.BusinessRegNo,
@@ -990,8 +1083,29 @@ else
             if (!response.IsSuccessStatusCode)
             {
                 var err = await response.Content.ReadFromJsonAsync<ErrorResponse>();
-                _formError = err?.Message ?? "An error occurred.";
+                _formError = TA(err?.Message) ?? T("Vendors.ErrorOccurred");
                 return;
+            }
+
+            // Contacts + Report Settings (lưu sau khi đã có Id)
+            int partyId = newId ?? _editId ?? 0;
+            if (partyId > 0)
+            {
+                var rc = await Http.PutAsJsonAsync($"api/party/vendor/{partyId}/contacts", _contacts);
+                if (!rc.IsSuccessStatusCode)
+                {
+                    var err = await rc.Content.ReadFromJsonAsync<ErrorResponse>();
+                    _editId = partyId; _formError = TA(err?.Message) ?? T("Vendors.ErrorOccurred"); return;
+                }
+                if (_reportSettings.Count > 0)
+                {
+                    var rr = await Http.PutAsJsonAsync($"api/party/vendor/{partyId}/report-settings", _reportSettings);
+                    if (!rr.IsSuccessStatusCode)
+                    {
+                        var err = await rr.Content.ReadFromJsonAsync<ErrorResponse>();
+                        _editId = partyId; _modalTab = 1; _formError = TA(err?.Message) ?? T("Vendors.ErrorOccurred"); return;
+                    }
+                }
             }
 
             // Upload pending files right after create
@@ -1006,7 +1120,7 @@ else
             _pendingFactoryFiles.Clear();
             await LoadPage(_page);
         }
-        catch { _formError = "Connection error."; }
+        catch { _formError = T("Vendors.ConnectionError"); }
         finally { _saving = false; Waiting.Hide(); }
     }
 
@@ -1051,7 +1165,7 @@ else
     {
         _uploadLoading  = true;
         _uploadingCount = _pendingFiles.Count;
-        Waiting.Show($"Uploading {_pendingFiles.Count} file(s)...");
+        Waiting.Show(T("Vendors.UploadingFileS", _pendingFiles.Count));
         try
         {
             using var content = new MultipartFormDataContent();
@@ -1084,9 +1198,9 @@ else
             if (response.IsSuccessStatusCode)
                 await RefreshAttachments(vendorId);
             else
-                _uploadError = "Upload failed. Please try again.";
+                _uploadError = T("Vendors.UploadFailedPleaseTryAgain");
         }
-        catch (Exception ex) { _uploadError = $"Error: {ex.Message}"; }
+        catch (Exception ex) { _uploadError = T("Vendors.Error", ex.Message); }
         finally { _uploadLoading = false; _uploadingCount = 0; }
     }
 
@@ -1137,11 +1251,19 @@ else
     {
         if (_deleteItem == null) return;
         _saving = true;
-        Waiting.Show("Deleting vendor...");
+        Waiting.Show(T("Vendors.DeletingVendor"));
         var response = await Http.DeleteAsync($"api/vendors/{_deleteItem.Id}");
         _saving = false;
         Waiting.Hide();
         if (response.IsSuccessStatusCode) { _deleteItem = null; await LoadPage(_page); }
+    }
+
+    private static bool VbtHas(string? v, string x) => (v ?? "").Split(',', StringSplitOptions.RemoveEmptyEntries).Any(p => p.Trim() == x);
+    private void ToggleVendorBt(string x)
+    {
+        var l = (_f.BusinessType ?? "").Split(',', StringSplitOptions.RemoveEmptyEntries).Select(p => p.Trim()).ToList();
+        if (!l.Remove(x)) l.Add(x);
+        _f.BusinessType = string.Join(", ", l);
     }
 
     private void ToggleVendorCategory(string cat)
@@ -1190,9 +1312,9 @@ else
                 var feFiles = await Http.GetFromJsonAsync<List<AttachmentDto>>($"api/vendors/{vendorId}/factory-eval/files");
                 if (feFiles != null) _factoryEvalFiles = feFiles;
             }
-            else _uploadError = "Factory eval upload failed.";
+            else _uploadError = T("Vendors.FactoryEvalUploadFailed");
         }
-        catch (Exception ex) { _uploadError = $"Error: {ex.Message}"; }
+        catch (Exception ex) { _uploadError = T("Vendors.Error", ex.Message); }
         finally { _uploadLoading = false; }
     }
 
@@ -1251,9 +1373,12 @@ else
     private string GetInitials(string name)
         => string.Concat(name.Split(" ").Take(2).Select(w => w.Length > 0 ? w[0].ToString().ToUpper() : ""));
 
-    private string GetTypeLabel(int t) => t switch { 0=>"Material",1=>"Accessory",2=>"Service",3=>"Logistics",4=>"Manufacturing",_=>"Unknown" };
+    private string GetTypeLabel(int t) => t switch { 0=>T("Common.Material"),1=>T("Vendors.Accessory"),2=>T("Vendors.Service"),3=>T("Vendors.Logistics"),4=>T("Vendors.Manufacturing"),_=>T("Vendors.Unknown") };
     private string GetTypeCss(int t)   => t switch { 0=>"material",1=>"accessory",2=>"service",3=>"logistics",4=>"manufacturing",_=>"material" };
-    private string GetStatusLabel(int s) => s switch { 0=>"Active",1=>"Inactive",2=>"Suspended",_=>"Unknown" };
+    private static string VendorInitials(string? name)
+        => string.Concat((name ?? "").Split(' ', StringSplitOptions.RemoveEmptyEntries).Take(2).Select(w => char.ToUpper(w[0])));
+
+    private string GetStatusLabel(int s) => s switch { 0=>T("Common.Active"),1=>T("Common.Inactive"),2=>T("Vendors.Suspended"),_=>T("Vendors.Unknown") };
     private string GetStatusCss(int s)   => s switch { 0=>"active",1=>"inactive",2=>"suspended",_=>"active" };
 
     // ── Inner classes ─────────────────────────────────────────────────
@@ -1267,7 +1392,7 @@ else
 
     private class NextCodeResult   { public string Code { get; set; } = ""; }
     private class CreateResult     { public int    Id   { get; set; } }
-    private class VendorPageResult { public int Total { get; set; } public List<VendorDto> Items { get; set; } = new(); }
+    private class VendorPageResult { public int ActiveCount { get; set; } public int InactiveCount { get; set; } public int AllCount { get; set; } public int Total { get; set; } public int CategoryCount { get; set; } public List<string> Countries { get; set; } = new(); public List<string> Categories { get; set; } = new(); public List<string> BusinessTypes { get; set; } = new(); public List<VendorDto> Items { get; set; } = new(); }
     private class ErrorResponse    { public string? Message { get; set; } }
 
     private class AttachmentDto
@@ -1292,7 +1417,7 @@ else
     {
         public string Code = "", Name = "", ShortName = "";
         public int    Type = 0, Status = 0;
-        public string Category = "", TaxCode = "", BusinessRegNo = "";
+        public string Category = "", BusinessType = "", TaxCode = "", BusinessRegNo = "";
         public string Phone = "", Website = "", Notes = "";
         public string Address1 = "", Address2 = "", City = "", State = "";
         public string Country = "", PostalCode = "";
@@ -1309,6 +1434,7 @@ else
         public int     Type           { get; set; }
         public int     Status         { get; set; }
         public string? Category       { get; set; }
+        public string? BusinessType   { get; set; }
         public string? TaxCode        { get; set; }
         public string? BusinessRegNo  { get; set; }
         public string? Phone          { get; set; }
@@ -1367,7 +1493,8 @@ else
     .table-wrap { overflow-x:auto; border-radius:10px; box-shadow:0 4px 20px rgba(0,0,0,.25); }
     .ptable { width:100%; border-collapse:collapse; background:#fff; font-size:12.5px; }
     .ptable th { padding:8px 10px; border:1px solid #b8c4d8; text-align:center; font-weight:600; font-size:11px; color:#1a2d5a; white-space:nowrap; text-transform:uppercase; letter-spacing:.04em; }
-    .th-y   { background:#fffde7; }
+    /* Tiêu đề bảng nền vàng giống Inspector Profile (khách yêu cầu 4 trang Directory cùng kiểu) */
+    .th-y   { background:#fffde7 !important; }
     .th-grp { background:#e3f2fd; color:#1565c0 !important; }
     .th-no  { background:#f5f5f5; width:38px; }
     .th-act { background:#f5f5f5; }
@@ -1409,7 +1536,7 @@ else
 
     /* ── Modal ── */
     .modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.55); backdrop-filter:blur(4px); display:flex; align-items:center; justify-content:center; z-index:1000; padding:20px; }
-    .modal-card { background:#fff; border:1px solid #dde4ef; border-radius:16px; padding:28px 32px; width:75vw; max-width:1000px; max-height:90vh; overflow-y:auto; box-shadow:0 24px 60px rgba(0,0,0,0.18); }
+    .modal-card { background:#fff; border:1px solid #dde4ef; border-radius:16px; padding:28px 32px; width:90vw; max-width:1200px; max-height:90vh; overflow-y:auto; box-shadow:0 24px 60px rgba(0,0,0,0.18); }
     .modal-lg   { max-width:1000px; }
     .modal-wide { max-width:900px; }
     .modal-sm   { max-width:480px; }
@@ -1650,6 +1777,9 @@ else
     .cat-check-list { display:flex; flex-wrap:wrap; gap:6px; padding:10px; background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.15); border-radius:10px; }
     .cat-check-item { display:inline-flex; align-items:center; gap:6px; padding:5px 12px; border-radius:20px; font-size:12px; font-weight:600; cursor:pointer; border:1px solid rgba(255,255,255,.2); background:rgba(255,255,255,.07); color:rgba(255,255,255,.7); transition:all .15s; user-select:none; }
     .cat-check-item input[type=checkbox] { display:none; }
+    .btype-group { display:flex; flex-wrap:wrap; gap:8px; }
+    .btype-label { padding:5px 14px; border-radius:20px; font-size:12px; font-weight:600; cursor:pointer; border:1px solid #c9d8ee; background:#f0f4fb; color:#4a6080; user-select:none; }
+    .btype-active { background:#1e90d6 !important; border-color:#1e90d6 !important; color:#fff !important; }
     .cat-check-item:hover { background:rgba(30,144,214,.25); border-color:#1e90d6; color:#fff; }
     .cat-check-active { background:#1e90d6 !important; border-color:#1e90d6 !important; color:#fff !important; }
     .section-subtitle { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.08em; color:rgba(255,255,255,.4); margin:12px 0 6px; }
@@ -1668,5 +1798,31 @@ else
         .search-wrap { min-width:unset; }
         .filter-select { width:100%; }
         .btn-new { width:100%; justify-content:center; }
+    }
+
+    /* ── Mobile: form Vendor kiểu app ── */
+    .vf-head { display:none; }
+    @@media (max-width:600px) {
+        .modal-overlay { align-items:stretch !important; padding:0 !important; }
+        .modal-card.modal-lg { background:#f6f8fc; width:100vw !important; max-width:100vw !important; height:100dvh; max-height:100dvh !important; border-radius:0 !important; padding:16px 14px 0; overflow-y:auto; }
+        .modal-card.modal-lg .modal-header { margin-bottom:10px; }
+        .modal-card.modal-lg .modal-header h2 { font-size:18px; }
+        .vf-head { display:flex; align-items:center; gap:12px; background:#fff; border:1px solid #e5eaf3; border-radius:14px; padding:12px; margin-bottom:12px; box-shadow:0 1px 6px rgba(15,37,82,.06); }
+        .vf-avatar { width:46px; height:46px; border-radius:10px; background:#0f2552; color:#fff; font-weight:700; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+        .vf-head-main { flex:1; min-width:0; }
+        .vf-head-name { font-size:14.5px; font-weight:700; color:#1a2d5a; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+        .vf-head-sub { font-size:12px; color:#6b7280; }
+        .modal-card.modal-lg .pf-tabs { position:sticky; top:-16px; z-index:3; background:#f6f8fc; margin:0 0 12px; border-bottom:1.5px solid #dbe6f5; }
+        .modal-card.modal-lg .pf-tabs button { flex:1; text-align:center; }
+        .modal-card.modal-lg { counter-reset:vsec; }
+        .modal-card.modal-lg .section-title { counter-increment:vsec; display:flex; align-items:center; gap:10px; background:#fff; border:1px solid #e5eaf3; border-radius:12px 12px 0 0; padding:12px; margin:16px 0 0; color:#1a2d5a; font-size:14px; font-weight:700; text-transform:none; letter-spacing:0; }
+        .modal-card.modal-lg .section-title::before { content:counter(vsec); width:24px; height:24px; border-radius:50%; background:#2563eb; color:#fff; font-size:12px; display:inline-flex; align-items:center; justify-content:center; flex-shrink:0; }
+        .modal-card.modal-lg .modal-footer { position:sticky; bottom:0; background:#f6f8fc; margin:16px -14px 0; padding:12px 14px calc(12px + env(safe-area-inset-bottom)); border-top:1px solid #e5eaf3; z-index:3; }
+        .modal-card.modal-lg .modal-footer button { flex:1; height:44px; border-radius:10px; font-size:15px; font-weight:600; }
+        /* Màn chi tiết Vendor — giống Customer Information: nền trắng, nút Close/Edit nằm cuối nội dung */
+        .modal-card.modal-lg.modal-detail { background:#fff; border:none; padding:16px 14px calc(16px + env(safe-area-inset-bottom)); overflow-y:auto; overscroll-behavior:contain; -webkit-overflow-scrolling:touch; }
+        .modal-card.modal-lg.modal-detail .modal-header h2 { font-size:20px; }
+        .modal-card.modal-lg.modal-detail .modal-footer { position:static; background:none; margin:16px 0 0; padding:14px 0 0; border-top:1px solid #e8eef7; }
+        .modal-card.modal-lg.modal-detail .modal-footer button { flex:none; height:auto; border-radius:9px; font-size:14px; font-weight:600; }
     }
 </style>

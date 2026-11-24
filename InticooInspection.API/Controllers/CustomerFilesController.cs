@@ -1,4 +1,6 @@
-﻿using InticooInspection.Domain.Entities;
+using InticooInspection.Domain.Security;
+using InticooInspection.API.Services;
+using InticooInspection.Domain.Entities;
 using InticooInspection.Infrastructure.Data;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -44,6 +46,7 @@ namespace InticooInspection.API.Controllers
         [HttpPost]
         public async Task<IActionResult> UploadFiles(int customerId, List<IFormFile> files)
         {
+            if (await HttpContext.RequestServices.GetRequiredService<UserAccess>().RequireAdminAsync() is { } denied) return denied;
             var customer = await _db.Customers.FindAsync(customerId);
             if (customer == null) return NotFound();
 
@@ -56,10 +59,14 @@ namespace InticooInspection.API.Controllers
 
             // Upload folder: wwwroot/uploads/customers/{customerId}/
             var wwwroot = _env.WebRootPath ?? Path.Combine(_env.ContentRootPath, "wwwroot");
-            var uploadFolder = Path.Combine(wwwroot, "uploads", "customers", customerId.ToString());
+            var tenant       = HttpContext.RequestServices.GetRequiredService<InticooInspection.API.Services.Tenancy.TenantContext>();
+            var uploadFolder = Path.Combine(tenant.UploadsDir(wwwroot), "customers", customerId.ToString());
             Directory.CreateDirectory(uploadFolder);
 
             var savedFiles = new List<object>();
+            // Hạn mức dung lượng gói (công ty khách)
+            var limits = HttpContext.RequestServices.GetRequiredService<InticooInspection.API.Services.Usage.PlanLimitService>();
+            await limits.EnsureStorageAsync(files.Sum(f => f.Length));
 
             foreach (var file in files)
             {
@@ -74,8 +81,9 @@ namespace InticooInspection.API.Controllers
 
                 using (var stream = new FileStream(fullPath, FileMode.Create))
                     await file.CopyToAsync(stream);
+                limits.Track(file.Length);
 
-                var relativeUrl = $"/uploads/customers/{customerId}/{uniqueName}";
+                var relativeUrl = $"{tenant.UploadsUrl}/customers/{customerId}/{uniqueName}";
                 var absoluteUrl = $"{Request.Scheme}://{Request.Host}{relativeUrl}";
 
                 var entity = new CustomerFile
@@ -102,6 +110,7 @@ namespace InticooInspection.API.Controllers
         [HttpDelete("{fileId}")]
         public async Task<IActionResult> DeleteFile(int customerId, int fileId)
         {
+            if (await HttpContext.RequestServices.GetRequiredService<UserAccess>().RequireAdminAsync() is { } denied) return denied;
             var file = await _db.CustomerFiles
                 .FirstOrDefaultAsync(f => f.Id == fileId && f.CustomerId == customerId);
 

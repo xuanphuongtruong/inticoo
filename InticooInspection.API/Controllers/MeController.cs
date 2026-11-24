@@ -1,4 +1,4 @@
-using InticooInspection.Domain.Entities;
+﻿using InticooInspection.Domain.Entities;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -29,6 +29,22 @@ namespace InticooInspection.API.Controllers
         {
             _userManager = userManager;
             _config      = config;
+        }
+
+        // GET api/me/plan-usage
+        // Hạn mức gói của công ty đang đăng nhập (người dùng, dung lượng) để Client hiện "đã dùng X / Y".
+        // applies=false: DB gốc / chưa cấu hình DB Super → không có hạn mức.
+        [HttpGet("plan-usage")]
+        public async Task<IActionResult> GetPlanUsage([FromServices] InticooInspection.API.Services.Usage.PlanLimitService limits, CancellationToken ct)
+        {
+            if (InticooInspection.API.Services.UserAccess.ValidateBearer(HttpContext, _config) == null) return Unauthorized(new { message = "Missing Bearer token." });
+            var s = await limits.StatusAsync(ct);
+            return Ok(new
+            {
+                applies = s.Applies, enforced = s.Enforced, plan = s.PlanName,
+                maxUsers = s.MaxUsers, activeUsers = s.ActiveUsers,
+                storageGb = s.StorageGb, usedGb = s.UsedGb, warnPercent = s.WarnPercent
+            });
         }
 
         // GET api/me/page-access
@@ -88,11 +104,40 @@ namespace InticooInspection.API.Controllers
                 return Unauthorized(new { message = "User not found." });
 
             var roles = await _userManager.GetRolesAsync(user);
+            // Quyền hiệu lực: JSON quyền module (hoặc suy từ PageAccess cũ) + phạm vi khách hàng
+            var ctx = InticooInspection.API.Services.UserAccess.Build(user, roles);
             return Ok(new
             {
-                pageAccess = user.PageAccess ?? "",
-                roles      = roles
+                pageAccess        = ctx.IsAdmin ? (user.PageAccess ?? "") : ctx.Perms.ToPageAccessCsv(),
+                roles             = roles,
+                modulePermissions = ctx.Perms.ToJson(),
+                customerScope     = ctx.CustomerScope?.ToList(),   // null = không giới hạn
+                customerId        = user.CustomerId,
+                inspectorId       = user.InspectorId,
+                language          = user.UiLanguage
             });
         }
+
+        // PUT api/me/language  { "language": "vi" }
+        // Lưu ngôn ngữ giao diện của tài khoản đang đăng nhập (đổi từ sidebar).
+        [HttpPut("language")]
+        public async Task<IActionResult> SetLanguage([FromBody] SetLanguageRequest req,
+            [FromServices] InticooInspection.API.Services.UserAccess access)
+        {
+            var ctx = await access.GetAsync();
+            if (ctx == null) return Unauthorized(new { message = "Unauthorized." });
+
+            var lang = AuthController.NormalizeUiLanguage(req?.Language);
+            if (lang == null) return BadRequest(new { message = "Unsupported language." });
+
+            ctx.User.UiLanguage = lang;
+            await _userManager.UpdateAsync(ctx.User);
+            return Ok(new { success = true, language = lang });
+        }
+    }
+
+    public class SetLanguageRequest
+    {
+        public string? Language { get; set; }
     }
 }

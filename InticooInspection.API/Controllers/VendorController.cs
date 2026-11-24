@@ -1,4 +1,6 @@
-﻿using InticooInspection.Domain.Entities;
+using InticooInspection.Domain.Security;
+using InticooInspection.API.Services;
+using InticooInspection.Domain.Entities;
 using InticooInspection.Infrastructure.Data;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Hosting;
@@ -43,13 +45,28 @@ namespace InticooInspection.API.Controllers
         public async Task<IActionResult> GetAll(
             [FromQuery] string? search,
             [FromQuery] string? type,
+            [FromQuery] string? businessType,
             [FromQuery] string? status,
             [FromQuery] int page = 1,
-            [FromQuery] int pageSize = 20)
+            [FromQuery] int pageSize = 20,
+            [FromQuery] string? category = null,
+            [FromQuery] string? country = null,
+            [FromQuery] DateTime? dateFrom = null,
+            [FromQuery] DateTime? dateTo = null)
         {
             try
             {
+                var countries  = (await _db.Vendors.Select(v => v.Country).Where(x => x != null && x != "").Distinct().ToListAsync()).OrderBy(x => x).ToList();
+                var categories = (await _db.Vendors.Select(v => v.Category).Where(x => x != null && x != "").ToListAsync())
+                                 .SelectMany(x => x!.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+                                 .Distinct().OrderBy(x => x).ToList();
+                var businessTypes = (await _db.Vendors.Select(v => v.BusinessType).Where(x => x != null && x != "").ToListAsync())
+                                    .SelectMany(x => x!.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+                                    .Distinct().OrderBy(x => x).ToList();
                 // Base filter query (no Include needed — we project directly)
+                var activeCount   = await _db.Vendors.CountAsync(v => v.Status == VendorStatus.Active);
+                var inactiveCount = await _db.Vendors.CountAsync(v => v.Status == VendorStatus.Inactive);
+                var allCount      = await _db.Vendors.CountAsync();
                 var baseQuery = _db.Vendors.AsQueryable();
 
                 if (!string.IsNullOrWhiteSpace(search))
@@ -63,6 +80,12 @@ namespace InticooInspection.API.Controllers
                         (v.Category     != null && v.Category.Contains(search)) ||
                         (v.Country      != null && v.Country.Contains(search)));
 
+                if (!string.IsNullOrWhiteSpace(category)) baseQuery = baseQuery.Where(v => v.Category != null && v.Category.Contains(category));
+                if (!string.IsNullOrWhiteSpace(country))  baseQuery = baseQuery.Where(v => v.Country == country);
+                if (dateFrom.HasValue) baseQuery = baseQuery.Where(v => v.CreatedAt >= dateFrom.Value.Date);
+                if (dateTo.HasValue)   baseQuery = baseQuery.Where(v => v.CreatedAt < dateTo.Value.Date.AddDays(1));
+
+                if (!string.IsNullOrWhiteSpace(businessType)) baseQuery = baseQuery.Where(v => v.BusinessType != null && v.BusinessType.Contains(businessType));
                 if (!string.IsNullOrWhiteSpace(type) && Enum.TryParse<VendorType>(type, out var vType))
                     baseQuery = baseQuery.Where(v => v.Type == vType);
 
@@ -79,7 +102,7 @@ namespace InticooInspection.API.Controllers
                     .Select(v => new
                     {
                         v.Id, v.Code, v.Name, v.ShortName,
-                        v.Type, v.Status, v.Category,
+                        v.Type, v.Status, v.Category, v.BusinessType,
                         v.TaxCode, v.BusinessRegNo, v.Phone, v.Website, v.Notes,
                         v.Address1, v.Address2, v.City, v.State, v.Country, v.PostalCode,
                         v.ContactName, v.ContactTitle, v.ContactPhone, v.ContactEmail,
@@ -104,6 +127,7 @@ namespace InticooInspection.API.Controllers
                     Type           = (int)v.Type,
                     Status         = (int)v.Status,
                     Category       = v.Category,
+                    BusinessType   = v.BusinessType,
                     TaxCode        = v.TaxCode,
                     BusinessRegNo  = v.BusinessRegNo,
                     Phone          = v.Phone,
@@ -132,12 +156,12 @@ namespace InticooInspection.API.Controllers
                         ContentType  = a.ContentType,
                         FileSize     = a.FileSize,
                         UploadedAt   = a.UploadedAt,
-                        DownloadUrl  = $"{baseUrl}/uploads/vendors/{v.Id}/{a.StoredName}"
+                        DownloadUrl  = $"{baseUrl}{UploadsUrl}/vendors/{v.Id}/{a.StoredName}"
                     }).ToList(),
                     FactoryEvalFileCount = v.FactoryEvalFileCount
                 }).ToList();
 
-                return Ok(new { total, page, pageSize, items });
+                return Ok(new { total, page, pageSize, items, activeCount, inactiveCount, allCount, categoryCount = categories.Count, countries, categories, businessTypes });
             }
             catch (Exception ex)
             {
@@ -156,7 +180,7 @@ namespace InticooInspection.API.Controllers
                     .Select(v => new
                     {
                         v.Id, v.Code, v.Name, v.ShortName,
-                        v.Type, v.Status, v.Category,
+                        v.Type, v.Status, v.Category, v.BusinessType,
                         v.TaxCode, v.BusinessRegNo, v.Phone, v.Website, v.Notes,
                         v.Address1, v.Address2, v.City, v.State, v.Country, v.PostalCode,
                         v.ContactName, v.ContactTitle, v.ContactPhone, v.ContactEmail,
@@ -183,6 +207,7 @@ namespace InticooInspection.API.Controllers
                     Type           = (int)v.Type,
                     Status         = (int)v.Status,
                     Category       = v.Category,
+                    BusinessType   = v.BusinessType,
                     TaxCode        = v.TaxCode,
                     BusinessRegNo  = v.BusinessRegNo,
                     Phone          = v.Phone,
@@ -211,7 +236,7 @@ namespace InticooInspection.API.Controllers
                         ContentType  = a.ContentType,
                         FileSize     = a.FileSize,
                         UploadedAt   = a.UploadedAt,
-                        DownloadUrl  = $"{baseUrl}/uploads/vendors/{v.Id}/{a.StoredName}"
+                        DownloadUrl  = $"{baseUrl}{UploadsUrl}/vendors/{v.Id}/{a.StoredName}"
                     }).ToList()
                 };
                 return Ok(dto);
@@ -246,6 +271,7 @@ namespace InticooInspection.API.Controllers
         [HttpPost]
         public async Task<IActionResult> Create([FromBody] VendorRequest request)
         {
+            if (await HttpContext.RequestServices.GetRequiredService<UserAccess>().RequireAdminAsync() is { } denied) return denied;
             if (string.IsNullOrWhiteSpace(request.Name))
                 return BadRequest(new { message = "Vendor name is required." });
 
@@ -273,6 +299,7 @@ namespace InticooInspection.API.Controllers
         [HttpPut("{id}")]
         public async Task<IActionResult> Update(int id, [FromBody] VendorRequest request)
         {
+            if (await HttpContext.RequestServices.GetRequiredService<UserAccess>().RequireAdminAsync() is { } denied) return denied;
             var vendor = await _db.Vendors.FindAsync(id);
             if (vendor == null) return NotFound();
             if (string.IsNullOrWhiteSpace(request.Code))  return BadRequest(new { message = "Vendor code is required." });
@@ -288,6 +315,7 @@ namespace InticooInspection.API.Controllers
         [HttpDelete("{id}")]
         public async Task<IActionResult> Delete(int id)
         {
+            if (await HttpContext.RequestServices.GetRequiredService<UserAccess>().RequireAdminAsync() is { } denied) return denied;
             var vendor = await _db.Vendors
                                   .Include(v => v.Attachments)
                                   .FirstOrDefaultAsync(v => v.Id == id);
@@ -310,6 +338,7 @@ namespace InticooInspection.API.Controllers
         [HttpPost("{id}/attachments")]
         public async Task<IActionResult> UploadAttachments(int id, List<IFormFile> files)
         {
+            if (await HttpContext.RequestServices.GetRequiredService<UserAccess>().RequireAdminAsync() is { } denied) return denied;
             var vendor = await _db.Vendors
                                   .Include(v => v.Attachments)
                                   .FirstOrDefaultAsync(v => v.Id == id);
@@ -319,6 +348,8 @@ namespace InticooInspection.API.Controllers
 
             var uploads = GetUploadDir(id);
             var added = new List<object>();
+            var limits = HttpContext.RequestServices.GetRequiredService<InticooInspection.API.Services.Usage.PlanLimitService>();   // hạn mức dung lượng gói
+            await limits.EnsureStorageAsync(files.Sum(f => f.Length));
 
             foreach (var file in files)
             {
@@ -328,6 +359,7 @@ namespace InticooInspection.API.Controllers
                 var filePath   = Path.Combine(uploads, storedName);
                 await using var stream = new FileStream(filePath, FileMode.Create);
                 await file.CopyToAsync(stream);
+                limits.Track(file.Length);
 
                 var att = new VendorAttachment
                 {
@@ -348,7 +380,7 @@ namespace InticooInspection.API.Controllers
                     contentType  = att.ContentType,
                     fileSize     = att.FileSize,
                     uploadedAt   = att.UploadedAt,
-                    downloadUrl  = $"{Request.Scheme}://{Request.Host}/uploads/vendors/{id}/{att.StoredName}"
+                    downloadUrl  = $"{Request.Scheme}://{Request.Host}{UploadsUrl}/vendors/{id}/{att.StoredName}"
                 });
             }
 
@@ -372,7 +404,7 @@ namespace InticooInspection.API.Controllers
                 contentType  = a.ContentType,
                 fileSize     = a.FileSize,
                 uploadedAt   = a.UploadedAt,
-                downloadUrl  = $"{Request.Scheme}://{Request.Host}/uploads/vendors/{id}/{a.StoredName}"
+                downloadUrl  = $"{Request.Scheme}://{Request.Host}{UploadsUrl}/vendors/{id}/{a.StoredName}"
             });
             return Ok(result);
         }
@@ -397,6 +429,7 @@ namespace InticooInspection.API.Controllers
         [HttpDelete("{id}/attachments/{attId}")]
         public async Task<IActionResult> DeleteAttachment(int id, int attId)
         {
+            if (await HttpContext.RequestServices.GetRequiredService<UserAccess>().RequireAdminAsync() is { } denied) return denied;
             var att = await _db.Set<VendorAttachment>()
                                .FirstOrDefaultAsync(a => a.Id == attId && a.VendorId == id);
             if (att == null) return NotFound();
@@ -414,6 +447,7 @@ namespace InticooInspection.API.Controllers
         [HttpPost("{id}/upload")]
         public async Task<IActionResult> Upload(int id, IFormFile file)
         {
+            if (await HttpContext.RequestServices.GetRequiredService<UserAccess>().RequireAdminAsync() is { } denied) return denied;
             var vendor = await _db.Vendors.FindAsync(id);
             if (vendor == null) return NotFound();
             if (file == null || file.Length == 0) return BadRequest(new { message = "No file uploaded." });
@@ -421,8 +455,11 @@ namespace InticooInspection.API.Controllers
             var uploads   = GetUploadDir(id);
             var fileName  = $"{id}_{Guid.NewGuid()}{Path.GetExtension(file.FileName)}";
             var filePath  = Path.Combine(uploads, fileName);
+            var limits = HttpContext.RequestServices.GetRequiredService<InticooInspection.API.Services.Usage.PlanLimitService>();   // hạn mức dung lượng gói
+            await limits.EnsureStorageAsync(file.Length);
             await using var stream = new FileStream(filePath, FileMode.Create);
             await file.CopyToAsync(stream);
+            limits.Track(file.Length);
 
             vendor.AttachmentPath = $"api/vendors/{id}/download";
             vendor.AttachmentName = file.FileName;
@@ -457,9 +494,15 @@ namespace InticooInspection.API.Controllers
         // Helpers
         // ─────────────────────────────────────────────────────────────
 
+        // Mỗi công ty khách (DB riêng) có thư mục upload riêng: uploads/t/{mã}/... (DB gốc giữ uploads/...)
+        private InticooInspection.API.Services.Tenancy.TenantContext Tenant =>
+            HttpContext.RequestServices.GetRequiredService<InticooInspection.API.Services.Tenancy.TenantContext>();
+        private string UploadsUrl => Tenant.UploadsUrl;
+        private string UploadsDir => Tenant.UploadsDir(_env.WebRootPath);
+
         private string GetUploadDir(int vendorId)
         {
-            var dir = Path.Combine(_env.WebRootPath, "uploads", "vendors", vendorId.ToString());
+            var dir = Path.Combine(UploadsDir, "vendors", vendorId.ToString());
             Directory.CreateDirectory(dir);
             return dir;
         }
@@ -470,7 +513,7 @@ namespace InticooInspection.API.Controllers
             if (System.IO.File.Exists(path)) System.IO.File.Delete(path);
         }
 
-        private static VendorDto ToDto(Vendor v) => new()
+        private VendorDto ToDto(Vendor v) => new()
         {
             Id             = v.Id,
             Code           = v.Code,
@@ -479,6 +522,7 @@ namespace InticooInspection.API.Controllers
             Type           = (int)v.Type,
             Status         = (int)v.Status,
             Category       = v.Category,
+            BusinessType   = v.BusinessType,
             TaxCode        = v.TaxCode,
             BusinessRegNo  = v.BusinessRegNo,
             Phone          = v.Phone,
@@ -507,7 +551,7 @@ namespace InticooInspection.API.Controllers
                 ContentType  = a.ContentType,
                 FileSize     = a.FileSize,
                 UploadedAt   = a.UploadedAt,
-                DownloadUrl  = $"/uploads/vendors/{v.Id}/{a.StoredName}"
+                DownloadUrl  = $"{UploadsUrl}/vendors/{v.Id}/{a.StoredName}"
             }).ToList()
         };
 
@@ -519,6 +563,7 @@ namespace InticooInspection.API.Controllers
             v.Type           = (VendorType)r.Type;
             v.Status         = (VendorStatus)r.Status;
             v.Category       = r.Category;
+            v.BusinessType   = r.BusinessType;
             v.TaxCode        = r.TaxCode;
             v.BusinessRegNo  = r.BusinessRegNo;
             v.Phone          = r.Phone;
@@ -548,12 +593,15 @@ namespace InticooInspection.API.Controllers
         [HttpPost("{id}/factory-eval/files")]
         public async Task<IActionResult> UploadFactoryEvalFiles(int id, List<IFormFile> files)
         {
+            if (await HttpContext.RequestServices.GetRequiredService<UserAccess>().RequireAdminAsync() is { } denied) return denied;
             var vendor = await _db.Vendors.Include(v => v.FactoryEvalFiles).FirstOrDefaultAsync(v => v.Id == id);
             if (vendor == null) return NotFound();
             if (files == null || files.Count == 0) return BadRequest(new { message = "No files uploaded." });
 
             var dir = GetFactoryEvalDir(id);
             var added = new List<object>();
+            var limits = HttpContext.RequestServices.GetRequiredService<InticooInspection.API.Services.Usage.PlanLimitService>();   // hạn mức dung lượng gói
+            await limits.EnsureStorageAsync(files.Sum(f => f.Length));
             foreach (var file in files)
             {
                 if (file.Length == 0) continue;
@@ -561,6 +609,7 @@ namespace InticooInspection.API.Controllers
                 var filePath   = Path.Combine(dir, storedName);
                 await using var stream = new FileStream(filePath, FileMode.Create);
                 await file.CopyToAsync(stream);
+                limits.Track(file.Length);
                 var fe = new VendorFactoryEvalFile
                 {
                     VendorId     = id,
@@ -574,7 +623,7 @@ namespace InticooInspection.API.Controllers
                 await _db.SaveChangesAsync();
                 added.Add(new { id = fe.Id, originalName = fe.OriginalName, contentType = fe.ContentType,
                     fileSize = fe.FileSize, uploadedAt = fe.UploadedAt,
-                    downloadUrl = $"{Request.Scheme}://{Request.Host}/uploads/vendors/{id}/factory-eval/{fe.StoredName}" });
+                    downloadUrl = $"{Request.Scheme}://{Request.Host}{UploadsUrl}/vendors/{id}/factory-eval/{fe.StoredName}" });
             }
             return Ok(new { success = true, files = added });
         }
@@ -588,7 +637,7 @@ namespace InticooInspection.API.Controllers
             var result = files.Select(f => new {
                 id = f.Id, originalName = f.OriginalName, contentType = f.ContentType,
                 fileSize = f.FileSize, uploadedAt = f.UploadedAt,
-                downloadUrl = $"{Request.Scheme}://{Request.Host}/uploads/vendors/{id}/factory-eval/{f.StoredName}"
+                downloadUrl = $"{Request.Scheme}://{Request.Host}{UploadsUrl}/vendors/{id}/factory-eval/{f.StoredName}"
             });
             return Ok(result);
         }
@@ -607,6 +656,7 @@ namespace InticooInspection.API.Controllers
         [HttpDelete("{id}/factory-eval/files/{fileId}")]
         public async Task<IActionResult> DeleteFactoryEvalFile(int id, int fileId)
         {
+            if (await HttpContext.RequestServices.GetRequiredService<UserAccess>().RequireAdminAsync() is { } denied) return denied;
             var f = await _db.Set<VendorFactoryEvalFile>().FirstOrDefaultAsync(x => x.Id == fileId && x.VendorId == id);
             if (f == null) return NotFound();
             var path = Path.Combine(GetFactoryEvalDir(id), f.StoredName);
@@ -618,7 +668,7 @@ namespace InticooInspection.API.Controllers
 
         private string GetFactoryEvalDir(int vendorId)
         {
-            var dir = Path.Combine(_env.WebRootPath, "uploads", "vendors", vendorId.ToString(), "factory-eval");
+            var dir = Path.Combine(UploadsDir, "vendors", vendorId.ToString(), "factory-eval");
             Directory.CreateDirectory(dir);
             return dir;
         }
@@ -643,104 +693,144 @@ namespace InticooInspection.API.Controllers
                     .FirstOrDefaultAsync(v => v.Code == vendorCode);
                 if (vendor == null) return NotFound(new { error = "Vendor not found" });
 
-                // Load all inspections for this vendor
-                var allInsp = await _db.Inspections
-                    .AsNoTracking()
-                    .Where(i => i.VendorId == vendorCode || i.VendorName == vendor.Name)
-                    .Select(i => new {
-                        i.Id, i.InspectionDate, i.InspectionType,
-                        i.FinalResult, i.QcResultJson, i.Status
-                    })
-                    .ToListAsync();
+                var allInsp = await QualityStats.LoadAsync(_db,
+                    q => q.Where(i => i.VendorId == vendorCode || i.VendorName == vendor.Name));
+                var yearInsp  = allInsp.Where(i => i.InspectionDate.Year == targetYear).ToList();
+                var monthInsp = yearInsp.Where(i => i.InspectionDate.Month == targetMonth).ToList();
 
-                // ── This Month stats ──
-                var monthInsp = allInsp
-                    .Where(i => i.InspectionDate.Year == targetYear && i.InspectionDate.Month == targetMonth)
-                    .ToList();
+                // CLC cua vendor (khop theo ma hoac ten vendor)
+                var clcAll   = await ClcStats.LoadAsync(_db, q => q.Where(c => c.VendorCode == vendorCode || c.VendorName == vendor.Name));
+                var clcYear  = clcAll.Where(c => c.Date.Year == targetYear).ToList();
+                var clcMonth = clcYear.Where(c => c.Date.Month == targetMonth).ToList();
 
-                var monthTotal   = monthInsp.Count;
-                var monthPassed  = monthInsp.Count(i => i.FinalResult == "PASSED");
-                var monthFailed  = monthInsp.Count(i => i.FinalResult == "FAILED");
-                var passRate     = monthTotal > 0 ? Math.Round((double)monthPassed / monthTotal * 100, 1) : 0;
-                var failRate     = monthTotal > 0 ? Math.Round((double)monthFailed / monthTotal * 100, 1) : 0;
-
-                // ── Defects this month — parse QcResultJson ──
-                int mCritical = 0, mMajor = 0, mMinor = 0;
-                foreach (var i in monthInsp.Where(i => !string.IsNullOrEmpty(i.QcResultJson)))
+                // Block thống kê dùng cho cả "This Month" và "Year"
+                object Block(List<InspStat> l, List<ClcStat> clc)
                 {
-                    try
+                    var done = l.Where(i => i.IsCompleted).ToList();
+                    var passRate = QualityStats.PassRate(l);
+                    var judged   = l.Count(i => i.Judged);
+                    return new
                     {
-                        var doc = System.Text.Json.JsonDocument.Parse(i.QcResultJson!);
-                        if (TryGetPropertyCI(doc.RootElement, "aql", out var aql))
-                        {
-                            mCritical += GetIntCI(aql, "criticalFound");
-                            mMajor    += GetIntCI(aql, "majorFound");
-                            mMinor    += GetIntCI(aql, "minorFound");
-                        }
-                    }
-                    catch { }
+                        total        = l.Count + clc.Count,
+                        reports      = done.Count + clc.Count(c => c.Submitted),   // Total Inspection Report
+                        clc          = clc.Count,
+                        clcPassed    = clc.Count(c => c.Passed),
+                        clcFailed    = clc.Count(c => c.Failed),
+                        clcHeld      = clc.Count(c => c.Held),
+                        passed       = l.Count(i => i.Passed),
+                        failed       = l.Count(i => i.Failed),
+                        judged,
+                        passRate,
+                        failRate     = judged > 0 ? Math.Round(100 - passRate, 1) : 0,
+                        critical     = done.Sum(i => i.Critical),
+                        major        = done.Sum(i => i.Major),
+                        minor        = done.Sum(i => i.Minor),
+                        defTotal     = done.Sum(i => i.Defects),
+                        aqlSampling  = done.Sum(i => i.SampleSize), // Total AQL Sampling
+                        ppt          = l.Count(i => i.Type == InspectionType.PPT),
+                        dpi          = l.Count(i => i.Type == InspectionType.DPI),
+                        pst          = l.Count(i => i.Type == InspectionType.PST),
+                    };
                 }
-                var defTotal = mCritical + mMajor + mMinor;
 
-                // ── Monthly bar chart (this year) ──
-                var yearInsp = allInsp.Where(i => i.InspectionDate.Year == targetYear).ToList();
                 var monthlyData = Enumerable.Range(1, 12).Select(m => new
                 {
                     month = m,
-                    ppt   = yearInsp.Count(i => i.InspectionDate.Month == m && i.InspectionType == InspectionType.PPT),
-                    dpi   = yearInsp.Count(i => i.InspectionDate.Month == m && i.InspectionType == InspectionType.DPI),
-                    pst   = yearInsp.Count(i => i.InspectionDate.Month == m && i.InspectionType == InspectionType.PST),
+                    ppt   = yearInsp.Count(i => i.InspectionDate.Month == m && i.Type == InspectionType.PPT),
+                    dpi   = yearInsp.Count(i => i.InspectionDate.Month == m && i.Type == InspectionType.DPI),
+                    pst   = yearInsp.Count(i => i.InspectionDate.Month == m && i.Type == InspectionType.PST),
+                    clc   = ClcStats.InMonth(clcYear, m),
                 }).ToList();
 
-                // ── Yearly horizontal bar ──
-                var yearPpt = yearInsp.Count(i => i.InspectionType == InspectionType.PPT);
-                var yearDpi = yearInsp.Count(i => i.InspectionType == InspectionType.DPI);
-                var yearPst = yearInsp.Count(i => i.InspectionType == InspectionType.PST);
-
-                // ── Year defects ──
-                int yCritical = 0, yMajor = 0, yMinor = 0;
-                foreach (var i in yearInsp.Where(i => !string.IsNullOrEmpty(i.QcResultJson)))
-                {
-                    try
+                // ── Total Shipment Quantity theo sản phẩm × tháng (PST đã hoàn tất) ──
+                var pstDone = yearInsp.Where(i => i.IsCompleted && i.Type == InspectionType.PST).ToList();
+                var shipmentByProduct = pstDone
+                    .GroupBy(i => i.ProductKey)
+                    .Select(g => new
                     {
-                        var doc = System.Text.Json.JsonDocument.Parse(i.QcResultJson!);
-                        if (TryGetPropertyCI(doc.RootElement, "aql", out var aql))
-                        {
-                            yCritical += GetIntCI(aql, "criticalFound");
-                            yMajor    += GetIntCI(aql, "majorFound");
-                            yMinor    += GetIntCI(aql, "minorFound");
-                        }
-                    }
-                    catch { }
-                }
-                var yDefTotal = yCritical + yMajor + yMinor;
+                        productName = g.First().ProductName,
+                        productCode = g.First().ItemNumber,
+                        months      = Enumerable.Range(1, 12).Select(m => g.Where(i => i.InspectionDate.Month == m).Sum(i => i.ShipmentQty)).ToArray(),
+                        total       = g.Sum(i => i.ShipmentQty)
+                    })
+                    .OrderByDescending(x => x.total).ToList();
 
-                // ── Year pass/fail ──
-                var yearTotal  = yearInsp.Count;
-                var yearPassed = yearInsp.Count(i => i.FinalResult == "PASSED");
-                var yearFailed = yearInsp.Count(i => i.FinalResult == "FAILED");
-                var yearPassRate = yearTotal > 0 ? Math.Round((double)yearPassed / yearTotal * 100, 1) : 0;
-                var yearFailRate = yearTotal > 0 ? Math.Round((double)yearFailed / yearTotal * 100, 1) : 0;
+                // ── Vendor Monthly Defect Performance ──
+                var monthlyDefect = Enumerable.Range(1, 12).Select(m =>
+                {
+                    var l = yearInsp.Where(i => i.InspectionDate.Month == m && i.IsCompleted).ToList();
+                    return new
+                    {
+                        month       = m,
+                        inspections = l.Count,
+                        shipmentQty = l.Where(i => i.Type == InspectionType.PST).Sum(i => i.ShipmentQty),
+                        aqlQty      = l.Sum(i => i.SampleSize),
+                        defectQty   = l.Sum(i => i.Defects),
+                        defectRate  = QualityStats.DefectRateAql(l),
+                        topDefect   = QualityStats.TopDefect(l)
+                    };
+                }).ToList();
+
+                // ── Annual Defect Breakdown (F01..F12, + Other nếu có) ──
+                var codes = yearInsp.Where(i => i.IsCompleted).SelectMany(i => i.DefectCodes).ToList();
+                var annualDefects = DefectCatalog.Codes.Select(c => (c.Code, c.Name))
+                    .Concat(codes.Contains(DefectCatalog.OtherCode) ? new[] { (DefectCatalog.OtherCode, "Other") } : Array.Empty<(string, string)>())
+                    .Select(c => new
+                    {
+                        code = c.Item1,
+                        name = c.Item2,
+                        qty  = codes.Count(x => x == c.Item1),
+                        pct  = QualityStats.Pct(codes.Count(x => x == c.Item1), codes.Count)
+                    }).ToList();
+
+                // ── CAPA của vendor (Defect Management) ──
+                var vCapas = await _db.DefectCapas.AsNoTracking()
+                    .Where(c => c.VendorId == vendorCode || c.VendorName == vendor.Name)
+                    .Select(c => new { c.OpenDate, c.Status }).ToListAsync();
+
+                // ── Annual Results (5 năm) ──
+                var annualResults = QualityStats.AnnualYears(allInsp).Select(yy =>
+                {
+                    var l        = allInsp.Where(i => i.InspectionDate.Year == yy).ToList();
+                    var done     = l.Where(i => i.IsCompleted).ToList();
+                    var shipQty  = done.Where(i => i.Type == InspectionType.PST).Sum(i => i.ShipmentQty);
+                    double? pass = l.Any(i => i.Judged) ? QualityStats.PassRate(l) : null;
+                    // KPI: Defect Rate = Total Defects ÷ Total Shipment Qty × 100
+                    double? defR = shipQty > 0 ? QualityStats.Pct(done.Sum(i => i.Defects), shipQty, 2) : null;
+                    var issued   = vCapas.Count(c => c.OpenDate.Year == yy);
+                    double? capaRate = issued > 0
+                        ? QualityStats.Pct(vCapas.Count(c => c.OpenDate.Year == yy && c.Status == DefectCapaService.StatusClosed), issued)
+                        : null;
+                    var score    = QualityStats.OverallScore(pass, defR, capaRate);
+                    return new
+                    {
+                        year            = yy,
+                        shipmentQty     = shipQty,
+                        inspections     = l.Count,
+                        passRate        = pass,
+                        defectRate      = defR,
+                        capaClosureRate = capaRate,
+                        capaIssued      = issued,
+                        overallScore    = score,
+                        rating          = l.Any() ? QualityStats.Rating(score) : "—"
+                    };
+                }).ToList();
 
                 return Ok(new
                 {
                     vendorName = vendor.Name,
                     vendorId   = vendor.Code,
                     targetYear, targetMonth,
-
-                    // Month
-                    monthTotal, monthPassed, monthFailed,
-                    passRate, failRate,
-                    monthCritical = mCritical, monthMajor = mMajor, monthMinor = mMinor, defTotal,
-
-                    // Year
-                    yearTotal, yearPassed, yearFailed,
-                    yearPassRate, yearFailRate,
-                    yearPpt, yearDpi, yearPst,
-                    yearCritical = yCritical, yearMajor = yMajor, yearMinor = yMinor, yDefTotal,
-
-                    // Charts
+                    month = Block(monthInsp, clcMonth),
+                    year  = Block(yearInsp, clcYear),
                     monthlyData,
+                    shipmentByProduct,
+                    shipmentMonthTotals = Enumerable.Range(1, 12).Select(m => pstDone.Where(i => i.InspectionDate.Month == m).Sum(i => i.ShipmentQty)).ToArray(),
+                    shipmentTotal = pstDone.Sum(i => i.ShipmentQty),
+                    monthlyDefect,
+                    annualDefects,
+                    annualDefectTotal = codes.Count,
+                    annualResults,
                 });
             }
             catch (Exception ex)
@@ -785,8 +875,8 @@ namespace InticooInspection.API.Controllers
         // ─────────────────────────────────────────────────────────────────
         [HttpGet("template")]
         [AllowAnonymous]
-        public IActionResult DownloadImportTemplate()
-            => ImportHelper.ServeTemplate(_env, "Vendors_Import_Template.xlsx");
+        public IActionResult DownloadImportTemplate([FromQuery] string? lang)
+            => ImportHelper.ServeTemplate(_env, "Vendors_Import_Template.xlsx", lang);
 
         // ─────────────────────────────────────────────────────────────────
         // POST api/vendors/import
@@ -795,6 +885,7 @@ namespace InticooInspection.API.Controllers
         [RequestSizeLimit(20 * 1024 * 1024)]
         public async Task<IActionResult> Import(IFormFile file)
         {
+            if (await HttpContext.RequestServices.GetRequiredService<UserAccess>().RequireAdminAsync() is { } denied) return denied;
             var validateError = ImportHelper.ValidateFile(file);
             if (validateError != null) return validateError;
 
@@ -892,6 +983,7 @@ namespace InticooInspection.API.Controllers
                         Type           = (VendorType)typeVal,
                         Status         = (VendorStatus)statusVal,
                         Category       = row.Category,
+                        BusinessType   = NormalizeBusinessTypes(row.BusinessType),
                         TaxCode        = row.TaxCode,
                         BusinessRegNo  = row.BusinessRegNo,
                         Phone          = row.Phone,
@@ -926,6 +1018,17 @@ namespace InticooInspection.API.Controllers
             return Ok(new { success = errors.Count == 0, totalRows = rows.Count, created, failed = errors.Count, errors });
         }
 
+        // Business Type nhập từ Excel: tách theo , ; /, khớp không phân biệt hoa thường với danh mục hợp lệ, bỏ giá trị lạ
+        private static readonly string[] ValidBusinessTypes = { "Manufacturer", "Exporter", "Supplier", "Trading Company", "Other" };
+        private static string? NormalizeBusinessTypes(string? raw)
+        {
+            if (string.IsNullOrWhiteSpace(raw)) return null;
+            var picked = raw.Split(new[] { ',', ';', '/', '|' }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                .Select(x => ValidBusinessTypes.FirstOrDefault(v => string.Equals(v, x, StringComparison.OrdinalIgnoreCase)))
+                .Where(x => x != null).Distinct().ToList();
+            return picked.Count == 0 ? null : string.Join(", ", picked);
+        }
+
         private static VendorImportRow ReadVendorRow(IXLWorksheet sheet, int rowNum, Dictionary<string, int> map)
             => new VendorImportRow
             {
@@ -935,6 +1038,7 @@ namespace InticooInspection.API.Controllers
                 Type           = ImportHelper.GetStr(sheet, rowNum, map, "Type"),
                 Status         = ImportHelper.GetStr(sheet, rowNum, map, "Status"),
                 Category       = ImportHelper.GetStr(sheet, rowNum, map, "Category"),
+                BusinessType   = ImportHelper.GetStr(sheet, rowNum, map, "BusinessType"),
                 TaxCode        = ImportHelper.GetStr(sheet, rowNum, map, "TaxCode"),
                 BusinessRegNo  = ImportHelper.GetStr(sheet, rowNum, map, "BusinessRegNo"),
                 Phone          = ImportHelper.GetStr(sheet, rowNum, map, "Phone"),
@@ -967,6 +1071,7 @@ namespace InticooInspection.API.Controllers
         public int     Type           { get; set; } = 0;
         public int     Status         { get; set; } = 0;
         public string? Category       { get; set; }
+        public string? BusinessType   { get; set; }
         public string? TaxCode        { get; set; }
         public string? BusinessRegNo  { get; set; }
         public string? Phone          { get; set; }
@@ -1008,6 +1113,7 @@ namespace InticooInspection.API.Controllers
         public int              Type           { get; set; }
         public int              Status         { get; set; }
         public string?          Category       { get; set; }
+        public string?          BusinessType   { get; set; }
         public string?          TaxCode        { get; set; }
         public string?          BusinessRegNo  { get; set; }
         public string?          Phone          { get; set; }
@@ -1035,6 +1141,7 @@ namespace InticooInspection.API.Controllers
 
     public class VendorImportRow
     {
+        public string? BusinessType  { get; set; }
         public int     RowNumber     { get; set; }
         public string? Code          { get; set; }
         public string? Name          { get; set; }

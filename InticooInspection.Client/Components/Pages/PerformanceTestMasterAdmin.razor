@@ -1,11 +1,15 @@
-@page "/admin/performance-test-master"
+﻿@page "/admin/performance-test-master"
+@attribute [Microsoft.AspNetCore.Authorization.Authorize]
+@inject PageAccessService PageAccess
 @using System.Net.Http.Json
 @using System.Text.Json
 @using Microsoft.AspNetCore.Components.Forms
 @inject HttpClient Http
 @inject IJSRuntime JS
 @inject Blazored.SessionStorage.ISessionStorageService SessionStorage
+@inherits LocalizedComponentBase
 
+<PageAccessGuard RequiredPage="PerformanceTest">
 <div class="ptm-page">
 
     <!-- ═══════ HEADER ═══════ -->
@@ -17,24 +21,41 @@
                 <path d="M9 12h6M9 16h4"/>
             </svg>
             <div>
-                <div class="ptm-title">Performance Test Master</div>
-                <div class="ptm-subtitle">Manage test standard list · @_items.Count records</div>
+                <div class="ptm-title">@T("PerformanceTestMasterAdmin.PerformanceTestMaster")</div>
+                <div class="ptm-subtitle">@T("PerformanceTestMasterAdmin.ManageTestStandardListRecords", _items.Count)</div>
             </div>
         </div>
+        @if (PageAccess.Can("PerformanceTest", "Create"))
+        {
         <button class="ptm-add-btn" @onclick="OpenCreate">
-            <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M10 4v12M4 10h12"/></svg>
-            + Add New
+            @T("PerformanceTestMasterAdmin.AddNew")
         </button>
+        }
+    </div>
+
+    <div class="m-kpis m-kpis-4">
+        <div class="m-kpi"><span class="m-kpi-ico k-blue"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 8h6M9 12h6M9 16h3"/></svg></span><b>@_items.Count</b><small>@T("PerformanceTestMasterAdmin.MTotal")</small></div>
+        <div class="m-kpi"><span class="m-kpi-ico k-green"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M8 12l3 3 5-6"/></svg></span><b>@_items.Count(x => x.IsActive)</b><small>@T("Common.Active")</small></div>
+        <div class="m-kpi"><span class="m-kpi-ico k-orange"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M10 9v6M14 9v6"/></svg></span><b class="red">@_items.Count(x => !x.IsActive)</b><small>@T("Common.Inactive")</small></div>
+        <div class="m-kpi"><span class="m-kpi-ico k-blue"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg></span><b>@_items.Select(x => x.Category).Distinct().Count()</b><small>@T("PerformanceTestMasterAdmin.MCategories")</small></div>
+    </div>
+    <div class="m-chips">
+        <button type="button" class="@(_filterCategory == "" ? "on" : "")" @onclick='() => SelectFilterCategory("")'>@T("Customers.ChipAll") (@_items.Count)</button>
+        @foreach (var mc in _items.GroupBy(x => x.Category).OrderBy(g => g.Key))
+        {
+            var cat = mc.Key;
+            <button type="button" class="@(_filterCategory == cat ? "on" : "")" @onclick="() => SelectFilterCategory(cat)">@TE("Opt", cat) (@mc.Count())</button>
+        }
     </div>
 
     <!-- ═══════ FILTERS ═══════ -->
     <div class="ptm-filters">
         <div class="ptm-filter-group">
-            <label class="ptm-filter-label">Category</label>
+            <label class="ptm-filter-label">@T("Common.Category")</label>
             <div class="ptm-cmb-root ptm-combo-filter @(_filterCmbOpen ? "ptm-cmb-root-open" : "")" tabindex="-1"
                  @onfocusout="@(async () => { await Task.Delay(150); if (_filterCmbOpen) { _filterCmbOpen = false; StateHasChanged(); } })">
                 <div class="ptm-cmb-control @(_filterCmbOpen ? "ptm-cmb-open" : "")" @onclick="@(() => _filterCmbOpen = !_filterCmbOpen)">
-                    <input class="ptm-cmb-input" type="text" placeholder="All categories"
+                    <input class="ptm-cmb-input" type="text" placeholder="@T("PerformanceTestMasterAdmin.AllCategories")"
                            value="@_filterCmbQuery"
                            @oninput="OnFilterCmbInput"
                            @onfocus="@(() => _filterCmbOpen = true)"
@@ -43,7 +64,7 @@
                     {
                         <button type="button" class="ptm-cmb-clear"
                                 @onclick="@(() => SelectFilterCategory(""))"
-                                @onclick:stopPropagation="true" tabindex="-1" title="Clear">✕</button>
+                                @onclick:stopPropagation="true" tabindex="-1" title="@T("Common.Clear")">✕</button>
                     }
                     <span class="ptm-cmb-arrow">
                         <svg width="10" height="6" viewBox="0 0 10 6" xmlns="http://www.w3.org/2000/svg">
@@ -59,13 +80,13 @@
                             <div class="ptm-cmb-item ptm-cmb-item-empty @(string.IsNullOrEmpty(_filterCategory) ? "ptm-cmb-selected" : "")"
                                  @onclick="@(() => SelectFilterCategory(""))"
                                  @onclick:stopPropagation="true">
-                                All
+                                @T("PerformanceTestMasterAdmin.All")
                             </div>
                         }
                         @{ var filterList = FilterCmbItems().ToList(); }
                         @if (!filterList.Any())
                         {
-                            <div class="ptm-cmb-empty">No matches</div>
+                            <div class="ptm-cmb-empty">@T("PerformanceTestMasterAdmin.NoMatches")</div>
                         }
                         else
                         {
@@ -86,23 +107,23 @@
             </div>
         </div>
         <div class="ptm-filter-group">
-            <label class="ptm-filter-label">Status</label>
+            <label class="ptm-filter-label">@T("Common.Status")</label>
             <select class="ptm-select" @bind="_filterActive">
-                <option value="all">All</option>
-                <option value="active">Active</option>
-                <option value="inactive">Inactive</option>
+                <option value="all">@T("PerformanceTestMasterAdmin.All")</option>
+                <option value="active">@T("Common.Active")</option>
+                <option value="inactive">@T("Common.Inactive")</option>
             </select>
         </div>
         <div class="ptm-filter-group ptm-search-group">
-            <label class="ptm-filter-label">Search</label>
-            <input class="ptm-search" placeholder="Protocol / Standard / Test..." @bind="_searchText" @bind:event="oninput" />
+            <label class="ptm-filter-label">@T("Common.Search")</label>
+            <input class="ptm-search" placeholder="@T("PerformanceTestMasterAdmin.ProtocolStandardTest")" @bind="_searchText" @bind:event="oninput" />
         </div>
     </div>
 
     <!-- ═══════ TABLE ═══════ -->
     @if (_loading)
     {
-        <div class="ptm-loading"><div class="ptm-spinner"></div><span>Loading...</span></div>
+        <div class="ptm-loading"><div class="ptm-spinner"></div><span>@T("Common.Loading")</span></div>
     }
     else if (!FilteredItems().Any())
     {
@@ -110,35 +131,69 @@
             <svg width="48" height="48" viewBox="0 0 48 48" fill="none" stroke="#ccc" stroke-width="1.5">
                 <rect x="8" y="10" width="32" height="32" rx="4"/><path d="M16 10V6M32 10V6M8 22h32" stroke-linecap="round"/><circle cx="24" cy="32" r="4"/>
             </svg>
-            <p>No data found</p>
+            <p>@T("PerformanceTestMasterAdmin.NoDataFound")</p>
         </div>
     }
     else
     {
+        <div class="m-cards">
+            @foreach (var mi in FilteredItems())
+            {
+                var item = mi;
+                <div class="m-card @(item.IsActive ? "" : "dim")">
+                    <div class="m-card-top">
+                        <div class="m-card-main">
+                            <div class="m-card-head">
+                                <div class="m-card-name">@item.ProtocolName</div>
+                                <span class="m-status @(item.IsActive ? "ok" : "off")">@(item.IsActive ? T("Common.Active") : T("Common.Inactive"))</span>
+                            </div>
+                            @if (!string.IsNullOrEmpty(item.TestProtocol))
+                            {
+                                <div class="m-card-code">@item.TestProtocol</div>
+                            }
+                            <span class="m-cat">@TE("Opt", item.Category)</span>
+                        </div>
+                    </div>
+                    @if (!string.IsNullOrEmpty(item.Requirements))
+                    {
+                        <div class="m-card-code m-clamp">@item.Requirements</div>
+                    }
+                    <div class="m-card-actions">
+                        <button type="button" class="m-btn-outline" @onclick="() => OpenDetail(item)">@T("Common.View")</button>
+                        @if (PageAccess.Can("PerformanceTest", "Edit"))
+                        {
+                            <button type="button" class="m-btn-fill" @onclick="() => OpenEdit(item)">@T("Common.Edit")</button>
+                        }
+                    </div>
+                </div>
+            }
+        </div>
+
         <div class="ptm-table-wrap">
             <table class="ptm-table">
                 <thead>
                     <tr>
                         <th class="th-no">#</th>
-                        <th class="th-category">Category</th>
-                        <th class="th-protocol">Protocol Name</th>
-                        <th class="th-testprot">Test Protocol</th>
-                        <th class="th-req">Requirements</th>
-                        <th class="th-ref">References</th>
-                        <th class="th-status">Status</th>
-                        <th class="th-action">Action</th>
+                        <th class="th-category">@T("Common.Category")</th>
+                        <th class="th-protocol">@T("PerformanceTestMasterAdmin.ProtocolName")</th>
+                        <th class="th-testprot">@T("Common.TestProtocol")</th>
+                        <th class="th-req">@T("PerformanceTestMasterAdmin.Requirements")</th>
+                        <th class="th-ref">@T("PerformanceTestMasterAdmin.References")</th>
+                        <th class="th-status">@T("Common.Status")</th>
+                        <th class="th-upd">@T("PerformanceTestMasterAdmin.LastUpdated")</th>
+                        <th class="th-action">@T("Common.Action")</th>
                     </tr>
                 </thead>
                 <tbody>
-                    @{ var filtered = FilteredItems(); var rowNo = 0; }
-                    @foreach (var item in filtered)
+                    @{ var filtered = FilteredItems(); if ((_pg - 1) * _pgSize >= filtered.Count) _pg = 1; var rowNo = (_pg - 1) * _pgSize; }
+                    @foreach (var item in filtered.Skip((_pg - 1) * _pgSize).Take(_pgSize))
                     {
                         rowNo++;
                         var displayNo = rowNo;
                         <tr class="@(item.IsActive ? "" : "row-inactive")">
                             <td class="td-no">@displayNo</td>
                             <td class="td-category">
-                                <span class="ptm-cat-badge cat-@Slug(item.Category)">@item.Category</span>
+                                <span class="ptm-cat-badge cat-@Slug(item.Category)">@TE("Opt", item.Category)</span>
                             </td>
                             <td class="td-protocol">@item.ProtocolName</td>
                             <td class="td-testprot">
@@ -167,7 +222,7 @@
                                     </button>
                                     @if (item.References.Count > 1)
                                     {
-                                        <button class="ptm-ref-more" @onclick="() => OpenDetail(item)" title="View all files">
+                                        <button class="ptm-ref-more" @onclick="() => OpenDetail(item)" title="@T("PerformanceTestMasterAdmin.ViewAllFiles")">
                                             +@(item.References.Count - 1)
                                         </button>
                                     }
@@ -179,30 +234,38 @@
                             </td>
                             <td class="td-status">
                                 <button class="ptm-toggle @(item.IsActive ? "tog-on" : "tog-off")"
+                                        disabled="@(!PageAccess.Can("PerformanceTest", "Edit"))"
                                         @onclick="() => ToggleActive(item)">
-                                    @(item.IsActive ? "Active" : "Inactive")
+                                    @(item.IsActive ? T("Common.Active") : T("Common.Inactive"))
                                 </button>
                             </td>
+                            <td class="td-upd">@(item.UpdatedAt.HasValue ? L.Date(item.UpdatedAt.Value.ToLocalTime(), "dd MMM yyyy") : "—")</td>
                             <td class="td-action">
-                                <button class="ptm-btn-view" @onclick="() => OpenDetail(item)" title="Full Detail">
+                                <button class="ptm-btn-view" @onclick="() => OpenDetail(item)" title="@T("Common.FullDetail")">
                                     <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
                                         <path d="M1 10s3-7 9-7 9 7 9 7-3 7-9 7-9-7-9-7z"/>
                                         <circle cx="10" cy="10" r="3"/>
                                     </svg>
                                 </button>
-                                <button class="ptm-btn-edit" @onclick="() => OpenEdit(item)" title="Edit">
+                                @if (PageAccess.Can("PerformanceTest", "Edit"))
+                                {
+                                <button class="ptm-btn-edit" @onclick="() => OpenEdit(item)" title="@T("Common.Edit")">
                                     <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M11 4l5 5-9 9H2v-5L11 4z"/></svg>
                                 </button>
-                                <button class="ptm-btn-del" @onclick="() => ConfirmDelete(item)" title="Delete">
+                                }
+                                @if (PageAccess.Can("PerformanceTest", "Delete"))
+                                {
+                                <button class="ptm-btn-del" @onclick="() => ConfirmDelete(item)" title="@T("Common.Delete")">
                                     <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 6h14M8 6V4h4v2M6 6l1 12h6l1-12"/></svg>
                                 </button>
+                                }
                             </td>
                         </tr>
                     }
                 </tbody>
             </table>
         </div>
-        <div class="ptm-count">Showing @filtered.Count / @_items.Count records</div>
+        <ListPager Total="filtered.Count" Page="_pg" PageSize="_pgSize" Noun="@T("Pager.Records")" OnPage="p => _pg = p" OnPageSize="n => { _pgSize = n; _pg = 1; }" />
     }
 </div>
 
@@ -212,7 +275,7 @@
     <div class="ptm-overlay" @onclick="CloseModal">
         <div class="ptm-modal" @onclick:stopPropagation="true">
             <div class="ptm-modal-header">
-                <span class="ptm-modal-title">@(_editId == null ? "+ Add New" : "Edit") Test Protocol</span>
+                <span class="ptm-modal-title">@T("PerformanceTestMasterAdmin.TestProtocol", _editId == null ? T("PerformanceTestMasterAdmin.AddNew") : T("Common.Edit"))</span>
                 <button class="ptm-modal-close" @onclick="CloseModal">
                     <svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M5 5l10 10M15 5L5 15"/></svg>
                 </button>
@@ -224,11 +287,11 @@
 
                 <!-- Category -->
                 <div class="ptm-form-group">
-                    <label class="ptm-label">Category <span class="req">*</span></label>
+                    <label class="ptm-label">@T("Common.Category") <span class="req">*</span></label>
                     <div class="ptm-cmb-root ptm-combo-form @(_formCmbOpen ? "ptm-cmb-root-open" : "")" tabindex="-1"
                          @onfocusout="@(async () => { await Task.Delay(150); if (_formCmbOpen) { if (!string.IsNullOrWhiteSpace(_formCmbQuery) && _formCmbQuery != _form.Category) { _form.Category = _formCmbQuery.Trim(); } _formCmbOpen = false; StateHasChanged(); } })">
                         <div class="ptm-cmb-control @(_formCmbOpen ? "ptm-cmb-open" : "")" @onclick="@(() => _formCmbOpen = !_formCmbOpen)">
-                            <input class="ptm-cmb-input" type="text" placeholder="Select or type a category"
+                            <input class="ptm-cmb-input" type="text" placeholder="@T("PerformanceTestMasterAdmin.SelectOrTypeCategory")"
                                    value="@_formCmbQuery"
                                    @oninput="OnFormCmbInput"
                                    @onfocus="@(() => _formCmbOpen = true)"
@@ -237,7 +300,7 @@
                             {
                                 <button type="button" class="ptm-cmb-clear"
                                         @onclick="@(() => SelectFormCategory(""))"
-                                        @onclick:stopPropagation="true" tabindex="-1" title="Clear">✕</button>
+                                        @onclick:stopPropagation="true" tabindex="-1" title="@T("Common.Clear")">✕</button>
                             }
                             <span class="ptm-cmb-arrow">
                                 <svg width="10" height="6" viewBox="0 0 10 6" xmlns="http://www.w3.org/2000/svg">
@@ -256,12 +319,12 @@
                                         <div class="ptm-cmb-item ptm-cmb-item-create"
                                              @onclick="@(() => SelectFormCategory(_formCmbQuery.Trim()))"
                                              @onclick:stopPropagation="true">
-                                            <span class="ptm-cmb-create-tag">Add</span> "@_formCmbQuery"
+                                            <span class="ptm-cmb-create-tag">@T("Common.Add")</span> "@_formCmbQuery"
                                         </div>
                                     }
                                     else
                                     {
-                                        <div class="ptm-cmb-empty">No categories</div>
+                                        <div class="ptm-cmb-empty">@T("PerformanceTestMasterAdmin.NoCategories")</div>
                                     }
                                 }
                                 else
@@ -283,7 +346,7 @@
                                         <div class="ptm-cmb-item ptm-cmb-item-create"
                                              @onclick="@(() => SelectFormCategory(_formCmbQuery.Trim()))"
                                              @onclick:stopPropagation="true">
-                                            <span class="ptm-cmb-create-tag">Add</span> "@_formCmbQuery"
+                                            <span class="ptm-cmb-create-tag">@T("Common.Add")</span> "@_formCmbQuery"
                                         </div>
                                     }
                                 }
@@ -294,40 +357,40 @@
 
                 <!-- Protocol Name -->
                 <div class="ptm-form-group">
-                    <label class="ptm-label">Protocol Name <span class="req">*</span></label>
-                    <input class="ptm-input" placeholder="Full name: EN581-1 & EN581-2:2015 (Outdoor Seating for Europe market)" @bind="_form.ProtocolName" />
+                    <label class="ptm-label">@T("PerformanceTestMasterAdmin.ProtocolName") <span class="req">*</span></label>
+                    <input class="ptm-input" placeholder="@T("PerformanceTestMasterAdmin.FullNameEN5811EN5812")" @bind="_form.ProtocolName" />
                 </div>
 
                 <!-- Sort Order (ẩn) -->
                 <div class="ptm-form-group" style="max-width:160px;display: none;">
-                    <label class="ptm-label">Sort Order</label>
+                    <label class="ptm-label">@T("PerformanceTestMasterAdmin.SortOrder")</label>
                     <input class="ptm-input" type="number" min="0" @bind="_form.SortOrder" />
                 </div>
 
                 <!-- Test Protocol -->
                 <div class="ptm-form-group">
-                    <label class="ptm-label">Test Protocol (Step name)</label>
+                    <label class="ptm-label">@T("PerformanceTestMasterAdmin.TestProtocolStepName")</label>
                     <textarea class="ptm-textarea ptm-textarea-3"
                               rows="3"
-                              placeholder="E.g.: 1. General Safety Requirements. / 2. Seat and back static load test..."
+                              placeholder="@T("PerformanceTestMasterAdmin.EG1GeneralSafetyRequirements")"
                               @bind="_form.TestProtocol"></textarea>
                 </div>
 
                 <!-- Procedure -->
                 <div class="ptm-form-group">
-                    <label class="ptm-label">Test Procedure</label>
-                    <textarea class="ptm-textarea" rows="5" placeholder="Describe step-by-step procedure..." @bind="_form.Procedure"></textarea>
+                    <label class="ptm-label">@T("PerformanceTestMasterAdmin.TestProcedure")</label>
+                    <textarea class="ptm-textarea" rows="5" placeholder="@T("PerformanceTestMasterAdmin.DescribeStepByStepProcedure")" @bind="_form.Procedure"></textarea>
                 </div>
 
                 <!-- Requirements -->
                 <div class="ptm-form-group">
-                    <label class="ptm-label">Requirements</label>
-                    <textarea class="ptm-textarea" rows="2" placeholder="E.g.: No product damage is allowed. / Must meet all." @bind="_form.Requirements"></textarea>
+                    <label class="ptm-label">@T("PerformanceTestMasterAdmin.Requirements")</label>
+                    <textarea class="ptm-textarea" rows="2" placeholder="@T("PerformanceTestMasterAdmin.EGNoProductDamageIs")" @bind="_form.Requirements"></textarea>
                 </div>
 
                 <!-- ═══════ Reference (multi-file) ═══════ -->
                 <div class="ptm-form-group">
-                    <label class="ptm-label">Reference (Attached files)</label>
+                    <label class="ptm-label">@T("PerformanceTestMasterAdmin.ReferenceAttachedFiles")</label>
 
                     <!-- Danh sách file đã upload (có Id thật, lưu sẵn ở DB) -->
                     @if (_existingRefs != null && _existingRefs.Count > 0)
@@ -350,7 +413,7 @@
                                     </div>
                                     <button type="button" class="ptm-ref-remove"
                                             @onclick="@(() => RemoveExistingReference(r.Id))"
-                                            title="Remove this file">✕</button>
+                                            title="@T("PerformanceTestMasterAdmin.RemoveThisFile")">✕</button>
                                 </div>
                             }
                         </div>
@@ -370,11 +433,11 @@
                                         </svg>
                                         <strong>@pf.File.Name</strong>
                                         <span class="ptm-ref-size">(@FormatSize(pf.File.Size))</span>
-                                        <span class="ptm-ref-newtag">NEW</span>
+                                        <span class="ptm-ref-newtag">@T("PerformanceTestMasterAdmin.NEW")</span>
                                     </div>
                                     <button type="button" class="ptm-ref-remove ptm-ref-remove-inline"
                                             @onclick="@(() => RemovePickedFile(pf.Key))"
-                                            title="Cancel this file">✕</button>
+                                            title="@T("PerformanceTestMasterAdmin.CancelThisFile")">✕</button>
                                 </div>
                             }
                         </div>
@@ -391,7 +454,7 @@
                             <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
                                 <path d="M10 4v12M4 10h12"/>
                             </svg>
-                            + Add files
+                            @T("PerformanceTestMasterAdmin.AddFiles")
                         </label>
                         @{
                             var existCount  = _existingRefs?.Count ?? 0;
@@ -400,28 +463,28 @@
                         }
                         @if (totalCount > 0)
                         {
-                            <span class="ptm-ref-counter">@totalCount file(s) attached</span>
+                            <span class="ptm-ref-counter">@T("PerformanceTestMasterAdmin.FileSAttached", totalCount)</span>
                         }
                     </div>
-                    <div class="ptm-ref-hint">PDF, Word, Excel, image or archive — up to 50 MB per file. You can attach multiple files.</div>
+                    <div class="ptm-ref-hint">@T("PerformanceTestMasterAdmin.PDFWordExcelImageOrArchive")</div>
                 </div>
 
                 <!-- Active -->
                 <div class="ptm-form-group ptm-form-check">
                     <input type="checkbox" id="chk-active" @bind="_form.IsActive" />
-                    <label for="chk-active">Active</label>
+                    <label for="chk-active">@T("Common.Active")</label>
                 </div>
             </div>
 
             <div class="ptm-modal-footer">
-                <button class="ptm-btn-cancel" @onclick="CloseModal" disabled="@_saving">Cancel</button>
+                <button class="ptm-btn-cancel" @onclick="CloseModal" disabled="@_saving">@T("Common.Cancel")</button>
                 <button class="ptm-btn-save" @onclick="SaveAsync" disabled="@_saving">
                     @if (_saving)
-                    { <div class="ptm-spinner-sm"></div><span>Saving...</span> }
+                    { <div class="ptm-spinner-sm"></div><span>@T("Common.Saving")</span> }
                     else
                     {
                         <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M4 10l5 5 7-8"/></svg>
-                        <span>@(_editId == null ? "+ Add New" : "Save")</span>
+                        <span>@(_editId == null ? T("PerformanceTestMasterAdmin.AddNew") : T("Common.Save"))</span>
                     }
                 </button>
             </div>
@@ -435,24 +498,24 @@
     <div class="ptm-overlay" @onclick="@(() => _detailItem = null)">
         <div class="ptm-modal ptm-modal-detail" @onclick:stopPropagation="true">
             <div class="ptm-modal-header">
-                <span class="ptm-modal-title">Full Detail</span>
+                <span class="ptm-modal-title">@T("Common.FullDetail")</span>
                 <button class="ptm-modal-close" @onclick="@(() => _detailItem = null)">
                     <svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M5 5l10 10M15 5L5 15"/></svg>
                 </button>
             </div>
             <div class="ptm-modal-body">
                 <div class="ptm-detail-row">
-                    <div class="ptm-detail-label">Category</div>
+                    <div class="ptm-detail-label">@T("Common.Category")</div>
                     <div class="ptm-detail-value">
-                        <span class="ptm-cat-badge cat-@Slug(_detailItem.Category)">@_detailItem.Category</span>
+                        <span class="ptm-cat-badge cat-@Slug(_detailItem.Category)">@TE("Opt", _detailItem.Category)</span>
                     </div>
                 </div>
                 <div class="ptm-detail-row">
-                    <div class="ptm-detail-label">Protocol Name</div>
+                    <div class="ptm-detail-label">@T("PerformanceTestMasterAdmin.ProtocolName")</div>
                     <div class="ptm-detail-value ptm-detail-strong">@_detailItem.ProtocolName</div>
                 </div>
                 <div class="ptm-detail-row">
-                    <div class="ptm-detail-label">Test Protocol</div>
+                    <div class="ptm-detail-label">@T("Common.TestProtocol")</div>
                     <div class="ptm-detail-value">
                         @if (string.IsNullOrEmpty(_detailItem.TestProtocol))
                         { <span class="ptm-na">—</span> }
@@ -461,7 +524,7 @@
                     </div>
                 </div>
                 <div class="ptm-detail-row">
-                    <div class="ptm-detail-label">Procedure</div>
+                    <div class="ptm-detail-label">@T("PerformanceTestMasterAdmin.Procedure")</div>
                     <div class="ptm-detail-value">
                         @if (string.IsNullOrEmpty(_detailItem.Procedure))
                         { <span class="ptm-na">—</span> }
@@ -470,7 +533,7 @@
                     </div>
                 </div>
                 <div class="ptm-detail-row">
-                    <div class="ptm-detail-label">Requirements</div>
+                    <div class="ptm-detail-label">@T("PerformanceTestMasterAdmin.Requirements")</div>
                     <div class="ptm-detail-value">
                         @if (string.IsNullOrEmpty(_detailItem.Requirements))
                         { <span class="ptm-na">—</span> }
@@ -479,7 +542,7 @@
                     </div>
                 </div>
                 <div class="ptm-detail-row">
-                    <div class="ptm-detail-label">References</div>
+                    <div class="ptm-detail-label">@T("PerformanceTestMasterAdmin.References")</div>
                     <div class="ptm-detail-value">
                         @if (_detailItem.References != null && _detailItem.References.Count > 0)
                         {
@@ -500,25 +563,28 @@
                         }
                         else
                         {
-                            <span class="ptm-na">No file attached</span>
+                            <span class="ptm-na">@T("PerformanceTestMasterAdmin.NoFileAttached")</span>
                         }
                     </div>
                 </div>
                 <div class="ptm-detail-row">
-                    <div class="ptm-detail-label">Status</div>
+                    <div class="ptm-detail-label">@T("Common.Status")</div>
                     <div class="ptm-detail-value">
                         <span class="ptm-toggle @(_detailItem.IsActive ? "tog-on" : "tog-off")" style="cursor:default;">
-                            @(_detailItem.IsActive ? "Active" : "Inactive")
+                            @(_detailItem.IsActive ? T("Common.Active") : T("Common.Inactive"))
                         </span>
                     </div>
                 </div>
             </div>
             <div class="ptm-modal-footer">
-                <button class="ptm-btn-cancel" @onclick="@(() => _detailItem = null)">Close</button>
+                <button class="ptm-btn-cancel" @onclick="@(() => _detailItem = null)">@T("Common.Close")</button>
+                @if (PageAccess.Can("PerformanceTest", "Edit"))
+                {
                 <button class="ptm-btn-save" @onclick="@(() => { var x = _detailItem; _detailItem = null; OpenEdit(x!); })">
                     <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M11 4l5 5-9 9H2v-5L11 4z"/></svg>
-                    <span>Edit</span>
+                    <span>@T("Common.Edit")</span>
                 </button>
+                }
             </div>
         </div>
     </div>
@@ -534,21 +600,23 @@
                     <circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/>
                 </svg>
             </div>
-            <div class="ptm-confirm-title">Confirm Delete</div>
+            <div class="ptm-confirm-title">@T("PerformanceTestMasterAdmin.ConfirmDelete")</div>
             <div class="ptm-confirm-msg">
-                Delete record:<br />
+                @T("PerformanceTestMasterAdmin.DeleteRecord")<br />
                 <strong>"@Truncate(_deleteTarget.TestProtocol ?? _deleteTarget.ProtocolName, 60)"</strong><br />
-                <span style="color:#e53935;font-size:12px;">This action cannot be undone.</span>
+                <span style="color:#e53935;font-size:12px;">@T("PerformanceTestMasterAdmin.ThisActionCannotBeUndone")</span>
             </div>
             <div class="ptm-confirm-btns">
-                <button class="ptm-btn-cancel" @onclick="() => _deleteTarget = null">Cancel</button>
+                <button class="ptm-btn-cancel" @onclick="() => _deleteTarget = null">@T("Common.Cancel")</button>
                 <button class="ptm-btn-delete" @onclick="DeleteAsync" disabled="@_saving">
-                    @if (_saving) { <span>Deleting...</span> } else { <span>Delete</span> }
+                    @if (_saving) { <span>@T("PerformanceTestMasterAdmin.Deleting")</span> } else { <span>@T("Common.Delete")</span> }
                 </button>
             </div>
         </div>
     </div>
 }
+
+</PageAccessGuard>
 
 @code {
     private bool   _loading = true;
@@ -602,6 +670,8 @@
         catch (Exception ex) { Console.WriteLine($"[PTM] Load: {ex.Message}"); }
         finally { _loading = false; }
     }
+
+    private int _pg = 1, _pgSize = 10;
 
     private List<TestMasterItem> FilteredItems()
     {
@@ -801,14 +871,14 @@
     private async Task SaveAsync()
     {
         if (string.IsNullOrWhiteSpace(_form.Category) || string.IsNullOrWhiteSpace(_form.ProtocolName))
-        { _modalError = "Please enter Category and Protocol Name."; return; }
+        { _modalError = T("PerformanceTestMasterAdmin.PleaseEnterCategoryAndProtocolName"); return; }
 
         _saving = true; _modalError = "";
         try
         {
             var token = await SessionStorage.GetItemAsync<string>("auth_token") ?? "";
             if (string.IsNullOrEmpty(token))
-            { _modalError = "Not authenticated. Please log in again."; _saving = false; return; }
+            { _modalError = T("PerformanceTestMasterAdmin.NotAuthenticatedPleaseLogInAgain"); _saving = false; return; }
 
             // 1) Upsert dữ liệu chính
             var reqPayload = new UpsertPayload
@@ -834,7 +904,7 @@
             if (!resp.IsSuccessStatusCode)
             {
                 var body = await resp.Content.ReadAsStringAsync();
-                _modalError = $"Error {(int)resp.StatusCode}: {body}";
+                _modalError = T("PerformanceTestMasterAdmin.Error", (int)resp.StatusCode, body);
                 _saving = false; return;
             }
 
@@ -842,7 +912,7 @@
             var savedId = saved?.Id ?? _editId ?? 0;
             if (savedId <= 0)
             {
-                _modalError = "Could not determine saved record id.";
+                _modalError = T("PerformanceTestMasterAdmin.CouldNotDetermineSavedRecordId");
                 _saving = false; return;
             }
 
@@ -890,7 +960,7 @@
                 if (!upResp.IsSuccessStatusCode)
                 {
                     var body = await upResp.Content.ReadAsStringAsync();
-                    _modalError = $"Saved record but file upload failed: {(int)upResp.StatusCode} {body}";
+                    _modalError = T("PerformanceTestMasterAdmin.SavedRecordButFileUploadFailed", (int)upResp.StatusCode, body);
                     await LoadAsync();
                     _saving = false; return;
                 }
@@ -951,7 +1021,7 @@
             var resp = await Http.SendAsync(msg);
             if (!resp.IsSuccessStatusCode)
             {
-                await JS.InvokeVoidAsync("alert", $"Cannot open file. Server returned {(int)resp.StatusCode}.");
+                await JS.InvokeVoidAsync("alert", T("PerformanceTestMasterAdmin.CannotOpenFileServerReturned", (int)resp.StatusCode));
                 return;
             }
 
@@ -966,11 +1036,11 @@
                           || mime.Equals("application/pdf", StringComparison.OrdinalIgnoreCase)
                           || mime.StartsWith("text/", StringComparison.OrdinalIgnoreCase);
 
-            await JS.InvokeVoidAsync("ptmDownloadBlob", bytes, mime, fileName, openInline);
+            await JS.InvokeVoidAsync("ptmDownloadBlob", bytes, mime, fileName, openInline, T("PerformanceTestMasterAdmin.OpenFileFailed"));
         }
         catch (Exception ex)
         {
-            await JS.InvokeVoidAsync("alert", $"Open file failed: {ex.Message}");
+            await JS.InvokeVoidAsync("alert", T("PerformanceTestMasterAdmin.OpenFileFailed2", ex.Message));
         }
     }
 
@@ -997,6 +1067,7 @@
         public string? Requirements { get; set; }
         public int     SortOrder    { get; set; }
         public bool    IsActive     { get; set; }
+        public DateTime? UpdatedAt  { get; set; }
         public List<ReferenceFileItem> References { get; set; } = new();
     }
 
@@ -1040,6 +1111,15 @@
 }
 
 <style>
+    /* Phân trang (ListPager) — trang này không có .lp-head nên cần style riêng */
+    .ptm-page .lp-pager { display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px 12px; margin-top:14px; padding:0 4px; }
+    .ptm-page .lp-pager .page-info { color:#51638a; font-size:13px; }
+    .ptm-page .lp-pager-right { display:flex; align-items:center; flex-wrap:wrap; gap:6px; }
+    .ptm-page .lp-perpage { height:34px; border:1px solid #dde4ef; border-radius:8px; background:#fff; color:#1a2d5a; padding:0 10px; font-family:inherit; font-size:13px; margin-right:8px; }
+    .ptm-page .page-btn.pg { min-width:34px; height:34px; padding:0 8px; background:#fff; border:1px solid #dde4ef; color:#1a2d5a; border-radius:8px; font-weight:600; cursor:pointer; }
+    .ptm-page .page-btn.pg.on { background:#2563eb; border-color:#2563eb; color:#fff; }
+    .ptm-page .page-btn.pg:disabled { opacity:.4; cursor:default; }
+    .ptm-page .pg-dots { color:#8a99b5; padding:0 4px; }
     .ptm-page {
         font-family: 'SF Pro Display', -apple-system, 'Segoe UI', sans-serif;
         background: #f0f3f8; min-height: 100vh; padding: 24px 20px 48px;
@@ -1330,5 +1410,15 @@
         .ptm-form-row { flex-direction: column; }
         .ptm-header { flex-direction: column; gap: 12px; align-items: flex-start; }
         .ptm-detail-row { grid-template-columns: 1fr; }
+    }
+
+    @@media (max-width: 760px) {
+        .m-cards ~ .ptm-table-wrap, .m-cards ~ .ptm-count { display: none; }
+        .ptm-page { padding: 14px 12px 24px; background: #f3f6fb; }
+        .ptm-header { padding: 14px; }
+        .ptm-filters .ptm-filter-group:not(.ptm-search-group) { display: none; }
+        .ptm-filters .ptm-filter-label { display: none; }
+        .m-card.dim { opacity: .75; }
+        .m-clamp { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
     }
 </style>

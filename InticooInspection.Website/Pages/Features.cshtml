@@ -1,0 +1,103 @@
+@page
+@{ ViewData["Title"] = L["Features"]; }
+<section class="hero">
+  <div class="wrap">
+    <div>
+      <span class="eyebrow">@L["Features"]</span>
+      <h1>@L["Everything You Need for Quality Management"]</h1>
+      <p class="lead">@L["A complete inspection platform to manage product inspections, loading container checks, suppliers, CAPA and quality data — designed for real manufacturing needs."]</p>
+      <partial name="_Badges" model="@("features")" />
+    </div>
+    <div class="hero-shot"><img src="/img/photos/hero-dashboard.png" alt="@L["Inticoo dashboard on laptop and mobile"]" width="1080" height="638" /></div>
+  </div>
+</section>
+
+<section class="sec">
+  <div class="wrap">
+    <div class="sec-left"><span class="eyebrow">@L["Main Features"]</span><h2>@L["Comprehensive Tools for the Entire Quality Process"]</h2></div>
+    <div class="grid g3">
+
+      <div class="card fcard"><div><span class="ico plain">@Icons.Svg("clipboard")</span><h3>@L["Product Inspections"]</h3><p>@L["Plan and conduct PPI, DPI and PST with customised checklists, capture photos and record findings on web or mobile."]</p>
+        <ul class="ticks"><li>@L["Pre-Production Inspection (PPI)"]</li><li>@L["During Production Inspection (DPI)"]</li><li>@L["Pre-Shipment Inspection (PST)"]</li><li>@L["Customised checklists"]</li><li>@L["Photo & annotation"]</li><li>@L["Offline mobile app"]</li></ul></div>
+        <div class="fv"><img src="/img/photos/feat-inspection.jpg" alt="" loading="lazy" /></div></div>
+
+      <div class="card fcard"><div><span class="ico plain">@Icons.Svg("container")</span><h3>@L["Loading Container Check (CLC)"]</h3><p>@L["Manage container loading inspections, verify packing quantity and container condition to ensure products are shipped correctly."]</p>
+        <ul class="ticks"><li>@L["Container loading checklist"]</li><li>@L["Packing quantity verification"]</li><li>@L["Container condition check"]</li><li>@L["Photo documentation"]</li><li>@L["Seal number & report"]</li><li>@L["Available in Professional plan only"]</li></ul></div>
+        <div class="fv"><div style="text-align:right;margin-bottom:8px"><span class="tag solid">@L["Professional Only"]</span></div><img src="/img/photos/feat-clc.jpg" alt="" loading="lazy" /></div></div>
+
+      <div class="card fcard"><div><span class="ico plain">@Icons.Svg("users")</span><h3>@L["Supplier Management"]</h3><p>@L["Maintain supplier profiles, track performance and monitor quality issues for better supplier control."]</p>
+        <ul class="ticks"><li>@L["Supplier profiles"]</li><li>@L["Quality performance score"]</li><li>@L["Inspection history"]</li><li>@L["Defect trends"]</li><li>@L["Supplier documents"]</li></ul></div>
+        <div class="fv"><div class="mock-box"><div class="mt"><span></span><span class="tag solid" style="font-size:.62rem">+ @L["Add Supplier"]</span></div>
+          <table><tr><th>@L["Name"]</th><th>@L["Country"]</th><th>@L["Score"]</th></tr>
+            @foreach (var (n, c, s, k) in new[] { ("A", "Vietnam", 92, "g"), ("B", "China", 85, "a"), ("C", "Malaysia", 78, "a"), ("D", "Indonesia", 65, "r"), ("E", "Thailand", 88, "g") })
+            { <tr><td>@L["Supplier"] @n</td><td>@L[c]</td><td><span class="chip @k">@s</span></td></tr> }
+          </table></div></div></div>
+
+      <div class="card fcard"><div><span class="ico plain">@Icons.Svg("alert")</span><h3>@L["Defect Management"]</h3><p>@L["Record, categorise and track defects with photos and root cause information."]</p>
+        <ul class="ticks"><li>@L["Defect classification"]</li><li>@L["Critical / Major / Minor"]</li><li>@L["Photo & annotation"]</li><li>@L["Defect trend analysis"]</li><li>@L["Link to CAPA"]</li><li>@L["Export to reports"]</li></ul></div>
+        <div class="fv"><div class="mock-box"><div class="mt">@L["Defect Details"]</div>
+          <div class="lbl">@L["Defect Type"]</div><div class="inp">@L["Appearance"] ▾</div>
+          <div class="lbl">@L["Severity"]</div><div class="sev"><span class="on">@L["Critical"]</span><span>@L["Major"]</span><span>@L["Minor"]</span></div>
+          <div class="ph"></div><div class="lbl">@L["Remark"]</div><div class="inp" style="height:26px"></div></div></div></div>
+
+      <div class="card fcard"><div><span class="ico plain">@Icons.Svg("doc")</span><h3>@L["CAPA Management"]</h3><p>@L["Manage corrective and preventive actions from issue identification to closure."]</p>
+        <ul class="ticks"><li>@L["Auto-open CAPA (1 Critical, 3 Major, 10 Minor)"]</li><li>@L["Assign and track actions"]</li><li>@L["Responsible person & due date"]</li><li>@L["Status monitoring"]</li><li>@L["Effectiveness verification"]</li></ul></div>
+        <div class="fv"><div class="mock-box"><div class="mt">@L["CAPA List"]<span class="tag solid" style="font-size:.6rem">+ @L["New CAPA"]</span></div>
+          <div class="tabs"><span class="on">@L["Open"] (12)</span><span>@L["In Progress"] (8)</span><span>@L["Closed"] (45)</span></div>
+          <table><tr><th>@L["CAPA No."]</th><th>@L["Status"]</th></tr>
+            @foreach (var (n, s, k) in new[] { ("001", "Open", "lt-r"), ("002", "In Progress", "lt-a"), ("003", "In Progress", "lt-a"), ("004", "Closed", "lt-g") })
+            { <tr><td>CAPA-@n</td><td><span class="chip @k">@L[s]</span></td></tr> }
+          </table></div></div></div>
+
+      <div class="card fcard"><div><span class="ico plain">@Icons.Svg("barchart")</span><h3>@L["Quality Analytics Dashboard"]</h3><p>@L["Get real-time insights with visual dashboards to monitor quality performance and trends."]</p>
+        <ul class="ticks"><li>@L["Pass rate & defect rate"]</li><li>@L["Inspections by type"]</li><li>@L["Top defects"]</li><li>@L["Supplier performance"]</li><li>@L["Quality trends"]</li><li>@L["Customisable date range"]</li></ul></div>
+        <div class="fv" style="display:grid;gap:8px">
+          <div class="mock-box"><div class="mt">@L["Pass Rate"]<span style="color:var(--green);font-size:1rem">96.1%</span></div>
+            <svg class="spark" viewBox="0 0 160 50" preserveAspectRatio="none" style="height:40px"><polyline points="4,40 30,34 54,30 80,26 104,22 130,18 156,8" fill="none" stroke="#1565f0" stroke-width="2"/></svg></div>
+          <div class="mock-box"><div class="mt">@L["Top Defects"]</div>
+            <div style="display:flex;gap:8px;align-items:center">
+              <svg viewBox="0 0 42 42" width="64" height="64"><circle r="15.9" cx="21" cy="21" fill="none" stroke="#1565f0" stroke-width="7" stroke-dasharray="35 65" stroke-dashoffset="25"/><circle r="15.9" cx="21" cy="21" fill="none" stroke="#10b981" stroke-width="7" stroke-dasharray="25 75" stroke-dashoffset="90"/><circle r="15.9" cx="21" cy="21" fill="none" stroke="#f59e0b" stroke-width="7" stroke-dasharray="20 80" stroke-dashoffset="65"/><circle r="15.9" cx="21" cy="21" fill="none" stroke="#ef4444" stroke-width="7" stroke-dasharray="12 88" stroke-dashoffset="45"/><circle r="15.9" cx="21" cy="21" fill="none" stroke="#94a3b8" stroke-width="7" stroke-dasharray="8 92" stroke-dashoffset="33"/><text x="21" y="20" text-anchor="middle" font-size="5" fill="#0c1d4f">Total</text><text x="21" y="26" text-anchor="middle" font-size="6" font-weight="700" fill="#0c1d4f">245</text></svg>
+              <div style="font-size:.62rem;line-height:1.6">@foreach (var (n, c) in new[] { ("Appearance", "#1565f0"), ("Dimension", "#10b981"), ("Functionality", "#f59e0b"), ("Packaging", "#ef4444"), ("Others", "#94a3b8") }) { <div><i class="dot" style="background:@c;width:7px;height:7px;border-radius:50%;display:inline-block;margin-right:4px"></i>@L[n]</div> }</div>
+            </div></div>
+        </div></div>
+
+      <div class="card fcard"><div><span class="ico plain">@Icons.Svg("usershield")</span><h3>@L["User & Permission Control"]</h3><p>@L["Control what each user can see and do with role-based permissions."]</p>
+        <ul class="ticks"><li>@L["View Only / Create / Edit / Delete"]</li><li>@L["Control by module"]</li><li>@L["Dashboard access control"]</li><li>@L["Multi-level user roles"]</li><li>@L["Secure and independent company accounts"]</li></ul></div>
+        <div class="fv"><div class="mock-box"><div class="mt">@L["User Permissions"]<span>×</span></div>
+          <table><tr><th>@L["Module"]</th><th>@L["View"]</th><th>@L["Create"]</th><th>@L["Edit"]</th><th>@L["Delete"]</th></tr>
+            @foreach (var (m, bits) in new[] { ("Job Request", "0110"), ("Inspection", "1110"), ("Loading CLC", "1111"), ("Suppliers", "1100"), ("CAPA", "1100"), ("Reports", "1000"), ("Dashboard", "1000") })
+            { <tr><td>@L[m]</td>@foreach (var b in bits) { <td><span class="cb @(b == '1' ? "on" : "")"></span></td> }</tr> }
+          </table></div></div></div>
+
+      <div class="card fcard"><div><span class="ico plain">@Icons.Svg("globe")</span><h3>@L["Multi-language Support"]</h3><p>@L["Support 4 languages for global teams, buyers and factory users."]</p>
+        <ul class="ticks"><li>English</li><li>Chinese (中文)</li><li>Vietnamese (Tiếng Việt)</li><li>Bahasa Melayu</li></ul></div>
+        <div class="fv"><div class="lang-mock" style="width:auto"><div class="t">@Icons.Svg("globe", 18) @Ui.Short(L.Lang) @Icons.Svg("chevron", 14)</div>
+          @foreach (var l in LocalizationStore.Supported) { <div class="i">@Ui.Flag(l) @LocalizationStore.Meta[l].Native</div> }</div></div></div>
+
+      <div class="card fcard"><div><span class="ico plain">@Icons.Svg("cloud")</span><h3>@L["Secure & Independent Company Accounts"]</h3><p>@L["Each company has its own secure and independent account. Your data is separated and protected."]</p>
+        <ul class="ticks"><li>@L["Data separation between companies"]</li><li>@L["Role-based access control"]</li><li>@L["Enterprise-grade cloud security"]</li><li>@L["Regular data backup"]</li><li>@L["Your data is your company's"]</li></ul></div>
+        <div class="fv shield"><svg viewBox="0 0 100 110"><defs><linearGradient id="sg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#3b82f6"/><stop offset="1" stop-color="#1d4ed8"/></linearGradient></defs><path d="M50 4l40 14v30c0 28-18 48-40 58C28 96 10 76 10 48V18z" fill="url(#sg)"/><path d="M50 14l30 10v24c0 21-13 37-30 45-17-8-30-24-30-45V24z" fill="#60a5fa" opacity=".35"/><rect x="34" y="50" width="32" height="26" rx="4" fill="#fff"/><path d="M40 50v-8a10 10 0 0 1 20 0v8" fill="none" stroke="#fff" stroke-width="5"/><circle cx="50" cy="61" r="3.5" fill="#1d4ed8"/><rect x="48.5" y="62" width="3" height="7" rx="1" fill="#1d4ed8"/></svg></div></div>
+
+    </div>
+  </div>
+</section>
+
+<section class="sec alt tight">
+  <div class="wrap">
+    <div class="sec-left"><span class="eyebrow">@L["Additional Features"]</span></div>
+    <div class="grid g7">
+      @foreach (var (ic, t, d) in new[] {
+        ("doc", "Inspection Scheduling", "Set inspection schedules with email templates and reminders."),
+        ("settings", "Performance Test", "Manage product performance tests and results."),
+        ("barchart", "Performance Review", "Review inspector and supplier performance."),
+        ("folder", "Directory Management", "Manage customers, vendors, inspectors and product profiles."),
+        ("receipt", "Inspection Reports", "Professional reports with photos and findings."),
+        ("api", "API Integration (Professional)", "Connect with your existing systems via API."),
+        ("settings", "System Settings", "Configure AQL, defect thresholds, inspection templates and more.") })
+      {
+        <div class="card addf"><span class="ico plain">@Icons.Svg(ic)</span><h3>@L[t]</h3><p class="muted">@L[d]</p></div>
+      }
+    </div>
+    <div class="center" style="margin-top:30px"><a class="btn lg" href="/register">@L["Register & Subscribe"] →</a></div>
+  </div>
+</section>

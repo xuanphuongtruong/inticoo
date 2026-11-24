@@ -1,0 +1,40 @@
+@* Donut chart SVG — các phần nối tiếp chính xác, không còn khe/phần xám khi đã có dữ liệu.
+   Không có dữ liệu (tổng = 0) → vòng xám. *@
+
+<svg viewBox="0 0 100 100" class="@CssClass" style="@Style">
+    <circle cx="50" cy="50" r="@F(R)" fill="none" stroke="#e5e7eb" stroke-width="@F(Thickness)" />
+    @if (_total > 0)
+    {
+        double offset = 0;
+        foreach (var seg in Segments.Where(s => s.Value > 0))
+        {
+            var len = seg.Value / _total * C;
+            <circle cx="50" cy="50" r="@F(R)" fill="none" stroke="@seg.Color" stroke-width="@F(Thickness)"
+                    stroke-dasharray="@F(len) @F(C - len)" stroke-dashoffset="@F(-offset)"
+                    transform="rotate(-90 50 50)" />
+            offset += len;
+        }
+    }
+    <text x="50" y="@(HasValue ? 46 : 53)" text-anchor="middle" font-size="@(HasValue ? 9 : 8)" font-weight="@(HasValue ? "bold" : "normal")" fill="@TitleColor">@Title</text>
+    <text x="50" y="59" text-anchor="middle" font-size="11" font-weight="bold" fill="@TitleColor">@Value</text>
+</svg>
+
+@code {
+    public record Segment(double Value, string Color);
+
+    [Parameter] public List<Segment> Segments { get; set; } = new();
+    [Parameter] public string? Title { get; set; }
+    [Parameter] public string? Value { get; set; }
+    [Parameter] public string TitleColor { get; set; } = "#16a34a";
+    [Parameter] public string? CssClass { get; set; }
+    [Parameter] public string? Style { get; set; }
+    [Parameter] public double Thickness { get; set; } = 22;
+
+    // Bán kính tính theo độ dày nét để vòng ngoài nằm trọn trong viewBox 100×100 (trước đây r=40 + nét 22 → tràn, bị cắt thành "không tròn")
+    double R => Math.Max(10, 49.5 - Thickness / 2);
+    double C => 2 * Math.PI * R;
+    bool HasValue => !string.IsNullOrEmpty(Value);
+    double _total => Segments.Where(s => s.Value > 0).Sum(s => s.Value);
+
+    static string F(double v) => v.ToString("0.###", System.Globalization.CultureInfo.InvariantCulture);
+}

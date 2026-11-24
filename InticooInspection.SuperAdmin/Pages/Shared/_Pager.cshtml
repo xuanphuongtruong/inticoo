@@ -1,0 +1,28 @@
+@model PagerInfo
+@{
+    var req = ViewContext.HttpContext.Request;
+    string U(int p) => AdminUi.Qs(req, ("page", p == 1 ? null : p.ToString()));
+    var pages = Model.Pages; var cur = Model.Page;
+    var list = new List<int>();
+    for (var p = 1; p <= pages; p++) if (p <= 3 || p > pages - 1 || Math.Abs(p - cur) <= 1) list.Add(p);
+}
+<div class="pager">
+  <span>Showing @Model.From to @Model.To of @Model.Total</span>
+  <div class="pg">
+    <a class="@(cur <= 1 ? "dis" : "")" href="@U(cur - 1)">‹</a>
+    @{ var prev = 0; }
+    @foreach (var p in list)
+    {
+        if (p - prev > 1) { <span class="dots">…</span> }
+        if (p == cur) { <span class="cur">@p</span> } else { <a href="@U(p)">@p</a> }
+        prev = p;
+    }
+    <a class="@(cur >= pages ? "dis" : "")" href="@U(cur + 1)">›</a>
+  </div>
+  <form method="get" style="margin:0">
+    @foreach (var kv in req.Query.Where(k => k.Key != "size" && k.Key != "page")) { <input type="hidden" name="@kv.Key" value="@kv.Value" /> }
+    <select name="size" data-autosubmit style="height:32px;border:1px solid var(--line);border-radius:7px;padding:0 6px">
+      @foreach (var s in AdminPageModel.PageSizes) { <option value="@s" selected="@(s == Model.PageSize)">@s / page</option> }
+    </select>
+  </form>
+</div>

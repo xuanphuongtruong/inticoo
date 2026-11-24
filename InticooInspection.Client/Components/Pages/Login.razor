@@ -6,10 +6,15 @@
 @inject NavigationManager Navigation
 @inject AuthenticationStateProvider AuthStateProvider
 @inject Blazored.LocalStorage.ILocalStorageService LocalStorage
+@inherits LocalizedComponentBase
 
-<PageTitle>Sign In - Inticoo Inspection</PageTitle>
+<PageTitle>@T("Login.PageTitle")</PageTitle>
 
 <div class="login-page">
+    <div class="login-lang">
+        <LanguagePicker Variant="light" OnSelected="_ => _languagePicked = true" />
+    </div>
+
     <div class="login-shell">
         <div class="brand-block">
             <div class="brand-logo-wrap">
@@ -20,7 +25,7 @@
 
         <div class="login-card">
             <div class="card-header">
-                <div class="card-title">Login</div>
+                <div class="card-title">@T("Login.Title")</div>
                 <div class="card-line"></div>
             </div>
 
@@ -36,7 +41,7 @@
 
             <div class="form-body">
                 <div class="field-group">
-                    <label class="field-label" for="username">Username</label>
+                    <label class="field-label" for="username">@T("Login.Username")</label>
                     <div class="input-box">
                         <div class="input-icon-box" aria-hidden="true">
                             <svg viewBox="0 0 24 24" class="input-icon">
@@ -46,7 +51,7 @@
                         <input id="username"
                                type="text"
                                class="login-input"
-                               placeholder="Enter your username"
+                               placeholder="@T("Login.UsernamePlaceholder")"
                                @bind="_username"
                                @bind:event="oninput"
                                @onkeydown="HandleKeyDown" />
@@ -54,7 +59,7 @@
                 </div>
 
                 <div class="field-group">
-                    <label class="field-label" for="password">Password</label>
+                    <label class="field-label" for="password">@T("Login.Password")</label>
                     <div class="input-box password-box">
                         <div class="input-icon-box" aria-hidden="true">
                             <svg viewBox="0 0 24 24" class="input-icon">
@@ -64,12 +69,12 @@
                         <input id="password"
                                type="@(_showPwd ? "text" : "password")"
                                class="login-input password-input"
-                               placeholder="Enter your password"
+                               placeholder="@T("Login.PasswordPlaceholder")"
                                @bind="_password"
                                @bind:event="oninput"
                                @onkeydown="HandleKeyDown" />
 
-                        <button type="button" class="toggle-password" @onclick="TogglePassword" aria-label="Show or hide password">
+                        <button type="button" class="toggle-password" @onclick="TogglePassword" aria-label="@T("Login.ShowHidePassword")">
                             @if (_showPwd)
                             {
                                 <svg viewBox="0 0 24 24" class="eye-icon">
@@ -86,6 +91,23 @@
                     </div>
                 </div>
 
+                @if (_companies.Count > 1)
+                {
+                    <div class="field-group">
+                        <label class="field-label" for="company">@T("Login.Company")</label>
+                        <div class="company-hint">@T("Login.ChooseCompany")</div>
+                        <div class="company-list" id="company">
+                            @foreach (var c in _companies)
+                            {
+                                <label class="company-opt @(_companyCode == c.Code ? "on" : "")">
+                                    <input type="radio" name="company" checked="@(_companyCode == c.Code)" @onchange="() => _companyCode = c.Code" />
+                                    <span>@c.Name</span>
+                                </label>
+                            }
+                        </div>
+                    </div>
+                }
+
                 <label class="remember-row">
                     <input type="checkbox" @bind="_rememberMe" />
                     <span class="remember-custom">
@@ -96,17 +118,17 @@
                             </svg>
                         }
                     </span>
-                    <span class="remember-text">Remember me</span>
+                    <span class="remember-text">@T("Login.RememberMe")</span>
                 </label>
 
                 <button class="submit-btn" @onclick="HandleLogin" disabled="@_isLoading">
                     @if (_isLoading)
                     {
-                        <span>Signing in...</span>
+                        <span>@T("Login.Submitting")</span>
                     }
                     else
                     {
-                        <span>Login</span>
+                        <span>@T("Login.Submit")</span>
                     }
                 </button>
             </div>
@@ -118,9 +140,15 @@
     private string _username = string.Empty;
     private string _password = string.Empty;
     private bool _rememberMe;
+    private bool _languagePicked;   // chủ động chọn ngôn ngữ tại màn này → lưu vào tài khoản khi đăng nhập
     private bool _showPwd;
     private bool _isLoading;
-    private string _errorMessage = string.Empty;
+    // Tài khoản có ở nhiều công ty → danh sách để chọn (rỗng = bình thường)
+    private List<CompanyOptionDto> _companies = new();
+    private string? _companyCode;
+    // Lưu dạng hàm để thông báo lỗi đang hiện cũng đổi theo khi chuyển ngôn ngữ
+    private Func<string>? _error;
+    private string _errorMessage => _error?.Invoke() ?? string.Empty;
 
     protected override async Task OnInitializedAsync()
     {
@@ -143,11 +171,11 @@
 
     private async Task HandleLogin()
     {
-        _errorMessage = string.Empty;
+        _error = null;
 
         if (string.IsNullOrWhiteSpace(_username) || string.IsNullOrWhiteSpace(_password))
         {
-            _errorMessage = "Please enter username and password.";
+            _error = () => T("Login.Error.Required");
             return;
         }
 
@@ -159,8 +187,20 @@
             {
                 Username = _username.Trim(),
                 Password = _password,
-                RememberMe = _rememberMe
+                RememberMe = _rememberMe,
+                Language   = _languagePicked ? L.CurrentCode : null,
+                CompanyCode = _companies.Count > 1 ? _companyCode : null
             });
+
+            if (result.NeedCompany && result.Companies.Count > 1)
+            {
+                // Giữ mật khẩu đã nhập, chỉ yêu cầu chọn công ty rồi bấm đăng nhập lại
+                _companies = result.Companies;
+                _companyCode ??= _companies[0].Code;
+                if (!_companies.Any(c => c.Code == _companyCode)) _companyCode = _companies[0].Code;
+                _error = null;   // dòng gợi ý dưới nhãn "Công ty" đã nói rõ, không hiện thêm hộp lỗi
+                return;
+            }
 
             if (result.Success)
             {
@@ -174,6 +214,7 @@
             }
 
             _password = string.Empty;
+            _companies = new(); _companyCode = null;
             // Parse message từ JSON nếu server trả về raw JSON string
             var rawMsg = result.Message ?? "Invalid username or password.";
             try
@@ -186,12 +227,26 @@
                 }
             }
             catch { }
-            _errorMessage = rawMsg;
+            _error = () => TranslateServerMessage(rawMsg);
         }
         finally
         {
             _isLoading = false;
         }
+    }
+
+    // API trả câu tiếng Anh cố định → map sang key để hiển thị đúng ngôn ngữ đã chọn
+    private string TranslateServerMessage(string msg)
+    {
+        var m = msg.Trim();
+        if (m == "LOCKED") return T("Login.Error.Locked");
+        if (m == "Invalid username or password.") return T("Login.Error.Invalid");
+        if (m.Contains("Account will be locked on next attempt")) return T("Login.Error.LastAttempt");
+        var rem = System.Text.RegularExpressions.Regex.Match(m, @"(\d+) attempt\(s\) remaining");
+        if (rem.Success) return T("Login.Error.Remaining", rem.Groups[1].Value);
+        if (m == "Username and password are required.") return T("Login.Error.Required");
+        if (m.StartsWith("Your company account is not active")) return T("Login.Error.CompanyInactive");
+        return msg;
     }
 
     private async Task HandleKeyDown(KeyboardEventArgs e)
@@ -227,6 +282,13 @@
             radial-gradient(circle at top left, rgba(71, 166, 255, 0.18), transparent 28%),
             radial-gradient(circle at bottom right, rgba(17, 92, 210, 0.10), transparent 24%),
             linear-gradient(180deg, #f7fbff 0%, #eef5fc 100%);
+    }
+
+    .login-lang {
+        position: fixed;
+        top: 16px;
+        right: 18px;
+        z-index: 5;
     }
 
     .login-shell {
@@ -415,6 +477,37 @@
         fill: currentColor;
     }
 
+    .company-hint {
+        font-size: 13px;
+        color: #4a6d9c;
+    }
+
+    .company-list {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .company-opt {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        min-height: 48px;
+        padding: 0 14px;
+        border: 2px solid #c7d9ee;
+        border-radius: 14px;
+        background: #fff;
+        cursor: pointer;
+        font-size: 16px;
+        font-weight: 600;
+        color: #1c3761;
+    }
+
+    .company-opt.on {
+        border-color: #3498ff;
+        box-shadow: 0 0 0 4px rgba(52, 152, 255, 0.12);
+    }
+
     .remember-row {
         display: inline-flex;
         align-items: center;
@@ -504,8 +597,13 @@
 
     @@media (max-width: 520px) {
         .login-page {
-            padding: 22px 14px;
+            padding: 70px 14px 22px;
             align-items: flex-start;
+        }
+
+        .login-lang {
+            top: calc(12px + env(safe-area-inset-top));
+            right: 14px;
         }
 
         .brand-block {

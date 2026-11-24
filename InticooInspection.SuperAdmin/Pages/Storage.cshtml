@@ -1,0 +1,82 @@
+@page
+@model StorageModel
+@inject SettingsService Settings
+@{
+    ViewData["Title"] = "Storage"; ViewData["Sub"] = "Storage used by each company (own database + uploaded files) against the quota of its plan.";
+    var P = Model.P; var U = Model.U;
+    var capPct = P.CapacityGb > 0 ? P.UsedGb / P.CapacityGb * 100 : 0;
+    var diskUsedPct = P.DiskTotalGb > 0 ? (P.DiskTotalGb - P.DiskFreeGb) / P.DiskTotalGb * 100 : 0;
+    var trendVals = Model.Trend.Select(t => (decimal)t.Gb).ToList();
+    string F(string? f) => Model.Filter == f ? "on" : "";
+    string Bar(double pct) => pct >= 100 ? "#ef4444" : pct >= U.WarnPercent ? "#f59e0b" : "#1666f0";
+}
+<div class="kpis">
+  <div class="kpi"><span class="ic b">@Icons.Svg("cloud", 24)</span><div><small>Storage Used (all companies)</small><strong>@UsageReportService.Size(P.UsedGb)</strong>
+    <div class="sub">of @UsageReportService.Size(P.AllocatedGb) allocated in active plans</div></div></div>
+  <div class="kpi"><span class="ic p">@Icons.Svg("layers", 24)</span><div><small>Platform Capacity</small><strong>@(P.CapacityGb > 0 ? UsageReportService.Size(P.CapacityGb) : "—")</strong>
+    <div class="sub">@(P.CapacityGb > 0 ? AdminUi.Pct(capPct) + " used" : "Waiting for the first measurement")</div></div></div>
+  <div class="kpi"><span class="ic r">@Icons.Svg("alert", 24)</span><div><small>Over Plan Limit</small><strong>@(P.OverStorage + P.OverUsers)</strong>
+    <div class="sub">@P.OverStorage storage · @P.OverUsers users · @P.NearLimit above @U.WarnPercent%</div></div></div>
+  <div class="kpi"><span class="ic g">@Icons.Svg("users", 24)</span><div><small>Tenants · Users</small><strong>@P.ActiveTenants <span style="font-size:1rem;color:var(--muted)">/ @P.Tenants</span></strong>
+    <div class="sub">@P.ActiveUsers active users of @P.TotalUsers</div></div></div>
+</div>
+
+<div class="cols c-l">
+  <div class="panel"><h3>Total Storage <small>(last 90 days)</small></h3>
+    @if (trendVals.Count >= 2)
+    {
+      <svg class="line" viewBox="0 0 400 150" preserveAspectRatio="none"><polyline fill="none" stroke="#1666f0" stroke-width="2.5" points="@AdminUi.LinePoints(trendVals)" /></svg>
+      <div class="chart-lbl"><span>@AdminUi.D(Model.Trend.First().Day)</span><span>@UsageReportService.Size(Model.Trend.Last().Gb)</span><span>@AdminUi.D(Model.Trend.Last().Day)</span></div>
+    }
+    else { <p class="muted" style="padding:30px 0;text-align:center">The chart appears after the API has measured on at least two different days.</p> }
+  </div>
+  <div class="panel"><h3>Server Disk <small>(where uploaded files are stored)</small></h3>
+    @if (P.DiskMeasuredAt == null) { <p class="muted">No disk measurement yet.</p> }
+    else
+    {
+      <dl class="dl"><dt>Server</dt><dd>@P.DiskHost (@P.DiskDrive)</dd><dt>Disk size</dt><dd>@UsageReportService.Size(P.DiskTotalGb)</dd>
+        <dt>Free</dt><dd>@UsageReportService.Size(P.DiskFreeGb)</dd><dt>Uploaded files</dt><dd>@UsageReportService.Size(P.UploadsGb)</dd>
+        @if (P.ExternalGb > 0) { <dt>External capacity</dt><dd>@UsageReportService.Size(P.ExternalGb) <span class="muted">(Settings)</span></dd> }
+        <dt>Measured</dt><dd>@AdminUi.DT(P.DiskMeasuredAt)</dd></dl>
+      <div class="bar"><i style="width:@AdminUi.Num(Math.Min(100, diskUsedPct))%;background:@Bar(diskUsedPct)"></i></div>
+      <div class="muted" style="font-size:.78rem;margin-top:4px">@AdminUi.Pct(diskUsedPct) of the disk in use</div>
+    }
+  </div>
+</div>
+
+<div class="panel">
+  <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
+    <div class="tabs" style="margin:0;border:0">
+      <a class="@F(null)" href="?">All</a><a class="@F("over")" href="?filter=over">Over limit</a><a class="@F("near")" href="?filter=near">Near limit (≥ @U.WarnPercent%)</a><a class="@F("inactive")" href="?filter=inactive">Inactive @U.InactiveDays+ days</a>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center">
+      <span class="muted" style="font-size:.8rem">Last measured: @(P.LastRunAt == null ? "never" : AdminUi.DT(P.LastRunAt))@if (Model.MeasurePending) { <b style="color:#b45309"> · measurement requested</b> }</span>
+      <form method="post" asp-page-handler="Measure"><input type="hidden" name="filter" value="@Model.Filter" /><button class="btn pri">@Icons.Svg("trend", 15) Measure now</button></form>
+      <a class="btn" href="?handler=Export">@Icons.Svg("download", 15) Export</a>
+    </div>
+  </div>
+  <div class="tbl-wrap" style="margin-top:10px"><table class="t"><thead><tr><th>Company</th><th>Plan</th><th class="num">Database</th><th class="num">Files</th><th class="num">Total</th><th class="num">Quota</th><th style="width:170px">Storage</th><th class="num">30-day growth</th><th>Full in</th><th style="width:140px">Users</th><th>Last activity</th><th>Measured</th></tr></thead><tbody>
+  @foreach (var r in Model.Rows)
+  {
+    var sp = r.StoragePct; var up = r.UserPct;
+    <tr>
+      <td style="white-space:normal">@if (r.IsLegacy) { <b>@r.Name</b> } else { <a href="/companies?id=@r.CompanyId">@r.Name</a> }
+        @if (r.Overridden) { <span class="pill purple" title="Limits not enforced until @AdminUi.D(r.LimitOverrideUntil)">Override</span> }
+        @if (r.IsDemo) { <span class="pill grey">Demo</span> }</td>
+      <td>@(r.Plan == "" ? "-" : r.Plan)</td>
+      <td class="num">@UsageReportService.Size(r.DbGb)</td>
+      <td class="num">@UsageReportService.Size(r.FilesGb) <div class="muted" style="font-size:.72rem">@r.FileCount.ToString("N0") files</div></td>
+      <td class="num"><b>@UsageReportService.Size(r.UsedGb)</b></td>
+      <td class="num">@(r.QuotaGb > 0 ? r.QuotaGb + " GB" : "—")</td>
+      <td>@if (r.QuotaGb > 0) { <div style="display:flex;gap:6px;align-items:center"><div class="bar"><i style="width:@AdminUi.Num(Math.Min(100, sp))%;background:@Bar(sp)"></i></div><span>@AdminUi.Pct(sp)</span></div> } else { <span class="muted">no quota</span> }</td>
+      <td class="num">@(r.Growth30Gb == 0 ? "—" : (r.Growth30Gb > 0 ? "+" : "") + UsageReportService.Size(Math.Abs(r.Growth30Gb)))</td>
+      <td>@(r.DaysToFull is int d ? (d == 0 ? "full" : d > 3650 ? "> 10 years" : d + " days") : "—")</td>
+      <td>@if (r.MaxUsers > 0) { <div style="display:flex;gap:6px;align-items:center"><div class="bar"><i style="width:@AdminUi.Num(Math.Min(100, up))%;background:@Bar(up)"></i></div><span>@r.ActiveUsers/@r.MaxUsers</span></div> } else { <span>@r.ActiveUsers</span> }</td>
+      <td>@(r.LastActivityAt == null ? "-" : AdminUi.D(r.LastActivityAt))@if (!r.IsLegacy && U.IsInactive(r)) { <span class="pill amber">Inactive</span> }</td>
+      <td>@AdminUi.D(r.MeasuredAt)</td>
+    </tr>
+  }
+  @if (Model.Rows.Count == 0) { <tr><td colspan="12" class="muted" style="padding:20px;text-align:center">No companies.</td></tr> }
+  </tbody></table></div>
+  <p class="muted" style="font-size:.78rem;margin-top:10px">Figures are measured by the Inticoo API every @(await Settings.GetIntAsync("usage.intervalHours", 6)) hours (Settings › General › Usage &amp; Limits). Database = the company's own SQL database (data + log); Files = photos and documents uploaded in the app. Warning threshold and inactivity period are set in Settings.</p>
+</div>

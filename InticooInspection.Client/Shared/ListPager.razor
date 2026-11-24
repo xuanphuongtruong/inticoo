@@ -1,0 +1,52 @@
+@inherits LocalizedComponentBase
+@* Thanh phân trang dùng chung cho các danh sách: "Showing a–b of N …", chọn số dòng/trang, nút trang. *@
+
+@if (Total > 0)
+{
+    <div class="pagination lp-pager">
+        <span class="page-info">@T("Pager.Showing", (Page - 1) * PageSize + 1, Math.Min(Page * PageSize, Total), Total, Noun)</span>
+        <div class="lp-pager-right">
+            <select class="lp-perpage" value="@PageSize" @onchange="OnSize">
+                @foreach (var n in Sizes) { <option value="@n">@T("Pager.PerPage", n)</option> }
+            </select>
+            @if (Total > PageSize)
+            {
+                <button type="button" class="page-btn pg" disabled="@(Page <= 1)" @onclick="() => Go(Page - 1)">&lsaquo;</button>
+                @foreach (var n in Numbers())
+                {
+                    var pn = n;
+                    @if (pn == 0) { <span class="pg-dots">…</span> }
+                    else { <button type="button" class="page-btn pg @(pn == Page ? "on" : "")" @onclick="() => Go(pn)">@pn</button> }
+                }
+                <button type="button" class="page-btn pg" disabled="@(Page >= Pages)" @onclick="() => Go(Page + 1)">&rsaquo;</button>
+            }
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public int Total { get; set; }
+    [Parameter] public int Page { get; set; } = 1;
+    [Parameter] public int PageSize { get; set; } = 10;
+    /// <summary>Danh từ cuối câu "Showing … of N {Noun}" (đã dịch).</summary>
+    [Parameter] public string Noun { get; set; } = "";
+    [Parameter] public EventCallback<int> OnPage { get; set; }
+    [Parameter] public EventCallback<int> OnPageSize { get; set; }
+
+    private static readonly int[] Sizes = { 10, 20, 50, 100 };
+    private int Pages => Math.Max(1, (Total + PageSize - 1) / PageSize);
+
+    private Task Go(int p) => p < 1 || p > Pages ? Task.CompletedTask : OnPage.InvokeAsync(p);
+
+    private Task OnSize(ChangeEventArgs e) =>
+        int.TryParse(e.Value?.ToString(), out var n) && n > 0 ? OnPageSize.InvokeAsync(n) : Task.CompletedTask;
+
+    private List<int> Numbers()
+    {
+        var list = new List<int>();
+        for (int i = 1; i <= Pages; i++)
+            if (i == 1 || i == Pages || Math.Abs(i - Page) <= 1) list.Add(i);
+            else if (list.Count > 0 && list[^1] != 0) list.Add(0);
+        return list;
+    }
+}

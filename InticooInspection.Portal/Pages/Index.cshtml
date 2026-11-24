@@ -1,0 +1,81 @@
+@page
+@inject PortalDbContext Db
+@{
+    ViewData["Title"] = "";
+    var plans = await Db.Plans.AsNoTracking().Include(p => p.Modules).ThenInclude(m => m.Module).Where(p => p.IsActive).ToListAsync();
+}
+<section class="hero">
+  <div class="wrap">
+    <div>
+      <span class="eyebrow">@L["Inspection App"]</span>
+      <h1>@L["Simple Inspections. Better Quality."]</h1>
+      <p class="lead">@L["A powerful inspection platform to manage product inspections, loading container checks, suppliers, CAPA and quality data — built on more than 20 years of quality experience for US & European standards."]</p>
+      <div class="hero-actions">
+        <a class="btn lg" href="/register">@L["Start Free Trial"] →</a>
+        <a class="btn lg ghost" href="/features">@L["Explore Features"]</a>
+      </div>
+      <div class="badges">
+        <div class="badge-i"><span class="ico">@Icons.Svg("phone")</span><b>@L["Easy to Use"]</b>@L["Web & Mobile App"]</div>
+        <div class="badge-i"><span class="ico">@Icons.Svg("cloud")</span><b>@L["Secure Cloud"]</b>@L["Your data is protected"]</div>
+        <div class="badge-i"><span class="ico">@Icons.Svg("globe")</span><b>@L["Multi-language"]</b>EN / 中文 / Tiếng Việt / BM</div>
+        <div class="badge-i"><span class="ico">@Icons.Svg("headset")</span><b>@L["Professional Support"]</b>@L["We are here to help"]</div>
+      </div>
+    </div>
+    <partial name="_Mock" />
+  </div>
+</section>
+
+<section class="sec">
+  <div class="wrap">
+    <div class="sec-head"><span class="eyebrow">@L["Key Features"]</span><h2>@L["Everything You Need for Quality Management"]</h2><p>@L["From product inspection to container loading check — all in one platform."]</p></div>
+    <div class="grid g5">
+      <div class="card"><span class="ico">@Icons.Svg("clipboard")</span><h3>@L["Product Inspections"]</h3><p>@L["PPI, DPI and PST customised checklists, capture photos and record findings on web or mobile."]</p></div>
+      <div class="card"><span class="ico">@Icons.Svg("container")</span><h3>@L["Loading Container Check (CLC)"]</h3><p>@L["Manage container loading inspections, verify packing quantity and container condition."]</p></div>
+      <div class="card"><span class="ico">@Icons.Svg("users")</span><h3>@L["Supplier Management"]</h3><p>@L["Manage suppliers, track performance and monitor supplier quality."]</p></div>
+      <div class="card"><span class="ico">@Icons.Svg("shield")</span><h3>@L["CAPA Management"]</h3><p>@L["Record, track and manage corrective and preventive actions from issue to closure."]</p></div>
+      <div class="card"><span class="ico">@Icons.Svg("chart")</span><h3>@L["Quality Analytics"]</h3><p>@L["Real-time dashboards and reports to monitor quality performance and trends."]</p></div>
+    </div>
+  </div>
+</section>
+
+<section class="sec alt">
+  <div class="wrap">
+    <div class="sec-head"><span class="eyebrow">@L["Multi-language Support"]</span><h2>@L["4 Languages for Global Teams"]</h2><p>@L["Easy to switch between languages. Suitable for buyers, suppliers and factory teams."]</p></div>
+    <div class="grid g4">
+      <div class="card langs-card"><strong>English</strong><p>@L["For global customers and suppliers"]</p></div>
+      <div class="card langs-card"><strong>中文</strong><p>适合中国团队和供应商</p></div>
+      <div class="card langs-card"><strong>Tiếng Việt</strong><p>Phù hợp cho nhà máy và đội ngũ kiểm tra</p></div>
+      <div class="card langs-card"><strong>Bahasa Melayu</strong><p>Sesuai untuk pasukan tempatan dan rakan pembekal</p></div>
+    </div>
+  </div>
+</section>
+
+<section class="sec">
+  <div class="wrap">
+    <div class="sec-head"><span class="eyebrow">@L["How It Works"]</span><h2>@L["From Inspection to Action in 4 Simple Steps"]</h2></div>
+    <div class="grid g4 steps">
+      <div class="card step"><div class="num">1</div><h3>@L["Plan Inspection"]</h3><p>@L["Schedule and assign inspections to your team."]</p></div>
+      <div class="card step"><div class="num">2</div><h3>@L["Conduct Inspection"]</h3><p>@L["Use digital checklists, capture photos and record findings."]</p></div>
+      <div class="card step"><div class="num">3</div><h3>@L["Generate Report"]</h3><p>@L["Create professional reports with photos and results instantly."]</p></div>
+      <div class="card step"><div class="num">4</div><h3>@L["Follow Up with CAPA"]</h3><p>@L["Track corrective and preventive actions until closure."]</p></div>
+    </div>
+  </div>
+</section>
+
+<section class="sec alt">
+  <div class="wrap">
+    <div class="sec-head"><span class="eyebrow">@L["Built for Your Industry"]</span><h2>@L["Suitable for Furniture and Hardline Products"]</h2></div>
+    <div class="grid g6">
+      <div class="industry"><span>🪑</span>@L["Furniture"]</div><div class="industry"><span>🏠</span>@L["Home Goods"]</div>
+      <div class="industry"><span>🛍️</span>@L["Consumer Products"]</div><div class="industry"><span>🧸</span>@L["Toys & Children Products"]</div>
+      <div class="industry"><span>🎧</span>@L["Electronics"]</div><div class="industry"><span>📦</span>@L["Building Materials"]</div>
+    </div>
+  </div>
+</section>
+
+<section class="sec">
+  <div class="wrap">
+    <div class="sec-head"><span class="eyebrow">@L["Pricing"]</span><h2>@L["Flexible Plans for Every Business"]</h2><p>@L["Choose the plan that fits your needs. All plans include secure cloud storage, multi-language support and regular updates."]</p></div>
+    <partial name="_Plans" model="plans" />
+  </div>
+</section>

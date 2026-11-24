@@ -8,7 +8,7 @@ namespace InticooInspection.Infrastructure.Data
         public static async Task SeedAsync(UserManager<AppUser> userManager, RoleManager<IdentityRole> roleManager)
         {
             // T?o roles
-            string[] roles = { "Admin", "Inspector", "User" };
+            string[] roles = { "Admin", "Inspector", "User", "Customer", "QAQCManager", "Vendor", "Management", "CustomRole" };
             foreach (var role in roles)
             {
                 if (!await roleManager.RoleExistsAsync(role))

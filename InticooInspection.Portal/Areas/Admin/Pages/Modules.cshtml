@@ -1,0 +1,43 @@
+@page
+@model ModulesModel
+@{
+    ViewData["Title"] = "Modules"; ViewData["Sub"] = "Manage platform modules and assign module access for each company based on their subscription plan.";
+    var proPlan = Model.Plans.LastOrDefault();
+}
+<div class="kpis">
+  <div class="kpi"><span class="ic b">@Icons.Svg("grid", 24)</span><div><small>Total Modules</small><strong>@Model.Modules.Count</strong><div class="sub">Platform modules</div></div></div>
+  <div class="kpi"><span class="ic g">@Icons.Svg("building", 24)</span><div><small>Companies with Active Modules</small><strong>@Model.CompaniesWithModules</strong><div class="sub">of @Model.ActiveCompanies active companies</div></div></div>
+  <div class="kpi"><span class="ic p">@Icons.Svg("layers", 24)</span><div><small>Total Module Usage</small><strong>@AdminUi.Num(Model.AvgUsage)%</strong><div class="sub">Average usage rate</div></div></div>
+  <div class="kpi"><span class="ic a">@Icons.Svg("users", 24)</span><div><small>Companies using @(proPlan?.Name)</small><strong>@Model.ProCompanies</strong></div></div>
+</div>
+<div class="panel"><h3>Platform Modules</h3><p class="sub">Core modules available in the Inticoo platform and plan availability.</p>
+  <div class="cols" style="grid-template-columns:repeat(auto-fit,minmax(210px,1fr))">
+  @foreach (var m in Model.Modules)
+  {
+    <div class="mod-card">
+      <div class="ic" style="background:@m.Color">@Icons.Svg(m.Code switch { "inspection" => "clipboard", "capa" => "shield", "analytics" => "chart", "clc" => "container", _ => "link" }, 24)</div>
+      @if (Model.EditCode == m.Code)
+      {
+        <form method="post" asp-page-handler="Edit" class="f"><input type="hidden" name="code" value="@m.Code" /><input name="name" value="@m.Name" maxlength="100" style="margin-bottom:6px" /><textarea name="description" maxlength="300">@m.Description</textarea>
+          <div class="acts"><button class="btn pri sm">Save</button><a class="btn sm" href="/admin/modules">Cancel</a></div></form>
+      }
+      else
+      {
+        <h3 style="margin:0 0 4px">@m.Name</h3><p class="muted" style="min-height:54px">@m.Description</p>
+        <div class="muted" style="font-size:.8rem">Available in:</div>
+        @foreach (var p in Model.Plans) { <div class="check">@(Model.Matrix.Contains((p.Id, m.Id)) ? Icons.Svg("check", 15) : Icons.Svg("x", 15)) @p.Name</div> }
+        <a class="btn blk sm" style="margin-top:8px" href="?edit=@m.Code">@Icons.Svg("settings", 14) Configure</a>
+      }
+    </div>
+  }
+  </div></div>
+<div class="cols c-l">
+  <div class="panel"><h3>Module Access by Plan</h3><p class="sub">Tick the modules included in each subscription plan. Saving re-syncs the modules of every active company.</p>
+    <form method="post" asp-page-handler="Matrix"><div class="tbl-wrap"><table class="t"><thead><tr><th>Module</th>@foreach (var p in Model.Plans) { <th style="text-align:center">@p.Name<br /><span class="muted">@AdminUi.Money0(p.MonthlyPrice) / month</span></th> }</tr></thead><tbody>
+      @foreach (var m in Model.Modules) { <tr><td><i class="dot" style="background:@m.Color"></i>@m.Name</td>@foreach (var p in Model.Plans) { <td style="text-align:center"><input type="checkbox" name="cells" value="@p.Id:@m.Id" checked="@Model.Matrix.Contains((p.Id, m.Id))" /></td> }</tr> }
+      </tbody></table></div><button class="btn pri" style="margin-top:12px">Save access by plan</button></form></div>
+  <div class="panel"><h3>Module Usage <small>(active companies)</small></h3>
+    @foreach (var m in Model.Modules) { var n = Model.Usage[m.Code]; var pct = Model.ActiveCompanies == 0 ? 0 : 100.0 * n / Model.ActiveCompanies;
+      <div class="hbar"><span class="n" style="width:140px;font-size:.82rem">@m.Name</span><b style="width:30px">@n</b><div class="bar"><i style="width:@AdminUi.Num(pct)%;background:@m.Color"></i></div><span class="v" style="width:40px">@AdminUi.Num(pct)%</span></div> }
+    <p class="muted" style="font-size:.8rem;margin-top:12px">Module usage is based on active companies with the module enabled.</p></div>
+</div>

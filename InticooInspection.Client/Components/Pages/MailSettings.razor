@@ -6,23 +6,24 @@
 @inject HttpClient Http
 @inject Blazored.SessionStorage.ISessionStorageService SessionStorage
 @inject IJSRuntime JS
+@inherits LocalizedComponentBase
 
-<PageTitle>Mail Settings</PageTitle>
+<PageTitle>@T("MailSettings.MailSettings2")</PageTitle>
 
 <div class="container py-4">
     <div class="d-flex align-items-center justify-content-between mb-4">
-        <h3 class="mb-0">⚙️ Mail Settings</h3>
+        <h3 class="mb-0">@T("MailSettings.MailSettings")</h3>
         @if (model is not null)
         {
             <span class="badge @(model.FromDatabase ? "bg-success" : "bg-warning text-dark")">
-                @(model.FromDatabase ? "📦 From Database" : "🌐 From Environment Variables")
+                @(model.FromDatabase ? T("MailSettings.FromDatabase") : T("MailSettings.FromEnvironmentVariables"))
             </span>
         }
     </div>
 
     @if (model is null)
     {
-        <div class="card"><div class="card-body">Đang tải...</div></div>
+        <div class="card"><div class="card-body">@T("Common.Loading")</div></div>
     }
     else
     {
@@ -31,21 +32,21 @@
 
             @* ═════════════════════ SMTP CONFIG ═════════════════════ *@
             <div class="card mb-3">
-                <div class="card-header bg-light"><strong>📡 SMTP Server</strong></div>
+                <div class="card-header bg-light"><strong>@T("MailSettings.SMTPServer")</strong></div>
                 <div class="card-body">
                     <div class="row g-3">
                         <div class="col-md-8">
-                            <label class="form-label">SMTP Host</label>
+                            <label class="form-label">@T("MailSettings.SMTPHost")</label>
                             <input class="form-control" @bind="model.SmtpHost" placeholder="smtp.office365.com" />
                         </div>
                         <div class="col-md-2">
-                            <label class="form-label">Port</label>
+                            <label class="form-label">@T("MailSettings.Port")</label>
                             <input type="number" class="form-control" @bind="model.SmtpPort" />
                         </div>
                         <div class="col-md-2 d-flex align-items-end">
                             <div class="form-check form-switch mb-2">
                                 <input type="checkbox" class="form-check-input" id="useSsl" @bind="model.UseSsl" />
-                                <label class="form-check-label" for="useSsl">Use SSL/TLS</label>
+                                <label class="form-check-label" for="useSsl">@T("MailSettings.UseSSLTLS")</label>
                             </div>
                         </div>
                     </div>
@@ -54,31 +55,31 @@
 
             @* ═════════════════════ SENDER INFO ═════════════════════ *@
             <div class="card mb-3">
-                <div class="card-header bg-light"><strong>👤 Sender Information</strong></div>
+                <div class="card-header bg-light"><strong>@T("MailSettings.SenderInformation")</strong></div>
                 <div class="card-body">
                     <div class="row g-3">
                         <div class="col-md-6">
-                            <label class="form-label">Sender Email</label>
-                            <input class="form-control" @bind="model.SenderEmail" placeholder="no-reply@inticoo.com" />
+                            <label class="form-label">@T("MailSettings.SenderEmail")</label>
+                            <input class="form-control" @bind="model.SenderEmail" placeholder="@T("MailSettings.NoReplyInticooCom")" />
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label">Sender Name (hiển thị)</label>
+                            <label class="form-label">@T("MailSettings.SenderNameDisplay")</label>
                             <input class="form-control" @bind="model.SenderName" placeholder="Inticoo Inspection" />
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label">SMTP Username</label>
-                            <input class="form-control" @bind="model.Username" placeholder="no-reply@inticoo.com" />
+                            <label class="form-label">@T("MailSettings.SMTPUsername")</label>
+                            <input class="form-control" @bind="model.Username" placeholder="@T("MailSettings.NoReplyInticooCom")" />
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label">Password</label>
+                            <label class="form-label">@T("MailSettings.Password")</label>
                             <div class="form-control bg-light text-muted">
                                 @if (model.HasPassword)
                                 {
-                                    <span>🔒 Đã cấu hình trong Environment Variable Azure</span>
+                                    <span>@T("MailSettings.ConfiguredInAzureEnvironmentVariable")</span>
                                 }
                                 else
                                 {
-                                    <span class="text-danger">⚠️ CHƯA cấu hình - vào Azure App Service → Configuration → MailSettings__Password</span>
+                                    <span class="text-danger">@T("MailSettings.NOTConfiguredGoToAzureApp")</span>
                                 }
                             </div>
                         </div>
@@ -88,34 +89,34 @@
 
             @* ═════════════════════ SCHEDULE ═════════════════════ *@
             <div class="card mb-3">
-                <div class="card-header bg-light"><strong>🕐 Lịch gửi tự động</strong></div>
+                <div class="card-header bg-light"><strong>@T("MailSettings.AutomaticSendSchedule")</strong></div>
                 <div class="card-body">
                     <div class="row g-3 align-items-end">
                         <div class="col-md-3">
-                            <label class="form-label">Thứ trong tuần</label>
+                            <label class="form-label">@T("MailSettings.DayOfWeek")</label>
                             <select class="form-select" @bind="model.SendDayOfWeek">
-                                <option value="0">Chủ Nhật</option>
-                                <option value="1">Thứ Hai</option>
-                                <option value="2">Thứ Ba</option>
-                                <option value="3">Thứ Tư</option>
-                                <option value="4">Thứ Năm</option>
-                                <option value="5">Thứ Sáu</option>
-                                <option value="6">Thứ Bảy</option>
+                                <option value="0">@T("MailSettings.Sunday")</option>
+                                <option value="1">@T("MailSettings.Monday")</option>
+                                <option value="2">@T("MailSettings.Tuesday")</option>
+                                <option value="3">@T("MailSettings.Wednesday")</option>
+                                <option value="4">@T("MailSettings.Thursday")</option>
+                                <option value="5">@T("MailSettings.Friday")</option>
+                                <option value="6">@T("MailSettings.Saturday")</option>
                             </select>
                         </div>
                         <div class="col-md-2">
-                            <label class="form-label">Giờ (0-23)</label>
+                            <label class="form-label">@T("MailSettings.Hour023")</label>
                             <input type="number" min="0" max="23" class="form-control" @bind="model.SendHour" />
                         </div>
                         <div class="col-md-2">
-                            <label class="form-label">Phút (0-59)</label>
+                            <label class="form-label">@T("MailSettings.Minute059")</label>
                             <input type="number" min="0" max="59" class="form-control" @bind="model.SendMinute" />
                         </div>
                         <div class="col-md-2">
-                            <label class="form-label">Thông báo trước</label>
+                            <label class="form-label">@T("MailSettings.NotifyAhead")</label>
                             <div class="input-group">
                                 <input type="number" min="1" max="60" class="form-control" @bind="model.LookAheadDays" />
-                                <span class="input-group-text">ngày</span>
+                                <span class="input-group-text">@T("MailSettings.Days")</span>
                             </div>
                         </div>
                         <div class="col-md-3 d-flex align-items-end">
@@ -124,19 +125,18 @@
                                 <label class="form-check-label" for="enabled">
                                     @if (model.WeeklyJobEnabled)
                                     {
-                                        <strong class="text-success">Đang BẬT</strong>
+                                        <strong class="text-success">@T("MailSettings.ENABLED")</strong>
                                     }
                                     else
                                     {
-                                        <strong class="text-secondary">Đang TẮT</strong>
+                                        <strong class="text-secondary">@T("MailSettings.DISABLED")</strong>
                                     }
                                 </label>
                             </div>
                         </div>
                     </div>
                     <div class="alert alert-info mt-3 mb-0 small">
-                        💡 Job sẽ chạy vào <strong>@GetDayName(model.SendDayOfWeek) @model.SendHour.ToString("D2"):@model.SendMinute.ToString("D2") (giờ VN)</strong> hàng tuần,
-                        thông báo các inspection trong <strong>@model.LookAheadDays ngày tới</strong>.
+                        @T("MailSettings.JobRunsEvery") <strong>@GetDayName(model.SendDayOfWeek) @model.SendHour.ToString("D2"):@model.SendMinute.ToString("D2") @T("MailSettings.VietnamTime")</strong> @T("MailSettings.WeeklyNotifyingInspectionsIn") <strong>@T("MailSettings.NextNDays", model.LookAheadDays)</strong>.
                     </div>
                 </div>
             </div>
@@ -145,8 +145,8 @@
             @if (model.UpdatedAt.HasValue)
             {
                 <div class="alert alert-secondary small mb-3">
-                    Lần cập nhật gần nhất: <strong>@model.UpdatedAt.Value.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</strong>
-                    bởi <strong>@(model.UpdatedBy ?? "system")</strong>
+                    @T("MailSettings.LastUpdated") <strong>@model.UpdatedAt.Value.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</strong>
+                    @T("MailSettings.By") <strong>@(model.UpdatedBy ?? "system")</strong>
                 </div>
             }
 
@@ -154,13 +154,13 @@
             <div class="d-flex gap-2 flex-wrap mb-4">
                 <button type="submit" class="btn btn-primary" disabled="@busy">
                     @if (busy) { <span class="spinner-border spinner-border-sm me-2"></span> }
-                    💾 Save
+                    @T("MailSettings.Save")
                 </button>
                 <button type="button" class="btn btn-outline-secondary" @onclick="LoadAsync" disabled="@busy">
-                    🔄 Reload
+                    @T("MailSettings.Reload")
                 </button>
                 <button type="button" class="btn btn-outline-danger ms-auto" @onclick="ResetToEnvAsync" disabled="@busy">
-                    ↺ Xóa cấu hình DB (về Env Var)
+                    @T("MailSettings.ClearDBSettingsUseEnvVar")
                 </button>
             </div>
 
@@ -174,21 +174,20 @@
 
         @* ═════════════════════ TEST SMTP ═════════════════════ *@
         <div class="card mt-4">
-            <div class="card-header bg-light"><strong>🧪 Test SMTP</strong></div>
+            <div class="card-header bg-light"><strong>@T("MailSettings.TestSMTP")</strong></div>
             <div class="card-body">
                 <p class="text-muted small">
-                    Gửi 1 email test với cấu hình HIỆN TẠI để kiểm tra SMTP hoạt động.
-                    Nếu vừa save xong, hãy refresh để chắc chắn dùng config mới.
+                    @T("MailSettings.SendTestEmailWithCURRENTSettings")
                 </p>
                 <div class="row g-2 align-items-end">
                     <div class="col-md-6">
-                        <label class="form-label">Email nhận</label>
-                        <input class="form-control" @bind="testEmail" placeholder="your-email@gmail.com" />
+                        <label class="form-label">@T("MailSettings.RecipientEmail")</label>
+                        <input class="form-control" @bind="testEmail" placeholder="@T("MailSettings.YourEmailGmailCom")" />
                     </div>
                     <div class="col-md-3">
                         <button class="btn btn-warning w-100" @onclick="TestSmtpAsync" disabled="@(busyTest || string.IsNullOrWhiteSpace(testEmail))">
                             @if (busyTest) { <span class="spinner-border spinner-border-sm me-2"></span> }
-                            Gửi test
+                            @T("MailSettings.SendTest")
                         </button>
                     </div>
                 </div>
@@ -246,7 +245,7 @@
         }
         catch (Exception ex)
         {
-            await JS.InvokeVoidAsync("alert", "Lỗi tải cấu hình: " + ex.Message);
+            await JS.InvokeVoidAsync("alert", T("MailSettings.FailedToLoadSettings") + ex.Message);
         }
     }
 
@@ -263,20 +262,20 @@
             if (res.IsSuccessStatusCode)
             {
                 saveSuccess = true;
-                saveResult = "✅ Cấu hình đã được lưu. Có hiệu lực ngay (worker đọc lại trong vòng 1 phút).";
+                saveResult = T("MailSettings.SettingsSavedEffectiveImmediatelyWorkerReloads");
                 await LoadAsync();   // reload để thấy FromDatabase = true
             }
             else
             {
                 saveSuccess = false;
                 var body = await res.Content.ReadAsStringAsync();
-                saveResult = "❌ Lỗi: " + body;
+                saveResult = T("MailSettings.Error") + body;
             }
         }
         catch (Exception ex)
         {
             saveSuccess = false;
-            saveResult = "❌ Exception: " + ex.Message;
+            saveResult = T("MailSettings.Exception") + ex.Message;
         }
         finally { busy = false; }
     }
@@ -294,19 +293,19 @@
             if (res.IsSuccessStatusCode)
             {
                 testSuccess = true;
-                testResult = $"✅ Đã gửi mail test tới {testEmail}. Kiểm tra hộp thư (cả Spam).";
+                testResult = T("MailSettings.TestEmailSentToCheckYour", testEmail);
             }
             else
             {
                 testSuccess = false;
                 var body = await res.Content.ReadAsStringAsync();
-                testResult = "❌ Lỗi: " + body;
+                testResult = T("MailSettings.Error") + body;
             }
         }
         catch (Exception ex)
         {
             testSuccess = false;
-            testResult = "❌ Exception: " + ex.Message;
+            testResult = T("MailSettings.Exception") + ex.Message;
         }
         finally { busyTest = false; }
     }
@@ -314,7 +313,7 @@
     private async Task ResetToEnvAsync()
     {
         if (!await JS.InvokeAsync<bool>("confirm",
-            "Xóa cấu hình DB? App sẽ fallback về Environment Variables. Bạn chắc chắn?")) return;
+            T("MailSettings.ClearDBSettingsAppWillFall"))) return;
 
         busy = true;
         try
@@ -324,7 +323,7 @@
             if (res.IsSuccessStatusCode)
             {
                 saveSuccess = true;
-                saveResult = "✅ Đã xóa cấu hình DB. App đang dùng Environment Variables.";
+                saveResult = T("MailSettings.DBSettingsClearedAppIsNow");
                 await LoadAsync();
             }
         }
@@ -335,15 +334,15 @@
         finally { busy = false; }
     }
 
-    private static string GetDayName(int day) => day switch
+    private string GetDayName(int day) => day switch
     {
-        0 => "Chủ Nhật",
-        1 => "Thứ Hai",
-        2 => "Thứ Ba",
-        3 => "Thứ Tư",
-        4 => "Thứ Năm",
-        5 => "Thứ Sáu",
-        6 => "Thứ Bảy",
+        0 => T("MailSettings.Sunday"),
+        1 => T("MailSettings.Monday"),
+        2 => T("MailSettings.Tuesday"),
+        3 => T("MailSettings.Wednesday"),
+        4 => T("MailSettings.Thursday"),
+        5 => T("MailSettings.Friday"),
+        6 => T("MailSettings.Saturday"),
         _ => "?"
     };
 

@@ -1,0 +1,16 @@
+@* 4 badge dưới tiêu đề hero (Home / Features / Pricing). Model: "home" | "pricing" *@
+@model string
+<div class="badges">
+  @if (Model == "pricing")
+  {
+    <div class="badge-i"><span class="bi">@Icons.Svg("cloud")</span><b>@L["Secure Cloud"]</b>@L["Your data is protected"]</div>
+    <div class="badge-i"><span class="bi">@Icons.Svg("shield")</span><b>@L["Independent Accounts"]</b>@L["Each company has its own secure and private account"]</div>
+  }
+  else
+  {
+    <div class="badge-i"><span class="bi">@Icons.Svg(Model == "home" ? "phone" : "settings")</span><b>@L["Easy to Use"]</b>@L["Web & Mobile App"]</div>
+    <div class="badge-i"><span class="bi">@Icons.Svg("cloud")</span><b>@L["Secure Cloud"]</b>@L["Your data is protected"]</div>
+  }
+  <div class="badge-i"><span class="bi"><span class="lang-ic">@Icons.Svg("translate")</span></span><b>@(Model == "pricing" ? L["4 Languages"] : L["Multi-language"])</b>English / 中文 / Tiếng Việt / Bahasa Melayu</div>
+  <div class="badge-i"><span class="bi">@Icons.Svg("headset")</span><b>@L["Professional Support"]</b>@L["We're here to help"]</div>
+</div>

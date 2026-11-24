@@ -1,4 +1,6 @@
-﻿// ============================================================
+﻿using InticooInspection.Domain.Security;
+using InticooInspection.API.Services;
+// ============================================================
 //  Đặt tại: InticooInspection.API/Controllers/PerformanceTestMasterController.cs
 //  ----------------------------------------------------------
 //  Đã chuyển từ "1 file/master" sang "N file/master".
@@ -50,7 +52,8 @@ public class PerformanceTestMasterController : ControllerBase
                         .OrderBy(r => r.SortOrder).ThenBy(r => r.Id)
                         .Select(r => new ReferenceFileDto(
                             r.Id, r.FileName, r.ContentType, r.FileSize, r.SortOrder, r.UploadedAt))
-                        .ToList()))
+                        .ToList(),
+                    x.UpdatedAt))
                 .ToListAsync();
 
             return Ok(rows);
@@ -78,6 +81,7 @@ public class PerformanceTestMasterController : ControllerBase
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] UpsertTestMasterRequest req)
     {
+        if (await HttpContext.RequestServices.GetRequiredService<UserAccess>().RequireAsync((ModuleKeys.PerformanceTest, PermAction.Create)) is { } denied) return denied;
         if (!ModelState.IsValid) return BadRequest(ModelState);
         var entity = FromRequest(req);
         _db.PerformanceTestMasters.Add(entity);
@@ -91,6 +95,7 @@ public class PerformanceTestMasterController : ControllerBase
     [HttpPut("{id:int}")]
     public async Task<IActionResult> Update(int id, [FromBody] UpsertTestMasterRequest req)
     {
+        if (await HttpContext.RequestServices.GetRequiredService<UserAccess>().RequireAsync((ModuleKeys.PerformanceTest, PermAction.Edit)) is { } denied) return denied;
         if (!ModelState.IsValid) return BadRequest(ModelState);
         var entity = await _db.PerformanceTestMasters
                               .Include(m => m.References)
@@ -108,6 +113,7 @@ public class PerformanceTestMasterController : ControllerBase
     [HttpDelete("{id:int}")]
     public async Task<IActionResult> Delete(int id)
     {
+        if (await HttpContext.RequestServices.GetRequiredService<UserAccess>().RequireAsync((ModuleKeys.PerformanceTest, PermAction.Delete)) is { } denied) return denied;
         var entity = await _db.PerformanceTestMasters.FindAsync(id);
         if (entity == null) return NotFound();
         _db.PerformanceTestMasters.Remove(entity);
@@ -121,6 +127,7 @@ public class PerformanceTestMasterController : ControllerBase
     [HttpPatch("{id:int}/toggle-active")]
     public async Task<IActionResult> ToggleActive(int id)
     {
+        if (await HttpContext.RequestServices.GetRequiredService<UserAccess>().RequireAsync((ModuleKeys.PerformanceTest, PermAction.Edit)) is { } denied) return denied;
         var entity = await _db.PerformanceTestMasters.FindAsync(id);
         if (entity == null) return NotFound();
         entity.IsActive  = !entity.IsActive;
@@ -158,6 +165,7 @@ public class PerformanceTestMasterController : ControllerBase
     [RequestSizeLimit(200_000_000)] // 200 MB tổng / 1 request
     public async Task<IActionResult> UploadReferences(int id, List<IFormFile> files)
     {
+        if (await HttpContext.RequestServices.GetRequiredService<UserAccess>().RequireAsync((ModuleKeys.PerformanceTest, PermAction.Create), (ModuleKeys.PerformanceTest, PermAction.Edit)) is { } denied) return denied;
         var master = await _db.PerformanceTestMasters.FindAsync(id);
         if (master == null) return NotFound();
 
@@ -227,6 +235,7 @@ public class PerformanceTestMasterController : ControllerBase
     [HttpDelete("/api/performance-test-references/{refId:int}")]
     public async Task<IActionResult> DeleteReference(int refId)
     {
+        if (await HttpContext.RequestServices.GetRequiredService<UserAccess>().RequireAsync((ModuleKeys.PerformanceTest, PermAction.Edit), (ModuleKeys.PerformanceTest, PermAction.Delete)) is { } denied) return denied;
         var r = await _db.PerformanceTestReferences.FindAsync(refId);
         if (r == null) return NotFound();
 
@@ -291,7 +300,8 @@ public record PerformanceTestMasterDto(
     string? Requirements,
     int     SortOrder,
     bool    IsActive,
-    List<ReferenceFileDto> References
+    List<ReferenceFileDto> References,
+    DateTime? UpdatedAt = null
 );
 
 public class UpsertTestMasterRequest

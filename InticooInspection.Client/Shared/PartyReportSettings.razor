@@ -1,0 +1,381 @@
+﻿@inherits LocalizedComponentBase
+@using System.Net
+@* Tab "Report Settings" của Customer / Vendor.
+   Customer: 4 mục PPI · DPI · PSI (cùng một mẫu) + Inspection Schedule.  Vendor: 1 mục (cách gửi report + lịch gửi + mẫu email).
+   Dữ liệu nằm trong Settings (cha lưu qua api/party/{type}/{id}/report-settings). *@
+
+<div class="pf-rs">
+    @if (!Vendor)
+    {
+        <div class="pf-subtabs">
+            @foreach (var k in Kinds)
+            {
+                var kind = k;
+                <button type="button" class="@(_kind == kind ? "on" : "")" @onclick="() => SetKind(kind)">@KindLabel(kind)</button>
+            }
+        </div>
+    }
+
+    @if (Cur is { } s)
+    {
+        @if (Vendor)
+        {
+            <div class="pf-two">
+                <div>
+                    <div class="pf-card">
+                        <div class="pf-card-title">1. @T("PartyReport.ReportDeliverySettings")</div>
+                        <div class="pf-card-sub">@T("PartyReport.ReportDeliveryVendorSub")</div>
+                        <div class="pf-radio-list">
+                            @VendorMode(s, "ServerOnly", T("PartyReport.VSaveOnly"), T("PartyReport.VSaveOnlyDesc"))
+                            @VendorMode(s, "Immediate",  T("PartyReport.VSendNow"),  T("PartyReport.VSendNowDesc"))
+                            @VendorMode(s, "Manual",     T("PartyReport.VManual"),   T("PartyReport.VManualDesc"))
+                        </div>
+                    </div>
+
+                    <div class="pf-card">
+                        <div class="pf-card-title">2. @T("PartyReport.ScheduleEmailSettings")</div>
+                        <div class="pf-card-sub">@T("PartyReport.ScheduleEmailSettingsSub")</div>
+                        @PeriodBlock(s)
+                        @DaysBlock(s)
+                        <div class="pf-row2">
+                            <div class="pf-field">
+                                <label>@T("PartyReport.SendingTime")</label>
+                                <input class="pf-input" type="time" value="@s.SendTime" @onchange="e => s.SendTime = e.Value?.ToString() ?? string.Empty" />
+                            </div>
+                            <div class="pf-field">
+                                <label>@T("PartyReport.TimeZone")</label>
+                                <select class="pf-input" @bind="s.TimeZone">
+                                    @foreach (var z in Zones)
+                                    {
+                                        <option value="@z.Id">@z.Label</option>
+                                    }
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="pf-card">
+                        <div class="pf-card-title">3. @T("PartyReport.EmailTemplate")</div>
+                        <div class="pf-card-sub">@T("PartyReport.EmailTemplateSub")</div>
+                        @EmailContent(s)
+                    </div>
+                </div>
+            </div>
+        }
+        else if (_kind == "Schedule")
+        {
+            <div class="pf-two">
+                <div>
+                    <div class="pf-card">
+                        <div class="pf-card-head">
+                            <div>
+                                <div class="pf-card-title">@T("PartyReport.InspectionSchedule")</div>
+                                <div class="pf-card-sub">@T("PartyReport.InspectionScheduleSub")</div>
+                            </div>
+                            <label class="pf-switch pf-switch-lbl"><input type="checkbox" checked="@s.Enabled" @onchange="e => s.Enabled = (bool)(e.Value ?? false)" /><span></span> @T("PartyReport.Enabled")</label>
+                        </div>
+                        <div class="@(s.Enabled ? "" : "pf-disabled")">
+                            <div class="pf-step">1. @T("PartyReport.UpcomingPeriod")</div>
+                            @PeriodBlock(s)
+                            <div class="pf-step">2. @T("PartyReport.PreferredDays")</div>
+                            @DaysBlock(s)
+                        </div>
+                    </div>
+                    <div class="pf-card @(s.Enabled ? "" : "pf-disabled")">
+                        <div class="pf-card-title">3. @T("PartyReport.EmailContent")</div>
+                        @EmailContent(s)
+                    </div>
+                </div>
+            </div>
+        }
+        else
+        {
+            <div class="pf-card">
+                <div class="pf-card-title">1. @T("PartyReport.EmailContent")</div>
+                <div class="pf-card-sub">@T("PartyReport.EmailContentReportSub", s.Kind)</div>
+                @EmailContent(s)
+            </div>
+
+            <div class="pf-card">
+                <div class="pf-card-title">2. @T("PartyReport.ReportDeliveryOptions")</div>
+                <div class="pf-opt-grid">
+                    @CustomerMode(s, "Immediate",  T("PartyReport.SendImmediately"),  T("PartyReport.SendImmediatelyDesc", s.Kind))
+                    @CustomerMode(s, "ServerOnly", T("PartyReport.SaveOnlyToServer"), T("PartyReport.SaveOnlyToServerDesc", s.Kind))
+                </div>
+            </div>
+        }
+    }
+</div>
+
+@if (_showPreview && Cur is { } ps)
+{
+    <div class="pf-modal-ov" @onclick="() => _showPreview = false">
+        <div class="pf-modal" @onclick:stopPropagation="true">
+            <div class="pf-modal-head">
+                <b>@T("PartyReport.EmailPreview")</b>
+                <button type="button" class="pf-icon-btn" @onclick="() => _showPreview = false">&#10005;</button>
+            </div>
+            @PreviewCard(ps)
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public string PartyType { get; set; } = "Customer";
+    [Parameter] public List<PartyReportSettingVm> Settings { get; set; } = new();
+    [Parameter] public string PartyName { get; set; } = "";
+    [Parameter] public string PartyCode { get; set; } = "";
+    [Parameter] public string ContactName { get; set; } = "";
+    /// <summary>Danh sách email nhận (hiển thị ở dòng "To" của preview).</summary>
+    [Parameter] public string PreviewTo { get; set; } = "";
+    /// <summary>Nhấn "Save Template" → cha lưu toàn bộ (kể cả mẫu email).</summary>
+    [Parameter] public EventCallback OnSaveTemplate { get; set; }
+
+    private string _kind = "PPI";
+    private int _ver;
+    private bool _showFields, _showPreview;
+
+    private bool Vendor => PartyType == "Vendor";
+    private string[] Kinds => Vendor ? new[] { "Schedule" } : new[] { "PPI", "DPI", "PSI", "Schedule" };
+    private PartyReportSettingVm? Cur => Settings.FirstOrDefault(x => x.Kind == (Vendor ? "Schedule" : _kind));
+
+    private static readonly string[] Days = { "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun" };
+    private record Zone(string Id, string Label);
+    private static readonly Zone[] Zones =
+    {
+        new("Asia/Ho_Chi_Minh",  "(UTC+07:00) Bangkok, Hanoi, Jakarta"),
+        new("Asia/Kuala_Lumpur", "(UTC+08:00) Kuala Lumpur, Singapore"),
+        new("Asia/Shanghai",     "(UTC+08:00) Beijing, Shanghai"),
+        new("Asia/Kolkata",      "(UTC+05:30) Mumbai, New Delhi"),
+        new("Europe/London",     "(UTC+00:00) London"),
+        new("Europe/Berlin",     "(UTC+01:00) Berlin, Paris"),
+        new("America/New_York",  "(UTC-05:00) New York"),
+        new("America/Chicago",   "(UTC-06:00) Chicago"),
+        new("America/Los_Angeles","(UTC-08:00) Los Angeles"),
+    };
+
+    private static readonly string[] CustomerFields =
+    {
+        "Customer Name", "Customer Code", "Contact Name", "Start Date", "End Date", "Period",
+        "Inspection Date", "Product Type", "Product Name", "Vendor Name", "Inspector Name", "Status", "Remark"
+    };
+    private static readonly string[] VendorFields =
+    {
+        "Vendor Name", "Vendor Code", "Contact Name", "Period", "Start Date", "End Date"
+    };
+    private string[] Fields => Vendor ? VendorFields : CustomerFields;
+
+    protected override void OnParametersSet()
+    {
+        // Đảm bảo đủ mục + có sẵn mẫu mặc định cho mục chưa cấu hình
+        foreach (var k in Kinds)
+        {
+            var s = Settings.FirstOrDefault(x => x.Kind == k);
+            if (s == null) { s = new PartyReportSettingVm { Kind = k }; Settings.Add(s); }
+            if (s.DeliveryMode == "Scheduled") s.DeliveryMode = "Immediate";   // lựa chọn "Send on scheduled time" đã bỏ
+            if (string.IsNullOrWhiteSpace(s.Subject) && string.IsNullOrWhiteSpace(s.Body))
+                PartyTemplates.ApplyDefault(s, string.IsNullOrWhiteSpace(s.Language) ? "en" : s.Language, Vendor);
+        }
+        if (!Kinds.Contains(_kind)) _kind = Kinds[0];
+    }
+
+    private void SetKind(string k) { _kind = k; _showFields = false; _ver++; }
+
+    private string DayLabel(string d) => d switch
+    {
+        "Mon" => T("PartyReport.Day.Mon"), "Tue" => T("PartyReport.Day.Tue"), "Wed" => T("PartyReport.Day.Wed"),
+        "Thu" => T("PartyReport.Day.Thu"), "Fri" => T("PartyReport.Day.Fri"), "Sat" => T("PartyReport.Day.Sat"),
+        _     => T("PartyReport.Day.Sun")
+    };
+
+    private string KindLabel(string k) => k switch
+    {
+        "PPI" => T("PartyReport.TabPPI"),
+        "DPI" => T("PartyReport.TabDPI"),
+        "PSI" => T("PartyReport.TabPSI"),
+        _     => T("PartyReport.TabSchedule")
+    };
+
+    // ── Chung ────────────────────────────────────────────────────────
+    private void OnLang(PartyReportSettingVm s, string lang)
+    {
+        if (PartyTemplates.IsDefault(s, Vendor)) { PartyTemplates.ApplyDefault(s, lang, Vendor); _ver++; }
+        else s.Language = lang;
+    }
+
+
+    private RichEmailEditor? _editor;
+
+    private Task InsertBodyField(string f) => _editor is null ? Task.CompletedTask : _editor.InsertAsync("[" + f + "]");
+
+    private void ResetTemplate(PartyReportSettingVm s)
+    {
+        PartyTemplates.ApplyDefault(s, string.IsNullOrWhiteSpace(s.Language) ? "en" : s.Language, Vendor);
+        _ver++;
+    }
+
+    private void InsertSubjectField(PartyReportSettingVm s, string f)
+    {
+        s.Subject = (s.Subject ?? "") + $"[{f}]";
+        _showFields = false;
+    }
+
+    private void ToggleDay(PartyReportSettingVm s, string d, bool on)
+    {
+        if (on) { if (!s.SendDays.Contains(d)) s.SendDays.Add(d); }
+        else s.SendDays.Remove(d);
+    }
+
+    // ── Preview ──────────────────────────────────────────────────────
+    private string Fill(string? text, PartyReportSettingVm s, bool html)
+    {
+        var today = DateTime.Today;
+        string E(string v) => html ? WebUtility.HtmlEncode(v) : v;
+        string D(DateTime d) => L.Date(d, "d MMM yyyy");
+        var map = new Dictionary<string, string>
+        {
+            ["[Customer Name]"]  = E(string.IsNullOrWhiteSpace(PartyName) ? "—" : PartyName),
+            ["[Vendor Name]"]    = E(Vendor ? (string.IsNullOrWhiteSpace(PartyName) ? "—" : PartyName) : "LIVING WORLD (M) SDN BHD"),
+            ["[Customer Code]"]  = E(PartyCode),
+            ["[Vendor Code]"]    = E(PartyCode),
+            ["[Contact Name]"]   = E(string.IsNullOrWhiteSpace(ContactName) ? T("PartyReport.SampleContact") : ContactName),
+            ["[Start Date]"]     = D(today),
+            ["[End Date]"]       = D(today.AddDays(s.PeriodDays - 1)),
+            ["[Period]"]         = s.PeriodDays.ToString(),
+            ["[Inspection Date]"]= D(today.AddDays(1)),
+            ["[Product Type]"]   = E(T("PartyReport.SampleProductType")),
+            ["[Product Name]"]   = E(T("PartyReport.SampleProductName")),
+            ["[Inspector Name]"] = "Tan Qi Yi",
+            ["[Status]"]         = E(T("PartyReport.SampleStatus")),
+            ["[Remark]"]         = "—",
+        };
+        var r = text ?? "";
+        foreach (var kv in map) r = r.Replace(kv.Key, kv.Value);
+        if (html) r = r.Replace("[Inspection Schedule Table]", ScheduleTable(s));
+        return r;
+    }
+
+    private string ScheduleTable(PartyReportSettingVm s)
+    {
+        var t = DateTime.Today;
+        var rows = new (int Day, string Type, string Prod, string Vendor, string Insp)[]
+        {
+            (1, "PPI", "Dining Chair P012345", "LIVING WORLD", "Alex Lim"),
+            (3, "DPI", "Outdoor Table P012346", "DIGITAL FURNITURE", "John Tan"),
+            (5, "PSI", "Sofa Set P012347", "GOLDEN TECH", "Mike Wong"),
+        };
+        var sb = new System.Text.StringBuilder();
+        sb.Append("<table class='pf-pv-table'><thead><tr>")
+          .Append($"<th>{T("PartyReport.ColNo")}</th><th>{T("PartyReport.ColDate")}</th><th>{T("PartyReport.ColType")}</th><th>{T("PartyReport.ColProduct")}</th>")
+          .Append($"<th>{T("PartyReport.ColVendor")}</th><th>{T("PartyReport.ColInspector")}</th></tr></thead><tbody>");
+        int i = 1;
+        foreach (var r in rows)
+            sb.Append($"<tr><td>{i++}</td><td>{WebUtility.HtmlEncode(L.Date(t.AddDays(r.Day), "d MMM yyyy"))}</td><td>{r.Type}</td><td>{r.Prod}</td><td>{r.Vendor}</td><td>{r.Insp}</td></tr>");
+        sb.Append("</tbody></table>");
+        return sb.ToString();
+    }
+
+    // ── Render fragments ─────────────────────────────────────────────
+    private RenderFragment EmailContent(PartyReportSettingVm s) => @<text>
+        <div class="pf-row2">
+            <div class="pf-field">
+                <label>@T("PartyReport.Language")</label>
+                <select class="pf-input" value="@s.Language" @onchange="e => OnLang(s, e.Value?.ToString() ?? string.Empty)">
+                    @foreach (var l in LanguageService.Supported)
+                    {
+                        <option value="@l.Code">@l.Name</option>
+                    }
+                </select>
+            </div>
+            <div class="pf-field pf-rel">
+                <label>@T("PartyReport.EmailSubject") <span class="pf-req">*</span></label>
+                <div class="pf-subj">
+                    <input class="pf-input" @bind="s.Subject" @bind:event="oninput" />
+                    <button type="button" class="pf-btn pf-btn-ghost" @onclick="() => _showFields = !_showFields">{ } @T("PartyReport.InsertField")</button>
+                </div>
+                @if (_showFields)
+                {
+                    <div class="pf-menu">
+                        @foreach (var f in Fields)
+                        {
+                            var fld = f;
+                            <button type="button" @onclick="() => InsertSubjectField(s, fld)">[@fld]</button>
+                        }
+                    </div>
+                }
+            </div>
+        </div>
+        <div class="pf-field">
+            <label>@T("PartyReport.EmailMessage") <span class="pf-req">*</span>
+                <a href="javascript:void(0)" style="margin-left:10px;font-weight:600;font-size:12px" @onclick="() => ResetTemplate(s)" @onclick:preventDefault="true">@T("PartyReport.ResetTemplate")</a>
+            </label>
+            <div class="pf-msg">
+                <RichEmailEditor @ref="_editor" Value="@s.Body" ValueChanged="v => s.Body = v" Version="_ver" />
+                <div>
+                    <div class="pf-fields-t">@T("PartyReport.AvailableFields")</div>
+                    <div class="pf-fields">
+                        @foreach (var f in Fields)
+                        {
+                            var fld = f;
+                            <button type="button" @onmousedown:preventDefault @onclick="() => InsertBodyField(fld)">[@fld]</button>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="pf-actions pf-actions-up">
+            <button type="button" class="pf-btn" @onclick="() => _showPreview = true">&#128065; @T("PartyReport.PreviewEmail")</button>
+            <button type="button" class="pf-btn pf-btn-dark" @onclick="() => OnSaveTemplate.InvokeAsync()">&#128190; @T("PartyReport.SaveTemplate")</button>
+        </div>
+    </text>;
+
+    private RenderFragment PeriodBlock(PartyReportSettingVm s) => @<text>
+        <div class="pf-field">
+            <label>@T("PartyReport.SendScheduleFor")</label>
+            <div class="pf-inline">
+                <label class="pf-radio"><input type="radio" name="@("per" + s.Kind)" checked="@(s.PeriodDays == 7)" @onchange="() => s.PeriodDays = 7" /> @T("PartyReport.Next7")</label>
+                <label class="pf-radio"><input type="radio" name="@("per" + s.Kind)" checked="@(s.PeriodDays == 14)" @onchange="() => s.PeriodDays = 14" /> @T("PartyReport.Next14")</label>
+            </div>
+        </div>
+    </text>;
+
+    private RenderFragment DaysBlock(PartyReportSettingVm s) => @<text>
+        <div class="pf-field">
+            <label>@T("PartyReport.SelectDays")</label>
+            <div class="pf-days">
+                @foreach (var d in Days)
+                {
+                    var day = d;
+                    <label class="pf-check"><input type="checkbox" checked="@s.SendDays.Contains(day)" @onchange="e => ToggleDay(s, day, (bool)(e.Value ?? false))" /> @DayLabel(day)</label>
+                }
+            </div>
+        </div>
+    </text>;
+
+    private RenderFragment CustomerMode(PartyReportSettingVm s, string mode, string title, string desc) => @<text>
+        <label class="pf-opt @(s.DeliveryMode == mode ? "on" : "")">
+            <input type="radio" name="@("mode" + s.Kind)" checked="@(s.DeliveryMode == mode)" @onchange="() => s.DeliveryMode = mode" />
+            <span><b>@title</b><small>@desc</small></span>
+        </label>
+    </text>;
+
+    private RenderFragment VendorMode(PartyReportSettingVm s, string mode, string title, string desc) => @<text>
+        <label class="pf-opt pf-opt-row @(s.DeliveryMode == mode ? "on" : "")">
+            <input type="radio" name="vmode" checked="@(s.DeliveryMode == mode)" @onchange="() => s.DeliveryMode = mode" />
+            <span><b>@title</b><small>@desc</small></span>
+        </label>
+    </text>;
+
+    private RenderFragment PreviewCard(PartyReportSettingVm s) => @<text>
+        <div class="pf-card pf-preview">
+            <div class="pf-card-title">&#9993; @T("PartyReport.EmailPreview")</div>
+            <div class="pf-pv-meta">
+                <div><span>@T("PartyReport.From")</span> noreply@inticoo.com</div>
+                <div><span>@T("PartyReport.To")</span> @(string.IsNullOrWhiteSpace(PreviewTo) ? T("PartyReport.NoRecipient") : PreviewTo)</div>
+                <div><span>@T("PartyReport.Subject")</span> @Fill(s.Subject, s, false)</div>
+            </div>
+            <div class="pf-pv-body">@((MarkupString)PartyTemplates.Sanitize(Fill(s.Body, s, true)))</div>
+            <div class="pf-pv-note">@T("PartyReport.SampleDataNote")</div>
+        </div>
+    </text>;
+}

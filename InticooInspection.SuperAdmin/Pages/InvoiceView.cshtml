@@ -1,0 +1,45 @@
+@page
+@inject PortalDbContext Db
+@inject SettingsService Settings
+@{
+    Layout = null;
+    int.TryParse(ViewContext.HttpContext.Request.Query["id"], out var id);
+    var receipt = ViewContext.HttpContext.Request.Query["receipt"] == "1";
+    var inv = await Db.Invoices.AsNoTracking().Include(i => i.Company).Include(i => i.Payments).FirstOrDefaultAsync(i => i.Id == id);
+    if (inv == null) { Response.StatusCode = 404; return; }
+    var s = await Settings.AllAsync();
+    var pay = inv.Payments.Where(p => p.Status == PaymentStatus.Paid || p.Status == PaymentStatus.Refunded).OrderByDescending(p => p.Id).FirstOrDefault();
+    var total = inv.Amount + inv.Tax;
+}
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8" /><meta name="robots" content="noindex" /><title>@(receipt ? "Receipt" : "Invoice") @inv.Number</title>
+<style>
+body{font-family:"Segoe UI",Arial,sans-serif;color:#16233f;margin:0;background:#eef2f9}
+.sheet{max-width:780px;margin:24px auto;background:#fff;padding:48px;box-shadow:0 8px 30px rgba(0,0,0,.08)}
+h1{margin:0;font-size:1.8rem;color:#0a1a3f}.brand{font-weight:800;font-size:1.5rem;letter-spacing:.04em;color:#0a1a3f}.muted{color:#64748b}
+table{width:100%;border-collapse:collapse;margin:22px 0}th,td{padding:10px;border-bottom:1px solid #e3eaf5;text-align:left}th{background:#f5f8fd}.r{text-align:right}
+.top{display:flex;justify-content:space-between;gap:20px}.stamp{display:inline-block;border:2px solid #10b981;color:#059669;padding:4px 14px;border-radius:6px;font-weight:800;letter-spacing:.1em}
+.stamp.x{border-color:#f59e0b;color:#b45309}
+.noprint{text-align:center;margin:12px}.noprint button{padding:8px 18px;border:0;background:#1666f0;color:#fff;border-radius:6px;cursor:pointer}
+@@media print{body{background:#fff}.sheet{box-shadow:none;margin:0}.noprint{display:none}}
+</style></head><body>
+<div class="noprint"><button id="print">Print / Save as PDF</button></div>
+<div class="sheet">
+  <div class="top"><div><div class="brand">INTICOO</div><div class="muted" style="font-size:.7rem;letter-spacing:.25em">GLOBAL SERVICES</div>
+      <p class="muted" style="font-size:.85rem">@s["platform.name"]<br />@s["platform.supportEmail"]</p></div>
+    <div style="text-align:right"><h1>@(receipt ? "RECEIPT" : "INVOICE")</h1><div><b>@inv.Number</b></div>
+      <div class="muted">Date: @AdminUi.D(inv.InvoiceDate)<br />Due: @AdminUi.D(inv.DueDate)</div>
+      <div style="margin-top:8px"><span class="stamp @(inv.Status == InvoiceStatus.Paid ? "" : "x")">@inv.Status.ToUpperInvariant()</span></div></div></div>
+  <h3 style="margin-top:30px">Bill to</h3>
+  <div>@inv.Company!.Name<br />@inv.Company.ContactPerson<br />@inv.Company.Address<br />@inv.Company.Country<br />@inv.Company.Email</div>
+  <table><thead><tr><th>Description</th><th class="r">Amount (USD)</th></tr></thead><tbody>
+    <tr><td>Inticoo @inv.PlanName plan — @inv.BillingCycle subscription</td><td class="r">@AdminUi.Money(inv.Amount)</td></tr>
+    @if (inv.Tax > 0) { <tr><td>Tax</td><td class="r">@AdminUi.Money(inv.Tax)</td></tr> }
+    <tr><td class="r"><b>Total</b></td><td class="r"><b>@AdminUi.Money(total)</b></td></tr></tbody></table>
+  @if (pay != null) { <p>Paid on @AdminUi.DT(inv.PaidAt ?? pay.CreatedAt) by @pay.Method@(pay.CardLast4 != null ? $" ({pay.CardBrand} •••• {pay.CardLast4})" : "") — Ref: @pay.TransactionId</p> }
+  else if (!receipt && inv.Status is InvoiceStatus.Pending or InvoiceStatus.Overdue) { <p><b>Payment instructions</b></p><pre style="font-family:inherit;white-space:pre-wrap;background:#f5f8fd;padding:12px;border-radius:8px">@s["billing.bankInfo"]
+Reference: @inv.Number</pre> }
+  <p class="muted" style="margin-top:30px">@s["invoice.footer"]</p>
+</div>
+<script src="/js/print.js"></script>
+</body></html>

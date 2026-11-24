@@ -1,0 +1,24 @@
+@page
+@model MessagesModel
+@{ ViewData["Title"] = "Messages"; ViewData["Sub"] = "Enquiries sent from the Contact Us form on the website."; var req = ViewContext.HttpContext.Request; var sel = Model.Sel; }
+<div class="split">
+<div class="panel">
+  <div class="tabs"><a class="@(Model.Filter == null ? "on" : "")" href="/messages">All (@Model.TotalN)</a><a class="@(Model.Filter == "unread" ? "on" : "")" href="?filter=unread">Unread (@Model.UnreadN)</a></div>
+  <div class="tbl-wrap"><table class="t"><thead><tr><th>Date</th><th>From</th><th>Company</th><th>Subject</th></tr></thead><tbody>
+  @foreach (var m in Model.Rows) { <tr class="@(sel?.Id == m.Id ? "sel" : "")"><td>@AdminUi.DT(m.CreatedAt)</td><td><a href="@AdminUi.Qs(req, ("id", m.Id.ToString()))">@m.FullName</a></td><td>@m.Company</td><td>@m.Subject @if (!m.IsRead) { <span class="pill blue">New</span> }</td></tr> }
+  @if (Model.Rows.Count == 0) { <tr><td colspan="4" class="muted" style="padding:20px;text-align:center">No messages.</td></tr> }
+  </tbody></table></div>
+  <partial name="_Pager" model="Model.Pager" />
+</div>
+<div class="panel detail">
+@if (sel == null) { <p class="muted">Select a message.</p> }
+else
+{
+  <h2>@sel.Subject</h2>
+  <dl class="dl"><dt>From</dt><dd>@sel.FullName</dd><dt>Email</dt><dd><a href="mailto:@sel.Email">@sel.Email</a></dd><dt>Company</dt><dd>@sel.Company</dd><dt>Country</dt><dd>@sel.Country</dd><dt>Received</dt><dd>@AdminUi.DT(sel.CreatedAt)</dd></dl>
+  <div style="background:#f5f8fd;padding:12px;border-radius:8px;white-space:pre-wrap">@sel.Message</div>
+  <div class="acts"><a class="btn pri blk" href="mailto:@sel.Email?subject=Re: @sel.Subject">@Icons.Svg("mail", 15) Reply by email</a>
+    <form method="post" asp-page-handler="Delete" data-confirm="Delete this message?"><input type="hidden" name="id" value="@sel.Id" /><button class="btn dng blk">@Icons.Svg("trash", 15) Delete</button></form></div>
+}
+</div>
+</div>

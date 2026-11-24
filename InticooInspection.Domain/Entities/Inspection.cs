@@ -4,7 +4,8 @@ namespace InticooInspection.Domain.Entities
     //  ENUMS
     // ═══════════════════════════════════════════════════════
 
-    public enum InspectionStatus  { Pending = 0, InProgress = 1, Completed = 2, Cancelled = 3 }
+    // Draft = 9: job request lưu nháp, chưa giao inspector (giá trị 4 từng là "Pending" cũ trong DB nên tránh dùng lại)
+    public enum InspectionStatus  { Pending = 0, InProgress = 1, Completed = 2, Cancelled = 3, Draft = 9 }
     public enum StepStatus        { Pending = 0, Pass = 1, Fail = 2, Skipped = 3 }
     public enum InspectionType    { DPI = 0, PPT = 1, PST = 2 }
     public enum PackagingType     { FSCCarton = 0, NonFSCCarton = 1 }
@@ -89,6 +90,10 @@ namespace InticooInspection.Domain.Entities
         // ── Office Use ───────────────────────────────────────
         public string?    InspectorName   { get; set; }
         public string?    InspectorId     { get; set; }
+        // ── Inspector Assignment (giờ kiểm + ghi chú cho inspector) ──
+        public string?    InspectionStartTime { get; set; }   // "HH:mm"
+        public string?    InspectionEndTime   { get; set; }   // "HH:mm"
+        public string?    InspectorRemarks    { get; set; }   // tối đa 500 ký tự
         public DateTime?  OfficeDate      { get; set; }
         public string?    JobNumber       { get; set; }  // Auto-generated
 
@@ -99,6 +104,7 @@ namespace InticooInspection.Domain.Entities
         public ICollection<InspectionPerformanceTest> PerformanceTests { get; set; } = new List<InspectionPerformanceTest>();
         public ICollection<InspectionReference>          References          { get; set; } = new List<InspectionReference>();
         public ICollection<InspectionOverallConclusion>  OverallConclusions  { get; set; } = new List<InspectionOverallConclusion>();
+        public ICollection<InspectionCarton>             Cartons             { get; set; } = new List<InspectionCarton>();
 
         // Legacy — giữ lại tương thích ngược
         public string? Title       { get; set; }
@@ -152,6 +158,37 @@ namespace InticooInspection.Domain.Entities
 
         public bool AssemblyInstruction { get; set; }
         public bool Hardware            { get; set; }
+
+        // Bursting Test (lbs): 125/150/175/200/275/350/400/500/600
+        public int? BurstingTest        { get; set; }
+    }
+
+    /// <summary>
+    /// B. Inner/Outer packing theo từng thùng carton — số dòng = Carton Number.
+    /// Dòng đầu tiên được đồng bộ ngược vào các cột Inner*/Outer* của InspectionPackaging
+    /// để báo cáo/dữ liệu cũ vẫn đọc được.
+    /// </summary>
+    public class InspectionCarton
+    {
+        public int    Id           { get; set; }
+        public int    InspectionId { get; set; }
+        public Inspection? Inspection { get; set; }
+
+        public int     CartonIndex       { get; set; }   // 1..N
+        public string? CartonVariant     { get; set; }
+        public string? Description       { get; set; }
+        public string? PackingQuantity   { get; set; }
+
+        public int?    InnerPackingQty   { get; set; }
+        public double? InnerSizeL        { get; set; }
+        public double? InnerSizeW        { get; set; }
+        public double? InnerSizeH        { get; set; }
+        public double? InnerWeight       { get; set; }
+
+        public double? OuterSizeL        { get; set; }
+        public double? OuterSizeW        { get; set; }
+        public double? OuterSizeH        { get; set; }
+        public double? OuterWeight       { get; set; }
     }
 
     // ═══════════════════════════════════════════════════════
@@ -169,6 +206,11 @@ namespace InticooInspection.Domain.Entities
         public double? SizeW   { get; set; }   // mm
         public double? SizeH   { get; set; }   // mm
         public double? Weight  { get; set; }   // kg
+
+        // Kích thước THỰC ĐO khi QC (mm) — so với SizeL/W/H của hồ sơ sản phẩm; ghi khi lưu kết quả QC
+        public double? ActualSizeL { get; set; }
+        public double? ActualSizeW { get; set; }
+        public double? ActualSizeH { get; set; }
 
         // ii. Compare Golden Sample
         public bool CompareGoldenSample { get; set; }

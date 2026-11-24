@@ -1,0 +1,170 @@
+Vendor Address	Địa chỉ nhà cung cấp	供应商地址	Alamat pembekal
+{0} job{1}	{0} đơn	{0} 个任务	{0} tugasan
+Next 7 days	7 ngày tới	未来 7 天	7 hari akan datang
+Product Reference	Tài liệu sản phẩm	产品参考	Rujukan produk
+• ID	• Mã	• 编号	• ID
+Inspector Information	Thông tin kiểm hàng viên	验货员信息	Maklumat pemeriksa
+Scheduled Date	Ngày theo lịch	计划日期	Tarikh dijadualkan
+Scheduled on {0}	Theo lịch ngày {0}	计划于 {0}	Dijadualkan pada {0}
+{0} inspection{1}	{0} lượt kiểm	{0} 次验货	{0} pemeriksaan
+{0} OVERDUE	{0} QUÁ HẠN	{0} 项逾期	{0} TERTUNGGAK
+No inspections for this period	Không có lượt kiểm trong khoảng này	此期间没有验货	Tiada pemeriksaan untuk tempoh ini
+Completed Date	Ngày hoàn thành	完成日期	Tarikh selesai
+No completed inspections this year	Chưa có lượt kiểm hoàn thành trong năm nay	今年没有已完成的验货	Tiada pemeriksaan selesai tahun ini
+14 days	14 ngày	14 天	14 hari
+7 days	7 ngày	7 天	7 hari
+Today	Hôm nay	今天	Hari ini
+To Do	Cần làm	待办	Perlu dibuat
+{0} completed	{0} đã hoàn thành	已完成 {0}	{0} selesai
+Total Job	Tổng số đơn	任务总数	Jumlah tugasan
+No inspector found	Không tìm thấy kiểm hàng viên	未找到验货员	Tiada pemeriksa ditemui
+All inspectors	Tất cả kiểm hàng viên	所有验货员	Semua pemeriksa
+Search name or inspector ID	Tìm theo tên hoặc mã kiểm hàng viên	按姓名或验货员编号搜索	Cari nama atau ID pemeriksa
+Select inspector	Chọn kiểm hàng viên	选择验货员	Pilih pemeriksa
+Clear filter	Xóa bộ lọc	清除筛选	Kosongkan penapis
+View and manage inspection assignments	Xem và quản lý phân công kiểm hàng	查看和管理验货分配	Lihat dan urus tugasan pemeriksaan
+Inspector Schedule	Lịch kiểm hàng viên	验货员日程	Jadual pemeriksa
+Start Inspection	Bắt đầu kiểm hàng	开始验货	Mula pemeriksaan
+{0} file{1}	{0} tệp	{0} 个文件	{0} fail
+Office	Văn phòng	办公电话	Pejabat
+Job No	Số đơn	任务编号	No. tugasan
+Loading details…	Đang tải chi tiết…	正在加载详情…	Sedang memuatkan butiran…
+Loading schedule…	Đang tải lịch…	正在加载日程…	Sedang memuatkan jadual…
+Schedule for	Lịch của	日程：	Jadual untuk
+Today — {0}	Hôm nay — {0}	今天 — {0}	Hari ini — {0}
+Unassigned	Chưa phân công	未分配	Belum ditugaskan
+{0} days late	Trễ {0} ngày	逾期 {0} 天	Lewat {0} hari
+1 day late	Trễ 1 ngày	逾期 1 天	Lewat 1 hari
+Schedule	Lịch	日程	Jadual
+My schedule	Lịch của tôi	我的日程	Jadual saya
+Selected inspector	Kiểm hàng viên đã chọn	所选验货员	Pemeriksa dipilih
+Confirm Cancel	Xác nhận hủy	确认取消	Sahkan pembatalan
+Cancelling...	Đang hủy...	正在取消...	Sedang membatalkan...
+Cancelled	Đã hủy	已取消	Dibatalkan
+? This will mark the inspection as	? Đơn kiểm sẽ được chuyển sang	？该验货将被标记为	? Ini akan menanda pemeriksaan sebagai
+Are you sure you want to cancel	Bạn có chắc muốn hủy	确定要取消	Adakah anda pasti mahu membatalkan
+Cancel Inspection	Hủy đơn kiểm	取消验货	Batalkan pemeriksaan
+Deleting...	Đang xóa...	正在删除...	Sedang memadam...
+? This action cannot be undone.	? Thao tác này không thể hoàn tác.	？此操作无法撤销。	? Tindakan ini tidak boleh dibatalkan.
+Delete Inspection	Xóa đơn kiểm	删除验货	Padam pemeriksaan
+{0} record{1}	{0} bản ghi	{0} 条记录	{0} rekod
+Next →	Sau →	下一页 →	Seterusnya →
+← Prev	← Trước	← 上一页	← Sebelum
+No inspections found.	Không tìm thấy lượt kiểm.	未找到验货。	Tiada pemeriksaan ditemui.
+Vendor Country	Quốc gia nhà cung cấp	供应商国家	Negara pembekal
+Receive Date	Ngày nhận	接收日期	Tarikh diterima
+Clear date filter	Xóa lọc ngày	清除日期筛选	Kosongkan penapis tarikh
+To date	Đến ngày	截止日期	Hingga tarikh
+From date	Từ ngày	开始日期	Dari tarikh
+Date type	Loại ngày	日期类型	Jenis tarikh
+Packaging	Đóng gói	包装	Pembungkusan
+Electronics	Điện tử	电子产品	Elektronik
+Furniture	Nội thất	家具	Perabot
+Textile	Dệt may	纺织品	Tekstil
+Chemical	Hóa chất	化学品	Kimia
+Electrical	Điện	电气	Elektrik
+Mechanical	Cơ khí	机械	Mekanikal
+Delay	Trễ hạn	延误	Tertangguh
+Search job no, customer, product, inspector...	Tìm số đơn, khách hàng, sản phẩm, kiểm hàng viên...	搜索任务编号、客户、产品、验货员...	Cari no. tugasan, pelanggan, produk, pemeriksa...
+Summary Inspections	Tổng hợp kiểm hàng	验货汇总	Ringkasan pemeriksaan
+Summary Inspections - Inticoo	Tổng hợp kiểm hàng - Inticoo	验货汇总 - Inticoo	Ringkasan pemeriksaan - Inticoo
+Load failed ({0})	Tải thất bại ({0})	加载失败 ({0})	Gagal memuatkan ({0})
+Cancel failed ({0})	Hủy thất bại ({0})	取消失败 ({0})	Gagal membatalkan ({0})
+You do not have permission to cancel this inspection.	Bạn không có quyền hủy đơn kiểm này.	您无权取消此验货。	Anda tiada kebenaran untuk membatalkan pemeriksaan ini.
+Unauthorized. Please log in again.	Không có quyền truy cập. Vui lòng đăng nhập lại.	未授权，请重新登录。	Tidak dibenarkan. Sila log masuk semula.
+Cancelling inspection...	Đang hủy đơn kiểm...	正在取消验货...	Sedang membatalkan pemeriksaan...
+Delete failed ({0})	Xóa thất bại ({0})	删除失败 ({0})	Gagal memadam ({0})
+You do not have permission to delete this inspection.	Bạn không có quyền xóa đơn kiểm này.	您无权删除此验货。	Anda tiada kebenaran untuk memadam pemeriksaan ini.
+Deleting inspection...	Đang xóa đơn kiểm...	正在删除验货...	Sedang memadam pemeriksaan...
+CV	CV	简历	CV
+Profile Photo	Ảnh hồ sơ	头像	Foto profil
+Attachments	Tệp đính kèm	附件	Lampiran
+Postal Code	Mã bưu chính	邮政编码	Poskod
+Home Address	Địa chỉ nhà	家庭住址	Alamat rumah
+Contact	Liên hệ	联系方式	Hubungan
+Date Joined	Ngày tham gia	加入日期	Tarikh menyertai
+Start Year	Năm bắt đầu	开始年份	Tahun mula
+Professional	Chuyên môn	专业信息	Profesional
+Nationality	Quốc tịch	国籍	Kewarganegaraan
+Gender	Giới tính	性别	Jantina
+Date of Birth	Ngày sinh	出生日期	Tarikh lahir
+Full Name	Họ tên	全名	Nama penuh
+Identity	Nhận dạng	身份信息	Identiti
+Inspector Full Detail	Chi tiết kiểm hàng viên	验货员完整详情	Butiran penuh pemeriksa
+Delete Inspector	Xóa kiểm hàng viên	删除验货员	Padam pemeriksa
+PDF, DOC, DOCX — max 10 MB	PDF, DOC, DOCX — tối đa 10 MB	PDF, DOC, DOCX — 最大 10 MB	PDF, DOC, DOCX — maks 10 MB
+browse	chọn tệp	浏览	semak imbas
+Replace	Thay thế	替换	Ganti
+Current CV on file	CV hiện có	当前简历	CV semasa dalam fail
+(leave blank to keep existing)	(để trống để giữ nguyên)	（留空则保留现有文件）	(biarkan kosong untuk mengekalkan yang sedia ada)
+JPG, PNG, WEBP — max 5 MB	JPG, PNG, WEBP — tối đa 5 MB	JPG, PNG, WEBP — 最大 5 MB	JPG, PNG, WEBP — maks 5 MB
+Current photo on file	Ảnh hiện có	当前照片	Foto semasa dalam fail
+Postal code	Mã bưu chính	邮政编码	Poskod
+State or province	Tỉnh hoặc bang	州或省	Negeri atau wilayah
+Inspector Address	Địa chỉ kiểm hàng viên	验货员地址	Alamat pemeriksa
+Enter email	Nhập email	输入邮箱	Masukkan e-mel
+e.g. 2015	vd. 2015	例如：2015	cth. 2015
+Inspection Start Year	Năm bắt đầu kiểm hàng	开始从事验货年份	Tahun mula pemeriksaan
+Others	Khác	其他	Lain-lain
+Office Equipment	Thiết bị văn phòng	办公设备	Peralatan pejabat
+Musical Instruments	Nhạc cụ	乐器	Alat muzik
+Home Improvement	Sửa chữa nhà cửa	家装用品	Penambahbaikan rumah
+Automotive	Ô tô	汽车用品	Automotif
+Toys	Đồ chơi	玩具	Mainan
+Sporting Goods	Đồ thể thao	体育用品	Barangan sukan
+Appliances	Thiết bị gia dụng	家用电器	Perkakas
+Housewares	Đồ gia dụng	家居用品	Barangan rumah
+-- Select Category --	-- Chọn danh mục --	-- 选择类别 --	-- Pilih kategori --
+Number	Số	号码	Nombor
+Type of Identification	Loại giấy tờ	证件类型	Jenis pengenalan
+-- Select Nationality --	-- Chọn quốc tịch --	-- 选择国籍 --	-- Pilih kewarganegaraan --
+Pick date	Chọn ngày	选择日期	Pilih tarikh
+Enter full name	Nhập họ tên	输入全名	Masukkan nama penuh
+Auto-generated	Tự động tạo	自动生成	Dijana secara automatik
+Inspector Details	Thông tin kiểm hàng viên	验货员详情	Butiran pemeriksa
+Show in Login Account	Hiển thị ở Tài khoản đăng nhập	在登录账户中显示	Tunjukkan dalam Akaun log masuk
+View Full Detail	Xem đầy đủ chi tiết	查看完整详情	Lihat butiran penuh
+Personal Profile	Hồ sơ cá nhân	个人资料	Profil peribadi
+No inspectors found.	Không tìm thấy kiểm hàng viên.	未找到验货员。	Tiada pemeriksa ditemui.
+New Inspector	Thêm kiểm hàng viên	新建验货员	Pemeriksa baharu
+{0} inspectors	{0} kiểm hàng viên	{0} 名验货员	{0} pemeriksa
+Filter by status	Lọc theo trạng thái	按状态筛选	Tapis mengikut status
+Search by name, inspector ID, email, mobile...	Tìm theo tên, mã kiểm hàng viên, email, di động...	按姓名、验货员编号、邮箱、手机搜索...	Cari mengikut nama, ID pemeriksa, e-mel, telefon bimbit...
+Manage inspector profiles and details	Quản lý hồ sơ và thông tin kiểm hàng viên	管理验货员资料和详情	Urus profil dan butiran pemeriksa
+Inspector Profile	Hồ sơ kiểm hàng viên	验货员资料	Profil pemeriksa
+Inspector Profile - Inticoo	Hồ sơ kiểm hàng viên - Inticoo	验货员资料 - Inticoo	Profil pemeriksa - Inticoo
+Personal Profile (CV)	Hồ sơ cá nhân (CV)	个人简历 (CV)	Profil peribadi (CV)
+Deleting inspector...	Đang xóa kiểm hàng viên...	正在删除验货员...	Sedang memadam pemeriksa...
+Saving inspector...	Đang lưu kiểm hàng viên...	正在保存验货员...	Sedang menyimpan pemeriksa...
+Creating inspector...	Đang tạo kiểm hàng viên...	正在创建验货员...	Sedang mencipta pemeriksa...
+Uploading CV...	Đang tải CV lên...	正在上传简历...	Sedang memuat naik CV...
+CV / Resume is required when creating a new inspector.	Bắt buộc có CV khi tạo kiểm hàng viên mới.	新建验货员时必须上传简历。	CV / Resume diperlukan semasa mencipta pemeriksa baharu.
+Full Name is required.	Bắt buộc nhập họ tên.	全名为必填项。	Nama penuh diperlukan.
+Photo upload error. Please try again.	Lỗi tải ảnh lên. Vui lòng thử lại.	照片上传出错，请重试。	Ralat muat naik foto. Sila cuba lagi.
+Photo upload failed. Please try again.	Tải ảnh lên thất bại. Vui lòng thử lại.	照片上传失败，请重试。	Gagal memuat naik foto. Sila cuba lagi.
+Photo size must not exceed 5 MB.	Ảnh không được vượt quá 5 MB.	照片大小不能超过 5 MB。	Saiz foto tidak boleh melebihi 5 MB.
+Only JPG, PNG or WEBP files are allowed.	Chỉ chấp nhận tệp JPG, PNG hoặc WEBP.	仅允许 JPG、PNG 或 WEBP 文件。	Hanya fail JPG, PNG atau WEBP dibenarkan.
+CV upload error. Please try again.	Lỗi tải CV lên. Vui lòng thử lại.	简历上传出错，请重试。	Ralat muat naik CV. Sila cuba lagi.
+CV upload failed. Please try again.	Tải CV lên thất bại. Vui lòng thử lại.	简历上传失败，请重试。	Gagal memuat naik CV. Sila cuba lagi.
+File size must not exceed 10 MB.	Tệp không được vượt quá 10 MB.	文件大小不能超过 10 MB。	Saiz fail tidak boleh melebihi 10 MB.
+Only PDF, DOC or DOCX files are allowed.	Chỉ chấp nhận tệp PDF, DOC hoặc DOCX.	仅允许 PDF、DOC 或 DOCX 文件。	Hanya fail PDF, DOC atau DOCX dibenarkan.
+Create Inspector	Tạo kiểm hàng viên	创建验货员	Cipta pemeriksa
+Edit Inspector	Sửa kiểm hàng viên	编辑验货员	Sunting pemeriksa
+Defect Detection Rate = total defects found ÷ total AQL samples inspected × 100.	Tỷ lệ phát hiện lỗi = tổng số lỗi phát hiện ÷ tổng số mẫu AQL đã kiểm × 100.	缺陷检出率 = 发现的缺陷总数 ÷ 已检 AQL 样本总数 × 100。	Kadar pengesanan kecacatan = jumlah kecacatan ditemui ÷ jumlah sampel AQL diperiksa × 100.
+Annual On-Time Inspection Achievement	Tỷ lệ kiểm hàng đúng hạn trong năm	年度按时验货达成率	Pencapaian pemeriksaan tepat masa tahunan
+Total Defect Detection Rate	Tổng tỷ lệ phát hiện lỗi	总缺陷检出率	Jumlah kadar pengesanan kecacatan
+Total Inspection	Tổng số lượt kiểm	验货总数	Jumlah pemeriksaan
+KPI	KPI	KPI	KPI
+Annual Inspection Performance	Hiệu suất kiểm hàng trong năm	年度验货绩效	Prestasi pemeriksaan tahunan
+Pre Shipment Inspection Result (Monthly)	Kết quả kiểm hàng trước giao (theo tháng)	出货前验货结果（按月）	Keputusan pemeriksaan pra-penghantaran (bulanan)
+Fail Rate:	Tỷ lệ không đạt:	不合格率：	Kadar gagal:
+Pass Rate:	Tỷ lệ đạt:	合格率：	Kadar lulus:
+This Year {0}	Năm nay {0}	今年 {0}	Tahun ini {0}
+Pre Shipment Inspection Result	Kết quả kiểm hàng trước giao	出货前验货结果	Keputusan pemeriksaan pra-penghantaran
+On time = QC report completed within 24 hours from the start of the inspection. Year {0}:	Đúng hạn = báo cáo QC hoàn thành trong vòng 24 giờ kể từ khi bắt đầu kiểm. Năm {0}:	按时 = 自验货开始 24 小时内完成 QC 报告。{0} 年：	Tepat masa = laporan QC disiapkan dalam masa 24 jam dari permulaan pemeriksaan. Tahun {0}:
+Delayed	Trễ hạn	延误	Lewat
+On Time	Đúng hạn	按时	Tepat masa
+No completed inspection in {0} {1}.	Không có lượt kiểm hoàn thành trong {0} {1}.	{0} {1} 没有已完成的验货。	Tiada pemeriksaan selesai pada {0} {1}.
+On-Time Inspection Rate — {0} {1}	Tỷ lệ kiểm hàng đúng hạn — {0} {1}	按时验货率 — {0} {1}	Kadar pemeriksaan tepat masa — {0} {1}
+Pre-Production Inspection	Kiểm hàng trước sản xuất	产前验货	Pemeriksaan pra-pengeluaran
+During Production Inspection	Kiểm hàng trong sản xuất	生产中验货	Pemeriksaan semasa pengeluaran

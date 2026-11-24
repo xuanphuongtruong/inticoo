@@ -12,6 +12,16 @@ namespace InticooInspection.Client.Services
         public string Username { get; set; } = "";
         public string Password { get; set; } = "";
         public bool RememberMe { get; set; }
+        // Ngôn ngữ người dùng chủ động chọn ở màn Login (null = dùng ngôn ngữ đã lưu của tài khoản)
+        public string? Language { get; set; }
+        // Mã công ty người dùng chọn khi tài khoản có ở nhiều công ty (API trả NeedCompany)
+        public string? CompanyCode { get; set; }
+    }
+
+    public class CompanyOptionDto
+    {
+        public string Code { get; set; } = "";
+        public string Name { get; set; } = "";
     }
 
     public class AuthResponseDto
@@ -20,6 +30,9 @@ namespace InticooInspection.Client.Services
         public string? Token { get; set; }
         public string? Message { get; set; }
         public UserInfoDto? User { get; set; }
+        // Tài khoản có ở nhiều công ty (mỗi công ty 1 DB riêng) → người dùng chọn công ty rồi đăng nhập lại
+        public bool NeedCompany { get; set; }
+        public List<CompanyOptionDto> Companies { get; set; } = new();
     }
 
     public class UserInfoDto
@@ -29,6 +42,7 @@ namespace InticooInspection.Client.Services
         public string Email { get; set; } = "";
         public string FullName { get; set; } = "";
         public string Role { get; set; } = "User";
+        public string? Language { get; set; }   // ngôn ngữ giao diện lưu theo tài khoản
     }
 
     public class DashboardDto
@@ -66,11 +80,13 @@ namespace InticooInspection.Client.Services
         private readonly ISessionStorageService _localStorage;
         private readonly AuthenticationStateProvider _authStateProvider;
         private readonly PageAccessService _pageAccess;
+        private readonly LanguageService _lang;
 
         public AuthService(HttpClient http, ISessionStorageService localStorage,
                            AuthenticationStateProvider authStateProvider,
-                           PageAccessService pageAccess)
+                           PageAccessService pageAccess, LanguageService lang)
         {
+            _lang              = lang;
             _http              = http;
             _localStorage      = localStorage;
             _authStateProvider = authStateProvider;
@@ -96,6 +112,10 @@ namespace InticooInspection.Client.Services
                 _http.DefaultRequestHeaders.Authorization =
                     new AuthenticationHeaderValue("Bearer", result.Token);
                 ((JwtAuthStateProvider)_authStateProvider).NotifyAuthStateChanged();
+
+                // Không chọn ngôn ngữ ở Login → áp dụng ngôn ngữ đã lưu theo tài khoản (đăng nhập máy khác vẫn giữ)
+                if (string.IsNullOrEmpty(dto.Language) && !string.IsNullOrEmpty(result.User?.Language))
+                    await _lang.SetLanguageAsync(result.User!.Language!);
 
                 // Load PageAccess ngay sau khi login thanh cong, de menu hien dung
                 // ngay trang dau tien (khong phai doi MainLayout.OnInitializedAsync)

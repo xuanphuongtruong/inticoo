@@ -1,0 +1,86 @@
+@* Biểu đồ cột chồng theo tháng — hiện số của TỪNG phần (PPI / DPI / PSI...) ngay trong cột + tổng trên đầu.
+   Phần có giá trị > 0 luôn cao tối thiểu MinSeg px để đọc được số. *@
+
+<div class="sb-chart" style="height:@(Height + 34)px">
+    @for (int i = 0; i < Labels.Count; i++)
+    {
+        var idx   = i;
+        var total = Series.Sum(s => s.Values.ElementAtOrDefault(idx));
+        var nz    = Series.Count(s => s.Values.ElementAtOrDefault(idx) > 0);
+        var h     = total > 0 ? Math.Max(nz * MinSeg, (double)total / _max * Height) : 0;
+        <div class="sb-col">
+            @if (total > 0)
+            {
+                <div class="sb-total">@total</div>
+                <div class="sb-stack" style="height:@((int)h)px;max-width:@(BarWidth)px">
+                    @foreach (var s in Series)
+                    {
+                        var v = s.Values.ElementAtOrDefault(idx);
+                        if (v <= 0) continue;
+                        // phần dư sau khi chừa min-height cho các phần khác, chia theo tỉ lệ
+                        var segH = nz * MinSeg >= h ? MinSeg : MinSeg + (h - nz * MinSeg) * v / total;
+                        <div class="sb-seg" style="height:@((int)Math.Round(segH))px;background:@s.Color" title="@s.Name: @v">
+                            <span>@v</span>
+                        </div>
+                    }
+                </div>
+            }
+            else
+            {
+                <div class="sb-total" style="opacity:0">0</div>
+                <div class="sb-empty" style="max-width:@(BarWidth)px"></div>
+            }
+            <div class="sb-lbl">@Labels[idx]</div>
+        </div>
+    }
+</div>
+@if (ShowLegend)
+{
+    <div class="sb-legend">
+        @foreach (var s in Series)
+        {
+            <span class="sb-leg"><span class="sb-dot" style="background:@s.Color"></span>@s.Name</span>
+        }
+    </div>
+}
+
+<style>
+    .sb-chart { display:flex; align-items:flex-end; gap:6px; }
+    .sb-col   { display:flex; flex-direction:column; align-items:center; justify-content:flex-end; flex:1; height:100%; min-width:0; }
+    .sb-total { font-size:10.5px; color:#374151; font-weight:700; margin-bottom:3px; }
+    .sb-stack { width:100%; display:flex; flex-direction:column-reverse; border-radius:4px 4px 0 0; overflow:hidden; }
+    .sb-seg   { width:100%; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+    .sb-seg span { font-size:9.5px; font-weight:700; color:#fff; line-height:1; text-shadow:0 0 2px rgba(0,0,0,.35); }
+    .sb-empty { width:100%; height:4px; background:#e5e7eb; border-radius:4px; }
+    .sb-lbl   { font-size:9.5px; color:#9ca3af; margin-top:5px; font-weight:600; letter-spacing:.03em; text-transform:uppercase; }
+    /* Điện thoại: 12 cột rất hẹp → thu nhỏ khoảng cách + chữ để nhãn tháng không chồng nhau */
+    @@media (max-width:600px) {
+        .sb-chart { gap:2px; }
+        .sb-lbl { font-size:8px; letter-spacing:0; max-width:100%; overflow:hidden; text-overflow:clip; white-space:nowrap; }
+        .sb-total { font-size:9.5px; }
+        .sb-seg span { font-size:8.5px; }
+        .sb-legend { gap:6px 12px; }
+        .sb-leg { font-size:11px; }
+    }
+    @@media (max-width:360px) { .sb-lbl { font-size:7px; } }
+    .sb-legend { display:flex; gap:16px; justify-content:center; flex-wrap:wrap; margin-top:10px; }
+    .sb-leg   { display:flex; align-items:center; gap:6px; font-size:12px; color:#6b7280; }
+    .sb-dot   { width:10px; height:10px; border-radius:3px; display:inline-block; }
+</style>
+
+@code {
+    public record BarSeries(string Name, string Color, IReadOnlyList<int> Values);
+
+    [Parameter] public List<string> Labels { get; set; } = new();
+    [Parameter] public List<BarSeries> Series { get; set; } = new();
+    [Parameter] public int Height { get; set; } = 160;
+    [Parameter] public int BarWidth { get; set; } = 30;
+    [Parameter] public int MinSeg { get; set; } = 15;
+    [Parameter] public bool ShowLegend { get; set; } = true;
+
+    double _max => Math.Max(1, Enumerable.Range(0, Labels.Count).Select(i => Series.Sum(s => s.Values.ElementAtOrDefault(i))).DefaultIfEmpty(0).Max());
+
+    // Tên tháng viết tắt theo ngôn ngữ đang chọn (key Date.MonthShort1..12)
+    public static List<string> MonthLabels => Enumerable.Range(1, 12)
+        .Select(m => LanguageService.Instance?.MonthShort(m) ?? System.Globalization.CultureInfo.InvariantCulture.DateTimeFormat.GetAbbreviatedMonthName(m)).ToList();
+}

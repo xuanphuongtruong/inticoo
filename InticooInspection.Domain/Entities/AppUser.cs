@@ -37,6 +37,17 @@ namespace InticooInspection.Domain.Entities
         public bool      IsActive          { get; set; } = true;
         public string? PageAccess          { get; set; }
 
+        // ── Quyền chi tiết (màn Create/Edit User) ────────────────────
+        public string? Department          { get; set; }
+        public string? Position            { get; set; }
+        // Khách hàng được truy cập: CSV mã KH, "*" = tất cả; null = theo CustomerId cũ (xem Security/CustomerAccess)
+        public string? CustomerIds         { get; set; }
+        // JSON ModulePermissionSet; null = suy ra từ PageAccess (tài khoản cũ)
+        public string? ModulePermissions   { get; set; }
+
+        // Ngôn ngữ giao diện đã chọn (en/vi/zh/ms) — khác cột Language (ngôn ngữ inspector nói được)
+        public string? UiLanguage          { get; set; }
+
         // Hiển thị account này trên màn hình Login Account (Users) hay không.
         // Mặc định true; nếu Admin bỏ tick ở Inspector Profile thì account bị ẩn khỏi list Users.
         public bool      ShowInLoginAccount { get; set; } = true;

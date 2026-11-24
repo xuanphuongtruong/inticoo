@@ -33,11 +33,17 @@ namespace InticooInspection.Infrastructure.Persistence.Configurations
 
             // Status & Audit
             b.Property(x => x.Status).HasConversion<int>();
+            // Job nháp (Draft) chưa giao inspector: ẩn khỏi mọi truy vấn (lịch, dashboard, thống kê, mail).
+            // Chỉ danh sách / chi tiết / sửa / xoá / sinh JobNumber dùng IgnoreQueryFilters().
+            b.HasQueryFilter(x => x.Status != InspectionStatus.Draft);
             b.Property(x => x.InspectionType).HasConversion<int>();
             b.Property(x => x.CreatedById).HasMaxLength(450);
 
             // Office Use
             b.Property(x => x.InspectorName).HasMaxLength(200);
+            b.Property(x => x.InspectionStartTime).HasMaxLength(5);
+            b.Property(x => x.InspectionEndTime).HasMaxLength(5);
+            b.Property(x => x.InspectorRemarks).HasMaxLength(500);
             b.Property(x => x.InspectorId).HasMaxLength(100);
             b.Property(x => x.JobNumber).HasMaxLength(50);
 

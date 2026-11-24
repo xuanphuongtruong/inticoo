@@ -1,20 +1,21 @@
-@page "/vendor-reviews/{VendorCode}"
+﻿@page "/vendor-reviews/{VendorCode}"
 @attribute [Microsoft.AspNetCore.Authorization.Authorize]
 @using System.Net.Http.Json
 @using InticooInspection.Client.Services
 @inject HttpClient Http
 @inject NavigationManager Navigation
 @inject PageAccessService PageAccess
+@inherits LocalizedComponentBase
 
-<PageTitle>Vendor Review - Inticoo</PageTitle>
+<PageTitle>@T("VendorReview.VendorReviewInticoo")</PageTitle>
 
 @if (_loading)
 {
-    <div class="rv-loading"><div class="rv-spinner"></div> Loading...</div>
+    <div class="rv-loading"><div class="rv-spinner"></div> @T("Common.Loading")</div>
 }
 else if (_error != null)
 {
-    <div class="rv-error">⚠ @_error <button @onclick="Load">Retry</button></div>
+    <div class="rv-error">⚠ @_error <button @onclick="Load">@T("Common.Retry")</button></div>
 }
 else if (_data != null)
 {
@@ -22,19 +23,21 @@ else if (_data != null)
 
     <!-- ── Header ── -->
     <div class="rv-header">
-        <button class="rv-back" @onclick="@(() => Navigation.NavigateTo("/vendor-reviews"))">
+        <button class="rv-back no-print" @onclick="@(() => Navigation.NavigateTo("/vendor-reviews"))">
             <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 4l-6 6 6 6" stroke-linecap="round"/></svg>
         </button>
-        <div>
-            <h1 class="rv-title">Performance Overview</h1>
-            <p class="rv-sub">Vendor Quality Metrics &amp; Inspection Results</p>
+        <div class="rv-header-center">
+            <h1 class="rv-title">@T("VendorReview.VendorPerformanceOverview")</h1>
+            <p class="rv-sub">@T("VendorReview.VendorQualityMetricsInspectionResults")</p>
         </div>
         <div class="rv-controls">
+            <span class="print-only rv-print-period">@MonthName(_month) @_year</span>
+            <PrintReportButton />
             <select class="rv-select" value="@_month" @onchange="OnMonthChange">
                 @for(int m = 1; m <= 12; m++)
                 {
                     var mn = m;
-                    <option value="@mn">@System.Globalization.CultureInfo.CurrentCulture.DateTimeFormat.GetMonthName(mn)</option>
+                    <option value="@mn">@L.MonthName(mn)</option>
                 }
             </select>
             <select class="rv-select" value="@_year" @onchange="OnYearChange">
@@ -51,263 +54,238 @@ else if (_data != null)
     <div class="rv-infobar">
         <!-- <div class="rv-infobar-field"> -->
         <div>
-            <span class="rv-infobar-lbl">Vendor Name :</span>
+            <span class="rv-infobar-lbl">@T("VendorReview.VendorName")</span>
             <span class="rv-infobar-val">@_data.VendorName</span>
         </div>
         <!-- <div class="rv-infobar-field"> -->
         <div>
-            <span class="rv-infobar-lbl">Vendor ID &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; :</span>
+            <span class="rv-infobar-lbl">@T("VendorReview.VendorID")</span>
             <span class="rv-infobar-val">@_data.VendorId</span>
         </div>
     </div>
 
+    <!-- ── KPI cards (năm đang chọn) ── -->
+    <div class="rv-kpis">
+        @foreach (var (lbl, val, col) in new[] {
+            (T("InspectorReview.TotalInspection"), _data.Year.Total, "#1d4ed8"),
+            (T("InspectorReview.PpiInspections"),  _data.Year.Ppt,   "#3b82f6"),
+            (T("InspectorReview.DpiInspections"),  _data.Year.Dpi,   "#f59e0b"),
+            (T("InspectorReview.PsiInspections"),  _data.Year.Pst,   "#dc2626"),
+            (T("InspectorReview.ClcInspections"),  _data.Year.Clc,   "#8b5cf6") })
+        {
+            <div class="rv-kpi" style="border-top-color:@col">
+                <div class="rv-kpi-l">@lbl</div>
+                <div class="rv-kpi-v">@val.ToString("N0")</div>
+                <div class="rv-kpi-s">@T("InspectorReview.NewThisYear")</div>
+            </div>
+        }
+    </div>
+
+    <!-- ── Total Shipment Quantity (theo sản phẩm × tháng) ── -->
+    <div class="rv-sec print-avoid-break">
+    <div class="rv-section-title">@T("Common.TotalShipmentQuantity") <span class="rv-section-sub">@T("VendorReview.YearCompletedPreShipmentInspections", _data.TargetYear)</span></div>
+    <div class="rv-card rv-table-card print-avoid-break">
+        <table class="rv-tbl rv-tbl-ship">
+            <thead>
+                <tr>
+                    <th>No</th><th class="tl">@T("Common.ProductName")</th><th>@T("Common.ProductCode")</th>
+                    @foreach (var mn in StackedBars.MonthLabels) { <th>@mn</th> }
+                    <th>@T("Common.Total")</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (!_data.ShipmentByProduct.Any())
+                {
+                    <tr><td colspan="16" class="rv-empty">@T("VendorReview.NoShipmentIn", _data.TargetYear)</td></tr>
+                }
+                @for (int i = 0; i < _data.ShipmentByProduct.Count; i++)
+                {
+                    var r = _data.ShipmentByProduct[i];
+                    <tr>
+                        <td>@(i + 1)</td>
+                        <td class="tl">@r.ProductName</td>
+                        <td>@(r.ProductCode ?? "—")</td>
+                        @foreach (var q in r.Months) { <td>@(q > 0 ? q.ToString("N0") : "")</td> }
+                        <td class="fw">@r.Total.ToString("N0")</td>
+                    </tr>
+                }
+            </tbody>
+            @if (_data.ShipmentByProduct.Any())
+            {
+                <tfoot>
+                    <tr>
+                        <td colspan="3" class="tl">@T("Common.Total")</td>
+                        @foreach (var q in _data.ShipmentMonthTotals) { <td>@(q > 0 ? q.ToString("N0") : "")</td> }
+                        <td>@_data.ShipmentTotal.ToString("N0")</td>
+                    </tr>
+                </tfoot>
+            }
+        </table>
+    </div>
+    </div>
+
     <!-- ── Row 1: Inspection Results + Defect Breakdown (THIS MONTH) ── -->
-    <div class="rv-section-title">
-        Inspection Results <span class="rv-section-sub">(This Month)</span>
-        <span style="flex:1"></span>
-        Defect Breakdown <span class="rv-section-sub">(This Month)</span>
-    </div>
-    <div class="rv-row">
-
-        <!-- Left: Pass/Fail Pie -->
-        <div class="rv-card" style="flex:1;">
-            <div class="rv-pie-wrap">
-                @{
-                    var passP = _data.PassRate;
-                    var failP = _data.FailRate;
-                    var passDash = passP / 100.0 * 251.2;
-                    var failDash = failP / 100.0 * 251.2;
-                }
-                <svg viewBox="0 0 100 100" class="rv-pie">
-                    @if (passP >= 100)
-                    {
-                        <circle cx="50" cy="50" r="40" fill="none" stroke="#22c55e" stroke-width="22"/>
-                    }
-                    else if (failP >= 100)
-                    {
-                        <circle cx="50" cy="50" r="40" fill="none" stroke="#ef4444" stroke-width="22"/>
-                    }
-                    else
-                    {
-                        <circle cx="50" cy="50" r="40" fill="none" stroke="#e5e7eb" stroke-width="22"/>
-                        @if (passP > 0)
-                        {
-                            <circle cx="50" cy="50" r="40" fill="none" stroke="#22c55e" stroke-width="22"
-                                    stroke-dasharray="@passDash.ToString("F1") 251.2"
-                                    stroke-dashoffset="62.8" transform="rotate(-90 50 50)"/>
-                        }
-                        @if (failP > 0)
-                        {
-                            <circle cx="50" cy="50" r="40" fill="none" stroke="#ef4444" stroke-width="22"
-                                    stroke-dasharray="@failDash.ToString("F1") 251.2"
-                                    stroke-dashoffset="@((62.8 - passDash).ToString("F1"))" transform="rotate(-90 50 50)"/>
-                        }
-                    }
-                    <text x="50" y="46" text-anchor="middle" font-size="10" font-weight="bold" fill="#16a34a">Passed</text>
-                    <text x="50" y="58" text-anchor="middle" font-size="12" font-weight="bold" fill="#16a34a">@passP%</text>
-                </svg>
-                <div class="rv-pie-legend">
-                    <div class="rv-leg-row"><span class="rv-leg-dot" style="background:#22c55e;"></span> Pass Rate: <strong style="color:#16a34a;">@_data.PassRate%</strong></div>
-                    <div class="rv-leg-row"><span class="rv-leg-dot" style="background:#ef4444;"></span> Fail Rate: <strong style="color:#dc2626;">@_data.FailRate%</strong></div>
-                </div>
-            </div>
+    <div class="rv-row rv-row-eq print-avoid-break">
+        <div style="flex:1;min-width:0;">
+            <div class="rv-section-title">@T("Common.InspectionResults") <span class="rv-section-sub">(@MonthName(_data.TargetMonth) @_data.TargetYear)</span></div>
+            @ResultCard(_data.Month)
         </div>
-
-        <!-- Right: Defect Pie -->
-        <div class="rv-card" style="flex:1;">
-            <div class="rv-pie-wrap">
-                @{
-                    var dt = _data.DefTotal > 0 ? _data.DefTotal : 1;
-                    var critP = Math.Round((double)_data.MonthCritical / dt * 100);
-                    var majP  = Math.Round((double)_data.MonthMajor    / dt * 100);
-                    var minP  = Math.Round((double)_data.MonthMinor    / dt * 100);
-                    var critDash = critP / 100.0 * 251.2;
-                    var majDash  = majP  / 100.0 * 251.2;
-                    var minDash  = minP  / 100.0 * 251.2;
-                }
-                <svg viewBox="0 0 100 100" class="rv-pie">
-                    @if (_data.DefTotal <= 0)
-                    {
-                        <circle cx="50" cy="50" r="40" fill="none" stroke="#e5e7eb" stroke-width="22"/>
-                    }
-                    else
-                    {
-                        <circle cx="50" cy="50" r="40" fill="none" stroke="#ef4444" stroke-width="22"
-                                stroke-dasharray="@critDash.ToString("F1") 251.2"
-                                stroke-dashoffset="62.8" transform="rotate(-90 50 50)"/>
-                        <circle cx="50" cy="50" r="40" fill="none" stroke="#f59e0b" stroke-width="22"
-                                stroke-dasharray="@majDash.ToString("F1") 251.2"
-                                stroke-dashoffset="@((62.8 - critDash).ToString("F1"))" transform="rotate(-90 50 50)"/>
-                        <circle cx="50" cy="50" r="40" fill="none" stroke="#3b82f6" stroke-width="22"
-                                stroke-dasharray="@minDash.ToString("F1") 251.2"
-                                stroke-dashoffset="@((62.8 - critDash - majDash).ToString("F1"))" transform="rotate(-90 50 50)"/>
-                    }
-                    <text x="50" y="54" text-anchor="middle" font-size="8" fill="#6b7280">Defects</text>
-                </svg>
-                <div class="rv-def-legend">
-                    <div class="rv-def-row critical"><span class="rv-def-icon">▲</span> Critical Defects: <strong>@_data.MonthCritical</strong></div>
-                    <div class="rv-def-row major">   <span class="rv-def-icon">▲</span> Major Defects: <strong>@_data.MonthMajor</strong></div>
-                    <div class="rv-def-row minor">   <span class="rv-def-icon">▲</span> Minor Defects: <strong>@_data.MonthMinor</strong></div>
-                </div>
-            </div>
+        <div style="flex:1;min-width:0;">
+            <div class="rv-section-title">@T("VendorReview.DefectBreakdown") <span class="rv-section-sub">(@MonthName(_data.TargetMonth) @_data.TargetYear)</span></div>
+            @DefectCard(_data.Month)
         </div>
-
     </div>
-
-    <!-- ── Defect summary bar removed ── -->
 
     <!-- ── Monthly Bar Chart ── -->
-    <div class="rv-section-title">Total Inspection (Monthly)</div>
+    <div class="rv-sec print-avoid-break">
+    <div class="rv-section-title">@T("VendorReview.TotalInspectionMonthly", _data.TargetYear)</div>
     <div class="rv-card" style="padding:24px 20px;">
-        <div class="rv-legend-row">
-            <span class="rv-leg-item"><span class="rv-leg-dot" style="background:#1d4ed8;"></span>Pre-Production Inspection</span>
-            <span class="rv-leg-item"><span class="rv-leg-dot" style="background:#f59e0b;"></span>During Production Inspection</span>
-            <span class="rv-leg-item"><span class="rv-leg-dot" style="background:#dc2626;"></span>Pre-Shipment Inspection</span>
-        </div>
-        @{
-            var months2 = new[]{"JAN","FEB","MAR","APR","MAY","JUN","JUL","AUG","SEP","OCT","NOV","DEC"};
-            var maxM = _data.MonthlyData.Max(m => m.Ppt + m.Dpi + m.Pst);
-            if (maxM == 0) maxM = 1;
-        }
-        <div class="rv-barchart">
-            @foreach (var m in _data.MonthlyData)
-            {
-                var total = m.Ppt + m.Dpi + m.Pst;
-                var hp = (double)total / maxM * 160;
-                <div class="rv-bar-col">
-                    @if (total > 0)
-                    {
-                        <div class="rv-bar-val">@total</div>
-                        <div class="rv-bar-stack" style="height:@((int)hp)px;">
-                            @if (m.Ppt > 0) { <div style="height:@((int)((double)m.Ppt/total*100))%;background:#1d4ed8;"></div> }
-                            @if (m.Dpi > 0) { <div style="height:@((int)((double)m.Dpi/total*100))%;background:#f59e0b;"></div> }
-                            @if (m.Pst > 0) { <div style="height:@((int)((double)m.Pst/total*100))%;background:#dc2626;"></div> }
-                        </div>
-                    }
-                    else
-                    {
-                        <div class="rv-bar-val" style="opacity:0">0</div>
-                        <div class="rv-bar-empty"></div>
-                    }
-                    <div class="rv-bar-lbl">@months2[m.Month-1]</div>
-                </div>
-            }
-        </div>
+        <StackedBars Labels="StackedBars.MonthLabels" Height="170"
+                     Series="@(new() {
+                         new(T("VendorReview.PreProductionInspection"),    "#1d4ed8", _data.MonthlyData.OrderBy(m => m.Month).Select(m => m.Ppt).ToList()),
+                         new(T("VendorReview.DuringProductionInspection"), "#f59e0b", _data.MonthlyData.OrderBy(m => m.Month).Select(m => m.Dpi).ToList()),
+                         new(T("VendorReview.PreShipmentInspection"),      "#dc2626", _data.MonthlyData.OrderBy(m => m.Month).Select(m => m.Pst).ToList()),
+                         new(T("VendorReview.ContainerLoadingCheck"),      "#8b5cf6", _data.MonthlyData.OrderBy(m => m.Month).Select(m => m.Clc).ToList()) })" />
+    </div>
     </div>
 
     <!-- ── Yearly Horizontal Bar ── -->
-    <div class="rv-section-title">Total Inspection for Year — @_data.TargetYear</div>
-    <div class="rv-card" style="padding:24px 20px;">
-        @{
-            var maxYear = Math.Max(1, Math.Max(_data.YearPpt, Math.Max(_data.YearDpi, _data.YearPst)));
-        }
+    <div class="rv-sec print-avoid-break">
+    <div class="rv-section-title">@T("VendorReview.TotalInspectionForYear", _data.TargetYear) <span class="rv-section-sub">@T("VendorReview.Total", _data.Year.Total)</span></div>
+    <div class="rv-card print-avoid-break" style="padding:24px 20px;">
+        @{ var maxYear = Math.Max(1, Math.Max(Math.Max(_data.Year.Ppt, _data.Year.Clc), Math.Max(_data.Year.Dpi, _data.Year.Pst))); }
         <div class="rv-hbar-row">
-            <span class="rv-hbar-lbl">Pre-Shipment Inspection</span>
-            <div class="rv-hbar-track">
-                <div class="rv-hbar-fill" style="width:@((double)_data.YearPst/maxYear*100)%;background:#dc2626;"></div>
-            </div>
-            <span class="rv-hbar-val">@_data.YearPst</span>
+            <span class="rv-hbar-lbl">@T("VendorReview.PreShipmentInspection")</span>
+            <div class="rv-hbar-track"><div class="rv-hbar-fill" style="width:@Pc(_data.Year.Pst, maxYear)%;background:#dc2626;"></div></div>
+            <span class="rv-hbar-val">@_data.Year.Pst</span>
         </div>
         <div class="rv-hbar-row">
-            <span class="rv-hbar-lbl">During Production Inspection</span>
-            <div class="rv-hbar-track">
-                <div class="rv-hbar-fill" style="width:@((double)_data.YearDpi/maxYear*100)%;background:#f59e0b;"></div>
-            </div>
-            <span class="rv-hbar-val">@_data.YearDpi</span>
+            <span class="rv-hbar-lbl">@T("VendorReview.DuringProductionInspection")</span>
+            <div class="rv-hbar-track"><div class="rv-hbar-fill" style="width:@Pc(_data.Year.Dpi, maxYear)%;background:#f59e0b;"></div></div>
+            <span class="rv-hbar-val">@_data.Year.Dpi</span>
         </div>
         <div class="rv-hbar-row">
-            <span class="rv-hbar-lbl">Pre-Production Inspection</span>
-            <div class="rv-hbar-track">
-                <div class="rv-hbar-fill" style="width:@((double)_data.YearPpt/maxYear*100)%;background:#1d4ed8;"></div>
-            </div>
-            <span class="rv-hbar-val">@_data.YearPpt</span>
+            <span class="rv-hbar-lbl">@T("VendorReview.PreProductionInspection")</span>
+            <div class="rv-hbar-track"><div class="rv-hbar-fill" style="width:@Pc(_data.Year.Ppt, maxYear)%;background:#1d4ed8;"></div></div>
+            <span class="rv-hbar-val">@_data.Year.Ppt</span>
         </div>
+        <div class="rv-hbar-row">
+            <span class="rv-hbar-lbl">@T("VendorReview.ContainerLoadingCheck")</span>
+            <div class="rv-hbar-track"><div class="rv-hbar-fill" style="width:@Pc(_data.Year.Clc, maxYear)%;background:#8b5cf6;"></div></div>
+            <span class="rv-hbar-val">@_data.Year.Clc</span>
+        </div>
+    </div>
     </div>
 
     <!-- ── Row 2: Year Pass/Fail + Year Defects ── -->
-    <div class="rv-section-row">
-        <div style="flex:1;">
-            <div class="rv-section-title">Inspection Result — Year @_data.TargetYear</div>
-            <div class="rv-card">
-                <div class="rv-pie-wrap">
-                    @{
-                        var yPassDash = _data.YearPassRate / 100.0 * 251.2;
-                        var yFailDash = _data.YearFailRate / 100.0 * 251.2;
-                    }
-                    <svg viewBox="0 0 100 100" class="rv-pie">
-                        @if (_data.YearPassRate >= 100)
+    <div class="rv-row rv-row-eq print-avoid-break">
+        <div style="flex:1;min-width:0;">
+            <div class="rv-section-title">@T("VendorReview.InspectionResultYear", _data.TargetYear)</div>
+            @ResultCard(_data.Year)
+        </div>
+        <div style="flex:1;min-width:0;">
+            <div class="rv-section-title">@T("VendorReview.DefectBreakdownYear", _data.TargetYear)</div>
+            @DefectCard(_data.Year)
+        </div>
+    </div>
+
+    <!-- ── Vendor Monthly Defect Performance ── -->
+    <div class="rv-sec print-avoid-break">
+    <div class="rv-section-title">@T("VendorReview.VendorMonthlyDefectPerformance", _data.TargetYear)</div>
+    <div class="rv-card rv-table-card">
+        <table class="rv-tbl">
+            <thead>
+                <tr><th class="tl">@T("VendorReview.Month")</th><th>@T("VendorReview.ShipmentQuantity")</th><th>@T("VendorReview.AQLQty")</th><th>@T("VendorReview.DefectQty")</th><th>@T("VendorReview.DefectRate2")</th><th class="tl">@T("VendorReview.TopDefect")</th></tr>
+            </thead>
+            <tbody>
+                @foreach (var m in _data.MonthlyDefect)
+                {
+                    var has = m.Inspections > 0;
+                    <tr class="@(has ? "" : "rv-muted-row")">
+                        <td class="tl">@StackedBars.MonthLabels[m.Month - 1]</td>
+                        <td>@(has ? m.ShipmentQty.ToString("N0") : "—")</td>
+                        <td>@(has ? m.AqlQty.ToString("N0") : "—")</td>
+                        <td>@(has ? m.DefectQty.ToString("N0") : "—")</td>
+                        <td>@(has ? $"{m.DefectRate:0.00}%" : "—")</td>
+                        <td class="tl">@(m.TopDefect ?? "—")</td>
+                    </tr>
+                }
+            </tbody>
+            <tfoot>
+                @{
+                    var tAql = _data.MonthlyDefect.Sum(x => x.AqlQty);
+                    var tDef = _data.MonthlyDefect.Sum(x => x.DefectQty);
+                }
+                <tr>
+                    <td class="tl">@T("Common.Total")</td>
+                    <td>@_data.MonthlyDefect.Sum(x => x.ShipmentQty).ToString("N0")</td>
+                    <td>@tAql.ToString("N0")</td>
+                    <td>@tDef.ToString("N0")</td>
+                    <td>@(tAql > 0 ? $"{(double)tDef / tAql * 100:0.00}%" : "—")</td>
+                    <td class="tl">@(_data.AnnualDefects.Where(d => d.Qty > 0).OrderByDescending(d => d.Qty).Select(d => $"{d.Code} {d.Name}").FirstOrDefault() ?? "—")</td>
+                </tr>
+            </tfoot>
+        </table>
+        <div class="rv-note">@T("VendorReview.DefectRateDefectQtyAQLQty")</div>
+    </div>
+    </div>
+
+    <div class="rv-row rv-row-annual">
+        <!-- ── Annual Defect Breakdown ── -->
+        <div class="print-avoid-break" style="flex:1;min-width:0;">
+            <div class="rv-section-title">@T("VendorReview.AnnualDefectBreakdown", _data.TargetYear)</div>
+            <div class="rv-card rv-table-card print-avoid-break">
+                <table class="rv-tbl">
+                    <thead><tr><th class="tl">@T("Common.DefectType")</th><th>@T("VendorReview.Qty")</th><th>@T("VendorReview.OfTotalDefects")</th></tr></thead>
+                    <tbody>
+                        @foreach (var d in _data.AnnualDefects)
                         {
-                            <circle cx="50" cy="50" r="40" fill="none" stroke="#22c55e" stroke-width="22"/>
+                            <tr class="@(d.Qty > 0 ? "" : "rv-muted-row")">
+                                <td class="tl">@(d.Code == "OTH" ? T("VendorReview.Other") : $"{d.Code} {d.Name}")</td>
+                                <td>@d.Qty</td>
+                                <td>
+                                    <div class="rv-pctbar"><div style="width:@Inv(d.Pct)%"></div><span>@d.Pct%</span></div>
+                                </td>
+                            </tr>
                         }
-                        else if (_data.YearFailRate >= 100)
-                        {
-                            <circle cx="50" cy="50" r="40" fill="none" stroke="#ef4444" stroke-width="22"/>
-                        }
-                        else
-                        {
-                            <circle cx="50" cy="50" r="40" fill="none" stroke="#e5e7eb" stroke-width="22"/>
-                            @if (_data.YearPassRate > 0)
-                            {
-                                <circle cx="50" cy="50" r="40" fill="none" stroke="#22c55e" stroke-width="22"
-                                        stroke-dasharray="@yPassDash.ToString("F1") 251.2"
-                                        stroke-dashoffset="62.8" transform="rotate(-90 50 50)"/>
-                            }
-                            @if (_data.YearFailRate > 0)
-                            {
-                                <circle cx="50" cy="50" r="40" fill="none" stroke="#ef4444" stroke-width="22"
-                                        stroke-dasharray="@yFailDash.ToString("F1") 251.2"
-                                        stroke-dashoffset="@((62.8 - yPassDash).ToString("F1"))" transform="rotate(-90 50 50)"/>
-                            }
-                        }
-                        <text x="50" y="46" text-anchor="middle" font-size="10" font-weight="bold" fill="#16a34a">Passed</text>
-                        <text x="50" y="58" text-anchor="middle" font-size="12" font-weight="bold" fill="#16a34a">@_data.YearPassRate%</text>
-                    </svg>
-                    <div class="rv-pie-legend">
-                        <div class="rv-leg-row"><span class="rv-leg-dot" style="background:#22c55e;"></span> Pass Rate: <strong style="color:#16a34a;">@_data.YearPassRate%</strong></div>
-                        <div class="rv-leg-row"><span class="rv-leg-dot" style="background:#ef4444;"></span> Fail Rate: <strong style="color:#dc2626;">@_data.YearFailRate%</strong></div>
-                    </div>
-                </div>
+                    </tbody>
+                    <tfoot><tr><td class="tl">@T("Common.Total")</td><td>@_data.AnnualDefectTotal</td><td>@(_data.AnnualDefectTotal > 0 ? "100%" : "—")</td></tr></tfoot>
+                </table>
             </div>
         </div>
 
-        <div style="flex:1;">
-            <div class="rv-section-title">Defect Breakdown — Year @_data.TargetYear</div>
-            <div class="rv-card">
-                <div class="rv-pie-wrap">
-                    @{
-                        var ydt = _data.YDefTotal > 0 ? _data.YDefTotal : 1;
-                        var yCritP = Math.Round((double)_data.YearCritical / ydt * 100);
-                        var yMajP  = Math.Round((double)_data.YearMajor    / ydt * 100);
-                        var yMinP  = Math.Round((double)_data.YearMinor    / ydt * 100);
-                        var yCritDash = yCritP / 100.0 * 251.2;
-                        var yMajDash  = yMajP  / 100.0 * 251.2;
-                        var yMinDash  = yMinP  / 100.0 * 251.2;
-                    }
-                    <svg viewBox="0 0 100 100" class="rv-pie">
-                        @if (_data.YDefTotal <= 0)
-                        {
-                            <circle cx="50" cy="50" r="40" fill="none" stroke="#e5e7eb" stroke-width="22"/>
-                        }
-                        else
-                        {
-                            <circle cx="50" cy="50" r="40" fill="none" stroke="#ef4444" stroke-width="22"
-                                    stroke-dasharray="@yCritDash.ToString("F1") 251.2"
-                                    stroke-dashoffset="62.8" transform="rotate(-90 50 50)"/>
-                            <circle cx="50" cy="50" r="40" fill="none" stroke="#f59e0b" stroke-width="22"
-                                    stroke-dasharray="@yMajDash.ToString("F1") 251.2"
-                                    stroke-dashoffset="@((62.8 - yCritDash).ToString("F1"))" transform="rotate(-90 50 50)"/>
-                            <circle cx="50" cy="50" r="40" fill="none" stroke="#3b82f6" stroke-width="22"
-                                    stroke-dasharray="@yMinDash.ToString("F1") 251.2"
-                                    stroke-dashoffset="@((62.8 - yCritDash - yMajDash).ToString("F1"))" transform="rotate(-90 50 50)"/>
-                        }
-                        <text x="50" y="54" text-anchor="middle" font-size="8" fill="#6b7280">Defects</text>
-                    </svg>
-                    <div class="rv-def-legend">
-                        <div class="rv-def-row critical"><span class="rv-def-icon">▲</span> Critical: <strong>@_data.YearCritical (@yCritP%)</strong></div>
-                        <div class="rv-def-row major">   <span class="rv-def-icon">▲</span> Major: <strong>@_data.YearMajor (@yMajP%)</strong></div>
-                        <div class="rv-def-row minor">   <span class="rv-def-icon">▲</span> Minor: <strong>@_data.YearMinor (@yMinP%)</strong></div>
-                    </div>
-                </div>
+        <!-- ── Annual Results ── -->
+        <div class="print-avoid-break" style="flex:1.3;min-width:0;">
+            <div class="rv-section-title">@T("VendorReview.AnnualResults")</div>
+            <div class="rv-card rv-table-card print-avoid-break">
+                <table class="rv-tbl">
+                    <thead>
+                        <tr><th class="tl">@T("VendorReview.AnnualResults")</th>@foreach (var a in _data.AnnualResults) { <th>@a.Year</th> }</tr>
+                    </thead>
+                    <tbody>
+                        <tr><td class="tl">@T("Common.TotalShipmentQuantity")</td>@foreach (var a in _data.AnnualResults) { <td>@(a.Inspections > 0 ? a.ShipmentQty.ToString("N0") : "—")</td> }</tr>
+                        <tr><td class="tl">@T("VendorReview.TotalInspection")</td>@foreach (var a in _data.AnnualResults) { <td>@(a.Inspections > 0 ? a.Inspections.ToString("N0") : "—")</td> }</tr>
+                        <tr><td class="tl">@T("VendorReview.TotalInspectionPassRate")</td>@foreach (var a in _data.AnnualResults) { <td>@(a.PassRate.HasValue ? $"{a.PassRate:0.#}%" : "—")</td> }</tr>
+                        <tr><td class="tl">@T("VendorReview.TotalDefectRate")</td>@foreach (var a in _data.AnnualResults) { <td>@(a.DefectRate.HasValue ? $"{a.DefectRate:0.00}%" : "—")</td> }</tr>
+                        <tr><td class="tl">@T("VendorReview.TotalCAPAClosureRate")</td>@foreach (var a in _data.AnnualResults) { <td title="@a.CapaIssued CAPA issued">@(a.CapaClosureRate.HasValue ? $"{a.CapaClosureRate:0.#}%" : "—")</td> }</tr>
+                        <tr class="rv-score-row"><td class="tl">@T("VendorReview.OverallScore")</td>@foreach (var a in _data.AnnualResults) { <td>@(a.OverallScore.HasValue ? $"{a.OverallScore:0.#}%" : "—")</td> }</tr>
+                        <tr><td class="tl">@T("VendorReview.VendorRating")</td>@foreach (var a in _data.AnnualResults) { <td><span class="rv-rating @RatingCss(a.Rating)">@a.Rating</span></td> }</tr>
+                    </tbody>
+                </table>
+                <details class="rv-kpi-help">
+                    <summary>@T("VendorReview.KPIFormulaScoring")</summary>
+                    <table class="rv-tbl rv-tbl-sm">
+                        <thead><tr><th class="tl">@T("VendorReview.KPI")</th><th class="tl">@T("VendorReview.Formula")</th><th>@T("VendorReview.Target")</th><th>@T("VendorReview.Weight")</th></tr></thead>
+                        <tbody>
+                            <tr><td class="tl">@T("Common.TotalShipmentQuantity")</td><td class="tl">@T("VendorReview.TotalUnitsShippedCompletedPSI")</td><td>@T("VendorReview.TrackOnly")</td><td>—</td></tr>
+                            <tr><td class="tl">@T("VendorReview.TotalInspections")</td><td class="tl">@T("VendorReview.TotalInspectionsConducted")</td><td>@T("VendorReview.TrackOnly")</td><td>—</td></tr>
+                            <tr><td class="tl">@T("VendorReview.InspectionPassRate")</td><td class="tl">@T("VendorReview.PassedPassedFailed100")</td><td>≥ 95%</td><td>30%</td></tr>
+                            <tr><td class="tl">@T("VendorReview.DefectRate")</td><td class="tl">@T("VendorReview.TotalDefectsTotalShipmentQty100")</td><td>≤ 0.50%</td><td>40%</td></tr>
+                            <tr><td class="tl">@T("VendorReview.CAPAClosureRate")</td><td class="tl">@T("VendorReview.ClosedCAPAsIssuedCAPAs100")</td><td>≥ 95%</td><td>30%</td></tr>
+                        </tbody>
+                    </table>
+                    <div class="rv-note">@T("VendorReview.EachKPIScores100WhenIts")</div>
+                </details>
             </div>
         </div>
     </div>
@@ -360,34 +338,125 @@ else if (_data != null)
         await Load();
     }
 
+    RenderFragment ResultCard(BlockDto b) => __builder =>
+    {
+        <div class="rv-card print-avoid-break">
+            <div class="rv-card-top">@T("VendorReview.TotalInspectionReport") <strong>@b.Reports</strong></div>
+            <div class="rv-pie-wrap">
+                <Donut CssClass="rv-pie" Title="@(b.Judged > 0 ? T("VendorReview.Passed") : T("VendorReview.NoData"))" Value="@(b.Judged > 0 ? $"{b.PassRate}%" : "")"
+                       TitleColor="@(b.Judged > 0 ? "#16a34a" : "#9ca3af")"
+                       Segments="@(new() { new(b.Passed, "#22c55e"), new(b.Failed, "#ef4444") })" />
+                <div class="rv-pie-legend">
+                    <div class="rv-leg-row"><span class="rv-leg-dot" style="background:#22c55e;"></span> @T("VendorReview.PassRate") <strong style="color:#16a34a;">@b.PassRate%</strong> (@b.Passed)</div>
+                    <div class="rv-leg-row"><span class="rv-leg-dot" style="background:#ef4444;"></span> @T("VendorReview.FailRate") <strong style="color:#dc2626;">@b.FailRate%</strong> (@b.Failed)</div>
+                </div>
+            </div>
+        </div>
+    };
+
+    RenderFragment DefectCard(BlockDto b) => __builder =>
+    {
+        var t = Math.Max(1, b.DefTotal);
+        <div class="rv-card print-avoid-break">
+            <div class="rv-card-top">@T("VendorReview.TotalAQLSampling") <strong>@b.AqlSampling.ToString("N0")</strong></div>
+            <div class="rv-pie-wrap">
+                <Donut CssClass="rv-pie" Title="@T("VendorReview.Defects")" Value="@(b.DefTotal > 0 ? b.DefTotal.ToString() : "0")" TitleColor="#6b7280"
+                       Segments="@(new() { new(b.Critical, "#ef4444"), new(b.Major, "#f59e0b"), new(b.Minor, "#3b82f6") })" />
+                <div class="rv-def-legend">
+                    <div class="rv-def-row critical"><span class="rv-def-icon">▲</span> @T("VendorReview.Critical") <strong>@b.Critical (@(b.DefTotal > 0 ? Math.Round(100.0 * b.Critical / t) : 0)%)</strong></div>
+                    <div class="rv-def-row major">   <span class="rv-def-icon">▲</span> @T("VendorReview.Major") <strong>@b.Major (@(b.DefTotal > 0 ? Math.Round(100.0 * b.Major / t) : 0)%)</strong></div>
+                    <div class="rv-def-row minor">   <span class="rv-def-icon">▲</span> @T("VendorReview.Minor") <strong>@b.Minor (@(b.DefTotal > 0 ? Math.Round(100.0 * b.Minor / t) : 0)%)</strong></div>
+                </div>
+            </div>
+        </div>
+    };
+
+    static string Pc(double v, double max) => (max > 0 ? v / max * 100 : 0).ToString("0.##", System.Globalization.CultureInfo.InvariantCulture);
+    static string Inv(double v) => v.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture);
+    string MonthName(int m) => L.MonthName(m);
+    static string RatingCss(string? r) => r switch
+    {
+        "Excellent" => "ex", "Good" => "gd", "Acceptable" => "ac", "Improvement Required" => "ir", _ => ""
+    };
+
     class VendorReviewDto
     {
         public string VendorName   { get; set; } = "";
         public string VendorId     { get; set; } = "";
         public int    TargetYear   { get; set; }
         public int    TargetMonth  { get; set; }
-        public int    MonthTotal   { get; set; }
-        public int    MonthPassed  { get; set; }
-        public int    MonthFailed  { get; set; }
-        public double PassRate     { get; set; }
-        public double FailRate     { get; set; }
-        public int    MonthCritical { get; set; }
-        public int    MonthMajor   { get; set; }
-        public int    MonthMinor   { get; set; }
-        public int    DefTotal     { get; set; }
-        public int    YearTotal    { get; set; }
-        public int    YearPassed   { get; set; }
-        public int    YearFailed   { get; set; }
-        public double YearPassRate { get; set; }
-        public double YearFailRate { get; set; }
-        public int    YearPpt      { get; set; }
-        public int    YearDpi      { get; set; }
-        public int    YearPst      { get; set; }
-        public int    YearCritical { get; set; }
-        public int    YearMajor    { get; set; }
-        public int    YearMinor    { get; set; }
-        public int    YDefTotal    { get; set; }
-        public List<MonthTypeDto> MonthlyData { get; set; } = new();
+        public BlockDto Month      { get; set; } = new();
+        public BlockDto Year       { get; set; } = new();
+        public List<MonthTypeDto>      MonthlyData        { get; set; } = new();
+        public List<ShipmentRowDto>    ShipmentByProduct  { get; set; } = new();
+        public int[]                   ShipmentMonthTotals { get; set; } = new int[12];
+        public int                     ShipmentTotal      { get; set; }
+        public List<MonthlyDefectDto>  MonthlyDefect      { get; set; } = new();
+        public List<AnnualDefectDto>   AnnualDefects      { get; set; } = new();
+        public int                     AnnualDefectTotal  { get; set; }
+        public List<AnnualResultDto>   AnnualResults      { get; set; } = new();
+    }
+
+    class BlockDto
+    {
+        public int    Total       { get; set; }
+        public int    Reports     { get; set; }
+        public int    Passed      { get; set; }
+        public int    Failed      { get; set; }
+        public int    Judged      { get; set; }
+        public double PassRate    { get; set; }
+        public double FailRate    { get; set; }
+        public int    Critical    { get; set; }
+        public int    Major       { get; set; }
+        public int    Minor       { get; set; }
+        public int    DefTotal    { get; set; }
+        public int    AqlSampling { get; set; }
+        public int    Ppt         { get; set; }
+        public int    Dpi         { get; set; }
+        public int    Pst         { get; set; }
+        public int    Clc         { get; set; }
+        public int    ClcPassed   { get; set; }
+        public int    ClcFailed   { get; set; }
+    }
+
+    class ShipmentRowDto
+    {
+        public string  ProductName { get; set; } = "";
+        public string? ProductCode { get; set; }
+        public int[]   Months      { get; set; } = new int[12];
+        public int     Total       { get; set; }
+    }
+
+    class MonthlyDefectDto
+    {
+        public int     Month       { get; set; }
+        public int     Inspections { get; set; }
+        public int     ShipmentQty { get; set; }
+        public int     AqlQty      { get; set; }
+        public int     DefectQty   { get; set; }
+        public double  DefectRate  { get; set; }
+        public string? TopDefect   { get; set; }
+    }
+
+    class AnnualDefectDto
+    {
+        public string Code { get; set; } = "";
+        public string Name { get; set; } = "";
+        public int    Qty  { get; set; }
+        public double Pct  { get; set; }
+    }
+
+    class AnnualResultDto
+    {
+        public int     Year         { get; set; }
+        public int     ShipmentQty  { get; set; }
+        public int     Inspections  { get; set; }
+        public double? PassRate     { get; set; }
+        public double? DefectRate   { get; set; }
+        public double? OverallScore { get; set; }
+        public double? CapaClosureRate { get; set; }
+        public int     CapaIssued   { get; set; }
+        public string  Rating       { get; set; } = "";
     }
 
     class MonthTypeDto
@@ -396,11 +465,18 @@ else if (_data != null)
         public int Ppt   { get; set; }
         public int Dpi   { get; set; }
         public int Pst   { get; set; }
+        public int Clc   { get; set; }
     }
 }
 
 <style>
     .rv-page { max-width: 100%; margin: 0 auto; font-family: "DM Sans", sans-serif; color: #1a2d5a; }
+    .rv-kpis { display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:12px; margin-bottom:20px; }
+    .rv-kpi { background:#fff; border:1px solid #e5e7eb; border-top:3px solid #1d4ed8; border-radius:10px; padding:12px 14px; }
+    .rv-kpi-l { font-size:12px; font-weight:700; color:#1a2d5a; }
+    .rv-kpi-v { font-size:26px; font-weight:800; color:#12204a; line-height:1.2; }
+    .rv-kpi-s { font-size:11.5px; color:#6b7a99; }
+    @@media (max-width: 760px) { .rv-kpis { grid-template-columns:repeat(2,minmax(0,1fr)); } }
     .rv-loading { display:flex;align-items:center;gap:10px;padding:60px;justify-content:center;color:#ffffff; }
     .rv-spinner { width:22px;height:22px;border:3px solid rgba(255,255,255,0.3);border-top-color:#ffffff;border-radius:50%;animation:rspin .7s linear infinite; }
     @@keyframes rspin { to { transform:rotate(360deg); } }
@@ -410,14 +486,16 @@ else if (_data != null)
     .rv-header { display:flex;align-items:center;gap:16px;margin-bottom:16px; }
     .rv-back { background:#f3f4f6;border:none;border-radius:8px;width:34px;height:34px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#1a2d5a;transition:background .15s; flex-shrink:0; }
     .rv-back:hover { background:#e5e7eb; }
-    .rv-title { font-size:22px;font-weight:800;color:#ffffff;margin:0; text-align:center; flex:1; }
+    .rv-header-center { flex:1; text-align:center; min-width:0; }
+    .rv-title { font-size:22px;font-weight:800;color:#ffffff;margin:0; text-align:center; }
     .rv-sub   { font-size:12px;color:rgba(255,255,255,0.7);margin:2px 0 0;text-align:center; }
-    .rv-controls { display:flex;gap:8px; }
+    .rv-controls { display:flex;gap:8px;flex-shrink:0; }
     .rv-select { border:1px solid #e5e7eb;border-radius:8px;padding:6px 10px;font-size:13px;font-family:inherit;color:#1a2d5a;background:#fff;cursor:pointer;outline:none; }
     .rv-select:focus { border-color:#3b82f6; }
 
     /* ── Info bar ── */
-    .rv-infobar { gap:40px;background:#fff;border:1px solid #e5e7eb;border-radius:10px;padding:12px 20px;margin-bottom:20px; }
+    .rv-infobar { display:flex;flex-wrap:wrap;gap:10px 28px;background:#fff;border:1px solid #e5e7eb;border-radius:10px;padding:12px 20px;margin-bottom:20px; }
+    .rv-infobar > div { display:flex;align-items:center;gap:6px; }
     .rv-infobar-lbl { font-size:13px;color:#6b7280;margin-right:6px; }
     .rv-infobar-val { font-size:13px;font-weight:600;color:#1a2d5a; }
 
@@ -473,8 +551,77 @@ else if (_data != null)
 
     @@media (max-width:700px) {
         .rv-row, .rv-section-row { flex-direction:column; }
-        .rv-hbar-lbl { width:130px; font-size:11px; }
-        .rv-header { flex-wrap:wrap; }
-        .rv-title { font-size:18px; }
+        .rv-hbar-lbl { width:110px; font-size:11px; }
+        .rv-header { display:grid; grid-template-columns:34px minmax(0,1fr) 34px; gap:8px 10px; }
+        .rv-header > div:nth-child(2) { min-width:0; }
+        .rv-title { font-size:18px; line-height:1.25; }
+        .rv-sub { font-size:11.5px; }
+        .rv-controls { grid-column:1 / -1; display:grid; grid-template-columns:auto minmax(0,1fr) minmax(0,88px); gap:8px; width:100%; }
+        .rv-controls .rv-select, .rv-controls .prb-btn { width:100%; min-width:0; height:38px; }
+        .rv-select { -webkit-appearance:none; appearance:none; padding-right:26px;
+            background:#fff url("data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%231a2d5a' stroke-width='1.5' fill='none'/%3E%3C/svg%3E") no-repeat right 10px center; }
+        .rv-card { min-width:0; padding:16px 12px; }
+        .rv-infobar { padding:10px 14px; }
+        .rv-infobar > div { display:flex; gap:6px; min-width:0; }
+        .rv-infobar-val { overflow-wrap:anywhere; }
+        .rv-section-title { flex-wrap:wrap; gap:2px 8px; }
+        .rv-pie { width:130px; height:130px; }
+    }
+
+    .rv-print-period { color:#fff; font-weight:700; font-size:13px; align-self:center; }
+    .rv-card-top { font-size:13px; color:#374151; margin-bottom:10px; padding-bottom:8px; border-bottom:1px dashed #e5e7eb; }
+    .rv-card-top strong { font-size:16px; color:#1a2d5a; margin-left:4px; }
+    .rv-table-card { padding:0; overflow-x:auto; min-width:0; }
+    .rv-tbl { width:100%; border-collapse:collapse; font-size:12.5px; color:#1a2d5a; }
+    .rv-tbl th { background:#1a2d5a; color:#fff; font-weight:700; padding:9px 8px; text-align:center; white-space:nowrap; }
+    .rv-tbl td { padding:8px; border-bottom:1px solid #eef1f6; text-align:center; white-space:nowrap; }
+    .rv-tbl .tl { text-align:left; }
+    .rv-tbl .fw { font-weight:700; }
+    .rv-tbl tbody tr:nth-child(even) td { background:#f8fafc; }
+    .rv-tbl tfoot td { font-weight:800; background:#eef4ff; border-top:2px solid #c7d7f5; }
+    .rv-tbl-ship td, .rv-tbl-ship th { padding:7px 6px; font-size:12px; }
+    .rv-tbl-sm { margin-top:8px; font-size:11.5px; }
+    .rv-tbl-sm th { background:#475569; }
+    .rv-muted-row td { color:#b0b8c6; }
+    .rv-empty { color:#9ca3af; padding:18px !important; }
+    .rv-na { color:#9ca3af; font-style:italic; }
+    .rv-note { font-size:11.5px; color:#6b7280; padding:8px 12px; }
+    .rv-score-row td { font-weight:800; background:#f0fdf4 !important; }
+    .rv-rating { font-size:11px; font-weight:700; padding:2px 8px; border-radius:20px; }
+    .rv-rating.ex { background:#dcfce7; color:#166534; }
+    .rv-rating.gd { background:#dbeafe; color:#1e40af; }
+    .rv-rating.ac { background:#fef3c7; color:#92400e; }
+    .rv-rating.ir { background:#fee2e2; color:#991b1b; }
+    .rv-pctbar { position:relative; height:16px; background:#f1f5f9; border-radius:4px; min-width:110px; overflow:hidden; }
+    .rv-pctbar div { height:100%; background:#60a5fa; border-radius:4px; }
+    .rv-pctbar span { position:absolute; inset:0; font-size:11px; font-weight:700; line-height:16px; color:#1a2d5a; }
+    .rv-kpi-help { padding:4px 12px 10px; }
+    .rv-kpi-help summary { cursor:pointer; font-size:12px; font-weight:700; color:#1d4ed8; padding:6px 0; }
+    .rv-row > div > .rv-card { min-width:0; }
+
+    /* 2 ô cạnh nhau (Inspection Result / Defect Breakdown) cao bằng nhau */
+    .rv-row-eq { align-items:stretch; }
+    .rv-row-eq > div { display:flex; flex-direction:column; }
+    .rv-row-eq > div > .rv-card { flex:1; display:flex; flex-direction:column; }
+    .rv-row-eq .rv-pie-wrap { flex:1; }
+
+    @@media print {
+        /* Tiêu đề mục luôn đi cùng nội dung, không bị tách sang trang sau */
+        .rv-sec, .rv-row { break-inside:avoid; page-break-inside:avoid; }
+        .rv-section-title { break-after:avoid; page-break-after:avoid; }
+        /* Bảng 12 tháng: co chữ để hiện đủ tới cột Dec + Total, không cắt */
+        .rv-table-card { overflow:visible !important; }
+        .rv-tbl { font-size:10.5px; }
+        .rv-tbl th, .rv-tbl td { padding:5px 4px; }
+        .rv-tbl-ship th, .rv-tbl-ship td { padding:4px 3px; font-size:10px; }
+        .rv-tbl-ship td.tl { white-space:normal; }
+        .rv-card { min-width:0 !important; }
+        .rv-pie { width:140px; height:140px; }
+        /* Annual Defect Breakdown + Annual Results: xếp dọc khi in để 2 bảng không đè lên nhau */
+        .rv-row-annual { flex-direction:column; break-inside:auto; page-break-inside:auto; }
+        .rv-row-annual > div { width:100%; flex:none !important; }
+        .rv-row-annual .rv-table-card { overflow:hidden !important; }
+        .rv-pctbar { min-width:80px; }
+        .rv-kpi-help { display:none; }
     }
 </style>

@@ -25,6 +25,13 @@
     <!-- KHÔNG publish dữ liệu upload (ảnh/CV/file người dùng) để không đè lên dữ liệu thật trên server.
          Thư mục này được tạo lại tự động lúc khởi động trong Program.cs. -->
     <Content Update="wwwroot\uploads\**" CopyToPublishDirectory="Never" />
+    <!-- Secret cấu hình: không đóng gói vào bản publish; đặt thủ công trên server (xem appsettings.json) -->
+    <Content Update="appsettings.Secrets.json;appsettings.*.Secrets.json" CopyToPublishDirectory="Never" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- File mẫu Excel import (dịch tiêu đề theo ngôn ngữ người dùng lúc tải — xem Services/ImportTemplateLocalizer.cs) -->
+    <None Update="Templates\**\*.xlsx" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
   </ItemGroup>
 
   <ItemGroup>

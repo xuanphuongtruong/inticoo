@@ -8,6 +8,7 @@ const cacheNamePrefix = 'offline-cache-';
 const cacheName = `${cacheNamePrefix}${self.assetsManifest.version}`;
 
 async function onInstall(event) {
+    self.skipWaiting(); // bản mới thay bản cũ ngay, không chờ đóng hết tab (điện thoại/PWA)
     const assetsRequests = self.assetsManifest.assets
         .filter(asset => asset.metadata && asset.metadata['integrity'])
         .map(asset => new Request(asset.url, { integrity: asset.metadata['integrity'] }));
@@ -15,6 +16,7 @@ async function onInstall(event) {
 }
 
 async function onActivate(event) {
+    await self.clients.claim();
     const cacheKeys = await caches.keys();
     await Promise.all(cacheKeys
         .filter(key => key.startsWith(cacheNamePrefix) && key !== cacheName)

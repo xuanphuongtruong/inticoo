@@ -1,4 +1,4 @@
-@page "/inspections/{Id:int}/edit"
+﻿@page "/inspections/{Id:int}/edit"
 @attribute [Microsoft.AspNetCore.Authorization.Authorize]
 @using InticooInspection.Client.Services
 @using System.Net.Http.Json
@@ -8,8 +8,11 @@
 @inject NavigationManager Navigation
 @inject Blazored.SessionStorage.ISessionStorageService SessionStorage
 @inject WaitingService Waiting
+@inject SettingsClient TypeSettings
+@inherits LocalizedComponentBase
 
-<PageTitle>Edit Inspection - Inticoo</PageTitle>
+<PageAccessGuard RequiredPage="JobRequest" RequiredAction="Edit">
+<PageTitle>@T("InspectionEdit.EditInspectionInticoo")</PageTitle>
 
 <div class="ni-page">
 
@@ -17,7 +20,7 @@
     {
         <div class="loading-state">
             <div class="spinner-lg"></div>
-            <span>Loading inspection...</span>
+            <span>@T("InspectionEdit.LoadingInspection")</span>
         </div>
     }
     else if (!string.IsNullOrEmpty(_loadError))
@@ -34,8 +37,8 @@
                 </svg>
             </button>
             <div class="ni-title-block">
-                <span class="ni-breadcrumb">Inspections</span>
-                <h1 class="ni-title" style="color:#ffffff;">Edit Inspection</h1>
+                <span class="ni-breadcrumb">@T("InspectionEdit.Inspections2")</span>
+                <h1 class="ni-title" style="color:#ffffff;">@T("InspectionEdit.EditInspection")</h1>
             </div>
         </div>
         <div class="ni-card" style="text-align:center; padding:48px 24px;">
@@ -43,12 +46,12 @@
                 <circle cx="12" cy="12" r="10"/>
                 <path d="M12 8v4M12 16h.01" stroke-linecap="round"/>
             </svg>
-            <h3 style="font-family:'Sora',sans-serif;font-size:18px;color:#1a2d5a;margin:0 0 10px;">Cannot Edit This Inspection</h3>
+            <h3 style="font-family:'Sora',sans-serif;font-size:18px;color:#1a2d5a;margin:0 0 10px;">@T("InspectionEdit.CannotEditThisInspection")</h3>
             <p style="color:#7a8fad;font-size:14px;margin:0 0 24px;">
-                Only inspections with status <strong>New</strong>, <strong>On Going</strong>, or <strong>Pending</strong> can be edited.<br/>
-                Current status: <span class="@GetBadgeClass(_currentStatus)" style="display:inline-block;margin-top:6px;">@GetStatusLabel(_currentStatus)</span>
+                @T("InspectionEdit.OnlyInspectionsWithStatus") <strong>@T("InspectionEdit.New")</strong>, <strong>@T("InspectionEdit.OnGoing")</strong>@T("InspectionEdit.Or") <strong>@T("InspectionEdit.Pending")</strong> @T("InspectionEdit.CanBeEdited")<br/>
+                @T("InspectionEdit.CurrentStatus") <span class="@GetBadgeClass(_currentStatus)" style="display:inline-block;margin-top:6px;">@GetStatusLabel(_currentStatus)</span>
             </p>
-            <button class="btn-cancel" @onclick="GoBack">← Back to List</button>
+            <button class="btn-cancel" @onclick="GoBack">@T("InspectionEdit.BackToList")</button>
         </div>
     }
     else
@@ -61,8 +64,8 @@
                 </svg>
             </button>
             <div class="ni-title-block">
-                <span class="ni-breadcrumb">Inspections / @_jobNumber</span>
-                <h1 class="ni-title" style="color:#ffffff;">Edit Inspection</h1>
+                <span class="ni-breadcrumb">@T("InspectionEdit.Inspections", _jobNumber)</span>
+                <h1 class="ni-title" style="color:#ffffff;">@T("InspectionEdit.EditInspection")</h1>
             </div>
             <div class="ni-header-actions">
                 <span class="@GetBadgeClass(_currentStatus)" style="font-size:12px;padding:5px 14px;">@GetStatusLabel(_currentStatus)</span>
@@ -73,7 +76,7 @@
 
             <!-- General Information + Photo -->
             <div class="ni-card">
-                <div class="ni-section-title">General Information</div>
+                <div class="ni-section-title">@T("Common.GeneralInformation")</div>
                 <div class="gi-layout">
 
                     <!-- Cột trái: Photo -->
@@ -83,12 +86,12 @@
                             {
                                 <div class="photo-placeholder">
                                     <div class="spinner-lg" style="border-top-color:#1e90d6;width:32px;height:32px;"></div>
-                                    <span style="color:#1e90d6;font-size:12px;margin-top:8px;">Uploading...</span>
+                                    <span style="color:#1e90d6;font-size:12px;margin-top:8px;">@T("Common.Uploading2")</span>
                                 </div>
                             }
                             else if (!string.IsNullOrEmpty(PhotoPreview1))
                             {
-                                <img src="@PhotoPreview1" alt="Photo" />
+                                <img src="@PhotoPreview1" alt="@T("InspectionEdit.Photo")" />
                                 <button class="photo-remove-btn" type="button"
                                         @onclick:stopPropagation="true" @onclick="RemovePhoto">
                                     <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.5">
@@ -104,8 +107,8 @@
                                         <circle cx="8.5" cy="8.5" r="1.5"/>
                                         <path d="M21 15l-5-5L5 21"/>
                                     </svg>
-                                    <span>Click to upload photo</span>
-                                    <span class="photo-hint">JPG, PNG, WEBP · max 5 MB</span>
+                                    <span>@T("Common.ClickToUploadPhoto")</span>
+                                    <span class="photo-hint">@T("InspectionEdit.JPGPNGWEBPMax5MB")</span>
                                 </div>
                             }
                             <InputFile OnChange="OnPhotoSelected" accept="image/*" style="display:none" />
@@ -122,15 +125,15 @@
                     <div class="gi-fields-col">
                     <div class="ni-grid-2">
                     <div class="field-group">
-                        <label>Customer ID <span class="field-required">*</span></label>
+                        <label>@T("Common.CustomerID") <span class="field-required">*</span></label>
                         @if (_loadingCustomers)
                         {
-                            <div class="field-loading">Loading...</div>
+                            <div class="field-loading">@T("Common.Loading")</div>
                         }
                         else
                         {
                             <select value="@Model.CustomerId" @onchange="OnCustomerChanged">
-                                <option value="">-- Select Customer --</option>
+                                <option value="">@T("InspectionEdit.SelectCustomer")</option>
                                 @foreach (var c in _customers)
                                 {
                                     <option value="@c.CustomerId">@c.CustomerId — @c.CompanyName</option>
@@ -139,21 +142,21 @@
                         }
                     </div>
                     <div class="field-group">
-                        <label>Customer Name</label>
+                        <label>@T("Common.CustomerName")</label>
                         <div class="readonly-field @(string.IsNullOrEmpty(Model.CustomerName) ? "" : "accent")">
-                            @(string.IsNullOrEmpty(Model.CustomerName) ? "Auto-filled when selecting ID" : Model.CustomerName)
+                            @(string.IsNullOrEmpty(Model.CustomerName) ? T("InspectionEdit.AutoFilledWhenSelectingID") : Model.CustomerName)
                         </div>
                     </div>
                     <div class="field-group">
-                        <label>Vendor ID</label>
+                        <label>@T("Common.VendorID")</label>
                         @if (_loadingVendors)
                         {
-                            <div class="field-loading">Loading...</div>
+                            <div class="field-loading">@T("Common.Loading")</div>
                         }
                         else
                         {
                             <select value="@Model.VendorId" @onchange="OnVendorChanged">
-                                <option value="">-- Select Vendor --</option>
+                                <option value="">@T("InspectionEdit.SelectVendor")</option>
                                 @foreach (var v in _vendors)
                                 {
                                     <option value="@v.Code">@v.Code — @v.Name</option>
@@ -162,21 +165,21 @@
                         }
                     </div>
                     <div class="field-group">
-                        <label>Vendor Name</label>
+                        <label>@T("Common.VendorName")</label>
                         <div class="readonly-field @(string.IsNullOrEmpty(Model.VendorName) ? "" : "accent")">
-                            @(string.IsNullOrEmpty(Model.VendorName) ? "Auto-filled when selecting ID" : Model.VendorName)
+                            @(string.IsNullOrEmpty(Model.VendorName) ? T("InspectionEdit.AutoFilledWhenSelectingID") : Model.VendorName)
                         </div>
                     </div>
                     <div class="field-group">
-                        <label>Inspection Location</label>
+                        <label>@T("Common.InspectionLocation")</label>
                         @if (_loadingCountries)
                         {
-                            <div class="field-loading">Loading countries...</div>
+                            <div class="field-loading">@T("InspectionEdit.LoadingCountries")</div>
                         }
                         else
                         {
                             <select value="@_selectedCountryId" @onchange="OnCountryChanged">
-                                <option value="">-- Select Country --</option>
+                                <option value="">@T("Common.SelectCountry")</option>
                                 @foreach (var co in _countries)
                                 {
                                     <option value="@co.Id">@co.Name</option>
@@ -185,50 +188,57 @@
                         }
                     </div>
                     <div class="field-group">
-                        <label>P.O. Number</label>
-                        <input @bind="Model.PoNumber" placeholder="Enter PO number" />
+                        <label>@T("Common.PONumber")</label>
+                        <input @bind="Model.PoNumber" placeholder="@T("InspectionEdit.EnterPONumber")" />
                     </div>
                     <div class="field-group">
-                        <label>Inspection Date</label>
+                        <label>@T("Common.InspectionDate")</label>
                         <input type="date" @bind="Model.InspectionDate" />
                     </div>
                     <div class="field-group">
-                        <label>Inspection Type</label>
+                        <label>@T("Common.InspectionType")</label>
                         <div class="radio-group">
                             <label class="radio-label">
                                 <input type="radio" name="inspType" value="PPT"
+                                   disabled="@TypeOff(0, InspectionTypeEnum.PPT)"
                                        checked="@(Model.InspectionType == InspectionTypeEnum.PPT)"
                                        @onchange="() => Model.InspectionType = InspectionTypeEnum.PPT" />
-                                <span>PPI: Pre-Production Inspection</span>
+                                <span>@T("InspectionEdit.PPIPreProductionInspection")</span>
                             </label>
                             <label class="radio-label">
                                 <input type="radio" name="inspType" value="DPI"
+                                   disabled="@TypeOff(1, InspectionTypeEnum.DPI)"
                                        checked="@(Model.InspectionType == InspectionTypeEnum.DPI)"
                                        @onchange="() => Model.InspectionType = InspectionTypeEnum.DPI" />
-                                <span>DPI: During-Production Inspection</span>
+                                <span>@T("InspectionEdit.DPIDuringProductionInspection")</span>
                             </label>
                             <label class="radio-label">
                                 <input type="radio" name="inspType" value="PST"
+                                   disabled="@TypeOff(2, InspectionTypeEnum.PST)"
                                        checked="@(Model.InspectionType == InspectionTypeEnum.PST)"
                                        @onchange="() => Model.InspectionType = InspectionTypeEnum.PST" />
-                                <span>PST: Pre-Shipment Inspection</span>
+                                <span>@T("InspectionEdit.PSTPreShipmentInspection")</span>
                             </label>
                         </div>
+                        @if (_typeOn.Any(x => !x))
+                        {
+                            <div style="margin-top:6px;font-size:12.5px;color:#b45309;">@T("Common.InspectionTypeDisabledNote")</div>
+                        }
                     </div>
                     <div class="field-group">
-                        <label>Item Number</label>
-                        <input value="@Model.ItemNumber" @onchange="OnItemNumberChanged" placeholder="Enter item number" class="highlight-field" />
+                        <label>@T("Common.ItemNumber")</label>
+                        <input value="@Model.ItemNumber" @onchange="OnItemNumberChanged" placeholder="@T("InspectionEdit.EnterItemNumber")" class="highlight-field" />
                     </div>
                     <div class="field-group">
-                        <label>Product Name</label>
+                        <label>@T("Common.ProductName")</label>
                         @if (_loadingProducts)
                         {
-                            <div class="field-loading">Loading...</div>
+                            <div class="field-loading">@T("Common.Loading")</div>
                         }
                         else
                         {
                             <select value="@Model.ProductCode" @onchange="OnProductChanged">
-                                <option value="">-- Select Product --</option>
+                                <option value="">@T("InspectionEdit.SelectProduct")</option>
                                 @foreach (var p in _products)
                                 {
                                     <option value="@p.ProductCode">@p.ProductCode — @p.ProductName</option>
@@ -237,37 +247,37 @@
                         }
                     </div>
                     <div class="field-group" style="display:none">
-                        <label>Product Type</label>
+                        <label>@T("InspectionEdit.ProductType")</label>
                         <div class="readonly-field @(string.IsNullOrEmpty(Model.ProductType) ? "" : "accent")">
-                            @(string.IsNullOrEmpty(Model.ProductType) ? "Auto-filled from Product" : Model.ProductType)
+                            @(string.IsNullOrEmpty(Model.ProductType) ? T("InspectionEdit.AutoFilledFromProduct") : Model.ProductType)
                         </div>
                     </div>
                     <div class="field-group">
-                        <label>Inspection Reference</label>
+                        <label>@T("InspectionEdit.InspectionReference")</label>
                         <div class="toggle-group">
-                            <button class="@ToggleCss(Model.InspectionReference)" @onclick="() => Model.InspectionReference = true">Yes</button>
+                            <button class="@ToggleCss(Model.InspectionReference)" @onclick="() => Model.InspectionReference = true">@T("Common.Yes")</button>
                             <button class="@ToggleCss(!Model.InspectionReference)" @onclick="() => Model.InspectionReference = false">No</button>
                         </div>
                     </div>
                     <div class="field-group">
-                        <label>Total Shipment Quantity</label>
+                        <label>@T("Common.TotalShipmentQuantity")</label>
                         <input type="number" value="@Model.TotalShipmentQty" @onchange="OnTotalShipmentQtyChanged" placeholder="0" />
                     </div>
                     <div class="field-group">
-                        <label>Product Category</label>
+                        <label>@T("Common.ProductCategory")</label>
                         <div class="readonly-field @(string.IsNullOrEmpty(Model.ProductCategory) ? "" : "accent")">
-                            @(string.IsNullOrEmpty(Model.ProductCategory) ? "Auto-filled from Product ID" : Model.ProductCategory)
+                            @(string.IsNullOrEmpty(Model.ProductCategory) ? T("InspectionEdit.AutoFilledFromProductID") : Model.ProductCategory)
                         </div>
                     </div>
                     <div class="field-group">
-                        <label>Total Carton Boxes</label>
+                        <label>@T("Common.TotalCartonBoxes")</label>
                         <input type="number" @bind="Model.TotalCartonBoxes" placeholder="0" />
                     </div>
                     </div>
                     <!-- Remark row spanning full width -->
                     <div class="field-group" style="margin-top:4px;">
-                        <label>Remark</label>
-                        <textarea @bind="Model.GeneralRemark" placeholder="Enter remark (e.g. Combine SKU number xxx, xxx or Color xxxx)" rows="2"
+                        <label>@T("Common.Remark")</label>
+                        <textarea @bind="Model.GeneralRemark" placeholder="@T("InspectionEdit.EnterRemarkEGCombineSKU")" rows="2"
                                   style="width:100%;resize:vertical;border:1px solid #d0daea;border-radius:8px;padding:9px 12px;font-size:13px;font-family:inherit;color:#1a2d5a;outline:none;transition:border-color .15s;box-sizing:border-box;"
                                   onfocus="this.style.borderColor='#1e90d6'" onblur="this.style.borderColor='#d0daea'"></textarea>
                     </div>
@@ -277,13 +287,13 @@
 
             <!-- Overall Conclusion -->
             <div class="ni-card">
-                <div class="ni-section-title">Inspection Results</div>
+                <div class="ni-section-title">@T("Common.InspectionResults")</div>
                 <table class="oc-table">
                     <thead>
                         <tr>
-                            <th class="oc-th-label">OVERALL CONCLUSION</th>
-                            <th class="oc-th-compliance">COMPLIANCE</th>
-                            <th class="oc-th-remark">REMARK</th>
+                            <th class="oc-th-label">@T("Common.OVERALLCONCLUSION")</th>
+                            <th class="oc-th-compliance">@T("Common.COMPLIANCE")</th>
+                            <th class="oc-th-remark">@T("Common.REMARK")</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -291,16 +301,16 @@
                         {
                             var r = row;
                             <tr class="oc-row">
-                                <td class="oc-td-label">@r.Letter. @r.Label</td>
+                                <td class="oc-td-label">@r.Letter. @TE("Opt", r.Label)</td>
                                 <td class="oc-td-compliance">
                                     <button class="@(r.Compliance == "Pass" ? "oc-btn oc-yes active" : "oc-btn oc-yes")"
-                                            @onclick="@(() => ToggleCompliance(r, "Pass"))">YES</button>
+                                            @onclick="@(() => ToggleCompliance(r, "Pass"))">@T("InspectionEdit.YES")</button>
                                     <span class="oc-sep">/</span>
                                     <button class="@(r.Compliance == "Fail" ? "oc-btn oc-no active" : "oc-btn oc-no")"
-                                            @onclick="@(() => ToggleCompliance(r, "Fail"))">NO</button>
+                                            @onclick="@(() => ToggleCompliance(r, "Fail"))">@T("InspectionEdit.NO")</button>
                                 </td>
                                 <td class="oc-td-remark">
-                                    <input class="oc-remark-input" @bind="r.Remark" placeholder="Remark..." />
+                                    <input class="oc-remark-input" @bind="r.Remark" placeholder="@T("InspectionEdit.Remark")" />
                                 </td>
                             </tr>
                         }
@@ -310,43 +320,43 @@
 
             <!-- AQL Sampling Simulator -->
             <div class="ni-card">
-                <div class="ni-section-title">AQL Sampling Simulator</div>
+                <div class="ni-section-title">@T("Common.AQLSamplingSimulator")</div>
                 @if (!string.IsNullOrEmpty(_currentCodeLetter))
                 {
                     <div style="margin-bottom:12px;font-size:13px;color:#4a6080;">
-                        Lot Size <strong>@AqlQuantity</strong> · Level <strong>@AqlInspectionLevel</strong>
-                        → Code Letter: <span style="font-size:16px;font-weight:700;color:#1e90d6;background:#e6f1fb;padding:2px 10px;border-radius:6px;">@_currentCodeLetter</span>
+                        @T("InspectionEdit.LotSize") <strong>@AqlQuantity</strong> @T("InspectionEdit.Level") <strong>@AqlInspectionLevel</strong>
+                        @T("InspectionEdit.CodeLetter") <span style="font-size:16px;font-weight:700;color:#1e90d6;background:#e6f1fb;padding:2px 10px;border-radius:6px;">@_currentCodeLetter</span>
                     </div>
                 }
                 <div class="ni-grid-2" style="margin-bottom:20px;">
                     <div class="field-group">
-                        <label>Quantity</label>
-                        <input type="number" value="@AqlQuantity" @onchange="OnAqlQuantityChanged" placeholder="Enter quantity" />
+                        <label>@T("Common.Quantity")</label>
+                        <input type="number" value="@AqlQuantity" @onchange="OnAqlQuantityChanged" placeholder="@T("InspectionEdit.EnterQuantity")" />
                     </div>
                     <div class="field-group">
-                        <label>Inspection Level</label>
+                        <label>@T("Common.InspectionLevel")</label>
                         <select value="@AqlInspectionLevel" @onchange="OnAqlLevelChanged">
                             <optgroup label="General Inspection">
-                                <option value="I">Level I</option>
-                                <option value="II">Level II</option>
-                                <option value="III">Level III</option>
+                                <option value="I">@T("InspectionEdit.LevelI")</option>
+                                <option value="II">@T("InspectionEdit.LevelII")</option>
+                                <option value="III">@T("InspectionEdit.LevelIII")</option>
                             </optgroup>
                             <optgroup label="Special Inspection">
-                                <option value="S1">S1</option>
-                                <option value="S2">S2</option>
-                                <option value="S3">S3</option>
-                                <option value="S4">S4</option>
+                                <option value="S1">@T("Common.S1")</option>
+                                <option value="S2">@T("Common.S2")</option>
+                                <option value="S3">@T("Common.S3")</option>
+                                <option value="S4">@T("Common.S4")</option>
                             </optgroup>
                         </select>
                     </div>
                 </div>
                 <div class="aql-defects-row">
                     <div class="aql-defect-card critical">
-                        <div class="aql-defect-header">Critical Defects</div>
+                        <div class="aql-defect-header">@T("Common.CriticalDefects")</div>
                         <div class="field-group">
-                            <label>Select AQL</label>
+                            <label>@T("Common.SelectAQL")</label>
                             <select value="@CriticalAql" @onchange="OnCriticalAqlChanged">
-                                <option value="0">Not Allowed</option>
+                                <option value="0">@T("Common.NotAllowed")</option>
                                 <option value="0.065">0.065</option>
                                 <option value="0.10">0.10</option>
                                 <option value="0.15">0.15</option>
@@ -361,17 +371,17 @@
                             </select>
                         </div>
                         <div class="aql-stats">
-                            <div class="aql-stat"><span>Sample Size</span><strong>@CriticalSampleSize</strong></div>
-                            <div class="aql-stat"><span>Accept Point</span><strong class="accent-ok">@CriticalAccept</strong></div>
-                            <div class="aql-stat"><span>Reject Point</span><strong class="accent-err">@CriticalReject</strong></div>
+                            <div class="aql-stat"><span>@T("Common.SampleSize")</span><strong>@CriticalSampleSize</strong></div>
+                            <div class="aql-stat"><span>@T("Common.AcceptPoint")</span><strong class="accent-ok">@CriticalAccept</strong></div>
+                            <div class="aql-stat"><span>@T("Common.RejectPoint")</span><strong class="accent-err">@CriticalReject</strong></div>
                         </div>
                     </div>
                     <div class="aql-defect-card major">
-                        <div class="aql-defect-header">Major Defects</div>
+                        <div class="aql-defect-header">@T("Common.MajorDefects")</div>
                         <div class="field-group">
-                            <label>Select AQL</label>
+                            <label>@T("Common.SelectAQL")</label>
                             <select value="@MajorAql" @onchange="OnMajorAqlChanged">
-                                <option value="0">Not Allowed</option>
+                                <option value="0">@T("Common.NotAllowed")</option>
                                 <option value="0.065">0.065</option>
                                 <option value="0.10">0.10</option>
                                 <option value="0.15">0.15</option>
@@ -386,17 +396,17 @@
                             </select>
                         </div>
                         <div class="aql-stats">
-                            <div class="aql-stat"><span>Sample Size</span><strong>@MajorSampleSize</strong></div>
-                            <div class="aql-stat"><span>Accept Point</span><strong class="accent-ok">@MajorAccept</strong></div>
-                            <div class="aql-stat"><span>Reject Point</span><strong class="accent-err">@MajorReject</strong></div>
+                            <div class="aql-stat"><span>@T("Common.SampleSize")</span><strong>@MajorSampleSize</strong></div>
+                            <div class="aql-stat"><span>@T("Common.AcceptPoint")</span><strong class="accent-ok">@MajorAccept</strong></div>
+                            <div class="aql-stat"><span>@T("Common.RejectPoint")</span><strong class="accent-err">@MajorReject</strong></div>
                         </div>
                     </div>
                     <div class="aql-defect-card minor">
-                        <div class="aql-defect-header">Minor Defects</div>
+                        <div class="aql-defect-header">@T("Common.MinorDefects")</div>
                         <div class="field-group">
-                            <label>Select AQL</label>
+                            <label>@T("Common.SelectAQL")</label>
                             <select value="@MinorAql" @onchange="OnMinorAqlChanged">
-                                <option value="0">Not Allowed</option>
+                                <option value="0">@T("Common.NotAllowed")</option>
                                 <option value="0.065">0.065</option>
                                 <option value="0.10">0.10</option>
                                 <option value="0.15">0.15</option>
@@ -411,9 +421,9 @@
                             </select>
                         </div>
                         <div class="aql-stats">
-                            <div class="aql-stat"><span>Sample Size</span><strong>@MinorSampleSize</strong></div>
-                            <div class="aql-stat"><span>Accept Point</span><strong class="accent-ok">@MinorAccept</strong></div>
-                            <div class="aql-stat"><span>Reject Point</span><strong class="accent-err">@MinorReject</strong></div>
+                            <div class="aql-stat"><span>@T("Common.SampleSize")</span><strong>@MinorSampleSize</strong></div>
+                            <div class="aql-stat"><span>@T("Common.AcceptPoint")</span><strong class="accent-ok">@MinorAccept</strong></div>
+                            <div class="aql-stat"><span>@T("Common.RejectPoint")</span><strong class="accent-err">@MinorReject</strong></div>
                         </div>
                     </div>
                 </div>
@@ -421,69 +431,69 @@
 
             <!-- A. Quantity Conformity -->
             <div class="ni-card">
-                <div class="ni-section-title"><span class="section-alpha">A</span> Quantity Conformity</div>
+                <div class="ni-section-title"><span class="section-alpha">A</span> @T("InspectionEdit.QuantityConformity")</div>
                 <div class="ni-grid-2">
                     <div class="field-group">
-                        <label>Total Shipment Quantity</label>
-                        <div class="readonly-field">@(Model.TotalShipmentQty > 0 ? Model.TotalShipmentQty.ToString() : "Auto")</div>
+                        <label>@T("Common.TotalShipmentQuantity")</label>
+                        <div class="readonly-field">@(Model.TotalShipmentQty > 0 ? Model.TotalShipmentQty.ToString() : T("Common.Auto"))</div>
                     </div>
                     <div class="field-group">
-                        <label>Total Carton Boxes</label>
-                        <div class="readonly-field">@(Model.TotalCartonBoxes > 0 ? Model.TotalCartonBoxes.ToString() : "Auto")</div>
+                        <label>@T("Common.TotalCartonBoxes")</label>
+                        <div class="readonly-field">@(Model.TotalCartonBoxes > 0 ? Model.TotalCartonBoxes.ToString() : T("Common.Auto"))</div>
                     </div>
                 </div>
             </div>
 
             <!-- B. Packaging & Identification -->
             <div class="ni-card">
-                <div class="ni-section-title"><span class="section-alpha">B</span> Packaging &amp; Identification</div>
+                <div class="ni-section-title"><span class="section-alpha">B</span> @T("InspectionEdit.PackagingIdentification")</div>
 
                 <div class="ni-grid-2" style="margin-bottom:14px;">
                     <div class="field-group">
-                        <label>Item Number</label>
-                        <input @bind="Packaging.ItemNumber" placeholder="Enter item number" />
+                        <label>@T("Common.ItemNumber")</label>
+                        <input @bind="Packaging.ItemNumber" placeholder="@T("InspectionEdit.EnterItemNumber")" />
                     </div>
                     <div class="field-group">
-                        <label>Carton Number</label>
-                        <input @bind="Packaging.CartonNumber" placeholder="Enter carton number" />
+                        <label>@T("Common.CartonNumber")</label>
+                        <input type="number" min="1" @bind="Packaging.CartonNumber" @bind:after="OnCartonNumberChanged" placeholder="@T("Common.AutoFilledFromProductProfile")" />
                     </div>
                 </div>
 
                 <!-- CARTON BOX: 2-column layout; mỗi item 1 row riêng để label + options thẳng cột -->
-                <div class="pkg-sub-title">Carton Box</div>
+                <div class="pkg-sub-title">@T("InspectionEdit.CartonBox")</div>
                 <div class="pkg-cartonbox-grid">
                     <!-- LEFT COLUMN -->
                     <div class="pkg-cartonbox-col">
                         <div class="pkg2-row">
-                            <span class="pkg2-label">Shipping Mark</span>
+                            <span class="pkg2-label">@T("Common.ShippingMark")</span>
                             <div class="pkg2-options">
-                                <label class="radio-label"><input type="radio" name="shippingMark" checked="@(Packaging.ShippingMark == SmColorLabel)" @onchange="() => Packaging.ShippingMark = SmColorLabel" /><span>Color Label</span></label>
-                                <label class="radio-label"><input type="radio" name="shippingMark" checked="@(Packaging.ShippingMark == SmPrinting)" @onchange="() => Packaging.ShippingMark = SmPrinting" /><span>Printing</span></label>
+                                <label class="radio-label"><input type="radio" name="shippingMark" checked="@(Packaging.ShippingMark == SmColorLabel)" @onchange="() => Packaging.ShippingMark = SmColorLabel" /><span>@T("InspectionEdit.ColorLabel")</span></label>
+                                <label class="radio-label"><input type="radio" name="shippingMark" checked="@(Packaging.ShippingMark == SmPrinting)" @onchange="() => Packaging.ShippingMark = SmPrinting" /><span>@T("InspectionEdit.Printing")</span></label>
                             </div>
                         </div>
                         <div class="pkg2-row">
-                            <span class="pkg2-label">Barcode / QR Code</span>
+                            <span class="pkg2-label">@T("Common.BarcodeQRCode")</span>
                             <div class="pkg2-options">
                                 <div class="toggle-group">
-                                    <button class="@ToggleCss(Packaging.HasBarcode)" @onclick="() => Packaging.HasBarcode = true">Yes</button>
+                                    <button class="@ToggleCss(Packaging.HasBarcode)" @onclick="() => Packaging.HasBarcode = true">@T("Common.Yes")</button>
                                     <button class="@ToggleCss(!Packaging.HasBarcode)" @onclick="() => Packaging.HasBarcode = false">No</button>
                                 </div>
                             </div>
                         </div>
                         <div class="pkg2-row">
-                            <span class="pkg2-label">Assembly Instruction</span>
+                            <span class="pkg2-label">@T("InspectionEdit.AssemblyInstruction")</span>
                             <div class="pkg2-options">
                                 <div class="toggle-group">
-                                    <button class="@ToggleCss(Packaging.AssemblyInstruction)" @onclick="() => Packaging.AssemblyInstruction = true">Yes</button>
+                                    <button class="@ToggleCss(Packaging.AssemblyInstruction)" @onclick="() => Packaging.AssemblyInstruction = true">@T("Common.Yes")</button>
                                     <button class="@ToggleCss(!Packaging.AssemblyInstruction)" @onclick="() => Packaging.AssemblyInstruction = false">No</button>
                                 </div>
                             </div>
                         </div>
                         <div class="pkg2-row">
-                            <span class="pkg2-label">Hardware</span>
+                            <span class="pkg2-label">@T("Common.Hardware")</span>
                             <div class="pkg2-options">
                                 <div class="toggle-group">
-                                    <button class="@ToggleCss(Packaging.Hardware)" @onclick="() => Packaging.Hardware = true">Yes</button>
+                                    <button class="@ToggleCss(Packaging.Hardware)" @onclick="() => Packaging.Hardware = true">@T("Common.Yes")</button>
                                     <button class="@ToggleCss(!Packaging.Hardware)" @onclick="() => Packaging.Hardware = false">No</button>
                                 </div>
                             </div>
@@ -493,113 +503,103 @@
                     <!-- RIGHT COLUMN -->
                     <div class="pkg-cartonbox-col">
                         <div class="pkg2-row">
-                            <span class="pkg2-label">FSC Carton Type</span>
+                            <span class="pkg2-label">@T("InspectionEdit.FSCCartonType")</span>
                             <div class="pkg2-options">
-                                <label class="radio-label"><input type="radio" name="pkgType" checked="@(Packaging.PackagingType == PkgFsc)" @onchange="() => Packaging.PackagingType = PkgFsc" /><span>FSC Carton</span></label>
-                                <label class="radio-label"><input type="radio" name="pkgType" checked="@(Packaging.PackagingType == PkgNonFsc)" @onchange="() => Packaging.PackagingType = PkgNonFsc" /><span>Non-FSC Carton</span></label>
+                                <label class="radio-label"><input type="radio" name="pkgType" checked="@(Packaging.PackagingType == PkgFsc)" @onchange="() => Packaging.PackagingType = PkgFsc" /><span>@T("InspectionEdit.FSCCarton")</span></label>
+                                <label class="radio-label"><input type="radio" name="pkgType" checked="@(Packaging.PackagingType == PkgNonFsc)" @onchange="() => Packaging.PackagingType = PkgNonFsc" /><span>@T("InspectionEdit.NonFSCCarton")</span></label>
                             </div>
                         </div>
                         <div class="pkg2-row">
-                            <span class="pkg2-label">Color of Carton</span>
+                            <span class="pkg2-label">@T("Common.ColorOfCarton")</span>
                             <div class="pkg2-options">
-                                <label class="radio-label"><input type="radio" name="cartonColor" checked="@(Packaging.CartonColor == ColWhite)" @onchange="() => Packaging.CartonColor = ColWhite" /><span>White</span></label>
-                                <label class="radio-label"><input type="radio" name="cartonColor" checked="@(Packaging.CartonColor == ColBrown)" @onchange="() => Packaging.CartonColor = ColBrown" /><span>Brown</span></label>
+                                <label class="radio-label"><input type="radio" name="cartonColor" checked="@(Packaging.CartonColor == ColWhite)" @onchange="() => Packaging.CartonColor = ColWhite" /><span>@T("InspectionEdit.White")</span></label>
+                                <label class="radio-label"><input type="radio" name="cartonColor" checked="@(Packaging.CartonColor == ColBrown)" @onchange="() => Packaging.CartonColor = ColBrown" /><span>@T("InspectionEdit.Brown")</span></label>
                             </div>
                         </div>
                         <div class="pkg2-row">
-                            <span class="pkg2-label">Type of Cardboard</span>
+                            <span class="pkg2-label">@T("Common.TypeOfCardboard")</span>
                             <div class="pkg2-options">
-                                <label class="radio-label"><input type="radio" name="cardboard" checked="@(Packaging.CardboardType == CbSingleFace)" @onchange="() => Packaging.CardboardType = CbSingleFace" /><span>Single face</span></label>
-                                <label class="radio-label"><input type="radio" name="cardboard" checked="@(Packaging.CardboardType == CbSingleWall)" @onchange="() => Packaging.CardboardType = CbSingleWall" /><span>Single Wall</span></label>
-                                <label class="radio-label"><input type="radio" name="cardboard" checked="@(Packaging.CardboardType == CbDoubleWall)" @onchange="() => Packaging.CardboardType = CbDoubleWall" /><span>Double Wall</span></label>
+                                <label class="radio-label"><input type="radio" name="cardboard" checked="@(Packaging.CardboardType == CbSingleFace)" @onchange="() => Packaging.CardboardType = CbSingleFace" /><span>@T("InspectionEdit.SingleFace")</span></label>
+                                <label class="radio-label"><input type="radio" name="cardboard" checked="@(Packaging.CardboardType == CbSingleWall)" @onchange="() => Packaging.CardboardType = CbSingleWall" /><span>@T("InspectionEdit.SingleWall")</span></label>
+                                <label class="radio-label"><input type="radio" name="cardboard" checked="@(Packaging.CardboardType == CbDoubleWall)" @onchange="() => Packaging.CardboardType = CbDoubleWall" /><span>@T("InspectionEdit.DoubleWall")</span></label>
+                            </div>
+                        </div>
+                        <div class="pkg2-row">
+                            <span class="pkg2-label">@T("Common.BurstingTest")</span>
+                            <div class="pkg2-options">
+                                <select class="pkg-burst-select" value="@(Packaging.BurstingTest?.ToString() ?? "")"
+                                        @onchange="e => Packaging.BurstingTest = int.TryParse(e.Value?.ToString(), out var bt) ? bt : null">
+                                    <option value="">@T("Common.Select")</option>
+                                    @foreach (var bt in CartonPacking.BurstingTestOptions)
+                                    { <option value="@bt">@bt</option> }
+                                </select>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                <div class="pkg-sub-section">
-                    <span class="pkg-sub-title">Inner Packing</span>
-                    <div class="field-group inner-qty-full">
-                        <label>Quantity</label>
-                        <input type="number" @bind="Packaging.InnerPackingQty" placeholder="0" />
-                    </div>
-                    <div class="ni-grid-4" style="margin-top:12px;">
-                        <div class="field-group"><label>L (mm/inch)</label><input type="number" @bind="Packaging.InnerL" placeholder="0" /></div>
-                        <div class="field-group"><label>W (mm/inch)</label><input type="number" @bind="Packaging.InnerW" placeholder="0" /></div>
-                        <div class="field-group"><label>H (mm/inch)</label><input type="number" @bind="Packaging.InnerH" placeholder="0" /></div>
-                        <div class="field-group"><label>Weight (Kgs)</label><input type="number" step="0.01" @bind="Packaging.InnerWeight" placeholder="0.00" /></div>
-                    </div>
-                </div>
-
-                <div class="pkg-sub-section">
-                    <span class="pkg-sub-title">Outer Packing</span>
-                    <div class="ni-grid-4">
-                        <div class="field-group"><label>L (mm/inch)</label><input type="number" @bind="Packaging.OuterL" placeholder="0" /></div>
-                        <div class="field-group"><label>W (mm/inch)</label><input type="number" @bind="Packaging.OuterW" placeholder="0" /></div>
-                        <div class="field-group"><label>H (mm/inch)</label><input type="number" @bind="Packaging.OuterH" placeholder="0" /></div>
-                        <div class="field-group"><label>Weight (Kgs)</label><input type="number" step="0.01" @bind="Packaging.OuterWeight" placeholder="0.00" /></div>
-                    </div>
-                </div>
+                <!-- Inner / Outer Packing — lặp theo Carton Number -->
+                <CartonPackingEditor Cartons="Packaging.Cartons" Options="_productCartons" />
             </div>
 
             <!-- C. Product Specification -->
             <div class="ni-card">
-                <div class="ni-section-title"><span class="section-alpha">C</span> Product Specification</div>
-                <div class="sub-section-label">i. Product Size</div>
+                <div class="ni-section-title"><span class="section-alpha">C</span> @T("InspectionEdit.ProductSpecification")</div>
+                <div class="sub-section-label">@T("Common.IProductSize")</div>
                 <div class="ni-grid-4" style="margin-bottom:20px;">
-                    <div class="field-group"><label>L (mm/inch)</label><input type="number" @bind="ProductSpec.SizeL" placeholder="0" /></div>
-                    <div class="field-group"><label>W (mm/inch)</label><input type="number" @bind="ProductSpec.SizeW" placeholder="0" /></div>
-                    <div class="field-group"><label>H (mm/inch)</label><input type="number" @bind="ProductSpec.SizeH" placeholder="0" /></div>
-                    <div class="field-group"><label>Weight (Kgs)</label><input type="number" step="0.01" @bind="ProductSpec.Weight" placeholder="0.00" /></div>
+                    <div class="field-group"><label>@T("Common.LMmInch")</label><input type="number" @bind="ProductSpec.SizeL" placeholder="0" /></div>
+                    <div class="field-group"><label>@T("Common.WMmInch")</label><input type="number" @bind="ProductSpec.SizeW" placeholder="0" /></div>
+                    <div class="field-group"><label>@T("Common.HMmInch")</label><input type="number" @bind="ProductSpec.SizeH" placeholder="0" /></div>
+                    <div class="field-group"><label>@T("Common.WeightKgs")</label><input type="number" step="0.01" @bind="ProductSpec.Weight" placeholder="0.00" /></div>
                 </div>
                 <div class="compare-golden-row">
-                    <div class="sub-section-label" style="margin-bottom:0;">ii. Compare Golden Sample</div>
+                    <div class="sub-section-label" style="margin-bottom:0;">@T("InspectionEdit.IiCompareGoldenSample")</div>
                     <div class="toggle-group">
-                        <button class="@ToggleCss(ProductSpec.CompareGoldenSample)" @onclick="() => ProductSpec.CompareGoldenSample = true">Yes</button>
+                        <button class="@ToggleCss(ProductSpec.CompareGoldenSample)" @onclick="() => ProductSpec.CompareGoldenSample = true">@T("Common.Yes")</button>
                         <button class="@ToggleCss(!ProductSpec.CompareGoldenSample)" @onclick="() => ProductSpec.CompareGoldenSample = false">No</button>
                     </div>
                 </div>
-                <div class="sub-section-label" style="margin-top:20px;">iii. Colour Swatch Comparison</div>
+                <div class="sub-section-label" style="margin-top:20px;">@T("Common.IiiColourSwatchComparison")</div>
                 <div class="data-table">
                     <div class="data-table-header">
                         <div class="col-no">No</div>
-                        <div class="col-flex">Material</div>
-                        <div class="col-flex">Remark</div>
+                        <div class="col-flex">@T("Common.Material")</div>
+                        <div class="col-flex">@T("Common.Remark")</div>
                     </div>
                     @for (int i = 0; i < ColourSwatches.Count; i++)
                     {
                         var idx = i;
                         <div class="data-table-row">
                             <div class="col-no">@(idx + 1)</div>
-                            <div class="col-flex"><input @bind="ColourSwatches[idx].Material" placeholder="Enter material..." class="table-input" /></div>
-                            <div class="col-flex"><input @bind="ColourSwatches[idx].Remark" placeholder="Remark..." class="table-input" /></div>
+                            <div class="col-flex"><input @bind="ColourSwatches[idx].Material" placeholder="@T("InspectionEdit.EnterMaterial")" class="table-input" /></div>
+                            <div class="col-flex"><input @bind="ColourSwatches[idx].Remark" placeholder="@T("InspectionEdit.Remark")" class="table-input" /></div>
                         </div>
                     }
-                    <button class="add-row-btn" @onclick="AddColourSwatch">+ Add Row</button>
+                    <button class="add-row-btn" @onclick="AddColourSwatch">@T("Common.AddRow")</button>
                 </div>
             </div>
 
             <!-- D. Performance Testing -->
             <div class="ni-card">
-                <div class="ni-section-title"><span class="section-alpha">D</span> Performance Testing</div>
+                <div class="ni-section-title"><span class="section-alpha">D</span> @T("InspectionEdit.PerformanceTesting")</div>
                 @if (_loadingPerfMaster)
                 {
-                    <div class="field-loading">Loading test master data...</div>
+                    <div class="field-loading">@T("InspectionEdit.LoadingTestMasterData")</div>
                 }
                 else if (!string.IsNullOrEmpty(_perfMasterError))
                 {
                     <div style="color:#dc2626;font-size:12px;background:#fff5f5;border:1px solid #fecaca;border-radius:8px;padding:10px 14px;margin-bottom:12px;">
                         ⚠ @_perfMasterError
                     </div>
-                    <div class="data-table">
+                    <div class="data-table perf-table">
                         <div class="data-table-header">
                             <div class="col-no">No</div>
-                            <div class="col-flex">Category</div>
-                            <div class="col-flex">Test Item</div>
-                            <div class="col-view">Full Details</div>
-                            <div style="display:none;" class="col-flex">Test Protocol</div>
-                            <div style="display:none;" class="col-flex2">Test Requirement</div>
-                            <div class="col-flex">Remark</div>
+                            <div class="col-flex">@T("Common.Category")</div>
+                            <div class="col-flex">@T("Common.TestItem")</div>
+                            <div class="col-view">@T("InspectionEdit.FullDetails")</div>
+                            <div style="display:none;" class="col-flex">@T("Common.TestProtocol")</div>
+                            <div style="display:none;" class="col-flex2">@T("Common.TestRequirement")</div>
+                            <div class="col-flex">@T("Common.Remark")</div>
                         </div>
                         @for (int i = 0; i < PerformanceTests.Count; i++)
                         {
@@ -607,32 +607,32 @@
                             var test = PerformanceTests[idx];
                             <div class="data-table-row">
                                 <div class="col-no">@(idx + 1)</div>
-                                <div class="col-flex"><input @bind="test.Category" placeholder="Category..." class="table-input" /></div>
-                                <div class="col-flex"><input @bind="test.TestItem" placeholder="Test item..." class="table-input" /></div>
+                                <div class="col-flex"><input @bind="test.Category" placeholder="@T("InspectionEdit.Category")" class="table-input" /></div>
+                                <div class="col-flex"><input @bind="test.TestItem" placeholder="@T("InspectionEdit.TestItem")" class="table-input" /></div>
                                 <div class="col-view">
-                                    <button class="btn-view-row" type="button" @onclick="() => OpenPerfDetail(idx)" title="View full details">
+                                    <button class="btn-view-row" type="button" @onclick="() => OpenPerfDetail(idx)" title="@T("InspectionEdit.ViewFullDetails")">
                                         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
                                     </button>
                                 </div>
-                                <div style="display:none;" class="col-flex"><input @bind="test.TestProtocol" placeholder="Protocol..." class="table-input" /></div>
-                                <div class="col-flex2"><input @bind="test.TestRequirement" placeholder="Requirement..." class="table-input" /></div>
-                                <div class="col-flex"><input @bind="test.Remark" placeholder="Remark..." class="table-input" /></div>
+                                <div style="display:none;" class="col-flex"><input @bind="test.TestProtocol" placeholder="@T("InspectionEdit.Protocol")" class="table-input" /></div>
+                                <div class="col-flex2"><input @bind="test.TestRequirement" placeholder="@T("InspectionEdit.Requirement")" class="table-input" /></div>
+                                <div class="col-flex"><input @bind="test.Remark" placeholder="@T("InspectionEdit.Remark")" class="table-input" /></div>
                             </div>
                         }
-                        <button class="add-row-btn" @onclick="AddPerformanceTest">+ Add Row</button>
+                        <button class="add-row-btn" @onclick="AddPerformanceTest">@T("Common.AddRow")</button>
                     </div>
                 }
                 else
                 {
-                    <div class="data-table">
+                    <div class="data-table perf-table">
                         <div class="data-table-header">
                             <div class="col-no">No</div>
-                            <div class="col-flex">Category</div>
-                            <div class="col-flex">Test Item</div>
-                            <div class="col-view">Full Details</div>
-                            <div style="display:none;" class="col-flex">Test Protocol</div>
-                            <div style="display:none;" class="col-flex2">Test Requirement</div>
-                            <div class="col-flex">Remark</div>
+                            <div class="col-flex">@T("Common.Category")</div>
+                            <div class="col-flex">@T("Common.TestItem")</div>
+                            <div class="col-view">@T("InspectionEdit.FullDetails")</div>
+                            <div style="display:none;" class="col-flex">@T("Common.TestProtocol")</div>
+                            <div style="display:none;" class="col-flex2">@T("Common.TestRequirement")</div>
+                            <div class="col-flex">@T("Common.Remark")</div>
                         </div>
                         @for (int i = 0; i < PerformanceTests.Count; i++)
                         {
@@ -645,10 +645,10 @@
                                     <select class="table-select"
                                             value="@test.Category"
                                             @onchange="e => OnPerfCategoryChanged(e, idx)">
-                                        <option value="">Category...</option>
+                                        <option value="">@T("InspectionEdit.Category")</option>
                                         @foreach (var cat in _perfCategories)
                                         {
-                                            <option value="@cat">@cat</option>
+                                            <option value="@cat">@TE("Opt", cat)</option>
                                         }
                                     </select>
                                 </div>
@@ -656,7 +656,7 @@
                                     @if (string.IsNullOrEmpty(test.Category))
                                     {
                                         <select class="table-select" disabled>
-                                            <option value="">Select category first...</option>
+                                            <option value="">@T("InspectionEdit.SelectCategoryFirst")</option>
                                         </select>
                                     }
                                     else
@@ -664,7 +664,7 @@
                                         <select class="table-select"
                                                 value="@test.TestItem"
                                                 @onchange="e => OnPerfTestItemChanged(e, idx)">
-                                            <option value="">Test item...</option>
+                                            <option value="">@T("InspectionEdit.TestItem")</option>
                                             @foreach (var item in testItems)
                                             {
                                                 <option value="@item.ProtocolName">@item.ProtocolName</option>
@@ -673,34 +673,34 @@
                                     }
                                 </div>
                                 <div class="col-view">
-                                    <button class="btn-view-row" type="button" @onclick="() => OpenPerfDetail(idx)" title="View full details">
+                                    <button class="btn-view-row" type="button" @onclick="() => OpenPerfDetail(idx)" title="@T("InspectionEdit.ViewFullDetails")">
                                         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
                                     </button>
                                 </div>
                                 <div style="display:none;" class="col-flex">
                                     <input @bind="test.TestProtocol"
-                                           placeholder="Protocol auto-filled..."
+                                           placeholder="@T("InspectionEdit.ProtocolAutoFilled")"
                                            class="table-input" readonly />
                                 </div>
                                 <div style="display:none;" class="col-flex2">
                                     <textarea @bind="test.TestRequirement"
-                                              placeholder="Requirement auto-filled..."
+                                              placeholder="@T("InspectionEdit.RequirementAutoFilled")"
                                               class="table-textarea"
                                               rows="2"></textarea>
                                 </div>
                                 <div class="col-flex">
-                                    <input @bind="test.Remark" placeholder="Remark..." class="table-input" />
+                                    <input @bind="test.Remark" placeholder="@T("InspectionEdit.Remark")" class="table-input" />
                                 </div>
                             </div>
                         }
-                        <button class="add-row-btn" @onclick="AddPerformanceTest">+ Add Row</button>
+                        <button class="add-row-btn" @onclick="AddPerformanceTest">@T("Common.AddRow")</button>
                     </div>
                 }
             </div>
 
             <!-- E. Reference -->
             <div class="ni-card">
-                <div class="ni-section-title"><span class="section-alpha">E</span> Reference</div>
+                <div class="ni-section-title"><span class="section-alpha">E</span> @T("Common.Reference")</div>
                 @if (!string.IsNullOrEmpty(_mSaveRefError))
                 {
                     <div style="color:#dc2626;font-size:12px;margin-bottom:8px;">@_mSaveRefError</div>
@@ -708,9 +708,9 @@
                 <div class="data-table">
                     <div class="data-table-header">
                         <div class="col-no">No</div>
-                        <div class="col-flex2">Reference</div>
-                        <div class="col-flex">Attached File</div>
-                        <div class="col-flex">Remark</div>
+                        <div class="col-flex2">@T("Common.Reference")</div>
+                        <div class="col-flex">@T("Common.AttachedFile")</div>
+                        <div class="col-flex">@T("Common.Remark")</div>
                         <div style="width:80px;flex-shrink:0;"></div>
                     </div>
                     @for (int i = 0; i < References.Count; i++)
@@ -726,15 +726,15 @@
                                 }
                                 else
                                 {
-                                    <input @bind="refItem.ReferenceName" placeholder="Reference name..." class="table-input" />
+                                    <input @bind="refItem.ReferenceName" placeholder="@T("Common.ReferenceName")" class="table-input" />
                                 }
                             </div>
                             <div class="col-flex">
-                                <span class="file-uploading" style="display:@(refItem.IsUploading ? "inline-flex" : "none")">⏳ Uploading...</span>
+                                <span class="file-uploading" style="display:@(refItem.IsUploading ? "inline-flex" : "none")">@T("Common.Uploading")</span>
                                 <div style="display:@(!refItem.IsUploading && !string.IsNullOrEmpty(refItem.UploadError) ? "flex" : "none");align-items:center;gap:6px;">
                                     <span style="color:#dc2626;font-size:11.5px;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="@refItem.UploadError">⚠ @refItem.UploadError</span>
-                                    <label class="file-attach-btn" style="padding:3px 8px;font-size:11px;" title="Retry">
-                                        Retry
+                                    <label class="file-attach-btn" style="padding:3px 8px;font-size:11px;" title="@T("Common.Retry")">
+                                        @T("Common.Retry")
                                         <InputFile OnChange="@(async e => await OnReferenceFileSelected(e, idx))" style="display:none;" />
                                     </label>
                                 </div>
@@ -743,11 +743,11 @@
                                     @{ var absFileUrl = MediaUrl.Resolve(refItem.FileUrl, Http.BaseAddress?.ToString()); }
                                     <a href="@absFileUrl" target="_blank" class="file-link-btn" title="@refItem.FileName">
                                         <svg width="12" height="12" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 17h12M10 3v10M6 13l4 4 4-4" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                                        @(fn.Length > 20 ? fn[..20] + "…" : (fn.Length > 0 ? fn : "(file)"))
+                                        @(fn.Length > 20 ? fn[..20] + "…" : (fn.Length > 0 ? fn : T("InspectionEdit.File")))
                                     </a>
                                     @if (!refItem.FromProduct)
                                     {
-                                        <label class="file-reupload-btn" title="Change file">
+                                        <label class="file-reupload-btn" title="@T("InspectionEdit.ChangeFile")">
                                             <svg width="11" height="11" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 3v10M6 7l4-4 4 4" stroke-linecap="round" stroke-linejoin="round"/></svg>
                                             <InputFile OnChange="@(async e => await OnReferenceFileSelected(e, idx))" style="display:none;" />
                                         </label>
@@ -757,13 +757,13 @@
                                 {
                                     <label class="file-attach-btn" style="display:@(!refItem.IsUploading && string.IsNullOrEmpty(refItem.UploadError) && string.IsNullOrEmpty(refItem.FileUrl) ? "inline-flex" : "none");">
                                         <svg width="13" height="13" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 3v10M6 7l4-4 4 4" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 17h12" stroke-linecap="round"/></svg>
-                                        Attach File
+                                        @T("InspectionEdit.AttachFile")
                                         <InputFile OnChange="@(async e => await OnReferenceFileSelected(e, idx))" style="display:none;" />
                                     </label>
                                 }
                                 else if (string.IsNullOrEmpty(refItem.FileUrl))
                                 {
-                                    <span style="font-size:11px;color:#b0bdd4;font-style:italic;">No file</span>
+                                    <span style="font-size:11px;color:#b0bdd4;font-style:italic;">@T("Common.NoFile")</span>
                                 }
                             </div>
                             <div class="col-flex">
@@ -773,41 +773,41 @@
                                 }
                                 else
                                 {
-                                    <input @bind="refItem.Remark" placeholder="Remark..." class="table-input" />
+                                    <input @bind="refItem.Remark" placeholder="@T("InspectionEdit.Remark")" class="table-input" />
                                 }
                             </div>
                             <div style="width:80px;flex-shrink:0;display:flex;align-items:center;justify-content:center;">
                                 @if (!refItem.FromProduct && _currentProductId > 0)
                                 {
                                     <button class="btn-ref-save" @onclick="() => SaveProductReference(idx)" disabled="@refItem.IsSaving">
-                                        @(refItem.IsSaving ? "..." : "Save")
+                                        @(refItem.IsSaving ? "..." : T("Common.Save"))
                                     </button>
                                 }
                                 else if (refItem.FromProduct)
                                 {
-                                    <span style="font-size:10px;color:#9baac8;">Product</span>
+                                    <span style="font-size:10px;color:#9baac8;">@T("Common.Product")</span>
                                 }
                             </div>
                         </div>
                     }
-                    <button class="add-row-btn" @onclick="AddReference">+ Add Row</button>
+                    <button class="add-row-btn" @onclick="AddReference">@T("Common.AddRow")</button>
                 </div>
             </div>
 
-            <!-- Office Use -->
+            <!-- Inspector Assignment -->
             <div class="ni-card office-card">
-                <div class="ni-section-title">Office Use</div>
-                <div class="office-inline-row">
+                <div class="ni-section-title">@T("Clc.InspectorAssignment")</div>
+                <div class="ia-grid">
                     <div class="field-group">
-                        <label>Inspector ID</label>
+                        <label>@T("Common.Inspector")</label>
                         @if (_loadingInspectors)
                         {
-                            <div class="field-loading">Loading...</div>
+                            <div class="field-loading">@T("Common.Loading")</div>
                         }
                         else
                         {
                             <select value="@OfficeUse.InspectorId" @onchange="OnInspectorChanged" class="highlight-field">
-                                <option value="">-- Select Inspector --</option>
+                                <option value="">@T("InspectionEdit.SelectInspector")</option>
                                 @foreach (var u in _inspectors)
                                 {
                                     var key = !string.IsNullOrEmpty(u.InspectorId) ? u.InspectorId : u.Id;
@@ -817,52 +817,76 @@
                         }
                     </div>
                     <div class="field-group">
-                        <label>Inspector Name</label>
-                        <div class="readonly-field @(string.IsNullOrEmpty(OfficeUse.InspectorName) ? "" : "accent")">
-                            @(string.IsNullOrEmpty(OfficeUse.InspectorName) ? "Auto-filled from ID" : OfficeUse.InspectorName)
-                        </div>
+                        <label>@T("Common.InspectionDate")</label>
+                        <input type="date" @bind="Model.InspectionDate" />
                     </div>
                     <div class="field-group">
-                        <label>Job Number</label>
-                        <div class="readonly-field accent">@_jobNumber</div>
+                        <label>@T("Clc.InspectionTime")</label>
+                        <div class="ia-time">
+                            <input type="time" value="@OfficeUse.StartTime" @onchange="e => OfficeUse.StartTime = e.Value?.ToString()" />
+                            <span>–</span>
+                            <input type="time" value="@OfficeUse.EndTime" @onchange="e => OfficeUse.EndTime = e.Value?.ToString()" />
+                        </div>
+                    </div>
+                    <div class="field-group ia-wide">
+                        <label>@T("Clc.Remarks")</label>
+                        <textarea rows="3" maxlength="500" @bind="OfficeUse.Remarks" @bind:event="oninput"></textarea>
+                        <div class="ia-count">@((OfficeUse.Remarks ?? "").Length)/500</div>
                     </div>
                 </div>
             </div>
 
             <!-- Submit row -->
-            <div class="ni-submit-row">
-                <button class="btn-cancel" @onclick="GoBack">Cancel</button>
-                @if (_validationErrors.Count > 0)
-                {
-                    <div class="ni-save-error">
-                        <strong>Please fix the following errors:</strong>
-                        <ul style="margin:6px 0 0 0;padding-left:18px;">
-                            @foreach (var err in _validationErrors)
-                            {
-                                <li>@err</li>
-                            }
-                        </ul>
-                    </div>
-                }
-                else if (!string.IsNullOrEmpty(_saveError))
-                {
-                    <div class="ni-save-error">@_saveError</div>
-                }
-                <button class="btn-save large" @onclick="HandleSave" disabled="@_saving">
-                    @if (_saving)
-                    {
-                        <span class="ni-spinner"></span>
-                        <span>Saving...</span>
-                    }
-                    else
-                    {
-                        <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M5 10l4 4 8-8" stroke-linecap="round" stroke-linejoin="round"/>
-                        </svg>
-                        <span>Save Changes</span>
-                    }
-                </button>
-            </div>
+            @if (_validationErrors.Count > 0)
+            {
+                <div class="ni-save-error">
+                    <strong>@T("InspectionEdit.PleaseFixFollowingErrors")</strong>
+                    <ul style="margin:6px 0 0 0;padding-left:18px;">
+                        @foreach (var err in _validationErrors)
+                        {
+                            <li>@err</li>
+                        }
+                    </ul>
+                </div>
+            }
+            else if (!string.IsNullOrEmpty(_saveError))
+            {
+                <div class="ni-save-error">@_saveError</div>
+            }
+            @if (IsDraftJob)
+            {
+                @* Job nháp: giống CLC — lưu nháp tiếp hoặc giao cho inspector *@
+                <div class="ni-submit-row ni-submit-2">
+                    <button class="btn-draft" @onclick="() => HandleSave(true)" disabled="@_saving">
+                        @if (_saving && _savingDraft) { <span class="ni-spinner dark"></span><span>@T("Common.Saving")</span> }
+                        else { <span>@T("Clc.SaveDraft")</span> }
+                    </button>
+                    <button class="btn-save large" @onclick="() => HandleSave(false)" disabled="@_saving">
+                        @if (_saving && !_savingDraft) { <span class="ni-spinner"></span><span>@T("Common.Saving")</span> }
+                        else { <span>@T("Clc.SendToInspector")</span> }
+                    </button>
+                </div>
+            }
+            else
+            {
+                <div class="ni-submit-row">
+                    <button class="btn-cancel" @onclick="GoBack">@T("Common.Cancel")</button>
+                    <button class="btn-save large" @onclick="() => HandleSave(null)" disabled="@_saving">
+                        @if (_saving)
+                        {
+                            <span class="ni-spinner"></span>
+                            <span>@T("Common.Saving")</span>
+                        }
+                        else
+                        {
+                            <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M5 10l4 4 8-8" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                            <span>@T("InspectionEdit.SaveChanges")</span>
+                        }
+                    </button>
+                </div>
+            }
 
         </div>
     }
@@ -876,41 +900,43 @@
     <div class="perf-detail-backdrop" @onclick="ClosePerfDetail">
         <div class="perf-detail-box" @onclick:stopPropagation="true">
             <div class="perf-detail-header">
-                <h3>Performance Test — Row @rowNum Details</h3>
+                <h3>@T("InspectionEdit.PerformanceTestRowDetails", rowNum)</h3>
                 <button class="perf-detail-close" @onclick="ClosePerfDetail">✕</button>
             </div>
 
             <div class="perf-detail-field">
-                <label>Category</label>
+                <label>@T("Common.Category")</label>
                 <div class="value-box @(string.IsNullOrWhiteSpace(t.Category) ? "empty" : "")">@(string.IsNullOrWhiteSpace(t.Category) ? "—" : t.Category)</div>
             </div>
 
             <div class="perf-detail-field">
-                <label>Test Item</label>
+                <label>@T("Common.TestItem")</label>
                 <div class="value-box @(string.IsNullOrWhiteSpace(t.TestItem) ? "empty" : "")">@(string.IsNullOrWhiteSpace(t.TestItem) ? "—" : t.TestItem)</div>
             </div>
 
             <div class="perf-detail-field">
-                <label>Test Protocol</label>
+                <label>@T("Common.TestProtocol")</label>
                 <div class="value-box @(string.IsNullOrWhiteSpace(t.TestProtocol) ? "empty" : "")">@(string.IsNullOrWhiteSpace(t.TestProtocol) ? "—" : t.TestProtocol)</div>
             </div>
 
             <div class="perf-detail-field">
-                <label>Test Requirement</label>
+                <label>@T("Common.TestRequirement")</label>
                 <div class="value-box @(string.IsNullOrWhiteSpace(t.TestRequirement) ? "empty" : "")">@(string.IsNullOrWhiteSpace(t.TestRequirement) ? "—" : t.TestRequirement)</div>
             </div>
 
             <div class="perf-detail-field">
-                <label>Remark (editable)</label>
-                <textarea class="value-box" @bind="t.Remark" placeholder="Add remark..." rows="3"></textarea>
+                <label>@T("InspectionEdit.RemarkEditable")</label>
+                <textarea class="value-box" @bind="t.Remark" placeholder="@T("InspectionEdit.AddRemark")" rows="3"></textarea>
             </div>
 
             <div class="perf-detail-footer">
-                <button class="perf-detail-btn" @onclick="ClosePerfDetail">Close</button>
+                <button class="perf-detail-btn" @onclick="ClosePerfDetail">@T("Common.Close")</button>
             </div>
         </div>
     </div>
 }
+
+</PageAccessGuard>
 
 @code {
     [Parameter] public int Id { get; set; }
@@ -1024,6 +1050,7 @@
         "pending"   => "Pending",
         "cancel"    => "Cancel",
         "cancelled" => "Cancel",
+        "draft"     => "Draft",
         _           => "New"
     };
 
@@ -1033,16 +1060,18 @@
         "New"     => true,
         "OnGoing" => true,
         "Pending" => true,
+        "Draft"   => true,
         _         => false
     };
 
     private string GetStatusLabel(string status) => status switch
     {
-        "New"       => "New",
-        "OnGoing"   => "On Going",
-        "Completed" => "Completed",
-        "Pending"   => "Pending",
-        "Cancel"    => "Cancel",
+        "New"       => T("InspectionEdit.New"),
+        "OnGoing"   => T("InspectionEdit.OnGoing"),
+        "Completed" => T("Common.Completed"),
+        "Pending"   => T("InspectionEdit.Pending"),
+        "Cancel"    => T("Common.Cancel"),
+        "Draft"     => T("Status.Draft"),
         _           => status
     };
 
@@ -1053,16 +1082,35 @@
         "Completed" => "badge s-active",
         "Pending"   => "badge s-pending",
         "Cancel"    => "badge s-inactive",
+        "Draft"     => "badge s-draft",
         _           => "badge s-new"
     };
 
     // ─────────────────────────────────────────────────────────────
     //  LIFECYCLE
     // ─────────────────────────────────────────────────────────────
+
+    // Loại kiểm hàng bật/tắt ở Settings → Inspection Types (PPI, DPI, PSI)
+    private List<bool> _typeOn = new() { true, true, true };
+    private bool TypeOff(int idx, InspectionTypeEnum t) =>
+        idx < _typeOn.Count && !_typeOn[idx] && Model.InspectionType != t;
+
+    private class TypeCfg { public List<bool> TypeEnabled { get; set; } = new() { true, true, true }; }
+    private async Task LoadTypeSettings()
+    {
+        try
+        {
+            var m = await TypeSettings.LoadAsync<TypeCfg>(SettingsClient.InspectionDefect);
+            if (m?.TypeEnabled is { Count: 3 }) _typeOn = m.TypeEnabled;
+        }
+        catch { }
+    }
+
     protected override async Task OnInitializedAsync()
     {
         // Load song song: inspection + tất cả dropdowns cùng lúc → nhanh hơn nhiều
         await Task.WhenAll(
+            LoadTypeSettings(),
             LoadInspection(),
             LoadCustomers(),
             LoadVendors(),
@@ -1087,7 +1135,10 @@
             var prod = _allProducts.FirstOrDefault(p =>
                 p.ProductCode.Equals(Model.ProductCode, StringComparison.OrdinalIgnoreCase));
             if (prod != null)
+            {
                 _currentProductId = prod.Id;
+                _productCartons   = prod.Cartons ?? new();
+            }
         }
 
         _pageLoading = false;
@@ -1107,7 +1158,7 @@
 
             if (!resp.IsSuccessStatusCode)
             {
-                _loadError = $"Cannot load inspection ({(int)resp.StatusCode}).";
+                _loadError = T("InspectionEdit.CannotLoadInspection", (int)resp.StatusCode);
                 return;
             }
 
@@ -1115,7 +1166,7 @@
             var data = System.Text.Json.JsonSerializer.Deserialize<InspectionDetailDto>(json, opts);
             if (data == null)
             {
-                _loadError = "Invalid response from server.";
+                _loadError = T("InspectionEdit.InvalidResponseFromServer");
                 return;
             }
 
@@ -1207,6 +1258,24 @@
                 Packaging.OuterWeight        = data.Packaging.OuterWeight;
                 Packaging.AssemblyInstruction= data.Packaging.AssemblyInstruction;
                 Packaging.Hardware           = data.Packaging.Hardware;
+                Packaging.BurstingTest       = data.Packaging.BurstingTest;
+
+                // Danh sách carton; job cũ chưa có → dựng từ Inner/Outer cũ cho carton 1
+                Packaging.Cartons = data.Packaging.Cartons?.Any() == true
+                    ? data.Packaging.Cartons.Select(c => new CartonPackingRow
+                    {
+                        CartonIndex = c.CartonIndex, CartonVariant = c.CartonVariant ?? "", Description = c.Description ?? "",
+                        PackingQuantity = c.PackingQuantity ?? "", InnerPackingQty = c.InnerPackingQty ?? 0,
+                        InnerL = c.InnerL ?? 0, InnerW = c.InnerW ?? 0, InnerH = c.InnerH ?? 0, InnerWeight = c.InnerWeight ?? 0,
+                        OuterL = c.OuterL ?? 0, OuterW = c.OuterW ?? 0, OuterH = c.OuterH ?? 0, OuterWeight = c.OuterWeight ?? 0
+                    }).ToList()
+                    : new List<CartonPackingRow> { new CartonPackingRow
+                    {
+                        CartonIndex = 1, InnerPackingQty = Packaging.InnerPackingQty,
+                        InnerL = Packaging.InnerL, InnerW = Packaging.InnerW, InnerH = Packaging.InnerH, InnerWeight = Packaging.InnerWeight,
+                        OuterL = Packaging.OuterL, OuterW = Packaging.OuterW, OuterH = Packaging.OuterH, OuterWeight = Packaging.OuterWeight
+                    } };
+                CartonPacking.Resize(Packaging.Cartons, Packaging.CartonNumber);
             }
 
             // Product Spec
@@ -1276,6 +1345,9 @@
             // Office Use
             OfficeUse.InspectorId   = data.InspectorId   ?? "";
             OfficeUse.InspectorName = data.InspectorName ?? "";
+            OfficeUse.StartTime     = data.InspectionStartTime;
+            OfficeUse.EndTime       = data.InspectionEndTime;
+            OfficeUse.Remarks       = data.InspectorRemarks;
         }
         catch (Exception ex)
         {
@@ -1319,7 +1391,7 @@
             var prod = _allProducts.FirstOrDefault(p => p.Id == _currentProductId);
             if (prod == null)
             {
-                _mSaveRefError = "Product not found.";
+                _mSaveRefError = T("InspectionEdit.ProductNotFound");
                 return;
             }
 
@@ -1359,7 +1431,7 @@
             else
             {
                 var err = await resp.Content.ReadAsStringAsync();
-                _mSaveRefError = $"Save failed: {err}";
+                _mSaveRefError = T("InspectionEdit.SaveFailed2", err);
             }
         }
         catch (Exception ex) { _mSaveRefError = ex.Message; }
@@ -1402,14 +1474,14 @@
             else
             {
                 var body = await response.Content.ReadAsStringAsync();
-                _perfMasterError = $"API lỗi {(int)response.StatusCode}: {body}";
+                _perfMasterError = T("InspectionEdit.APILI", (int)response.StatusCode, body);
                 _perfMaster      = new();
                 _perfCategories  = new();
             }
         }
         catch (Exception ex)
         {
-            _perfMasterError = $"Không kết nối được API: {ex.Message}";
+            _perfMasterError = T("InspectionEdit.KhNgKTNI", ex.Message);
             _perfMaster      = new();
             _perfCategories  = new();
         }
@@ -1497,6 +1569,21 @@
     }
 
     private int _currentProductId = 0;
+    private List<ProductCartonOption> _productCartons = new();
+
+    private void OnCartonNumberChanged() => CartonPacking.Resize(Packaging.Cartons, Packaging.CartonNumber, _productCartons);
+
+    // Carton Number + Inner/Outer packing auto-fill từ Product profile
+    private void ApplyProductCartons(ProductDropdownDto p)
+    {
+        _productCartons = p.Cartons ?? new();
+        var qty = p.CartonQuantity is > 0 ? p.CartonQuantity.Value : (_productCartons.Count > 0 ? _productCartons.Count : 0);
+        if (qty > 0) Packaging.CartonNumber = qty.ToString();
+        Packaging.Cartons.Clear();
+        CartonPacking.Resize(Packaging.Cartons, Packaging.CartonNumber, _productCartons);
+    }
+
+    private CartonPackingRow FirstCarton => Packaging.Cartons.FirstOrDefault() ?? new CartonPackingRow();
 
     private void ApplyProductToForm(ProductDropdownDto p)
     {
@@ -1517,6 +1604,7 @@
             PhotoPreview1   = MediaUrl.Resolve(p.PhotoUrl, Http.BaseAddress?.ToString());
             Photo1ServerUrl = PhotoPreview1;
         }
+        ApplyProductCartons(p);
         _ = LoadProductReferences(p.Id);
     }
 
@@ -1635,7 +1723,7 @@
 
     private async Task OnPhotoSelected(InputFileChangeEventArgs e)
     {
-        var file = e.File;
+        var file = await ImageShrink.ShrinkAsync(e.File);   // ảnh điện thoại 4–12 MB → ~1 MB, không vượt giới hạn 5 MB
         _photoError      = null;
         Photo1ServerUrl  = null;
 
@@ -1650,7 +1738,7 @@
         }
         catch (Exception ex)
         {
-            _photoError = $"File quá lớn hoặc không đọc được: {ex.Message}";
+            _photoError = T("InspectionEdit.FileQuLNHoC", ex.Message);
             StateHasChanged();
             return;
         }
@@ -1659,7 +1747,7 @@
         var mime      = SafeContentType(file.ContentType);
         PhotoPreview1 = $"data:{mime};base64,{Convert.ToBase64String(bytes)}";
         _photoUploading = true;
-        Waiting.Show("Uploading photo...");
+        Waiting.Show(T("InspectionEdit.UploadingPhoto"));
         StateHasChanged();
 
         // 3. Upload lên server
@@ -1690,17 +1778,17 @@
                     }
                 }
                 if (string.IsNullOrEmpty(Photo1ServerUrl))
-                    _photoError = "Upload OK nhưng server không trả URL.";
+                    _photoError = T("InspectionEdit.UploadOKNhNgServerKh2");
             }
             else
             {
                 var body = await resp.Content.ReadAsStringAsync();
-                _photoError = $"Upload thất bại ({(int)resp.StatusCode}): {body}";
+                _photoError = T("InspectionEdit.UploadThTBI", (int)resp.StatusCode, body);
             }
         }
         catch (Exception ex)
         {
-            _photoError = $"Lỗi kết nối: {ex.Message}";
+            _photoError = T("InspectionEdit.LIKTNI", ex.Message);
         }
         finally
         {
@@ -1867,7 +1955,7 @@
         }
         catch (Exception ex)
         {
-            refItem.UploadError = $"Không đọc được file: {ex.Message}";
+            refItem.UploadError = T("InspectionEdit.KhNgCCFile", ex.Message);
             StateHasChanged();
             return;
         }
@@ -1875,7 +1963,7 @@
 
         // 3. Bây giờ đã an toàn — gọi StateHasChanged sau khi đã có dữ liệu trong memory
         refItem.IsUploading = true;
-        Waiting.Show($"Uploading: {file.Name}");
+        Waiting.Show(T("InspectionEdit.Uploading", file.Name));
         StateHasChanged();
 
         try
@@ -1911,12 +1999,12 @@
                     refItem.FileUrl     = url      ?? "";
                     refItem.FileName    = fileName ?? file.Name;
                     refItem.UploadError = string.IsNullOrEmpty(url)
-                        ? $"Upload OK nhưng server không trả URL. Body: {rawBody}"
+                        ? T("InspectionEdit.UploadOKNhNgServerKh", rawBody)
                         : "";
                 }
                 catch (Exception parseEx)
                 {
-                    refItem.UploadError = $"Parse error: {parseEx.Message}";
+                    refItem.UploadError = T("InspectionEdit.ParseError", parseEx.Message);
                 }
             }
             else
@@ -1947,7 +2035,7 @@
     // ─────────────────────────────────────────────────────────────
     //  VALIDATION
     // ─────────────────────────────────────────────────────────────
-    private bool ValidateForm()
+    private bool ValidateForm(bool draft = false)
     {
         _validationErrors.Clear();
         if (string.IsNullOrWhiteSpace(Model.CustomerId))        _validationErrors.Add("Customer ID is required.");
@@ -1958,36 +2046,43 @@
         if (string.IsNullOrWhiteSpace(Model.ProductCode))       _validationErrors.Add("Product ID is required.");
         if (Model.TotalShipmentQty <= 0)                        _validationErrors.Add("Total Shipment Quantity must be greater than 0.");
         if (AqlQuantity <= 0)                                   _validationErrors.Add("AQL Quantity is required.");
-        if (string.IsNullOrWhiteSpace(OfficeUse.InspectorId))   _validationErrors.Add("Inspector is required (Office Use).");
+        if (!draft && string.IsNullOrWhiteSpace(OfficeUse.InspectorId))   _validationErrors.Add("Inspector is required (Office Use).");
         return _validationErrors.Count == 0;
     }
 
     // ─────────────────────────────────────────────────────────────
     //  SAVE — gọi PUT api/inspections/{id}
     // ─────────────────────────────────────────────────────────────
-    private async Task HandleSave()
+    private bool _savingDraft;
+    private bool IsDraftJob => _currentStatus == "Draft";
+
+    /// <param name="draft">Chỉ dùng với job Draft: true = lưu nháp tiếp, false = Assign &amp; Send to Inspector (→ New).
+    /// null = job đã giao, lưu bình thường.</param>
+    private async Task HandleSave(bool? draft)
     {
         _saveError = null;
         _validationErrors.Clear();
-        if (!ValidateForm()) return;
+        _savingDraft = draft == true;
+        if (!ValidateForm(draft == true)) return;
 
         if (_photoUploading)
         {
-            _saveError = "Ảnh đang được tải lên, vui lòng chờ...";
+            _saveError = T("InspectionEdit.NhAngCTIL");
             return;
         }
         if (!string.IsNullOrEmpty(_photoError))
         {
-            _saveError = $"Ảnh chưa tải lên được: {_photoError}. Vui lòng thử lại hoặc xóa ảnh.";
+            _saveError = T("InspectionEdit.NhChTILN", _photoError);
             return;
         }
 
         _saving = true;
-        Waiting.Show("Saving inspection...");
+        Waiting.Show(T("InspectionEdit.SavingInspection"));
         try
         {
             var payload = new
             {
+                isDraft            = draft,
                 title              = string.IsNullOrWhiteSpace(Model.ProductName) ? "Inspection" : Model.ProductName,
                 description        = (string?)null,
                 customerName       = Model.CustomerName,
@@ -2009,6 +2104,9 @@
                 generalRemark      = Model.GeneralRemark,
                 inspectorId        = OfficeUse.InspectorId,
                 inspectorName      = OfficeUse.InspectorName,
+                inspectionStartTime = OfficeUse.StartTime,
+                inspectionEndTime   = OfficeUse.EndTime,
+                inspectorRemarks    = OfficeUse.Remarks,
                 photo1Url          = Photo1ServerUrl,
                 photo2Url          = (string?)null,
 
@@ -2036,18 +2134,20 @@
                     cardboardType       = Packaging.CardboardType,
                     shippingMark        = Packaging.ShippingMark,
                     hasBarcode          = Packaging.HasBarcode,
-                    innerPackingQty     = Packaging.InnerPackingQty,
-                    innerL              = Packaging.InnerL,
-                    innerW              = Packaging.InnerW,
-                    innerH              = Packaging.InnerH,
-                    innerWeight         = Packaging.InnerWeight,
+                    innerPackingQty     = FirstCarton.InnerPackingQty,
+                    innerL              = FirstCarton.InnerL,
+                    innerW              = FirstCarton.InnerW,
+                    innerH              = FirstCarton.InnerH,
+                    innerWeight         = FirstCarton.InnerWeight,
                     innerPackingRemark  = Packaging.InnerPackingRemark,
-                    outerL              = Packaging.OuterL,
-                    outerW              = Packaging.OuterW,
-                    outerH              = Packaging.OuterH,
-                    outerWeight         = Packaging.OuterWeight,
+                    outerL              = FirstCarton.OuterL,
+                    outerW              = FirstCarton.OuterW,
+                    outerH              = FirstCarton.OuterH,
+                    outerWeight         = FirstCarton.OuterWeight,
                     assemblyInstruction = Packaging.AssemblyInstruction,
-                    hardware            = Packaging.Hardware
+                    hardware            = Packaging.Hardware,
+                    burstingTest        = Packaging.BurstingTest,
+                    cartons             = Packaging.Cartons
                 },
 
                 productSpec = new
@@ -2079,7 +2179,7 @@
             };
 
             var token = await SessionStorage.GetItemAsync<string>("auth_token");
-            if (string.IsNullOrEmpty(token)) { _saveError = "Session expired. Please log in again."; return; }
+            if (string.IsNullOrEmpty(token)) { _saveError = T("InspectionEdit.SessionExpiredPleaseLogInAgain"); return; }
 
             Http.DefaultRequestHeaders.Authorization =
                 new AuthenticationHeaderValue("Bearer", token);
@@ -2090,7 +2190,7 @@
             else
             {
                 var body = await resp.Content.ReadAsStringAsync();
-                _saveError = $"Save failed ({(int)resp.StatusCode}): {body}";
+                _saveError = T("InspectionEdit.SaveFailed", (int)resp.StatusCode, body);
             }
         }
         catch (Exception ex) { _saveError = ex.Message; }
@@ -2145,6 +2245,8 @@
         public double OuterWeight         { get; set; }
         public bool   AssemblyInstruction { get; set; }
         public bool   Hardware            { get; set; }
+        public int?   BurstingTest        { get; set; }
+        public List<CartonPackingRow> Cartons { get; set; } = new() { new CartonPackingRow { CartonIndex = 1 } };
     }
     private class ProductSpecModel
     {
@@ -2158,6 +2260,9 @@
     {
         public string InspectorName { get; set; } = "";
         public string InspectorId   { get; set; } = "";
+        public string? StartTime    { get; set; }   // "HH:mm"
+        public string? EndTime      { get; set; }   // "HH:mm"
+        public string? Remarks      { get; set; }
     }
     private class ColourSwatchRow
     {
@@ -2197,7 +2302,7 @@
     }
     private class CustomerDropdownDto  { public string CustomerId  { get; set; } = ""; public string CompanyName { get; set; } = ""; }
     private class VendorDropdownDto    { public string Code { get; set; } = ""; public string Name { get; set; } = ""; }
-    private class ProductDropdownDto   { public int Id { get; set; } public string ProductCode { get; set; } = ""; public string ProductName { get; set; } = ""; public string ItemNumber { get; set; } = ""; public string ProductType { get; set; } = ""; public string Category { get; set; } = ""; public string CustomerId { get; set; } = ""; public string VendorId { get; set; } = ""; public double? SizeL { get; set; } public double? SizeW { get; set; } public double? SizeH { get; set; } public double? Weight { get; set; } public string PhotoUrl { get; set; } = ""; }
+    private class ProductDropdownDto   { public int Id { get; set; } public string ProductCode { get; set; } = ""; public string ProductName { get; set; } = ""; public string ItemNumber { get; set; } = ""; public string ProductType { get; set; } = ""; public string Category { get; set; } = ""; public string CustomerId { get; set; } = ""; public string VendorId { get; set; } = ""; public double? SizeL { get; set; } public double? SizeW { get; set; } public double? SizeH { get; set; } public double? Weight { get; set; } public string PhotoUrl { get; set; } = ""; public int? CartonQuantity { get; set; } public List<ProductCartonOption> Cartons { get; set; } = new(); }
     private class InspectorDropdownDto {
         public string Id { get; set; } = "";
         public string? InspectorId { get; set; }
@@ -2258,6 +2363,9 @@
         public string?   GeneralRemark       { get; set; }
         public string?   InspectorId         { get; set; }
         public string?   InspectorName       { get; set; }
+        public string?   InspectionStartTime { get; set; }
+        public string?   InspectionEndTime   { get; set; }
+        public string?   InspectorRemarks    { get; set; }
         // AQL
         public int    AqlQuantity            { get; set; }
         public string? AqlLevel              { get; set; }
@@ -2305,6 +2413,24 @@
         public double  OuterWeight         { get; set; }
         public bool    AssemblyInstruction { get; set; }
         public bool    Hardware            { get; set; }
+        public int?    BurstingTest        { get; set; }
+        public List<CartonDetailDto>? Cartons { get; set; }
+    }
+    private class CartonDetailDto
+    {
+        public int     CartonIndex     { get; set; }
+        public string? CartonVariant   { get; set; }
+        public string? Description     { get; set; }
+        public string? PackingQuantity { get; set; }
+        public int?    InnerPackingQty { get; set; }
+        public double? InnerL          { get; set; }
+        public double? InnerW          { get; set; }
+        public double? InnerH          { get; set; }
+        public double? InnerWeight     { get; set; }
+        public double? OuterL          { get; set; }
+        public double? OuterW          { get; set; }
+        public double? OuterH          { get; set; }
+        public double? OuterWeight     { get; set; }
     }
     private class ProductSpecDetailDto
     {
@@ -2451,6 +2577,25 @@
         .pkg-cartonbox-col:first-child { border-right: none; border-bottom: 1px solid #e0e8f4; }
         .pkg2-row-multi { flex-direction: column; align-items: flex-start; gap: 10px; }
     }
+    /* Điện thoại: nhãn trên, lựa chọn dưới — không cắt toggle / radio / select */
+    @@media (max-width: 700px) {
+        .pkg2-row { flex-direction: column; align-items: flex-start; gap: 8px; }
+        .pkg2-label { width: auto; white-space: normal; }
+        .pkg2-options { width: 100%; }
+        .pkg2-row .toggle-group { width: 100%; }
+        .pkg2-row .toggle-btn { flex: 1; }
+        .pkg2-row select, .pkg-burst-select { width: 100%; min-width: 0; max-width: 100%; }
+        .pkg2-inline-item { width: 100%; flex-wrap: wrap; }
+    }
+
+    /* Inspector Assignment */
+    .ia-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+    .ia-wide { grid-column: 1 / -1; }
+    .ia-time { display: flex; align-items: center; gap: 6px; }
+    .ia-time input { flex: 1; min-width: 0; }
+    .ia-grid textarea { width: 100%; resize: vertical; }
+    .ia-count { text-align: right; font-size: 11px; color: #9baac8; margin-top: 2px; }
+    @@media (max-width: 700px) { .ia-grid { grid-template-columns: 1fr; } }
 
     /* AQL */
     .aql-defects-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; }
@@ -2485,6 +2630,25 @@
     .table-select:focus { border-bottom-color: #1e90d6; }
     .table-select:disabled { color: #b0bdd4; cursor: not-allowed; }
     .table-select option { background: #fff; color: #1a2d5a; }
+    /* Điện thoại: bảng D xếp 3 dòng/test (Category / Test item / Xem · Remark) để không bị cắt chữ */
+    @@media (max-width: 700px) {
+        .perf-table .data-table-header { display: none; }
+        .perf-table .data-table-row { display: grid; grid-template-columns: 40px minmax(0,1fr); gap: 8px 10px; align-items: center; padding: 10px 12px; }
+        .perf-table .data-table-row > div { min-width: 0; grid-column: 2; }
+        .perf-table .data-table-row > .col-no { grid-column: 1; }
+        .perf-table .data-table-row > .col-view { grid-column: 1; width: auto; }
+        .perf-table .table-select, .perf-table .table-input { min-width: 0; text-overflow: ellipsis; }
+    }
+    /* Điện thoại: các bảng còn lại (Colour Swatch, Reference) xếp dọc: số thứ tự bên trái, các ô nhập xếp chồng bên phải, không bị cắt chữ */
+    @@media (max-width: 700px) {
+        .data-table:not(.perf-table) .data-table-header { display: none; }
+        .data-table:not(.perf-table) .data-table-row { display: grid; grid-template-columns: 28px minmax(0,1fr); gap: 8px 10px; align-items: center; padding: 10px 12px; }
+        .data-table:not(.perf-table) .data-table-row > div { min-width: 0; width: auto !important; grid-column: 2; }
+        .data-table:not(.perf-table) .data-table-row > .col-no { grid-column: 1; grid-row: 1; align-self: start; padding-top: 6px; }
+        .data-table:not(.perf-table) .data-table-row > div:last-child:not(.col-flex):not(.col-flex2):not(.col-no) { justify-content: flex-start !important; }
+        .data-table:not(.perf-table) .table-input { min-width: 0; }
+        .compare-golden-row { flex-wrap: wrap; gap: 8px 16px; }
+    }
     .table-textarea { width: 100%; background: transparent; border: none; border-bottom: 1px solid #e0e8f0; padding: 5px 4px; color: #1a2d5a; font-size: 12.5px; font-family: "DM Sans", sans-serif; outline: none; resize: vertical; min-height: 36px; transition: border-color .15s; line-height: 1.5; box-sizing: border-box; }
     .table-textarea::placeholder { color: #b0bdd4; }
     .table-textarea:focus { border-bottom-color: #1e90d6; }
@@ -2511,6 +2675,15 @@
 
     /* Submit row */
     .ni-submit-row { display: flex; justify-content: flex-end; align-items: center; gap: 12px; padding: 8px 0 16px; }
+    .ni-submit-row.ni-submit-2 { display: grid; grid-template-columns: 1fr 1fr; align-items: stretch; }
+    .ni-submit-2 .btn-save.large { justify-content: center; padding: 13px 20px; font-size: 15px; font-weight: 700; background: #1d4ed8; }
+    .ni-submit-2 .btn-save.large:hover:not(:disabled) { background: #1e40af; }
+    .btn-draft { background: #fff; color: #1d4ed8; border: 1.5px solid #c7d6f5; border-radius: 10px; padding: 13px 20px; font-size: 15px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 7px; }
+    .btn-draft:hover:not(:disabled) { background: #f3f7ff; }
+    .btn-draft:disabled { opacity: .6; cursor: not-allowed; }
+    .ni-spinner.dark { border-color: rgba(29,78,216,.25); border-top-color: #1d4ed8; }
+    .badge.s-draft { background: #f1f5f9; color: #475569; border: 1px dashed #94a3b8; }
+    @@media (max-width: 600px) { .ni-submit-row.ni-submit-2 { grid-template-columns: 1fr; } }
     .ni-save-error { color: #dc2626; font-size: 13px; background: #fff5f5; border: 1px solid #fecaca; border-radius: 8px; padding: 8px 14px; }
     .ni-spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid rgba(255,255,255,0.4); border-top-color: #fff; border-radius: 50%; animation: spin .7s linear infinite; margin-right: 4px; vertical-align: middle; }
 
@@ -2533,6 +2706,22 @@
     .oc-no.active  { color: #fff; background: #e53935; }
     .oc-sep { color: #b0bec5; font-weight: 400; margin: 0 2px; }
     .oc-remark-input { width: 100%; background: transparent; border: none; border-bottom: 1px solid #e0e8f0; padding: 5px 4px; color: #4a6080; font-size: 13px; font-family: "DM Sans", sans-serif; outline: none; }
+
+    /* Điện thoại: mỗi hạng mục là một thẻ — tên, nút YES/NO to dễ bấm, ô Remark rộng hết chiều ngang */
+    @@media (max-width: 700px) {
+        .oc-table { display: block; border: none; background: none; border-radius: 0; }
+        .oc-table thead { display: none; }
+        .oc-table tbody { display: block; }
+        .oc-table .oc-row { display: grid; grid-template-columns: minmax(0,1fr); gap: 10px; background: #fff; border: 1px solid #dde4ef; border-radius: 12px; padding: 12px; margin-bottom: 10px; }
+        .oc-table .oc-row:nth-child(even) td { background: transparent; }
+        .oc-table .oc-row td { display: block; border: none !important; padding: 0 !important; min-width: 0; }
+        .oc-table .oc-td-label { font-weight: 700; font-size: 14px; }
+        .oc-table .oc-td-compliance { display: flex; gap: 10px; white-space: normal; }
+        .oc-table .oc-sep { display: none; }
+        .oc-table .oc-btn { flex: 1; height: 42px; font-size: 14px; border: 1.5px solid #cbd8ee; border-radius: 10px; background: #f6f9fe; }
+        .oc-table .oc-btn.active { border-color: transparent; }
+        .oc-table .oc-remark-input { box-sizing: border-box; border: 1px solid #dde4ef; border-radius: 8px; background: #f7fafd; padding: 10px 12px; font-size: 14px; }
+    }
 
     /* Status badges */
     .badge      { display:inline-block; padding:3px 10px; border-radius:20px; font-size:11px; font-weight:600; white-space:nowrap; }

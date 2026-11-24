@@ -1,0 +1,35 @@
+@model List<Plan>
+@{
+    var allMods = Model.SelectMany(p => p.Modules.Select(m => m.Module!)).DistinctBy(m => m.Id).OrderBy(m => m.SortOrder).ToList();
+    var ordered = Model.OrderBy(p => p.SortOrder).ToList();
+}
+<div class="center"><div class="cycle-switch" role="tablist">
+    <button type="button" data-cycle="Monthly" class="on">@L["Monthly"]</button>
+    <button type="button" data-cycle="Annual">@L["Annual"] · @L["Save 15%"]</button>
+</div></div>
+<div class="plans" id="plans">
+@foreach (var p in ordered)
+{
+    var codes = p.Modules.Select(m => m.Module!.Code).ToHashSet();
+    var annualSave = p.MonthlyPrice > 0 ? (int)Math.Round((1 - p.AnnualPrice / (p.MonthlyPrice * 12)) * 100) : 0;
+    <div class="plan @(p.IsPopular ? "pop" : "")">
+        @if (p.IsPopular) { <span class="pop-tag">@L["Most Popular"]</span> }
+        <h3>@p.Name</h3>
+        <div class="muted">@L[p.Tagline]</div>
+        <div class="price" data-m="@p.MonthlyPrice.ToString("0.##")" data-a="@p.AnnualPrice.ToString("0.##")">
+            <span class="amt">US$ @p.MonthlyPrice.ToString("N0")</span> <small class="per" data-m="/ @L["month"]" data-y="/ @L["year"]">/ @L["month"]</small>
+        </div>
+        <div class="muted" style="font-size:.88rem">@L["or"] US$ @p.AnnualPrice.ToString("N0") / @L["year"] <span class="save">@L["Save"] @annualSave%</span></div>
+        <ul class="ticks">
+            @foreach (var m in allMods)
+            {
+                <li class="@(codes.Contains(m.Code) ? "" : "no")">@L[m.Name]</li>
+            }
+            <li>@L.F("Up to {0} users", p.MaxUsers)</li>
+            <li>@L.F("{0} GB cloud storage", p.StorageGb)</li>
+            <li>@L["4 languages (EN / 中文 / Tiếng Việt / Bahasa Melayu)"]</li>
+        </ul>
+        <a class="btn @(p.IsPopular ? "" : "ghost") block" href="/register?plan=@p.Code">@L["Register & Subscribe"] →</a>
+    </div>
+}
+</div>

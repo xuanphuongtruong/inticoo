@@ -1,0 +1,82 @@
+@page
+@model IndexModel
+@{
+    ViewData["Title"] = "Super Admin Dashboard"; ViewData["Crumb"] = "Dashboard";
+    ViewData["Sub"] = "Overview of all companies, subscriptions, payments and platform usage.";
+    var d = Model.D;
+    var mrrDelta = d.MrrLastMonth > 0 ? (double)((d.Mrr - d.MrrLastMonth) / d.MrrLastMonth * 100) : 0;
+    var maxRev = Math.Max(1m, d.MonthlyRevenue.Max(m => m.Value));
+    var maxInv = Math.Max(1m, d.InvoiceAmounts.Max(m => m.Amount));
+}
+<div class="kpis">
+  <div class="kpi"><span class="ic b">@Icons.Svg("building", 24)</span><div><small>Total Companies</small><strong>@d.TotalCompanies</strong><div class="sub">+@d.NewCompaniesThisMonth new this month</div></div></div>
+  <div class="kpi"><span class="ic b">@Icons.Svg("users", 24)</span><div><small>Active Subscriptions</small><strong>@d.ActiveSubscriptions</strong><div class="sub">@AdminUi.Pct(d.ActivePercent) of total companies</div></div></div>
+  <div class="kpi"><span class="ic r">@Icons.Svg("doc", 24)</span><div><small>Pending Registration</small><strong>@d.PendingRegistrations</strong><div class="sub">Require admin review</div></div></div>
+  <div class="kpi"><span class="ic g">@Icons.Svg("dollar", 24)</span><div><small>Total Revenue (MRR)</small><strong>@AdminUi.Money0(d.Mrr)</strong> @if (d.MrrLastMonth > 0) { <span class="d @(mrrDelta >= 0 ? "up" : "down")">@(mrrDelta >= 0 ? "▲" : "▼") @Math.Abs(mrrDelta).ToString("0")%</span> }<div class="sub">Last month: @AdminUi.Money0(d.MrrLastMonth)</div></div></div>
+</div>
+
+<div class="cols c3">
+  <div class="panel"><h3>Monthly Revenue <small>(paid, USD)</small></h3>
+    <div class="chart-bars">@for (var i = 0; i < d.MonthlyRevenue.Count; i++) { var m = d.MonthlyRevenue[i]; <div class="col @(i == d.MonthlyRevenue.Count - 1 ? "last" : "")"><div class="chart-val">@AdminUi.Money0(m.Value)</div><i style="height:@AdminUi.Num((double)(m.Value / maxRev * 100))%"></i></div> }</div>
+    <div class="chart-lbl">@foreach (var m in d.MonthlyRevenue) { <span>@m.Label</span> }</div></div>
+  <div class="panel"><h3>Companies by Subscription Plan</h3>
+    <div class="dwrap"><div class="donut" style="@AdminUi.Slice(d.CompaniesByPlan.Select(p => ((double)p.Count, p.Color)))"><b><span>@d.CompaniesByPlan.Sum(p => p.Count)<small>Companies</small></span></b></div>
+      <div class="legend" style="flex:1">@foreach (var p in d.PlanDistribution) { <div><span><i class="dot" style="background:@p.Color"></i>@p.Name</span><span><b>@p.Count</b> <span class="muted">(@AdminUi.Pct(p.Pct))</span></span></div> }</div></div></div>
+  <div class="panel"><h3>New Company Registrations</h3>
+    <svg class="line" viewBox="0 0 400 150" preserveAspectRatio="none">
+      <polyline fill="none" stroke="#1666f0" stroke-width="2.5" points="@AdminUi.LinePoints(d.NewCompaniesByMonth.Select(x => x.Value).ToList())" />
+    </svg>
+    <div class="chart-lbl">@foreach (var m in d.NewCompaniesByMonth) { <span>@m.Label <b>@m.Value</b></span> }</div></div>
+</div>
+
+<div class="cols c3">
+  <div class="panel"><h3>Payment Status <small>(this month)</small></h3>
+    <div class="dwrap"><div class="donut" style="@AdminUi.Slice(d.PaymentStatus.Select(p => ((double)p.Count, p.Color)))"><b><span>@d.InvoicesThisMonth<small>Invoices</small></span></b></div>
+      <div class="legend" style="flex:1">@foreach (var p in d.PaymentStatus) { <div><span><i class="dot" style="background:@p.Color"></i>@p.Name</span><b>@p.Count</b></div> }</div></div></div>
+  <div class="panel"><h3>Invoice Amount <small>(this month)</small></h3>
+    <div class="chart-bars" style="height:140px">@foreach (var a in d.InvoiceAmounts) { <div class="col"><div class="chart-val">@AdminUi.Money0(a.Amount)</div><i style="background:@a.Color;height:@AdminUi.Num((double)(a.Amount / maxInv * 100))%"></i></div> }</div>
+    <div class="chart-lbl">@foreach (var a in d.InvoiceAmounts) { <span>@a.Name</span> }</div></div>
+  <div class="panel"><h3>Storage Usage <small>(all companies)</small></h3>
+    @{ var u = d.Usage; var cap = d.StorageCapacityGb > 0 ? d.StorageCapacityGb : (u?.AllocatedGb ?? 0); var sp = cap > 0 ? d.StorageUsedGb / cap * 100 : 0; }
+    <div style="display:flex;gap:14px;align-items:center;margin:10px 0"><span class="ic" style="width:46px;height:46px;border-radius:50%;background:#e0ecff;color:#1666f0;display:grid;place-items:center">@Icons.Svg("cloud", 24)</span>
+      <div style="flex:1"><div><b style="font-size:1.2rem">@UsageReportService.Size(d.StorageUsedGb)</b> used of @(cap > 0 ? UsageReportService.Size(cap) : "—") <span class="muted" style="font-size:.78rem">@(d.StorageCapacityGb > 0 ? "server capacity" : "allocated in plans")</span></div>
+        <div class="bar" style="margin-top:6px"><i style="width:@AdminUi.Num(Math.Min(100, sp))%;background:#1666f0"></i></div></div>
+      <b>@sp.ToString("0")%</b></div>
+    @if (u != null)
+    {
+      <div class="legend" style="font-size:.82rem">
+        <div><span>Allocated in active plans</span><b>@UsageReportService.Size(u.AllocatedGb)</b></div>
+        <div><span>Users (active / total)</span><b>@u.ActiveUsers / @u.TotalUsers</b></div>
+        <div><span>Companies over plan limit</span><b style="color:@(u.OverStorage + u.OverUsers > 0 ? "#dc2626" : "inherit")">@(u.OverStorage + u.OverUsers)</b></div>
+        <div><span>Last measured</span><b>@(u.LastRunAt == null ? "never" : AdminUi.DT(u.LastRunAt))</b></div>
+      </div>
+    }
+    <a href="/storage">View storage details →</a></div>
+</div>
+
+<div class="cols c2">
+  <div class="panel"><h3>Recent Company Registrations <a href="/companies" style="float:right;font-size:.82rem;font-weight:600">View All</a></h3>
+    <div class="tbl-wrap"><table class="t"><thead><tr><th>Company Name</th><th>Country</th><th>Plan</th><th>Status</th><th>Registration Date</th></tr></thead><tbody>
+    @foreach (var c in d.RecentCompanies) { <tr><td><a href="/companies?id=@c.Id">@c.Name</a></td><td class="nw">@AdminUi.Flag(c.CountryCode) @c.Country</td><td>@(c.Subscriptions.OrderByDescending(s => s.Id).FirstOrDefault()?.Plan?.Name ?? "-")</td><td>@AdminUi.Pill(c.Status)</td><td>@AdminUi.D(c.RegisteredAt)</td></tr> }
+    @if (d.RecentCompanies.Count == 0) { <tr><td colspan="5" class="muted">No registrations yet.</td></tr> }
+    </tbody></table></div></div>
+  <div class="panel"><h3>Recent Payments <a href="/payments" style="float:right;font-size:.82rem;font-weight:600">View All</a></h3>
+    <div class="tbl-wrap"><table class="t"><thead><tr><th>Invoice No.</th><th>Company</th><th class="num">Amount</th><th>Status</th><th>Date</th></tr></thead><tbody>
+    @foreach (var p in d.RecentPayments) { <tr><td><a href="/invoices?id=@p.InvoiceId">@p.Invoice?.Number</a></td><td>@p.Company?.Name</td><td class="num">@AdminUi.Money(p.Amount)</td><td>@AdminUi.Pill(p.Status)</td><td>@AdminUi.D(p.CreatedAt)</td></tr> }
+    @if (d.RecentPayments.Count == 0) { <tr><td colspan="5" class="muted">No payments yet.</td></tr> }
+    </tbody></table></div></div>
+</div>
+
+<div class="cols c4">
+  <div class="panel"><h3>Subscription Plan Distribution</h3>
+    @foreach (var p in d.PlanDistribution) { <div class="hbar"><span class="n" style="width:90px">@p.Name</span><div class="bar"><i style="width:@AdminUi.Num(p.Pct)%;background:@p.Color"></i></div><span class="v">@p.Count (@AdminUi.Pct(p.Pct))</span></div> }</div>
+  <div class="panel"><h3>Top 5 Companies by Revenue <small>(MRR)</small></h3>
+    @{ var rank = 1; }
+    @foreach (var t in d.TopCompanies) { <div class="switch" style="padding:7px 0"><span><span class="ava" style="display:inline-grid;margin-right:8px">@(rank++)</span>@t.Name</span><b>@AdminUi.Money0(t.Mrr)</b></div> }
+    @if (d.TopCompanies.Count == 0) { <p class="muted">No active subscriptions yet.</p> }</div>
+  <div class="panel"><h3>Module Usage <small>(active companies)</small></h3>
+    @foreach (var m in d.ModuleUsage) { <div class="hbar"><span class="n" style="width:120px;font-size:.82rem">@m.Name</span><div class="bar"><i style="width:@AdminUi.Num(m.Pct)%;background:@m.Color"></i></div><span class="v" style="width:40px">@AdminUi.Pct(m.Pct)</span></div> }</div>
+  <div class="panel"><h3>Quick Actions</h3>
+    <div class="acts"><a class="btn" href="/companies">@Icons.Svg("building", 17) View All Companies</a><a class="btn" href="/subscriptions">@Icons.Svg("card", 17) Manage Subscriptions</a>
+      <a class="btn" href="/payments?status=Pending">@Icons.Svg("wallet", 17) Review Pending Payments</a><a class="btn" href="/reports">@Icons.Svg("chart", 17) Generate Reports</a></div></div>
+</div>

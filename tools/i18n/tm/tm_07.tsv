@@ -1,0 +1,169 @@
+Pre-Shipment Inspection	Kiểm hàng trước khi giao	出货前验货	Pemeriksaan pra-penghantaran
+(Total: {0})	(Tổng: {0})	（合计：{0}）	(Jumlah: {0})
+Total Inspection for Year — {0}	Tổng số lượt kiểm trong năm — {0}	年度验货总数 — {0}	Jumlah pemeriksaan untuk tahun — {0}
+Total Inspection (Monthly) — {0}	Tổng số lượt kiểm (theo tháng) — {0}	验货总数（按月）— {0}	Jumlah pemeriksaan (bulanan) — {0}
+Inspector Name :	Tên kiểm hàng viên :	验货员姓名：	Nama pemeriksa :
+Inspector Performance Overview	Tổng quan hiệu suất kiểm hàng viên	验货员绩效概览	Gambaran prestasi pemeriksa
+Inspector Performance - Inticoo	Hiệu suất kiểm hàng viên - Inticoo	验货员绩效 - Inticoo	Prestasi pemeriksa - Inticoo
+Review inspector performance · Monthly & yearly inspection metrics	Đánh giá hiệu suất kiểm hàng viên · Chỉ số theo tháng & năm	评估验货员绩效 · 月度与年度验货指标	Semak prestasi pemeriksa · Metrik pemeriksaan bulanan & tahunan
+Inspector Reviews	Đánh giá kiểm hàng viên	验货员评估	Semakan pemeriksa
+Inspector Reviews - Inticoo	Đánh giá kiểm hàng viên - Inticoo	验货员评估 - Inticoo	Semakan pemeriksa - Inticoo
+Inspectors	Kiểm hàng viên	验货员	Pemeriksa
+Search inspector name, code, country...	Tìm tên, mã, quốc gia kiểm hàng viên...	搜索验货员姓名、编号、国家...	Cari nama, kod, negara pemeriksa...
+your-email@gmail.com	your-email@gmail.com	your-email@gmail.com	your-email@gmail.com
+Recipient email	Email người nhận	收件人邮箱	E-mel penerima
+Send a test email with the CURRENT settings to check that SMTP works. If you just saved, refresh first to make sure the new settings are used.	Gửi email thử với cấu hình HIỆN TẠI để kiểm tra SMTP. Nếu vừa lưu, hãy tải lại trang trước để chắc chắn dùng cấu hình mới.	使用当前设置发送测试邮件以检查 SMTP 是否正常。如果刚保存过设置，请先刷新以确保使用新设置。	Hantar e-mel ujian dengan tetapan SEMASA untuk memastikan SMTP berfungsi. Jika baru disimpan, muat semula dahulu supaya tetapan baharu digunakan.
+🧪 Test SMTP	🧪 Thử SMTP	🧪 测试 SMTP	🧪 Uji SMTP
+↺ Clear DB settings (use Env Var)	↺ Xóa cấu hình DB (dùng biến môi trường)	↺ 清除数据库设置（使用环境变量）	↺ Kosongkan tetapan DB (guna pemboleh ubah persekitaran)
+🔄 Reload	🔄 Tải lại	🔄 重新加载	🔄 Muat semula
+by	bởi	操作人	oleh
+Last updated:	Cập nhật lần cuối:	最后更新：	Kemas kini terakhir:
+weekly, notifying inspections in the	hằng tuần, thông báo các lượt kiểm trong	每周一次，通知以下期间的验货：	setiap minggu, memaklumkan pemeriksaan dalam
+💡 The job runs every	💡 Tác vụ chạy vào	💡 任务运行时间：每周	💡 Tugas dijalankan setiap
+DISABLED	ĐANG TẮT	已停用	DINYAHDAYAKAN
+ENABLED	ĐANG BẬT	已启用	DIDAYAKAN
+days	ngày	天	hari
+Notify ahead	Báo trước	提前通知	Maklumkan awal
+Minute (0-59)	Phút (0-59)	分钟 (0-59)	Minit (0-59)
+Hour (0-23)	Giờ (0-23)	小时 (0-23)	Jam (0-23)
+Saturday	Thứ Bảy	星期六	Sabtu
+Friday	Thứ Sáu	星期五	Jumaat
+Thursday	Thứ Năm	星期四	Khamis
+Wednesday	Thứ Tư	星期三	Rabu
+Tuesday	Thứ Ba	星期二	Selasa
+Monday	Thứ Hai	星期一	Isnin
+Sunday	Chủ Nhật	星期日	Ahad
+Day of week	Thứ trong tuần	星期	Hari dalam minggu
+🕐 Automatic Send Schedule	🕐 Lịch gửi tự động	🕐 自动发送计划	🕐 Jadual penghantaran automatik
+⚠️ NOT configured - go to Azure App Service → Configuration → MailSettings__Password	⚠️ CHƯA cấu hình - vào Azure App Service → Configuration → MailSettings__Password	⚠️ 未配置 - 请前往 Azure App Service → Configuration → MailSettings__Password	⚠️ BELUM dikonfigurasi - pergi ke Azure App Service → Configuration → MailSettings__Password
+🔒 Configured in Azure Environment Variable	🔒 Đã cấu hình trong biến môi trường Azure	🔒 已在 Azure 环境变量中配置	🔒 Dikonfigurasi dalam pemboleh ubah persekitaran Azure
+Password	Mật khẩu	密码	Kata laluan
+no-reply@inticoo.com	no-reply@inticoo.com	no-reply@inticoo.com	no-reply@inticoo.com
+SMTP Username	Tên đăng nhập SMTP	SMTP 用户名	Nama pengguna SMTP
+Sender Name (display)	Tên người gửi (hiển thị)	发件人名称（显示）	Nama pengirim (paparan)
+Sender Email	Email người gửi	发件人邮箱	E-mel pengirim
+👤 Sender Information	👤 Thông tin người gửi	👤 发件人信息	👤 Maklumat pengirim
+Use SSL/TLS	Dùng SSL/TLS	使用 SSL/TLS	Guna SSL/TLS
+Port	Cổng	端口	Port
+SMTP Host	Máy chủ SMTP	SMTP 主机	Hos SMTP
+📡 SMTP Server	📡 Máy chủ SMTP	📡 SMTP 服务器	📡 Pelayan SMTP
+⚙️ Mail Settings	⚙️ Cấu hình email	⚙️ 邮件设置	⚙️ Tetapan e-mel
+Mail Settings	Cấu hình email	邮件设置	Tetapan e-mel
+Send test	Gửi thử	发送测试	Hantar ujian
+💾 Save	💾 Lưu	💾 保存	💾 Simpan
+✅ DB settings cleared. The app is now using Environment Variables.	✅ Đã xóa cấu hình DB. Ứng dụng đang dùng biến môi trường.	✅ 已清除数据库设置，应用现在使用环境变量。	✅ Tetapan DB dikosongkan. Aplikasi kini menggunakan pemboleh ubah persekitaran.
+❌ Exception: 	❌ Ngoại lệ: 	❌ 异常：	❌ Pengecualian:
+❌ Error: 	❌ Lỗi: 	❌ 错误：	❌ Ralat:
+✅ Test email sent to {0}. Check your inbox (including Spam).	✅ Đã gửi email thử tới {0}. Hãy kiểm tra hộp thư (kể cả Spam).	✅ 测试邮件已发送至 {0}，请检查收件箱（包括垃圾邮件）。	✅ E-mel ujian dihantar kepada {0}. Semak peti masuk anda (termasuk Spam).
+✅ Settings saved. Effective immediately (the worker reloads within 1 minute).	✅ Đã lưu cấu hình. Có hiệu lực ngay (tác vụ nền tải lại trong vòng 1 phút).	✅ 设置已保存，立即生效（后台任务将在 1 分钟内重新加载）。	✅ Tetapan disimpan. Berkuat kuasa serta-merta (pekerja dimuat semula dalam masa 1 minit).
+🌐 From Environment Variables	🌐 Từ biến môi trường	🌐 来自环境变量	🌐 Daripada pemboleh ubah persekitaran
+📦 From Database	📦 Từ cơ sở dữ liệu	📦 来自数据库	📦 Daripada pangkalan data
+(Vietnam time)	(giờ Việt Nam)	（越南时间）	(waktu Vietnam)
+next {0} days	{0} ngày tới	未来 {0} 天	{0} hari akan datang
+Clear DB settings? The app will fall back to Environment Variables. Are you sure?	Xóa cấu hình DB? Ứng dụng sẽ quay về dùng biến môi trường. Bạn có chắc không?	清除数据库设置？应用将改用环境变量。确定吗？	Kosongkan tetapan DB? Aplikasi akan kembali menggunakan pemboleh ubah persekitaran. Adakah anda pasti?
+Failed to load settings: 	Không tải được cấu hình: 	加载设置失败：	Gagal memuatkan tetapan:
+❌ FAIL	❌ LỖI	❌ 失败	❌ GAGAL
+✅ OK	✅ OK	✅ 成功	✅ OK
+Error	Lỗi	错误	Ralat
+# Insp	# Lượt kiểm	# 验货	# Pemeriksaan
+Subject	Tiêu đề	主题	Subjek
+Type / Code	Loại / Mã	类型 / 代码	Jenis / Kod
+Time	Thời gian	时间	Masa
+No email log yet.	Chưa có nhật ký email.	暂无邮件日志。	Belum ada log e-mel.
+7. Email history (latest 50)	7. Lịch sử email (50 gần nhất)	7. 邮件历史（最近 50 条）	7. Sejarah e-mel (50 terkini)
+Errors:	Lỗi:	错误：	Ralat:
+, Inspection:	, Kiểm hàng:	，验货：	, Pemeriksaan:
+, Failed:	, Thất bại:	，失败：	, Gagal:
+, Skipped:	, Bỏ qua:	，跳过：	, Dilangkau:
+, Sent:	, Đã gửi:	，已发送：	, Dihantar:
+Total:	Tổng:	合计：	Jumlah:
+Result {0}:	Kết quả {0}:	结果 {0}：	Keputusan {0}:
+🚀 Run CUSTOMER job now	🚀 Chạy tác vụ KHÁCH HÀNG ngay	🚀 立即运行客户任务	🚀 Jalankan tugas PELANGGAN sekarang
+Sending to Customers...	Đang gửi cho khách hàng...	正在发送给客户...	Sedang menghantar kepada pelanggan...
+🚀 Run VENDOR job now	🚀 Chạy tác vụ NHÀ CUNG CẤP ngay	🚀 立即运行供应商任务	🚀 Jalankan tugas PEMBEKAL sekarang
+Sending to Vendors...	Đang gửi cho nhà cung cấp...	正在发送给供应商...	Sedang menghantar kepada pembekal...
+weekly for both Vendors and Customers.	hằng tuần cho cả nhà cung cấp và khách hàng.	每周一次，供应商和客户均适用。	setiap minggu untuk pembekal dan pelanggan.
+{0} at {1}:00	{0} lúc {1}:00	{0} {1}:00	{0} pada {1}:00
+The automatic schedule runs	Lịch tự động chạy vào	自动计划运行时间：	Jadual automatik berjalan
+6. ⚡ Manual trigger - BULK email	6. ⚡ Chạy thủ công - Gửi email HÀNG LOẠT	6. ⚡ 手动触发 - 批量邮件	6. ⚡ Pencetus manual - E-mel PUKAL
+Send	Gửi	发送	Hantar
+⚠️ No email yet	⚠️ Chưa có email	⚠️ 暂无邮箱	⚠️ Belum ada e-mel
+Customer email (To)	Email khách hàng (To)	客户邮箱（收件人）	E-mel pelanggan (Kepada)
+completed inspections.	lượt kiểm đã hoàn thành.	个已完成的验货。	pemeriksaan selesai.
+Found	Tìm thấy	找到	Ditemui
+No completed inspection matches.	Không có lượt kiểm hoàn thành phù hợp.	没有匹配的已完成验货。	Tiada pemeriksaan selesai yang sepadan.
+Enter keyword...	Nhập từ khóa...	输入关键词...	Masukkan kata kunci...
+Search (Job / Customer / Vendor / Product)	Tìm (Đơn / Khách hàng / Nhà cung cấp / Sản phẩm)	搜索（任务 / 客户 / 供应商 / 产品）	Cari (Tugasan / Pelanggan / Pembekal / Produk)
+vd: a@cty.com; b@cty.com	vd: a@cty.com; b@cty.com	例如：a@cty.com; b@cty.com	cth: a@cty.com; b@cty.com
+Extra CC email (optional — applied when you press Send)	Email CC thêm (không bắt buộc — áp dụng khi bấm Gửi)	额外抄送邮箱（可选 — 点击发送时生效）	E-mel CC tambahan (pilihan — digunakan apabila anda menekan Hantar)
+= AlternateReportEmail + the extra CC email entered below.	= AlternateReportEmail + email CC thêm nhập bên dưới.	= AlternateReportEmail + 下方输入的额外抄送邮箱。	= AlternateReportEmail + e-mel CC tambahan yang dimasukkan di bawah.
+CC	CC	抄送	CC
+= customer email,	= email khách hàng,	= 客户邮箱，	= e-mel pelanggan,
+To	To	收件人	Kepada
+. Recipients:	. Người nhận:	。收件人：	. Penerima:
+inspections — exactly like the automatic email when the inspector presses	— giống hệt email tự động khi kiểm hàng viên bấm	— 与验货员点击以下按钮时自动发送的邮件完全相同：	— sama seperti e-mel automatik apabila pemeriksa menekan
+completed	đã hoàn thành	已完成的	selesai
+email (with the report download link) for	(kèm liên kết tải báo cáo) cho các lượt kiểm	邮件（附报告下载链接），对象为	(dengan pautan muat turun laporan) untuk pemeriksaan
+"Inspection Report Completed"	"Inspection Report Completed"	"Inspection Report Completed"	"Inspection Report Completed"
+Resend the	Gửi lại email	重新发送	Hantar semula e-mel
+5. Send report email per inspection (same as the Done button)	5. Gửi email báo cáo theo từng lượt kiểm (giống nút Hoàn tất)	5. 按验货发送报告邮件（与“完成”按钮相同）	5. Hantar e-mel laporan bagi setiap pemeriksaan (sama seperti butang Selesai)
+Missing email	Thiếu email	缺少邮箱	E-mel tiada
+Report emails off	Tắt email báo cáo	已关闭报告邮件	E-mel laporan dimatikan
+Will send	Sẽ gửi	将发送	Akan dihantar
+# Inspection	# Lượt kiểm	# 验货	# Pemeriksaan
+Recipients	Người nhận	收件人	Penerima
+Email Type	Loại email	邮件类型	Jenis e-mel
+customers in the next {0} days ({1} - {2}).	khách hàng trong {0} ngày tới ({1} - {2}).	个客户，未来 {0} 天（{1} - {2}）。	pelanggan dalam {0} hari akan datang ({1} - {2}).
+inspections from	lượt kiểm từ	次验货，涉及	pemeriksaan daripada
+No inspection in the next {0} days (from {1} to {2}).	Không có lượt kiểm trong {0} ngày tới (từ {1} đến {2}).	未来 {0} 天（{1} 至 {2}）没有验货。	Tiada pemeriksaan dalam {0} hari akan datang (dari {1} hingga {2}).
+4. Preview: Customers receiving the next email	4. Xem trước: Khách hàng sẽ nhận email kế tiếp	4. 预览：将收到下一封邮件的客户	4. Pratonton: Pelanggan yang akan menerima e-mel seterusnya
+Vendor Code	Mã nhà cung cấp	供应商代码	Kod pembekal
+vendors in the next {0} days ({1} - {2}).	nhà cung cấp trong {0} ngày tới ({1} - {2}).	个供应商，未来 {0} 天（{1} - {2}）。	pembekal dalam {0} hari akan datang ({1} - {2}).
+3. Preview: Vendors receiving the next email	3. Xem trước: Nhà cung cấp sẽ nhận email kế tiếp	3. 预览：将收到下一封邮件的供应商	3. Pratonton: Pembekal yang akan menerima e-mel seterusnya
+: sends the real template with sample data (dummy schedule table).	: gửi mẫu thật với dữ liệu mẫu (bảng lịch giả lập).	：使用示例数据（模拟日程表）发送真实模板。	: menghantar templat sebenar dengan data sampel (jadual contoh).
+Vendor / Customer	Nhà cung cấp / Khách hàng	供应商 / 客户	Pembekal / Pelanggan
+: only checks the configuration.	: chỉ kiểm tra cấu hình.	：仅检查配置。	: hanya menyemak konfigurasi.
+SMTP check	Kiểm tra SMTP	SMTP 检查	Semakan SMTP
+Default	Mặc định	默认	Lalai
+Subject (optional, SMTP check only)	Tiêu đề (không bắt buộc, chỉ cho kiểm tra SMTP)	主题（可选，仅用于 SMTP 检查）	Subjek (pilihan, untuk semakan SMTP sahaja)
+Customer template (sample data)	Mẫu khách hàng (dữ liệu mẫu)	客户模板（示例数据）	Templat pelanggan (data sampel)
+Vendor template (sample data)	Mẫu nhà cung cấp (dữ liệu mẫu)	供应商模板（示例数据）	Templat pembekal (data sampel)
+SMTP check (empty email)	Kiểm tra SMTP (email trống)	SMTP 检查（空邮件）	Semakan SMTP (e-mel kosong)
+Template type	Loại mẫu	模板类型	Jenis templat
+your-email@example.com	your-email@example.com	your-email@example.com	your-email@example.com
+2. Send test email	2. Gửi email thử	2. 发送测试邮件	2. Hantar e-mel ujian
+{0} days	{0} ngày	{0} 天	{0} hari
+Notify ahead:	Báo trước:	提前通知：	Maklumkan awal:
+Job:	Tác vụ:	任务：	Tugas:
+{0} at {1}:00 (Vietnam time)	{0} lúc {1}:00 (giờ Việt Nam)	{0} {1}:00（越南时间）	{0} pada {1}:00 (waktu Vietnam)
+Schedule:	Lịch:	计划：	Jadual:
+Password:	Mật khẩu:	密码：	Kata laluan:
+SSL:	SSL:	SSL：	SSL:
+Sender:	Người gửi:	发件人：	Pengirim:
+SMTP Host:	Máy chủ SMTP:	SMTP 主机：	Hos SMTP:
+1. Current SMTP settings	1. Cấu hình SMTP hiện tại	1. 当前 SMTP 设置	1. Tetapan SMTP semasa
+Vendor + Customer Weekly Mail	Email hằng tuần cho nhà cung cấp + khách hàng	供应商 + 客户每周邮件	E-mel mingguan pembekal + pelanggan
+📧 Test Mail Notification	📧 Thử email thông báo	📧 测试邮件通知	📧 Uji pemberitahuan e-mel
+Mail Test - Inspection Notification	Thử email - Thông báo kiểm hàng	邮件测试 - 验货通知	Ujian e-mel - Pemberitahuan pemeriksaan
+❌ Error: {0}	❌ Lỗi: {0}	❌ 错误：{0}	❌ Ralat: {0}
+✅ Report sent for inspection {0}	✅ Đã gửi báo cáo cho lượt kiểm {0}	✅ 已发送验货 {0} 的报告	✅ Laporan dihantar untuk pemeriksaan {0}
+\nExtra CC: {0}	\nCC thêm: {0}	\n额外抄送：{0}	\nCC tambahan: {0}
+✅ Sent to customer {0}	✅ Đã gửi cho khách hàng {0}	✅ 已发送给客户 {0}	✅ Dihantar kepada pelanggan {0}
+✅ Sent to vendor {0}	✅ Đã gửi cho nhà cung cấp {0}	✅ 已发送给供应商 {0}	✅ Dihantar kepada pembekal {0}
+❌ Exception: {0}	❌ Ngoại lệ: {0}	❌ 异常：{0}	❌ Pengecualian: {0}
+✅ {0} email sent to {1}. Please check your inbox (including Spam).	✅ Đã gửi email {0} tới {1}. Hãy kiểm tra hộp thư (kể cả Spam).	✅ {0} 邮件已发送至 {1}，请检查收件箱（包括垃圾邮件）。	✅ E-mel {0} dihantar kepada {1}. Sila semak peti masuk anda (termasuk Spam).
+SMTP test	thử SMTP	SMTP 测试	ujian SMTP
+template Customer	mẫu Khách hàng	客户模板	templat Pelanggan
+template Vendor	mẫu Nhà cung cấp	供应商模板	templat Pembekal
+❌ Please enter a recipient email	❌ Vui lòng nhập email người nhận	❌ 请输入收件人邮箱	❌ Sila masukkan e-mel penerima
+SMTP Test	Thử SMTP	SMTP 测试	Ujian SMTP
+Test Customer	Thử khách hàng	测试客户	Uji pelanggan
+Test Vendor	Thử nhà cung cấp	测试供应商	Uji pembekal
+Report (Done)	Báo cáo (Hoàn tất)	报告（完成）	Laporan (Selesai)
+❌ NO password yet	❌ CHƯA có mật khẩu	❌ 尚未设置密码	❌ BELUM ada kata laluan
+✅ Configured	✅ Đã cấu hình	✅ 已配置	✅ Dikonfigurasi
+Are you sure you want to email ALL customers with upcoming inspections?	Bạn có chắc muốn gửi email cho TẤT CẢ khách hàng có lượt kiểm sắp tới?	确定要向所有有即将验货的客户发送邮件吗？	Adakah anda pasti mahu menghantar e-mel kepada SEMUA pelanggan yang mempunyai pemeriksaan akan datang?
+Are you sure you want to email ALL vendors with upcoming inspections?	Bạn có chắc muốn gửi email cho TẤT CẢ nhà cung cấp có lượt kiểm sắp tới?	确定要向所有有即将验货的供应商发送邮件吗？	Adakah anda pasti mahu menghantar e-mel kepada SEMUA pembekal yang mempunyai pemeriksaan akan datang?
+Send report email for inspection {0} (#{1})?{2}	Gửi email báo cáo cho lượt kiểm {0} (#{1})?{2}	发送验货 {0} (#{1}) 的报告邮件？{2}	Hantar e-mel laporan untuk pemeriksaan {0} (#{1})?{2}
+Send email to customer {0}?	Gửi email cho khách hàng {0}?	发送邮件给客户 {0}？	Hantar e-mel kepada pelanggan {0}?
+Send email to vendor {0}?	Gửi email cho nhà cung cấp {0}?	发送邮件给供应商 {0}？	Hantar e-mel kepada pembekal {0}?

@@ -1,0 +1,755 @@
+﻿@page "/defects"
+@attribute [Microsoft.AspNetCore.Authorization.Authorize]
+@using System.Net.Http.Json
+@inject HttpClient Http
+@inject NavigationManager Navigation
+@inject PageAccessService PageAccess
+@inject SettingsClient Settings
+@inherits LocalizedComponentBase
+
+<PageTitle>@T("DefectManagement.DefectManagementInticoo")</PageTitle>
+
+<div class="dm-page">
+    <div class="dm-top">
+        <div>
+            <h1 class="dm-title">@T("DefectManagement.DefectManagement")</h1>
+            @* Desktop: câu giới thiệu theo mẫu mới, quy tắc CAPA để ở tooltip; điện thoại vẫn hiện quy tắc *@
+            <div class="dm-sub dm-d-only" title="@T("DefectManagement.CapaRuleSummary", _thC, _thMa, _thMi)">@T("DefectManagement.Tagline")</div>
+            <div class="dm-sub dm-m-blk">@T("DefectManagement.CapaRuleSummary", _thC, _thMa, _thMi)</div>
+        </div>
+        <div class="dm-actions">
+            @if (PageAccess.IsAdmin)
+            {
+                <button class="dm-btn ghost" @onclick="ScanPreview" disabled="@_scanning">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 8V6a2 2 0 0 1 2-2h2M16 4h2a2 2 0 0 1 2 2v2M20 16v2a2 2 0 0 1-2 2h-2M8 20H6a2 2 0 0 1-2-2v-2M4 12h16M8 8.5h8M8 15.5h8"/></svg>
+                    @(_scanning ? T("DefectManagement.Scanning") : T("DefectManagement.ScanInspections"))
+                </button>
+            }
+            @if (PageAccess.Can("DefectManagement", "Create"))
+            {
+            <button class="dm-btn primary" @onclick="OpenNew">
+                <svg class="dm-m-only" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+                <span class="dm-d-only">+ </span>@T("DefectManagement.NewDefect")
+            </button>
+            }
+        </div>
+    </div>
+
+    <div class="dm-body">
+    <!-- Desktop: 4 thẻ thống kê (bấm để lọc theo trạng thái) -->
+    <div class="dm-kpis">
+        @{ var ky = YearItems().ToList(); var kOver = ky.Count(r => r.Overdue); }
+        @foreach (var (key, label, n, cls) in new[] { ("", T("DefectManagement.AllDefects"), ky.Count, "all"), ("Open", T("DefectManagement.Open"), ky.Count(r => r.Status == "Open"), "open"), ("In Progress", T("DefectManagement.InProgress"), ky.Count(r => r.Status == "In Progress"), "prog"), ("Closed", T("DefectManagement.Closed"), ky.Count(r => r.Status == "Closed"), "closed") })
+        {
+            var k = key;
+            <button class="dm-kpi k-@cls @(_status == k ? "active" : "")" @onclick="() => SetStatus(k)">
+                <span class="dm-kpi-ic">
+                    @switch (cls)
+                    {
+                        case "all":
+                            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 3h6v3H9zM8.5 11l1.5 1.5 3-3M8.5 16h7"/></svg>
+                            break;
+                        case "open":
+                            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M3 10h18"/></svg>
+                            break;
+                        case "prog":
+                            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 11a8 8 0 0 0-14.6-4.5M4 4v3h3M4 13a8 8 0 0 0 14.6 4.5M20 20v-3h-3"/></svg>
+                            break;
+                        default:
+                            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M8 12.5l2.5 2.5 5.5-5.5"/></svg>
+                            break;
+                    }
+                </span>
+                <span class="dm-kpi-txt">
+                    <span class="dm-kpi-lbl">@label</span>
+                    <b>@n</b>
+                    @if (cls == "open" && kOver > 0) { <small>@T("DefectManagement.NOverdue", kOver)</small> }
+                </span>
+            </button>
+        }
+    </div>
+
+    <!-- Summary chips (mobile: 4 ô thống kê màu) -->
+    <div class="dm-chips">
+        @{ var yr = YearItems().ToList(); var overdue = yr.Count(r => r.Overdue); }
+        @foreach (var (key, label, n) in new[] { ("", T("DefectManagement.All"), yr.Count), ("Open", T("DefectManagement.Open"), yr.Count(r => r.Status == "Open")), ("In Progress", T("DefectManagement.InProgress"), yr.Count(r => r.Status == "In Progress")), ("Closed", T("DefectManagement.Closed"), yr.Count(r => r.Status == "Closed")) })
+        {
+            var k = key;
+            <button class="dm-chip st-@(k == "" ? "all" : k.Replace(" ", "").ToLower()) @(_status == k ? "active" : "")" @onclick="() => SetStatus(k)"><span>@label</span> <b>@n</b></button>
+        }
+        @if (overdue > 0)
+        {
+            <span class="dm-chip warn">@T("DefectManagement.Overdue") <b>@overdue</b></span>
+        }
+    </div>
+
+    <!-- Filters (mobile) -->
+    <div class="dm-mfilters">
+        <div class="dm-msearch">
+            <div class="dm-msearch-box">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+                <input placeholder="@T("DefectManagement.SearchDefectCARInspectionProductFactory")" @bind="_search" @bind:event="oninput" @bind:after="ApplyFilter" />
+            </div>
+            <button class="dm-mfbtn @(_showMoreFilters ? "on" : "")" title="@T("DefectManagement.MoreFilters")" @onclick="() => _showMoreFilters = !_showMoreFilters">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/></svg>
+                @if (_year != "") { <i></i> }
+            </button>
+        </div>
+        @if (_showMoreFilters)
+        {
+            <div class="dm-mmore">
+                <label>@T("DefectManagement.YearOpenDate")</label>
+                <select class="dm-input" @bind="_year" @bind:after="ApplyFilter">
+                    <option value="">@T("DefectManagement.AllYears")</option>
+                    @foreach (var y in _years) { <option value="@y">@y</option> }
+                </select>
+                <button class="dm-mreset" @onclick="ResetFilters">@T("DefectManagement.ResetAll")</button>
+            </div>
+        }
+        <div class="dm-msel">
+            <select class="dm-input" @bind="_severity" @bind:after="ApplyFilter">
+                <option value="">@T("DefectManagement.AllSeverity")</option>
+                @foreach (var sv in DefectOptions.Severities) { <option value="@sv">@TE("Opt", sv)</option> }
+            </select>
+            <select class="dm-input" @bind="_vendor" @bind:after="ApplyFilter">
+                <option value="">@T("DefectManagement.AllFactories")</option>
+                @foreach (var v in _vendors) { <option value="@v">@v</option> }
+            </select>
+            <select class="dm-input" value="@_status" @onchange="e => SetStatus(e.Value?.ToString() ?? string.Empty)">
+                <option value="">@T("Common.AllStatus")</option>
+                <option value="Open">@T("DefectManagement.Open")</option>
+                <option value="In Progress">@T("DefectManagement.InProgress")</option>
+                <option value="Closed">@T("DefectManagement.Closed")</option>
+            </select>
+        </div>
+    </div>
+
+    <!-- Filters (desktop) -->
+    <div class="dm-filters">
+        <div class="dm-search">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+            <input placeholder="@T("DefectManagement.SearchDefectCARInspectionProductFactory")" @bind="_search" @bind:event="oninput" @bind:after="ApplyFilter" />
+        </div>
+        <select class="dm-input dm-year" @bind="_year" @bind:after="ApplyFilter" title="@T("DefectManagement.FilterByOpenDateYear")">
+            <option value="">@T("DefectManagement.AllYears")</option>
+            @foreach (var y in _years) { <option value="@y">@y</option> }
+        </select>
+        <select class="dm-input" @bind="_severity" @bind:after="ApplyFilter">
+            <option value="">@T("DefectManagement.AllSeverity")</option>
+            @foreach (var s in DefectOptions.Severities) { <option value="@s">@TE("Opt", s)</option> }
+        </select>
+        <select class="dm-input" @bind="_vendor" @bind:after="ApplyFilter">
+            <option value="">@T("DefectManagement.AllFactories")</option>
+            @foreach (var v in _vendors) { <option value="@v">@v</option> }
+        </select>
+        @{ var anyFilter = _search != "" || _year != "" || _severity != "" || _vendor != "" || _status != ""; }
+        <button class="dm-fbtn @(anyFilter ? "on" : "")" title="@T("DefectManagement.ResetAll")" @onclick="ResetFilters">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/></svg>
+        </button>
+    </div>
+
+    @if (!string.IsNullOrEmpty(_msg))
+    {
+        <div class="dm-alert @(_msgErr ? "err" : "ok")">@_msg <button @onclick="() => _msg = null">✕</button></div>
+    }
+
+    @if (_loading)
+    {
+        <div class="dm-loading"><div class="dm-spin"></div> @T("DefectManagement.Loading")</div>
+    }
+    else
+    {
+        <!-- Mobile: danh sách thẻ -->
+        <div class="dm-cards">
+            @if (!_rows.Any()) { <div class="dm-empty">@T("DefectManagement.NoDefectsFound")</div> }
+            @foreach (var r in _rows)
+            {
+                var row = r;
+                <div class="dm-card" @onclick='() => Navigation.NavigateTo($"/defects/{row.Id}/edit")'>
+                    <div class="dm-card-top">
+                        <span class="dm-card-no">@row.DefectNo</span>
+                        <span class="dm-mpill sev-@((row.Severity ?? "").ToLower())">@TE("Status", row.Severity)</span>
+                        <span class="dm-mpill st-@((row.Status ?? "").Replace(" ", "").ToLower()) dm-card-st">@TE("Status", row.Status)</span>
+                        <svg class="dm-card-chev" width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M7 4l6 6-6 6"/></svg>
+                    </div>
+                    <div class="dm-card-desc">@(row.DefectCode is null or "OTH" ? "" : row.DefectCode + " ")@TE("Opt", row.DefectType)</div>
+                    <div class="dm-card-grid">
+                        <div class="dm-card-col">
+                            <div class="dm-kv stack">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 3v5c0 4.5-3 8-7 9.5C8 19 5 15.5 5 11V6z"/><path d="M9 11.5l2 2 4-4"/></svg>
+                                <div><span class="k">@T("Common.CARNo")</span><span class="v">@row.CarNo</span></div>
+                            </div>
+                            <div class="dm-kv stack">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21V9l6 4V9l6 4V5l6 3v13z"/><path d="M7 17h2M12 17h2M17 17h1"/></svg>
+                                <div><span class="k">@T("Common.Factory")</span><span class="v" title="@row.Factory">@row.Factory</span></div>
+                            </div>
+                        </div>
+                        <div class="dm-card-col dm-card-col2">
+                            <div class="dm-kv stack">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 3h6v3H9zM8.5 11h7M8.5 15h5"/></svg>
+                                <div><span class="k">@T("DefectManagement.Inspection")</span><span class="v">@(row.JobNumber ?? "—")</span></div>
+                            </div>
+                            <div class="dm-kv stack">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"><path d="M12 3l8 4.5v9L12 21l-8-4.5v-9z"/><path d="M4 7.5l8 4.5 8-4.5M12 12v9"/></svg>
+                                <div><span class="k">@T("Common.Product")</span><span class="v" title="@row.Product">@row.Product</span></div>
+                            </div>
+                        </div>
+                    </div>
+                    @if (row.Overdue) { <div class="dm-card-od">@T("DefectManagement.OverdueDue", L.Date(row.DueDate, "dd-MMM-yy"))</div> }
+                </div>
+            }
+        </div>
+
+        <div class="dm-table-wrap">
+            <table class="dm-table">
+                <thead>
+                    <tr>
+                        <th>@T("Common.DefectID")</th><th>@T("Common.CARNo")</th><th>@T("DefectManagement.Inspection")</th><th>@T("Common.Factory")</th><th>@T("Common.Product")</th><th>@T("Common.DefectType")</th>
+                        <th>@T("Common.Severity")</th><th class="tc">@T("DefectManagement.Qty")</th><th>@T("DefectManagement.OpenDate")</th><th>@T("DefectManagement.DueDate")</th><th>@T("DefectManagement.ResponsibleName")</th>
+                        <th>@T("DefectManagement.CAPAStatus")</th><th>@T("DefectManagement.CloseDate")</th><th class="tc">@T("Common.Action")</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (!_rows.Any())
+                    {
+                        <tr><td colspan="14" class="dm-empty">@T("DefectManagement.NoDefectsFound")</td></tr>
+                    }
+                    @foreach (var r in PageRows())
+                    {
+                        var canEdit = PageAccess.Can("DefectManagement", "Edit");
+                        var editTitle = !canEdit ? T("Common.View") : r.Status == "Open" ? T("DefectManagement.Start")
+                                      : r.Status == "In Progress" ? T("DefectManagement.Continue") : T("DefectManagement.Details");
+                        <tr>
+                            <td><a class="dm-link fw" href="/defects/@r.Id/edit">@r.DefectNo</a></td>
+                            <td class="mono">@r.CarNo</td>
+                            <td>
+                                @if (r.InspectionId.HasValue)
+                                { <a class="dm-link" href="/defects/inspection/@r.InspectionId">@(r.JobNumber ?? "—")</a> }
+                                else { <span>—</span> }
+                            </td>
+                            <td class="dm-fact" title="@r.Factory">@r.Factory</td>
+                            <td title="@r.Product">@r.Product<div class="dm-mute">@r.ItemNumber</div></td>
+                            <td>@(r.DefectCode is null or "OTH" ? "" : r.DefectCode + " ")@TE("Opt", r.DefectType)</td>
+                            <td><span class="dm-sev @DefectOptions.SeverityCss(r.Severity)">@TE("Status", r.Severity)</span></td>
+                            <td class="tc">@r.Quantity</td>
+                            <td>@L.Date(r.OpenDate.ToLocalTime(), "dd-MMM-yy")</td>
+                            <td class="@(r.Overdue ? "dm-overdue" : "")">@(L.Date(r.DueDate, "dd-MMM-yy") ?? "—")</td>
+                            <td>@(string.IsNullOrWhiteSpace(r.ResponsibleName) ? "" : r.ResponsibleName)</td>
+                            <td>
+                                <span class="dm-status @DefectOptions.StatusCss(r.Status)">@TE("Status", r.Status)</span>
+                                @if (r.SignedCount > 0)
+                                { <div class="dm-sig @(r.SignedCount == 3 ? "full" : "part")" title="@T("DefectManagement.SignaturesCollected")">✍ @r.SignedCount/3</div> }
+                            </td>
+                            <td>@(L.Date(r.CloseDate, "dd-MMM-yy") ?? "–")</td>
+                            <td class="tc dm-acts">
+                                <a class="dm-ico view" href="/defects/@r.Id/report" title="@T("DefectManagement.ViewPrintDefectClosureReport")">
+                                    <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M2 10s3.5-6 8-6 8 6 8 6-3.5 6-8 6-8-6-8-6Z"/><circle cx="10" cy="10" r="2.5"/></svg>
+                                </a>
+                                <button class="dm-ico edit" title="@editTitle" @onclick="() => OpenRow(r, canEdit)">
+                                    <svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M13.5 3.5l3 3L7 16H4v-3z"/><path d="M11.5 5.5l3 3"/></svg>
+                                </button>
+                                @if (PageAccess.Can("DefectManagement", "Delete"))
+                                {
+                                    <button class="dm-ico del" title="@T("DefectManagement.DeleteDefect2")" @onclick="() => AskDelete(r)">
+                                        <svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h14M8 6V4h4v2M5 6l1 11h8l1-11"/></svg>
+                                    </button>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+        <div class="dm-pager">
+            <div class="dm-pg-size">
+                @T("DefectManagement.Show")
+                <select class="dm-input" value="@_pageSize" @onchange="SetPageSize">
+                    @foreach (var ps in new[] { 10, 20, 50, 100 }) { <option value="@ps">@ps</option> }
+                </select>
+                @T("DefectManagement.PerPage")
+            </div>
+            <div class="dm-pg-right">
+                <button class="dm-pg-btn" disabled="@(_pageNo <= 1)" @onclick="() => _pageNo--">‹</button>
+                @foreach (var pn in PageNumbers())
+                {
+                    if (pn == 0) { <span class="dm-pg-gap">…</span> }
+                    else { var pnn = pn; <button class="dm-pg-btn @(pn == _pageNo ? "on" : "")" @onclick="() => _pageNo = pnn">@pn</button> }
+                }
+                <button class="dm-pg-btn" disabled="@(_pageNo >= PageCount)" @onclick="() => _pageNo++">›</button>
+                <span class="dm-pg-info">@T("DefectManagement.RangeRecords", _rows.Count == 0 ? 0 : (_pageNo - 1) * _pageSize + 1, Math.Min(_pageNo * _pageSize, _rows.Count), _rows.Count)</span>
+            </div>
+        </div>
+    }
+    </div>
+</div>
+
+<!-- New defect: chọn inspection -->
+@if (_showNew)
+{
+    <div class="dm-overlay" @onclick="() => _showNew = false">
+        <div class="dm-modal" @onclick:stopPropagation="true">
+            <h3>@T("DefectManagement.NewDefectSelectInspection")</h3>
+            <input class="dm-input" placeholder="@T("DefectManagement.SearchJobNumberProductFactory")" @bind="_inspSearch" @bind:event="oninput" />
+            <div class="dm-insp-list">
+                @foreach (var i in _inspections.Where(MatchInsp).Take(60))
+                {
+                    <div class="dm-insp" @onclick='() => Navigation.NavigateTo($"/defects/inspection/{i.Id}")'>
+                        <div class="fw">@i.JobNumber</div>
+                        <div class="dm-mute">@i.Factory · @i.Product · @L.Date(i.InspectionDate, "dd MMM yyyy")</div>
+                    </div>
+                }
+                @if (!_inspections.Any()) { <div class="dm-empty">@T("DefectManagement.NoCompletedInspection")</div> }
+            </div>
+            <div class="dm-modal-foot"><button class="dm-btn ghost dark" @onclick="() => _showNew = false">@T("Common.Close")</button></div>
+        </div>
+    </div>
+}
+
+<!-- Xác nhận xoá (Admin) -->
+@if (_delRow != null)
+{
+    <div class="dm-overlay" @onclick="() => _delRow = null">
+        <div class="dm-modal" @onclick:stopPropagation="true">
+            <h3>@T("DefectManagement.DeleteDefect", _delRow.DefectNo)</h3>
+            <p>@_delRow.CarNo · @(_delRow.DefectType) · @_delRow.Factory</p>
+            <p style="color:#b91c1c">@T("DefectManagement.ThisPermanentlyDeletesDefectItsCAPA")</p>
+            <div class="dm-modal-foot">
+                <button class="dm-btn ghost dark" @onclick="() => _delRow = null">@T("Common.Cancel")</button>
+                <button class="dm-btn danger" @onclick="ConfirmDelete" disabled="@_deleting">@(_deleting ? T("DefectManagement.Deleting") : T("Common.Delete"))</button>
+            </div>
+        </div>
+    </div>
+}
+
+<!-- Scan preview -->
+@if (_scan != null)
+{
+    <div class="dm-overlay" @onclick="() => _scan = null">
+        <div class="dm-modal" @onclick:stopPropagation="true">
+            <h3>@T("DefectManagement.ScanCompletedInspections")</h3>
+            <p>@T("DefectManagement.Scanned") <b>@_scan.Scanned</b> @T("DefectManagement.Inspections") <b>@_scan.Opened</b> @T("DefectManagement.NewCAPAWillBeOpened")</p>
+            <div class="dm-insp-list">
+                @foreach (var it in _scan.Items)
+                {
+                    <div class="dm-insp"><span class="dm-sev @DefectOptions.SeverityCss(it.Severity)">@TE("Status", it.Severity)</span>
+                        <b>@it.JobNumber</b> · @it.DefectCode @it.DefectType · @it.Quantity pcs</div>
+                }
+            </div>
+            <div class="dm-modal-foot">
+                <button class="dm-btn ghost dark" @onclick="() => _scan = null">@T("Common.Cancel")</button>
+                @if (_scan.Opened > 0)
+                {
+                    <button class="dm-btn primary" @onclick="ScanConfirm" disabled="@_scanning">@T("DefectManagement.OpenCAPA", _scan.Opened)</button>
+                }
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    ListRes? _res;
+    List<Row> _rows = new();
+    List<string> _vendors = new();
+    bool _loading = true, _showNew, _scanning, _msgErr;
+    string _status = "", _search = "", _severity = "", _vendor = "", _inspSearch = "", _year = "";
+    List<int> _years = new();
+    bool _showMoreFilters;
+    string? _msg;
+    List<InspLookup> _inspections = new();
+    ScanRes? _scan;
+    static readonly System.Text.Json.JsonSerializerOptions _o = new() { PropertyNameCaseInsensitive = true };
+
+    protected override async Task OnInitializedAsync()
+    {
+        await PageAccess.EnsureLoadedAsync();
+        if (!PageAccess.HasAccess("DefectManagement")) { Navigation.NavigateTo("/", replace: true); return; }
+        try
+        {
+            var m = await Settings.LoadAsync<CapaTh>(SettingsClient.InspectionDefect);
+            if (m != null) { _thC = Math.Max(1, m.CapaCritical); _thMa = Math.Max(1, m.CapaMajor); _thMi = Math.Max(1, m.CapaMinor); }
+        }
+        catch { /* giữ mặc định */ }
+        await Load();
+    }
+
+    int _thC = 1, _thMa = 3, _thMi = 10;
+    class CapaTh { public int CapaCritical { get; set; } = 1; public int CapaMajor { get; set; } = 3; public int CapaMinor { get; set; } = 10; }
+
+    async Task Load()
+    {
+        _loading = true;
+        try
+        {
+            _res = await Http.GetFromJsonAsync<ListRes>("api/defects", _o);
+            _vendors = _res?.Items.Select(i => i.Factory ?? "").Where(v => v != "").Distinct().OrderBy(v => v).ToList() ?? new();
+            _years = (_res?.Items.Select(i => i.OpenDate.ToLocalTime().Year) ?? Enumerable.Empty<int>())
+                .Append(DateTime.Now.Year).Distinct().OrderByDescending(y => y).ToList();
+            ApplyFilter();
+        }
+        catch (Exception ex) { _msg = ex.Message; _msgErr = true; }
+        _loading = false;
+    }
+
+    void SetStatus(string s) { _status = s; ApplyFilter(); }
+
+    // ── Phân trang bảng desktop (điện thoại vẫn hiện toàn bộ thẻ) ──
+    int _pageNo = 1, _pageSize = 10;
+    int PageCount => Math.Max(1, (int)Math.Ceiling(_rows.Count / (double)_pageSize));
+    IEnumerable<Row> PageRows() { _pageNo = Math.Clamp(_pageNo, 1, PageCount); return _rows.Skip((_pageNo - 1) * _pageSize).Take(_pageSize); }
+    void SetPageSize(ChangeEventArgs e) { _pageSize = int.TryParse(e.Value?.ToString(), out var ps) ? ps : 10; _pageNo = 1; }
+    /// <summary>Số trang hiển thị; 0 = dấu "…".</summary>
+    IEnumerable<int> PageNumbers()
+    {
+        var n = PageCount;
+        for (int i = 1; i <= n; i++)
+        {
+            if (i == 1 || i == n || Math.Abs(i - _pageNo) <= 1) yield return i;
+            else if (i == 2 || i == n - 1) yield return 0;
+        }
+    }
+    async Task OpenRow(Row r, bool canEdit)
+    {
+        if (canEdit && r.Status == "Open") await Start(r.Id);
+        else Navigation.NavigateTo($"/defects/{r.Id}/edit");
+    }
+    void ResetFilters() { _search = _severity = _vendor = _status = _year = ""; ApplyFilter(); }
+
+    // Lọc theo năm của Open Date (dùng cho cả số đếm trên chip)
+    IEnumerable<Row> YearItems() => (_res?.Items ?? new()).Where(r => _year == "" || r.OpenDate.ToLocalTime().Year.ToString() == _year);
+
+    void ApplyFilter()
+    {
+        var q = _search.Trim();
+        bool Has(string? x) => !string.IsNullOrEmpty(x) && x.Contains(q, StringComparison.OrdinalIgnoreCase);
+        _pageNo = 1;
+        _rows = YearItems().Where(r =>
+            (_status == "" || r.Status == _status) &&
+            (_severity == "" || r.Severity == _severity) &&
+            (_vendor == "" || r.Factory == _vendor) &&
+            (q == "" || Has(r.DefectNo) || Has(r.CarNo) || Has(r.JobNumber) || Has(r.Product) || Has(r.ItemNumber) || Has(r.Factory) || Has(r.DefectType)))
+            .ToList();
+    }
+
+    // ── Xoá defect: chỉ Admin (server cũng kiểm tra quyền) ──
+    Row? _delRow;
+    bool _deleting;
+    void AskDelete(Row r) => _delRow = r;
+    async Task ConfirmDelete()
+    {
+        if (_delRow == null) return;
+        _deleting = true;
+        var resp = await Http.DeleteAsync($"api/defects/{_delRow.Id}");
+        _deleting = false;
+        if (resp.IsSuccessStatusCode) { _msg = T("DefectManagement.DefectDeleted", _delRow.DefectNo); _msgErr = false; _delRow = null; await Load(); }
+        else
+        {
+            _msg = (int)resp.StatusCode == 403 ? T("DefectManagement.OnlyAdminCanDeleteDefect") : T("DefectManagement.DeleteFailed", (int)resp.StatusCode);
+            _msgErr = true; _delRow = null;
+        }
+    }
+
+    async Task Start(int id)
+    {
+        await Http.PostAsync($"api/defects/{id}/start", null);
+        Navigation.NavigateTo($"/defects/{id}/edit");
+    }
+
+    async Task OpenNew()
+    {
+        _showNew = true;
+        if (!_inspections.Any())
+            _inspections = await Http.GetFromJsonAsync<List<InspLookup>>("api/defects/inspections-lookup", _o) ?? new();
+    }
+    bool MatchInsp(InspLookup i)
+    {
+        var q = _inspSearch.Trim();
+        return q == "" || (i.JobNumber ?? "").Contains(q, StringComparison.OrdinalIgnoreCase)
+            || (i.Product ?? "").Contains(q, StringComparison.OrdinalIgnoreCase) || (i.Factory ?? "").Contains(q, StringComparison.OrdinalIgnoreCase);
+    }
+
+    async Task ScanPreview()
+    {
+        _scanning = true;
+        try
+        {
+            var r = await Http.PostAsync("api/defects/scan?dryRun=true", null);
+            _scan = await r.Content.ReadFromJsonAsync<ScanRes>(_o);
+        }
+        catch (Exception ex) { _msg = ex.Message; _msgErr = true; }
+        _scanning = false;
+    }
+    async Task ScanConfirm()
+    {
+        _scanning = true;
+        var r = await Http.PostAsync("api/defects/scan", null);
+        var res = await r.Content.ReadFromJsonAsync<ScanRes>(_o);
+        _scan = null; _scanning = false;
+        _msg = T("DefectManagement.CAPAOpened", res?.Opened ?? 0); _msgErr = false;
+        await Load();
+    }
+
+    class ListRes
+    {
+        public int Total { get; set; } public int Open { get; set; } public int InProgress { get; set; }
+        public int Closed { get; set; } public int Overdue { get; set; }
+        public List<Row> Items { get; set; } = new();
+    }
+    class Row
+    {
+        public int Id { get; set; } public string? DefectNo { get; set; } public string? CarNo { get; set; }
+        public int? InspectionId { get; set; } public string? JobNumber { get; set; }
+        public string? Factory { get; set; } public string? Product { get; set; } public string? ItemNumber { get; set; }
+        public string? DefectCode { get; set; } public string? DefectType { get; set; } public string? Severity { get; set; }
+        public int Quantity { get; set; } public DateTime OpenDate { get; set; } public DateTime? DueDate { get; set; }
+        public string? ResponsibleName { get; set; } public string? Status { get; set; } public DateTime? CloseDate { get; set; }
+        public bool Overdue { get; set; }
+        public int SignedCount { get; set; }
+    }
+    class InspLookup { public int Id { get; set; } public string? JobNumber { get; set; } public string? Factory { get; set; } public string? Product { get; set; } public DateTime InspectionDate { get; set; } }
+    class ScanRes
+    {
+        public int Scanned { get; set; } public int Opened { get; set; }
+        public List<ScanItem> Items { get; set; } = new();
+    }
+    class ScanItem { public string? JobNumber { get; set; } public string? DefectCode { get; set; } public string? DefectType { get; set; } public string? Severity { get; set; } public int Quantity { get; set; } }
+}
+
+<style>
+    /* Giao diện nền sáng (đồng bộ Inspector/Vendor Reviews) — phủ hết vùng nội dung */
+    .dm-page { font-family:"DM Sans",sans-serif; color:#1a2d5a; margin:-28px; padding:26px 28px 32px; min-height:calc(100vh - 44px); background:#f3f6fb; }
+    .dm-top { display:flex; justify-content:space-between; align-items:flex-end; gap:16px; flex-wrap:wrap; margin-bottom:14px; }
+    .dm-title { font-size:26px; font-weight:800; color:#0f2552; margin:0 0 4px; letter-spacing:-.01em; }
+    .dm-sub { font-size:13px; color:#64748b; }
+    .dm-actions { display:flex; gap:8px; }
+    .dm-btn { border:none; border-radius:9px; padding:10px 16px; font-size:13.5px; font-weight:700; cursor:pointer; font-family:inherit; }
+    .dm-btn.primary { background:#1d4ed8; color:#fff; box-shadow:0 2px 8px rgba(29,78,216,.25); }
+    .dm-btn.primary:hover { background:#1e40af; }
+    .dm-btn.ghost { background:#fff; color:#1d4ed8; border:1px solid #bfdbfe; }
+    .dm-btn.ghost:hover { background:#eff6ff; }
+    .dm-btn.ghost.dark { background:#f1f5f9; color:#334155; border:1px solid #e2e8f0; }
+    .dm-btn:disabled { opacity:.6; cursor:not-allowed; }
+    .dm-chips { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:10px; }
+    .dm-chip { background:#fff; color:#334155; border:1px solid #dbe3ef; border-radius:20px; padding:6px 14px; font-size:13px; font-weight:600; cursor:pointer; font-family:inherit; }
+    .dm-chip b { margin-left:4px; color:#0f2552; }
+    .dm-chip.active { background:#1d4ed8; color:#fff; border-color:#1d4ed8; }
+    .dm-chip.active b { color:#fff; }
+    .dm-chip.warn { background:#fee2e2; color:#b91c1c; border-color:#fecaca; cursor:default; }
+    .dm-chip.warn b { color:#b91c1c; }
+    .dm-filters { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px; background:#fff; border:1px solid #e5eaf2; border-radius:12px; padding:10px; box-shadow:0 1px 4px rgba(15,40,90,.05); }
+    .dm-input { height:40px; border:1px solid #dbe3ef; border-radius:9px; padding:0 12px; font-size:14px; font-family:inherit; color:#1a2d5a; background:#fff; min-width:160px; outline:none; }
+    .dm-input:focus { border-color:#3b82f6; box-shadow:0 0 0 3px rgba(59,130,246,.12); }
+    /* select tự vẽ mũi tên: đồng đều Safari / Chrome / Android */
+    select.dm-input { -webkit-appearance:none; appearance:none; padding-right:30px; cursor:pointer;
+        background:#fff url("data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%231a2d5a' stroke-width='1.5' fill='none'/%3E%3C/svg%3E") no-repeat right 12px center; }
+    .dm-filters .dm-input:first-child { flex:1; min-width:240px; }
+    .dm-filters .dm-year { min-width:120px; }
+    .dm-modal .dm-input { flex-shrink:0; }
+    .dm-alert { border-radius:9px; padding:10px 14px; margin-bottom:10px; font-size:13px; display:flex; justify-content:space-between; }
+    .dm-alert.ok { background:#dcfce7; color:#166534; } .dm-alert.err { background:#fee2e2; color:#991b1b; }
+    .dm-alert button { background:none; border:none; cursor:pointer; color:inherit; }
+    .dm-loading { color:#64748b; display:flex; gap:10px; align-items:center; padding:40px; justify-content:center; }
+    .dm-spin { width:20px; height:20px; border:3px solid #dbeafe; border-top-color:#1d4ed8; border-radius:50%; animation:dmspin .7s linear infinite; }
+    @@keyframes dmspin { to { transform:rotate(360deg); } }
+    .dm-table-wrap { background:#fff; border:1px solid #e5eaf2; border-radius:12px; overflow-x:auto; -webkit-overflow-scrolling:touch; box-shadow:0 1px 4px rgba(15,40,90,.05); }
+    .dm-table { width:100%; border-collapse:collapse; font-size:12.5px; }
+    .dm-table th { background:#f1f5fb; color:#334155; font-weight:700; padding:11px 8px; border-bottom:1px solid #e2e8f0; white-space:nowrap; text-align:left; font-size:12px; }
+    .dm-table td { padding:10px 8px; border-bottom:1px solid #f1f3f7; white-space:nowrap; vertical-align:middle; }
+    /* Desktop: cột chữ dài tự xuống dòng để thấy hết bảng, không phải cuộn ngang */
+    .dm-table td:nth-child(3), .dm-table td:nth-child(4), .dm-table td:nth-child(5), .dm-table td:nth-child(6), .dm-table td:nth-child(11) { white-space:normal; overflow-wrap:anywhere; word-break:normal; line-height:1.35; }
+    .dm-table td:nth-child(4), .dm-table td:nth-child(5), .dm-table td:nth-child(6) { min-width:70px; }
+    .dm-table td:nth-child(2) { white-space:normal; overflow-wrap:anywhere; }
+    .dm-table th { padding-left:6px; padding-right:6px; white-space:normal; }
+    .dm-table td { padding-left:6px; padding-right:6px; }
+    .dm-table tbody tr:hover td { background:#f8faff; }
+    .dm-table .tc { text-align:center; }
+    .dm-table .fw, .fw { font-weight:700; }
+    .dm-table .mono { font-family:ui-monospace,monospace; font-size:12px; }
+    .dm-ellipsis { max-width:none; overflow:visible; text-overflow:clip; }
+    .dm-mute { font-size:11px; color:#94a3b8; }
+    .dm-link { color:#1d4ed8; text-decoration:none; }
+    .dm-link:hover { text-decoration:underline; }
+    .dm-sev { font-weight:700; font-size:11.5px; padding:2px 9px; border-radius:20px; }
+    .dm-sev.critical { color:#b91c1c; background:#fee2e2; } .dm-sev.major { color:#b45309; background:#fef3c7; } .dm-sev.minor { color:#15803d; background:#dcfce7; }
+    .dm-status { font-weight:700; font-size:11.5px; padding:2px 9px; border-radius:20px; }
+    .dm-status.open { color:#15803d; background:#dcfce7; } .dm-status.inprogress { color:#1d4ed8; background:#dbeafe; } .dm-status.closed { color:#475569; background:#e2e8f0; }
+    .dm-overdue { color:#dc2626; font-weight:700; }
+    .dm-sig { font-size:11.5px; font-weight:700; color:#94a3b8; }
+    .dm-sig.part { color:#d97706; } .dm-sig.full { color:#16a34a; }
+    .dm-eye { display:inline-flex; width:30px; height:30px; border-radius:8px; background:#eff6ff; color:#2563eb; align-items:center; justify-content:center; }
+    .dm-act { border:none; border-radius:7px; padding:6px 14px; font-size:12px; font-weight:700; cursor:pointer; font-family:inherit; color:#fff; min-width:64px; }
+    .dm-del { border:none; background:#fee2e2; color:#dc2626; border-radius:6px; width:28px; height:26px; margin-left:4px; cursor:pointer; display:inline-flex; align-items:center; justify-content:center; vertical-align:middle; }
+    .dm-del:hover { background:#fecaca; }
+    .dm-btn.danger { background:#dc2626; color:#fff; }
+    .dm-act.start { background:#16a34a; } .dm-act.cont { background:#2563eb; } .dm-act.done { background:#94a3b8; }
+    .dm-empty { text-align:center; color:#94a3b8; padding:24px !important; }
+    .dm-foot { color:#64748b; font-size:12px; text-align:right; margin-top:6px; }
+    .dm-overlay { position:fixed; inset:0; background:rgba(15,23,42,.5); z-index:1000; display:flex; align-items:center; justify-content:center; padding:16px; }
+    .dm-modal { background:#fff; color:#1a2d5a; border-radius:14px; padding:20px; width:560px; max-width:100%; max-height:85vh; display:flex; flex-direction:column; gap:10px; }
+    .dm-modal h3 { margin:0; font-size:17px; }
+    .dm-modal p { margin:0; font-size:13px; }
+    .dm-insp-list { overflow-y:auto; max-height:50vh; border:1px solid #eef1f6; border-radius:10px; }
+    .dm-insp { padding:9px 12px; border-bottom:1px solid #f1f3f7; cursor:pointer; font-size:13px; }
+    .dm-insp:hover { background:#f8faff; }
+    .dm-modal-foot { display:flex; justify-content:flex-end; gap:8px; }
+
+    /* ══ Desktop theo mẫu mới (22/11): tiêu đề lớn, 4 thẻ thống kê, ô tìm có icon, bảng icon hành động, phân trang ══ */
+    .dm-m-blk { display:none; }
+    .dm-top { align-items:center; margin-bottom:18px; }
+    .dm-title { font-size:30px; }
+    .dm-sub { font-size:14px; }
+    .dm-actions { gap:12px; }
+    .dm-actions .dm-btn { display:inline-flex; align-items:center; gap:8px; height:46px; padding:0 20px; border-radius:10px; font-size:14px; }
+    .dm-chips { display:none; }
+    .dm-kpis { display:grid; grid-template-columns:repeat(4, minmax(0,1fr)); gap:14px; margin-bottom:16px; }
+    .dm-kpi { display:flex; align-items:center; gap:14px; padding:16px 18px; border-radius:14px; border:1.5px solid transparent; cursor:pointer; font-family:inherit; text-align:left; transition:box-shadow .15s, border-color .15s; }
+    .dm-kpi:hover { box-shadow:0 4px 14px rgba(15,40,90,.08); }
+    .dm-kpi-ic { flex-shrink:0; width:50px; height:50px; border-radius:12px; display:flex; align-items:center; justify-content:center; }
+    .dm-kpi-txt { display:flex; flex-direction:column; min-width:0; }
+    .dm-kpi-lbl { font-size:14px; font-weight:600; color:#334155; }
+    .dm-kpi b { font-size:28px; font-weight:800; color:#0f2552; line-height:1.15; }
+    .dm-kpi small { font-size:12px; font-weight:700; color:#dc2626; }
+    .dm-kpi.k-all    { background:#eef4ff; } .dm-kpi.k-all .dm-kpi-ic    { background:#dbe7ff; color:#2563eb; }
+    .dm-kpi.k-open   { background:#fff1f2; } .dm-kpi.k-open .dm-kpi-ic   { background:#ffe0e3; color:#e11d48; }
+    .dm-kpi.k-prog   { background:#fff7ec; } .dm-kpi.k-prog .dm-kpi-ic   { background:#ffe8cc; color:#ea580c; }
+    .dm-kpi.k-closed { background:#eefaf3; } .dm-kpi.k-closed .dm-kpi-ic { background:#d6f5e3; color:#16a34a; }
+    .dm-kpi.active.k-all { border-color:#93b4f8; } .dm-kpi.active.k-open { border-color:#fca5b1; }
+    .dm-kpi.active.k-prog { border-color:#fdba74; } .dm-kpi.active.k-closed { border-color:#86dcaa; }
+    .dm-filters { align-items:center; gap:10px; padding:12px; }
+    .dm-search { flex:1; min-width:260px; display:flex; align-items:center; gap:8px; height:42px; padding:0 12px; border:1px solid #dbe3ef; border-radius:9px; background:#fff; color:#94a3b8; }
+    .dm-search:focus-within { border-color:#3b82f6; box-shadow:0 0 0 3px rgba(59,130,246,.12); }
+    .dm-search input { flex:1; min-width:0; border:none; outline:none; background:transparent; font-size:14px; font-family:inherit; color:#1a2d5a; }
+    .dm-filters .dm-input { height:42px; }
+    .dm-fbtn { flex-shrink:0; width:42px; height:42px; border:1px solid #dbe3ef; border-radius:9px; background:#fff; color:#475569; display:flex; align-items:center; justify-content:center; cursor:pointer; }
+    .dm-fbtn:hover { background:#f1f5fb; }
+    .dm-fbtn.on { border-color:#1d4ed8; color:#1d4ed8; background:#eff6ff; }
+    .dm-table th { background:#fff; color:#0f2552; font-size:12.5px; padding:13px 8px; border-bottom:1px solid #e5eaf2; }
+    .dm-table td { padding:12px 8px; font-size:13px; }
+    .dm-fact { font-weight:600; color:#0f2552; text-transform:uppercase; }
+    /* Mã (Defect ID, CAR No., Inspection, ngày) không xuống dòng; chỉ cột chữ dài xuống dòng theo từ — thiếu chỗ thì cuộn ngang */
+    .dm-table th { white-space:normal; padding:12px 6px; line-height:1.25; }
+    .dm-table th { font-size:12px; }
+    .dm-table td { padding:11px 5px; font-size:12px; }
+    .dm-table td, .dm-table td:nth-child(2), .dm-table td:nth-child(3) { white-space:nowrap; overflow-wrap:normal; }
+    .dm-table td.mono { font-size:11px; }
+    .dm-table td:nth-child(4), .dm-table td:nth-child(5), .dm-table td:nth-child(6), .dm-table td:nth-child(11) { white-space:normal; overflow-wrap:normal; }
+    .dm-table td:nth-child(4) { min-width:110px; }
+    .dm-table td:nth-child(5) { min-width:75px; }
+    .dm-table td:nth-child(6) { min-width:80px; }
+    .dm-sev, .dm-status { padding:3px 9px; font-size:11.5px; }
+    .dm-ico { width:26px; height:26px; margin:0 1px; }
+    /* Màn hẹp (laptop 1366 + menu trái) bảng phải cuộn ngang: ghim cột Action bên phải để luôn bấm được */
+    .dm-table th:last-child, .dm-table td:last-child { position:sticky; right:0; background:#fff; box-shadow:-6px 0 8px -6px rgba(15,40,90,.18); }
+    .dm-table tbody tr:hover td:last-child { background:#f8faff; }
+    @@media (min-width:601px) and (max-width:1500px) { .dm-page { padding-left:20px; padding-right:20px; } }
+    .dm-sev, .dm-status { display:inline-block; padding:3px 12px; font-size:12px; }
+    .dm-sev.critical { color:#dc2626; background:#fee2e2; } .dm-sev.major { color:#c2410c; background:#ffedd5; } .dm-sev.minor { color:#15803d; background:#dcfce7; }
+    .dm-status.open { color:#2563eb; background:#e0ecff; } .dm-status.inprogress { color:#1d4ed8; background:#dbeafe; } .dm-status.closed { color:#15803d; background:#dcfce7; }
+    .dm-sig { display:block; margin-top:3px; font-size:11px; }
+    .dm-acts { white-space:nowrap; }
+    .dm-ico { display:inline-flex; align-items:center; justify-content:center; width:30px; height:30px; border-radius:8px; border:none; cursor:pointer; margin:0 2px; vertical-align:middle; text-decoration:none; }
+    .dm-ico.view, .dm-ico.edit { background:#eff4ff; color:#2563eb; }
+    .dm-ico.view:hover, .dm-ico.edit:hover { background:#dbe7ff; }
+    .dm-ico.del { background:#fee2e2; color:#dc2626; } .dm-ico.del:hover { background:#fecaca; }
+    .dm-pager { display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; margin-top:12px; font-size:13px; color:#475569; }
+    .dm-pg-size { display:flex; align-items:center; gap:8px; }
+    .dm-pg-size .dm-input { min-width:0; width:74px; height:36px; }
+    .dm-pg-right { display:flex; align-items:center; gap:6px; }
+    .dm-pg-btn { min-width:34px; height:34px; padding:0 8px; border:1px solid #dbe3ef; border-radius:8px; background:#fff; color:#1a2d5a; font-weight:600; font-family:inherit; cursor:pointer; }
+    .dm-pg-btn.on { background:#1d4ed8; border-color:#1d4ed8; color:#fff; }
+    .dm-pg-btn:disabled { opacity:.45; cursor:default; }
+    .dm-pg-gap { color:#94a3b8; padding:0 2px; }
+    .dm-pg-info { margin-left:10px; }
+    @@media (max-width:1100px) { .dm-kpis { grid-template-columns:repeat(2, minmax(0,1fr)); } }
+
+    @@media (max-width:900px) {
+        .dm-page { margin:-20px -16px; padding:18px 16px 28px; }
+        .dm-actions { width:100%; }
+        .dm-actions .dm-btn { flex:1; }
+    }
+    @@media (max-width:600px) {
+        .dm-page { margin:-16px -12px; padding:16px 12px 24px; }
+        .dm-title { font-size:22px; }
+        .dm-filters { display:grid; grid-template-columns:repeat(3, minmax(0,1fr)); gap:8px; }
+        .dm-filters .dm-input:first-child { grid-column:1 / -1; min-width:0; }
+        .dm-input, .dm-filters .dm-year { min-width:0; width:100%; font-size:16px; } /* 16px: iOS không tự phóng to */
+        .dm-chip { padding:5px 11px; font-size:12.5px; }
+    }
+
+    /* ══ Mobile (≤ 600px) theo mẫu: dải xanh tiêu đề, 4 ô thống kê, thẻ defect, tab bar ══ */
+    .dm-m-only, .dm-mfilters, .dm-cards { display:none; }
+    @@media (max-width:600px) {
+        .dm-m-only { display:inline-block; }
+        .dm-d-only, .dm-filters, .dm-table-wrap, .dm-foot, .dm-chip.warn, .dm-kpis, .dm-pager { display:none !important; }
+        .dm-m-blk { display:block; }
+
+        .dm-page { margin:-16px -12px; padding:0 0 calc(16px + env(safe-area-inset-bottom)); background:#f6f8fc; }
+        .dm-top { display:block; margin:0; padding:20px 16px 38px; background:linear-gradient(160deg,#1a3a6b 0%,#1565c0 55%,#1e88e5 100%); }
+        .dm-title { color:#fff; font-size:26px; margin-bottom:6px; }
+        .dm-sub { color:rgba(255,255,255,.88); font-size:13.5px; line-height:1.45; }
+        .dm-actions { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:16px; }
+        .dm-actions .dm-btn { display:flex; align-items:center; justify-content:center; gap:8px; height:46px; padding:0 8px; border-radius:10px; font-size:14.5px; }
+        .dm-actions .dm-btn:only-child { grid-column:1 / -1; }
+        .dm-btn.ghost { background:#1d4ed8; color:#fff; border:1.5px solid rgba(255,255,255,.85); }
+        .dm-btn.primary { background:#fff; color:#1d4ed8; box-shadow:0 2px 10px rgba(0,0,0,.12); }
+
+        .dm-body { position:relative; margin-top:-22px; background:#f6f8fc; border-radius:20px 20px 0 0; padding:14px 12px 0; }
+
+        /* 4 ô thống kê */
+        .dm-chips { display:grid !important; grid-template-columns:repeat(4, minmax(0,1fr)); gap:8px; margin-bottom:12px; }
+        .dm-chip { display:flex; flex-direction:column; align-items:center; gap:2px; padding:9px 4px 8px; border:none; border-radius:12px; font-size:12.5px; font-weight:500; color:#334155; position:relative; }
+        .dm-chip span { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%; }
+        .dm-chip b { margin:0; font-size:22px; font-weight:800; color:#0f2552; line-height:1.15; }
+        .dm-chip.st-all { background:#e8f0fd; } .dm-chip.st-open { background:#fde8ea; }
+        .dm-chip.st-inprogress { background:#fdf5d8; } .dm-chip.st-closed { background:#e3f6ec; }
+        .dm-chip.active { color:#1d4ed8; box-shadow:inset 0 0 0 1.5px rgba(29,78,216,.25); }
+        .dm-chip.active b { color:#0f2552; }
+        .dm-chip.active::after { content:""; position:absolute; left:8%; right:8%; bottom:0; height:3px; border-radius:2px; background:#1d4ed8; }
+
+        /* Tìm kiếm + nút lọc + 3 ô chọn */
+        .dm-mfilters { display:block; margin-bottom:12px; }
+        .dm-msearch { display:flex; gap:8px; margin-bottom:8px; }
+        .dm-msearch-box { flex:1; min-width:0; display:flex; align-items:center; gap:8px; height:46px; padding:0 12px; background:#fff; border:1px solid #dbe3ef; border-radius:10px; color:#64748b; }
+        .dm-msearch-box input { flex:1; min-width:0; border:none; outline:none; background:transparent; font-size:16px; font-family:inherit; color:#1a2d5a; }
+        .dm-mfbtn { position:relative; flex-shrink:0; width:46px; height:46px; display:flex; align-items:center; justify-content:center; background:#fff; border:1px solid #dbe3ef; border-radius:10px; color:#1a2d5a; cursor:pointer; }
+        .dm-mfbtn.on { border-color:#1d4ed8; color:#1d4ed8; background:#eff6ff; }
+        .dm-mfbtn i { position:absolute; top:8px; right:8px; width:8px; height:8px; border-radius:50%; background:#1d4ed8; }
+        .dm-mmore { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:6px 8px; align-items:end; background:#fff; border:1px solid #e5eaf2; border-radius:10px; padding:10px; margin-bottom:8px; }
+        .dm-mmore label { grid-column:1 / -1; font-size:12px; font-weight:600; color:#334155; }
+        .dm-mreset { height:44px; padding:0 14px; border:1px solid #dbe3ef; border-radius:9px; background:#fff; color:#334155; font-size:14px; font-weight:600; font-family:inherit; cursor:pointer; }
+        .dm-msel { display:grid; grid-template-columns:repeat(3, minmax(0,1fr)); gap:8px; }
+        .dm-mfilters .dm-input { min-width:0; width:100%; height:44px; font-size:15px; padding-left:10px; padding-right:26px; background-position:right 9px center; }
+
+        /* Thẻ defect */
+        .dm-cards { display:flex; flex-direction:column; gap:10px; }
+        .dm-card { background:#fff; border:1px solid #edf1f7; border-radius:14px; padding:12px 12px 12px 14px; box-shadow:0 1px 6px rgba(15,40,90,.06); cursor:pointer; }
+        .dm-card:active { background:#f8faff; }
+        .dm-card-top { display:flex; align-items:center; gap:8px; min-width:0; }
+        .dm-card-no { font-size:17px; font-weight:800; color:#0f2552; white-space:nowrap; }
+        .dm-mpill { font-size:12px; font-weight:700; padding:3px 12px; border-radius:20px; white-space:nowrap; }
+        .dm-mpill.sev-critical { background:#fde2e4; color:#dc2626; }
+        .dm-mpill.sev-major { background:#fdf0c4; color:#a16207; }
+        .dm-mpill.sev-minor { background:#e0ecfd; color:#1d4ed8; }
+        .dm-mpill.st-open { background:#fde2e4; color:#dc2626; }
+        .dm-mpill.st-inprogress { background:#fdf0c4; color:#a16207; }
+        .dm-mpill.st-closed { background:#dcf5e6; color:#15803d; }
+        .dm-card-st { margin-left:auto; }
+        .dm-card-chev { flex-shrink:0; color:#64748b; }
+        .dm-card-desc { font-size:15px; color:#1a2d5a; margin:4px 0 8px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+        .dm-card-grid { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:0 10px; }
+        .dm-card-col { display:flex; flex-direction:column; gap:6px; min-width:0; }
+        .dm-card-col2 { border-left:1px solid #e5eaf2; padding-left:10px; }
+        .dm-kv { display:flex; align-items:center; gap:6px; min-width:0; font-size:13px; }
+        .dm-kv svg { flex-shrink:0; color:#64748b; }
+        .dm-kv .k { color:#64748b; flex-shrink:0; }
+        .dm-kv .v { color:#1a2d5a; min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+        .dm-kv.stack > div { display:flex; flex-direction:column; min-width:0; line-height:1.3; }
+        .dm-kv.stack .k { font-size:12px; }
+        .dm-card-od { margin-top:8px; font-size:12px; font-weight:700; color:#dc2626; }
+        .dm-cards .dm-empty { background:#fff; border-radius:12px; }
+    }
+    @@media (max-width:360px) {
+        .dm-card-grid { grid-template-columns:minmax(0,1fr); gap:6px; }
+        .dm-card-col2 { border-left:none; padding-left:0; }
+        .dm-chip { font-size:11px; }
+    }
+</style>

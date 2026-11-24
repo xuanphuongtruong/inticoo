@@ -1,0 +1,46 @@
+@page
+@inject PortalDbContext Db
+@{
+    ViewData["Title"] = L["Pricing"];
+    var plans = await Db.Plans.AsNoTracking().Include(p => p.Modules).ThenInclude(m => m.Module).Where(p => p.IsActive).OrderBy(p => p.SortOrder).ToListAsync();
+    var mods = await Db.Modules.AsNoTracking().OrderBy(m => m.SortOrder).ToListAsync();
+}
+<section class="hero small">
+  <div class="wrap">
+    <div>
+      <span class="eyebrow">@L["Pricing"]</span>
+      <h1>@L["Flexible Plans for Every Business"]</h1>
+      <p class="lead">@L["Choose the plan that fits your needs. All plans include secure cloud storage, multi-language support and regular updates."]</p>
+    </div>
+  </div>
+</section>
+<section class="sec">
+  <div class="wrap">
+    <partial name="_Plans" model="plans" />
+  </div>
+</section>
+<section class="sec alt">
+  <div class="wrap">
+    <div class="sec-head"><h2>@L["Compare Plans"]</h2></div>
+    <div style="overflow-x:auto">
+    <table class="cmp">
+      <thead><tr><th>@L["Features"]</th>@foreach (var p in plans) { <th>@p.Name</th> }</tr></thead>
+      <tbody>
+        @foreach (var m in mods)
+        {
+            <tr><td>@L[m.Name]</td>@foreach (var p in plans) { var has = p.Modules.Any(x => x.Module!.Code == m.Code); <td class="@(has ? "y" : "n")">@(has ? "✓" : "—")</td> }</tr>
+        }
+        <tr><td>@L["Users"]</td>@foreach (var p in plans) { <td>@L.F("Up to {0} users", p.MaxUsers)</td> }</tr>
+        <tr><td>@L["Cloud Storage"]</td>@foreach (var p in plans) { <td>@p.StorageGb GB</td> }</tr>
+        <tr><td>@L["Languages"]</td>@foreach (var p in plans) { <td>EN / 中文 / VI / MS</td> }</tr>
+      </tbody>
+    </table>
+    </div>
+    <div class="grid g4" style="margin-top:32px">
+      <div class="card"><span class="ico">@Icons.Svg("cloud")</span><h3>@L["All Plans Include"]</h3><p>@L["Secure and independent company account, regular updates and new features, professional support."]</p></div>
+      <div class="card"><span class="ico">@Icons.Svg("shield")</span><h3>@L["Enterprise-Grade Security"]</h3><p>@L["Your data is separated from other companies. Encrypted and backed up regularly."]</p></div>
+      <div class="card"><span class="ico">@Icons.Svg("globe")</span><h3>@L["4-Language Support"]</h3><p>English · 中文 · Tiếng Việt · Bahasa Melayu</p></div>
+      <div class="card"><span class="ico">@Icons.Svg("headset")</span><h3>@L["Need Help Choosing?"]</h3><p>@L["Our team can help you find the right plan for your business."]</p><a class="btn ghost sm" href="/contact">@L["Contact Us"] →</a></div>
+    </div>
+  </div>
+</section>

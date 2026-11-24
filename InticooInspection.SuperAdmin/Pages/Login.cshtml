@@ -1,0 +1,19 @@
+@page "/login"
+@model LoginModel
+@{ Layout = null; }
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" /><meta name="robots" content="noindex" />
+<title>Sign in — Inticoo Super Admin</title><link rel="icon" href="/img/favicon.png" /><link rel="stylesheet" href="/css/admin.css?v=1" /></head>
+<body class="adm login">
+  <form class="card f" method="post" autocomplete="on">
+    <div style="color:var(--navy);font-weight:800;font-size:1.5rem;letter-spacing:.04em">INTICOO</div>
+    <div class="muted" style="font-size:.6rem;letter-spacing:.3em;font-weight:700;margin-bottom:18px">GLOBAL SERVICES</div>
+    <h1>Super Admin</h1>
+    <p class="muted">Sign in to manage companies, subscriptions and billing.</p>
+    @if (Model.Error != null) { <div class="alert err">@Model.Error</div> }
+    <input type="hidden" asp-for="ReturnUrl" />
+    <div style="margin-bottom:12px"><label>Email</label><input type="email" asp-for="Email" autocomplete="username" required autofocus /></div>
+    <div style="margin-bottom:18px"><label>Password</label><input type="password" asp-for="Password" autocomplete="current-password" required /></div>
+    <button class="btn pri blk" style="height:44px" type="submit">Sign In</button>
+  </form>
+</body></html>

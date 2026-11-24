@@ -3,11 +3,22 @@
 
 <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#0f2552" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <title>InticooInspection.Client</title>
     <base href="/" />
     <link rel="stylesheet" href="lib/bootstrap/dist/css/bootstrap.min.css" />
     <link rel="stylesheet" href="css/app.css" />
+    <link rel="stylesheet" href="css/mobile.css" />
+    <link rel="stylesheet" href="css/party-profile.css" />
+    <link rel="stylesheet" href="css/view-card.css" />
+    <link rel="stylesheet" href="css/mobile-list.css" />
+    <link rel="stylesheet" href="css/desktop-list.css" />
+    <link rel="stylesheet" href="css/settings.css" />
+    <link rel="stylesheet" href="css/clc.css" />
     <link rel="icon" type="image/png" href="favicon.png" />
     <link href="InticooInspection.Client.styles.css" rel="stylesheet" />
     <link href="manifest.json" rel="manifest" />
@@ -26,7 +37,7 @@
     <div id="blazor-error-ui">
         An unhandled error has occurred.
         <a href="." class="reload">Reload</a>
-        <span class="dismiss">ðŸ—™</span>
+        <span class="dismiss">&#x2715;</span>
     </div>
     <!-- <div id="app-updated-notification" style="display:none; position:fixed; bottom:20px; right:20px; background:white; padding:15px; border:1px solid #2196F3; z-index:1000; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
     Một bản cập nhật mới đã sẵn sàng.
@@ -35,23 +46,17 @@
     <script src="_framework/blazor.webassembly.js"></script>
     <script src="js/report.js"></script>
     <script src="js/ptm-download.js"></script>
+    <script src="js/iss-download.js"></script>
+    <script src="js/party-editor.js"></script>
 </body>
     <script>
-    navigator.serviceWorker.register('service-worker.js');
+    if ('serviceWorker' in navigator) {
+        // Tự tải lại một lần khi có bản service worker mới tiếp quản, để điện thoại không kẹt giao diện cũ
+        var hadController = !!navigator.serviceWorker.controller, reloaded = false;
+        navigator.serviceWorker.addEventListener('controllerchange', function () {
+            if (hadController && !reloaded) { reloaded = true; location.reload(); }
+        });
+        navigator.serviceWorker.register('service-worker.js').then(function (reg) { reg.update(); });
+    }
     </script>
-    <script>
-    navigator.serviceWorker.register('service-worker.js').then(registration => {
-        registration.onupdatefound = () => {
-            const installingWorker = registration.installing;
-            installingWorker.onstatechange = () => {
-                if (installingWorker.state === 'installed') {
-                    if (navigator.serviceWorker.controller) {
-                        // Hiện thông báo khi có bản cập nhật mới
-                        document.getElementById('app-updated-notification').style.display = 'block';
-                    }
-                }
-            };
-        };
-    });
-</script>
 </html>

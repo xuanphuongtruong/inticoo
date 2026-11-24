@@ -1,0 +1,281 @@
+﻿@page "/clc"
+@attribute [Microsoft.AspNetCore.Authorization.Authorize]
+@using System.Net.Http.Headers
+@inject HttpClient Http
+@inject NavigationManager Nav
+@inject Blazored.SessionStorage.ISessionStorageService SessionStorage
+@inject PageAccessService PageAccess
+@inherits LocalizedComponentBase
+
+<PageTitle>@T("Clc.PageTitle")</PageTitle>
+
+<PageAccessGuard RequiredPage="ContainerLoadingCheck">
+@if (!CanJob && !CanExec)
+{
+    <div style="padding:60px;text-align:center;color:#6b7c9c"><h3>@T("PageAccessGuard.AccessDenied")</h3><p>@T("PageAccessGuard.YouDonTHavePermissionTo")</p></div>
+}
+else
+{
+<div class="clc-page clc-list">
+    <div class="clc-head lp-head">
+        <div class="title-block">
+            <h1 class="clc-title page-title">@T("Clc.Title")</h1>
+            <span class="clc-sub page-sub">@T("Clc.ListSub")</span>
+        </div>
+        @if (CanCreate)
+        {
+            <button class="clc-btn primary btn-add" @onclick='() => Nav.NavigateTo("/clc/new")'>+ @T("Clc.NewJob")</button>
+        }
+    </div>
+
+    <div class="m-kpis m-kpis4 lp-kpis">
+        <div class="m-kpi"><span class="m-kpi-ico k-blue"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 8h6M9 12h6M9 16h3"/></svg></span><b>@_stats.All</b><small>@T("Clc.KpiTotal")</small></div>
+        <div class="m-kpi"><span class="m-kpi-ico k-green"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M8 12l3 3 5-6"/></svg></span><b>@_stats.Submitted</b><small>@T("Common.Completed")</small></div>
+        <div class="m-kpi"><span class="m-kpi-ico k-blue"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></span><b>@_stats.Pending</b><small>@T("Status.New")</small></div>
+        <div class="m-kpi"><span class="m-kpi-ico k-orange"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h12M6 21h12M7 3c0 6 10 6 10 18M17 3c0 6-10 6-10 18"/></svg></span><b class="red">@_stats.Delay</b><small>@T("Status.Delay")</small></div>
+        <div class="m-kpi"><span class="m-kpi-ico k-green"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M8 12l3 3 5-6"/></svg></span><b>@_stats.Pass</b><small>@T("Clc.Pass")</small></div>
+        <div class="m-kpi"><span class="m-kpi-ico k-red"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M9 9l6 6M15 9l-6 6"/></svg></span><b class="red">@_stats.Fail</b><small>@T("Clc.Fail")</small></div>
+    </div>
+
+    <div class="top-bar lp-filters @(_fOpen ? "fopen" : "")">
+        <div class="search-wrap">
+            <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="9" r="6"/><path d="M15 15l-3.5-3.5" stroke-linecap="round"/></svg>
+            <input class="search-input" type="text" placeholder="@T("Clc.SearchPlaceholder")" @bind="_search" @bind:event="oninput" @onkeyup="OnKey" />
+        </div>
+        <button type="button" class="lp-filter-toggle @(_fOpen ? "on" : "")" @onclick="() => _fOpen = !_fOpen" aria-label="@T("Common.Filters")"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5h18l-7 8v6l-4 2v-8z"/></svg></button>
+        <div class="lp-selects">
+            <select class="filter-select" @bind="_status" @bind:after="() => Load(1)">
+                <option value="">@T("Clc.AllStatus")</option>
+                <option value="New">@T("Status.New")</option>
+                <option value="Delay">@T("Status.Delay")</option>
+                <option value="InProgress">@T("Clc.StatusInProgress")</option>
+                <option value="Submitted">@T("Common.Completed")</option>
+            </select>
+            <button class="btn-search" @onclick="() => Load(1)">@T("Common.Search")</button>
+        </div>
+    </div>
+
+    <div class="m-chips">
+        <button type="button" class="@(_status == "" ? "on" : "")" @onclick='() => SetChip("")'>@T("Customers.ChipAll") (@_stats.All)</button>
+        <button type="button" class="@(_status == "Submitted" ? "on" : "")" @onclick='() => SetChip("Submitted")'>@T("Common.Completed") (@_stats.Submitted)</button>
+        <button type="button" class="@(_status == "New" ? "on" : "")" @onclick='() => SetChip("New")'>@T("Status.New") (@_stats.Pending)</button>
+        <button type="button" class="@(_status == "Delay" ? "on" : "")" @onclick='() => SetChip("Delay")'>@T("Status.Delay") (@_stats.Delay)</button>
+    </div>
+
+    @if (_loading)
+    {
+        <div class="loading-state"><div class="spinner-lg"></div><span>@T("Common.Loading")</span></div>
+    }
+    else
+    {
+        <div class="m-cards">
+            @if (_items.Count == 0)
+            {
+                <div class="m-empty">@T("Clc.NoJobs")</div>
+            }
+            @foreach (var it in _items)
+            {
+                var row = it;
+                var d = row.PlannedLoadingDate ?? row.CreatedAt ?? DateTime.Today;
+                <div class="m-card" @onclick="() => Open(row)">
+                    <div class="m-card-top">
+                        <div class="m-date">
+                            <b>@d.ToString("dd")</b>
+                            <span>@L.Date(d, "MMM")</span>
+                            <small>@d.ToString("yyyy")</small>
+                        </div>
+                        <div class="m-card-main">
+                            <div class="m-card-head">
+                                <div class="m-card-name">@row.JobNumber</div>
+                                <span class="clc-pill @row.Status.ToLower()">@StatusLabel(row.Status)</span>
+                            </div>
+                            <div class="m-card-sub">@(string.IsNullOrEmpty(row.CustomerName) ? "—" : row.CustomerName)</div>
+                            <div class="m-card-code">@T("Clc.ContainerNo"): @(string.IsNullOrEmpty(row.ContainerNo) ? "—" : row.ContainerNo) @row.ContainerType</div>
+                        </div>
+                    </div>
+                    <div class="m-card-rows">
+                        @if (!string.IsNullOrEmpty(row.VendorName)) { <div><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="5" y="3" width="14" height="18" rx="1.5"/><path d="M9 7h2M13 7h2M9 11h2M13 11h2M9 15h2M13 15h2"/></svg>@row.VendorName</div> }
+                        @if (!string.IsNullOrEmpty(row.InspectorName)) { <div><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>@row.InspectorName</div> }
+                        <div>@T("Clc.Cartons"): @row.TotalCartons.ToString("N0")</div>
+                    </div>
+                    <div class="m-card-actions" @onclick:stopPropagation="true">
+                        @if (row.Status == "Submitted")
+                        {
+                            <button type="button" class="m-btn-outline" @onclick='() => Nav.NavigateTo($"/clc/{row.Id}/report")'>@T("Common.ViewReport")</button>
+                        }
+                        else if (CanExec && row.Status is "Pending" or "InProgress")
+                        {
+                            <button type="button" class="m-btn-fill" @onclick='() => Nav.NavigateTo($"/clc/{row.Id}")'>@(row.Status == "Pending" ? T("Clc.StartInspection") : T("Clc.ContinueInspection"))</button>
+                        }
+                        else if (CanJob && row.Status is "Draft")
+                        {
+                            <button type="button" class="m-btn-fill" @onclick='() => Nav.NavigateTo($"/clc/{row.Id}?edit=1")'>@T("Clc.EditRequest")</button>
+                        }
+                    </div>
+                </div>
+            }
+        </div>
+        <div class="clc-card clc-tablecard">
+            <div class="clc-scroll clc-tablewrap">
+                <table class="clc-table">
+                    <thead>
+                        <tr>
+                            <th class="c">@T("Common.No")</th><th>@T("Inspections.ReceiveDate")</th><th>@T("Clc.JobNo")</th><th>@T("Clc.Customer")</th><th>@T("Clc.Supplier")</th>
+                            <th>@T("Clc.ContainerNo")</th><th>@T("Clc.PlannedLoadingDate")</th>
+                            <th class="c">@T("Clc.Cartons")</th><th>@T("Clc.Inspector")</th>
+                            <th class="c">@T("Clc.Result")</th><th class="c">@T("Common.Status")</th><th class="c">@T("Common.View")</th><th class="c">@T("Common.Action")</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @{ int rowNo = (_page - 1) * _pageSize; }
+                        @foreach (var it in _items)
+                        {
+                            var row = it;
+                            rowNo++;
+                            <tr>
+                                <td class="c">@rowNo</td>
+                                <td>@(row.CreatedAt.HasValue ? row.CreatedAt.Value.ToString("dd/MM/yyyy") : "—")</td>
+                                <td><button class="clc-row-link" @onclick="() => Open(row)">@row.JobNumber</button></td>
+                                <td>@row.CustomerName</td>
+                                <td>@row.VendorName</td>
+                                <td>@row.ContainerNo <small style="color:#6b7c9c">@row.ContainerType</small></td>
+                                <td>@(row.PlannedLoadingDate.HasValue ? L.Date(row.PlannedLoadingDate.Value, "d MMM yyyy") : "—")</td>
+                                <td class="c">@row.TotalCartons.ToString("N0")</td>
+                                <td>@(row.InspectorName ?? "—")</td>
+                                <td class="c">@ResultPill(row.OverallResult)</td>
+                                <td class="c"><span class="clc-pill @row.Status.ToLower()">@StatusLabel(row.Status)</span></td>
+                                <td class="c"><button class="clc-eye" title="@T("Common.View")" @onclick="() => Open(row)">&#128065;</button></td>
+                                <td class="c" style="white-space:nowrap">
+                                    <div class="clc-more">
+                                        <button class="clc-eye" title="@T("Common.Action")" @onclick="e => { _menuX = e.ClientX; _menuY = e.ClientY; _menuId = _menuId == row.Id ? 0 : row.Id; }">&#8943;</button>
+                                        @if (_menuId == row.Id)
+                                        {
+                                            <div class="clc-more-bd" @onclick="() => _menuId = 0"></div>
+                                            <div class="clc-more-menu" style="@($"left:{Math.Max(8, (int)_menuX - 160)}px;top:{(int)_menuY + 10}px")" @onclick="() => _menuId = 0">@RowActions(row)</div>
+                                        }
+                                    </div>
+
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+            @if (_total > _pageSize)
+            {
+                <div style="display:flex;justify-content:center;align-items:center;gap:12px;margin-top:12px">
+                    <button class="clc-btn sm" disabled="@(_page <= 1)" @onclick="() => Load(_page - 1)">@T("Common.Prev")</button>
+                    <span style="font-size:13px">@_page / @(((_total + _pageSize - 1) / _pageSize))</span>
+                    <button class="clc-btn sm" disabled="@(_page * _pageSize >= _total)" @onclick="() => Load(_page + 1)">@T("Common.Next")</button>
+                </div>
+            }
+        </div>
+    }
+</div>
+
+@if (_delete != null)
+{
+    <div class="pf-modal-ov" @onclick="() => _delete = null">
+        <div class="pf-modal" style="width:min(420px,100%)" @onclick:stopPropagation="true">
+            <b>@T("Clc.DeleteJob")</b>
+            <p style="margin:10px 0 14px">@T("Clc.DeleteJobConfirm", _delete.JobNumber)</p>
+            <div style="display:flex;gap:8px;justify-content:flex-end">
+                <button class="clc-btn" @onclick="() => _delete = null">@T("Common.Cancel")</button>
+                <button class="clc-btn danger" @onclick="DoDelete">@T("Common.Delete")</button>
+            </div>
+        </div>
+    </div>
+}
+}
+</PageAccessGuard>
+
+@code {
+    private List<ClcListItem> _items = new();
+    private bool _loading = true;
+    private string _search = "", _status = "";
+    private bool _fOpen;
+    private int _page = 1, _pageSize = 20, _total;
+    private ClcListItem? _delete;
+    private int _menuId; private double _menuX, _menuY;
+
+    bool CanJob  => PageAccess.IsAdmin || PageAccess.Can("ContainerLoadingCheck", "Create");
+    bool CanExec => PageAccess.IsAdmin || PageAccess.Can("ContainerLoadingCheck", "Edit");
+    bool CanCreate => PageAccess.IsAdmin || PageAccess.Can("ContainerLoadingCheck", "Create");
+
+    // Admin/quản lý: sửa job request (Draft/Pending). QC/kho: bắt đầu/tiếp tục kiểm (Pending/InProgress).
+    RenderFragment RowActions(ClcListItem row) => @<text>
+        @if (row.Status == "Submitted")
+        {
+            <button class="clc-btn sm" @onclick='() => Nav.NavigateTo($"/clc/{row.Id}/report")'>@T("Clc.Report")</button>
+        }
+        else
+        {
+            @if (CanJob && row.Status is "Draft" or "Pending")
+            {
+                <button class="clc-btn sm" @onclick='() => Nav.NavigateTo($"/clc/{row.Id}?edit=1")'>@T("Clc.EditRequest")</button>
+            }
+            @if (CanExec && row.Status is "Pending" or "InProgress")
+            {
+                <button class="clc-btn sm primary" @onclick='() => Nav.NavigateTo($"/clc/{row.Id}")'>@(row.Status == "Pending" ? T("Clc.StartInspection") : T("Clc.ContinueInspection"))</button>
+            }
+        }
+        @if (PageAccess.IsAdmin && row.Status is "Draft" or "Pending")
+        {
+            <button class="clc-btn sm danger" @onclick="() => _delete = row">@T("Common.Delete")</button>
+        }
+    </text>;
+
+    private class ClcStats { public int All { get; set; } public int InProgress { get; set; } public int Pending { get; set; } public int Submitted { get; set; } public int Delay { get; set; } public int Pass { get; set; } public int Fail { get; set; } }
+    private class PageResult { public int Total { get; set; } public List<ClcListItem> Items { get; set; } = new(); public ClcStats? Stats { get; set; } }
+    private ClcStats _stats = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var token = await SessionStorage.GetItemAsync<string>("auth_token");
+            if (!string.IsNullOrEmpty(token)) Http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        }
+        catch { }
+        await PageAccess.EnsureLoadedAsync();
+        await Load(1);
+    }
+
+    private async Task SetChip(string st) { _status = st; await Load(1); }
+
+    private async Task OnKey(KeyboardEventArgs e) { if (e.Key == "Enter") await Load(1); }
+
+    private async Task Load(int page)
+    {
+        _loading = true; _page = page;
+        try
+        {
+            var r = await Http.GetFromJsonAsync<PageResult>($"api/clc?page={page}&pageSize={_pageSize}&status={Uri.EscapeDataString(_status)}&search={Uri.EscapeDataString(_search)}");
+            if (r != null) { _items = r.Items; _total = r.Total; _stats = r.Stats ?? new(); }
+        }
+        catch { _items = new(); _total = 0; }
+        finally { _loading = false; }
+    }
+
+    private void Open(ClcListItem it) =>
+        Nav.NavigateTo(it.Status == "Submitted" ? $"/clc/{it.Id}/report" : $"/clc/{it.Id}");
+
+    private async Task DoDelete()
+    {
+        if (_delete == null) return;
+        var r = await Http.DeleteAsync($"api/clc/{_delete.Id}");
+        _delete = null;
+        if (r.IsSuccessStatusCode) await Load(_page);
+    }
+
+    private string StatusLabel(string s) => s switch
+    {
+        "Draft" => T("Clc.StatusDraft"), "Pending" => T("Clc.StatusPending"),
+        "InProgress" => T("Clc.StatusInProgress"), "Submitted" => T("Clc.StatusSubmitted"), _ => s
+    };
+
+    private RenderFragment ResultPill(string? r) => @<text>
+        @if (string.IsNullOrEmpty(r)) { <span class="clc-pill none">—</span> }
+        else { <span class="clc-pill @(r == "PASS" ? "pass" : r == "HOLD" ? "hold" : "fail")">@(r == "PASS" ? T("Clc.Pass") : r == "HOLD" ? T("Clc.Hold") : T("Clc.Fail"))</span> }
+    </text>;
+}

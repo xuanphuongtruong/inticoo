@@ -12,7 +12,9 @@ namespace InticooInspection.API.Controllers
 {
     [ApiController]
     [Route("api/mail-settings")]
-    [Authorize]   // bắt buộc đăng nhập
+    // Không dùng [Authorize]: JwtBearer middleware không xác thực được token (xem MeController);
+    // đăng nhập đã được RequireSignedInFilter (toàn cục) kiểm tra.
+    [AdminApi]   // chỉ Admin: gửi mail hàng loạt, xem log/cấu hình SMTP
     public class MailSettingsController : ControllerBase
     {
         private readonly AppDbContext         _db;
@@ -69,14 +71,14 @@ namespace InticooInspection.API.Controllers
         public async Task<IActionResult> Update([FromBody] MailSettingsDto dto, CancellationToken ct)
         {
             // Validate
-            if (string.IsNullOrWhiteSpace(dto.SmtpHost))    return BadRequest(new { error = "SmtpHost không được để trống" });
-            if (string.IsNullOrWhiteSpace(dto.SenderEmail)) return BadRequest(new { error = "SenderEmail không được để trống" });
-            if (string.IsNullOrWhiteSpace(dto.Username))    return BadRequest(new { error = "Username không được để trống" });
-            if (dto.SmtpPort < 1 || dto.SmtpPort > 65535)   return BadRequest(new { error = "SmtpPort phải trong khoảng 1-65535" });
-            if (dto.SendDayOfWeek < 0 || dto.SendDayOfWeek > 6) return BadRequest(new { error = "SendDayOfWeek phải trong khoảng 0-6" });
-            if (dto.SendHour < 0 || dto.SendHour > 23)      return BadRequest(new { error = "SendHour phải trong khoảng 0-23" });
-            if (dto.SendMinute < 0 || dto.SendMinute > 59)  return BadRequest(new { error = "SendMinute phải trong khoảng 0-59" });
-            if (dto.LookAheadDays < 1 || dto.LookAheadDays > 60) return BadRequest(new { error = "LookAheadDays phải trong khoảng 1-60" });
+            if (string.IsNullOrWhiteSpace(dto.SmtpHost))    return BadRequest(new { error = "SmtpHost is required" });
+            if (string.IsNullOrWhiteSpace(dto.SenderEmail)) return BadRequest(new { error = "SenderEmail is required" });
+            if (string.IsNullOrWhiteSpace(dto.Username))    return BadRequest(new { error = "Username is required" });
+            if (dto.SmtpPort < 1 || dto.SmtpPort > 65535)   return BadRequest(new { error = "SmtpPort must be between 1 and 65535" });
+            if (dto.SendDayOfWeek < 0 || dto.SendDayOfWeek > 6) return BadRequest(new { error = "SendDayOfWeek must be between 0 and 6" });
+            if (dto.SendHour < 0 || dto.SendHour > 23)      return BadRequest(new { error = "SendHour must be between 0 and 23" });
+            if (dto.SendMinute < 0 || dto.SendMinute > 59)  return BadRequest(new { error = "SendMinute must be between 0 and 59" });
+            if (dto.LookAheadDays < 1 || dto.LookAheadDays > 60) return BadRequest(new { error = "LookAheadDays must be between 1 and 60" });
 
             var current = await _db.MailConfigs.FirstOrDefaultAsync(ct);
             var isNew   = current == null;
@@ -120,12 +122,12 @@ namespace InticooInspection.API.Controllers
         public async Task<IActionResult> TestSmtp([FromBody] TestSmtpRequest req, CancellationToken ct)
         {
             if (string.IsNullOrWhiteSpace(req.ToEmail))
-                return BadRequest(new { error = "ToEmail không được để trống" });
+                return BadRequest(new { error = "ToEmail is required" });
 
             var snap = await _provider.GetAsync(ct);
 
             if (string.IsNullOrEmpty(snap.Password))
-                return BadRequest(new { error = "Password chưa được cấu hình trong Environment Variable Azure (MailSettings__Password)" });
+                return BadRequest(new { error = "Password is not configured in the Azure Environment Variable (MailSettings__Password)" });
 
             try
             {
@@ -144,7 +146,7 @@ namespace InticooInspection.API.Controllers
                     Body            = $@"<html><body style='font-family:Segoe UI,Arial;'>
 <div style='max-width:600px;margin:0 auto;padding:24px;background:#f8f9fa;border-radius:8px;'>
   <h2 style='color:#1e6091;'>✅ SMTP Test Success</h2>
-  <p>Cấu hình SMTP đang hoạt động bình thường.</p>
+  <p>The SMTP configuration is working correctly.</p>
   <hr/>
   <table style='font-size:13px;color:#555;'>
     <tr><td style='padding:4px 12px 4px 0;'><strong>SMTP Host:</strong></td><td>{snap.SmtpHost}:{snap.SmtpPort}</td></tr>
@@ -161,7 +163,7 @@ namespace InticooInspection.API.Controllers
 
                 await smtp.SendMailAsync(msg, ct);
 
-                return Ok(new { success = true, message = $"Đã gửi mail test tới {req.ToEmail}" });
+                return Ok(new { success = true, message = $"Test email sent to {req.ToEmail}" });
             }
             catch (SmtpException ex)
             {
@@ -183,7 +185,7 @@ namespace InticooInspection.API.Controllers
         public IActionResult ResetCache()
         {
             _provider.InvalidateCache();
-            return Ok(new { success = true, message = "Cache đã được reset" });
+            return Ok(new { success = true, message = "Cache has been reset" });
         }
 
         // ─────────────────────────────────────────────────────────────────
@@ -201,7 +203,7 @@ namespace InticooInspection.API.Controllers
             }
             _provider.InvalidateCache();
 
-            return Ok(new { success = true, message = "Đã xóa cấu hình DB. App sẽ dùng Environment Variables." });
+            return Ok(new { success = true, message = "DB settings cleared. The app will use Environment Variables." });
         }
     }
 

@@ -1,0 +1,160 @@
+@page
+@model RegisterModel
+@inject Microsoft.Extensions.Configuration.IConfiguration Cfg
+@{
+    Layout = null;
+    var I = Model.Input;
+    var meta = LocalizationStore.Meta[L.Lang];
+    string LangUrl(string l)
+    {
+        var q = ViewContext.HttpContext.Request.Query.Where(kv => kv.Key != "lang").Select(kv => $"{Uri.EscapeDataString(kv.Key)}={Uri.EscapeDataString(kv.Value.ToString())}").ToList();
+        q.Add("lang=" + l);
+        return ViewContext.HttpContext.Request.Path + "?" + string.Join("&", q);
+    }
+    var steps = new[] { "Company Information", "Select Plan", "Language & Modules", "Administrator Account", "Payment", "Confirmation" };
+}
+<!doctype html>
+<html lang="@(L.Lang == "zh" ? "zh-Hans" : L.Lang)">
+<head>
+<meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>@L["Register & Subscribe"] — Inticoo</title>
+<link rel="icon" href="/img/favicon.png" />
+<link rel="stylesheet" href="/css/site.css?v=1" />
+</head>
+<body style="background:#f4f8ff">
+<div class="reg-top"><div class="wrap">
+  <a class="brand" href="/"><b>Inticoo</b><small>GLOBAL SERVICES</small></a>
+  <span class="tagline">@L["Simpler Quality Management for a Safer Global Supply Chain"]</span>
+  <details class="lang"><summary style="color:#fff">@Icons.Svg("globe", 18) @meta.Native</summary>
+    <div class="lang-menu">@foreach (var l in LocalizationStore.Supported) { var m = LocalizationStore.Meta[l]; <a href="@LangUrl(l)" class="@(l == L.Lang ? "on" : "")"><em>@m.Flag</em> @m.Native</a> }</div></details>
+  <a class="btn sm" href="@(Cfg["Portal:AppUrl"] ?? "#")">@L["Sign In"]</a>
+</div></div>
+
+<div class="wrap">
+  <div class="stepper" id="stepper">
+    @for (var s = 0; s < steps.Length; s++) { if (s > 0) { <span class="line"></span> } <a class="st @(s == 0 ? "on" : "")" href="#sec@(s + 1)" style="text-decoration:none"><i>@(s + 1)</i> @L[steps[s]]</a> }
+  </div>
+
+  @if (Model.Closed) { <div class="alert info">@L["Self-registration is currently disabled. Please contact us."] <a href="/contact">@L["Contact Us"]</a></div> }
+  @if (Model.Error != null) { <div class="alert err">@L[Model.Error]</div> }
+  @if (!ViewData.ModelState.IsValid) { <div class="alert err">@foreach (var e in ViewData.ModelState.Values.SelectMany(v => v.Errors)) { <div>@e.ErrorMessage</div> }</div> }
+
+  <form method="post" id="regform" autocomplete="off" novalidate>
+  <div class="reg-grid">
+    <div>
+      <div class="reg-sec" id="sec1">
+        <h2><i>1</i> @L["Company Information"]</h2><div class="sub">@L["Tell us about your company."]</div>
+        <div class="row3">
+          <div class="field"><label class="req">@L["Company Name"]</label><input type="text" asp-for="Input.CompanyName" maxlength="200" required /></div>
+          <div class="field"><label class="req">@L["Country / Region"]</label>
+            <select asp-for="Input.CountryCode" required><option value="">@L["Select country / region"]</option>@foreach (var c in CountryList.All) { <option value="@c.Code" selected="@(I.CountryCode == c.Code)">@c.Name</option> }</select></div>
+          <div class="field"><label class="req">@L["Company Address"]</label><input type="text" asp-for="Input.Address" maxlength="300" placeholder="@L["Street address, city, state, postal code"]" required /></div>
+        </div>
+        <div class="row3">
+          <div class="field"><label class="req">@L["Contact Person"]</label><input type="text" asp-for="Input.ContactPerson" maxlength="150" required /></div>
+          <div class="field"><label class="req">@L["Work Email"]</label><input type="email" asp-for="Input.WorkEmail" maxlength="200" placeholder="name@company.com" required /></div>
+          <div class="field"><label class="req">@L["Phone Number"]</label><input type="tel" asp-for="Input.Phone" maxlength="40" placeholder="+60 3 1234 5678" required /></div>
+        </div>
+        <div class="field"><label>@L["Company Website (Optional)"]</label><input type="url" asp-for="Input.Website" maxlength="200" placeholder="https://www.company.com" /></div>
+      </div>
+
+      <div class="reg-sec" id="sec2">
+        <h2><i>2</i> @L["Select Subscription Package"]</h2><div class="sub">@L["Choose the plan that fits your needs."]</div>
+        <div class="center"><div class="cycle-switch" id="cycle">
+          <button type="button" data-cycle="Monthly" class="@(I.BillingCycle == "Monthly" ? "on" : "")">@L["Monthly"]</button>
+          <button type="button" data-cycle="Annual" class="@(I.BillingCycle == "Annual" ? "on" : "")">@L["Annual"] · @L["Save 15%"]</button></div></div>
+        <input type="hidden" asp-for="Input.BillingCycle" id="cycleVal" />
+        <div class="plan-pick">
+          @foreach (var p in Model.Plans)
+          {
+            var codes = string.Join(',', p.Modules.Select(m => m.Module!.Code));
+            <label class="plan-opt">
+              <input type="radio" name="Input.PlanCode" value="@p.Code" checked="@(I.PlanCode == p.Code)" data-name="@p.Name" data-m="@p.MonthlyPrice.ToString("0.00")" data-a="@p.AnnualPrice.ToString("0.00")" data-mods="@codes" data-users="@p.MaxUsers" data-gb="@p.StorageGb" />
+              <h4>@p.Name @if (p.IsPopular) { <span class="tag">@L["Most Popular"]</span> }</h4>
+              <div class="p" data-m="@p.MonthlyPrice.ToString("0.##")" data-a="@p.AnnualPrice.ToString("0.##")"><span class="amt">$@p.MonthlyPrice.ToString("N0")</span> <small class="per" data-m="/ @L["month"]" data-y="/ @L["year"]">/ @L["month"]</small></div>
+              <ul class="ticks">
+                @foreach (var m in p.Modules.Select(x => x.Module!).OrderBy(x => x.SortOrder)) { <li>@L[m.Name]</li> }
+                <li>@L.F("Up to {0} users", p.MaxUsers)</li><li>@L.F("{0} GB cloud storage", p.StorageGb)</li>
+              </ul>
+            </label>
+          }
+        </div>
+      </div>
+
+      <div class="reg-sec" id="sec3">
+        <h2><i>3</i> @L["Language & Modules"]</h2><div class="sub">@L["Select your preferred language and confirm the included modules."]</div>
+        <div class="row2">
+          <div><b>@L["Language Access"]</b><p class="muted" style="font-size:.85rem">@L["Choose the languages available to your company users."]</p>
+            <div class="checks">@foreach (var l in Model.EnabledLanguages) { var m = LocalizationStore.Meta[l]; <label><input type="checkbox" name="Input.Languages" value="@l" checked="@I.Languages.Contains(l)" /> @m.Native</label> }</div></div>
+          <div><b>@L["Platform Modules"]</b><p class="muted" style="font-size:.85rem">@L["Modules included in your selected plan."]</p>
+            <div class="mod-grid" id="mods">
+              @foreach (var m in Model.Modules) { <label class="mod-opt" data-code="@m.Code"><input type="checkbox" name="Input.Modules" value="@m.Code" checked="@I.Modules.Contains(m.Code)" /> @L[m.Name]</label> }
+            </div></div>
+        </div>
+      </div>
+
+      <div class="reg-sec" id="sec4">
+        <h2><i>4</i> @L["Administrator Account"]</h2><div class="sub">@L["Create the initial administrator account for your company."]</div>
+        <div class="row3">
+          <div class="field"><label class="req">@L["Admin Name"]</label><input type="text" asp-for="Input.AdminName" maxlength="150" required /></div>
+          <div class="field"><label class="req">@L["Work Email"]</label><input type="email" asp-for="Input.AdminEmail" maxlength="200" required /></div>
+          <div class="field"><label class="req">@L["Password"]</label><input type="password" name="Input.Password" autocomplete="new-password" maxlength="100" required /><div class="hint">@L["At least 8 characters with upper and lower case letters, a number and a symbol."]</div></div>
+        </div>
+      </div>
+
+      <div class="reg-sec" id="sec5">
+        <h2><i>5</i> @L["Payment Method"]</h2><div class="sub">@L["Choose your preferred payment method. All payments are secure and encrypted."]</div>
+        <div class="pay-opts">
+          @if (Model.PayPalEnabled)
+          {
+            <label class="pay-opt"><input type="radio" name="Input.PaymentMethod" value="PayPal" checked="@(I.PaymentMethod == "PayPal")" /><span><b>@L["PayPal / Visa / Mastercard"]</b><small>@L["Pay with your card or PayPal account on PayPal's secure page."]</small></span></label>
+          }
+          @if (Model.CardEnabled || !Model.PayPalEnabled)
+          {
+          <label class="pay-opt"><input type="radio" name="Input.PaymentMethod" value="Card" checked="@(I.PaymentMethod == "Card")" disabled="@(!Model.CardEnabled)" /><span><b>@L["Credit / Debit Card"]</b><small>@L["Pay securely via card."]</small></span></label>
+          }
+          <label class="pay-opt"><input type="radio" name="Input.PaymentMethod" value="BankTransfer" checked="@(I.PaymentMethod == "BankTransfer")" /><span><b>@L["Bank Transfer"]</b><small>@L["Pay via bank transfer. An invoice with bank details will be generated."]</small></span></label>
+        </div>
+        @if (Model.CardEnabled)
+        {
+          <div id="cardbox">
+            <div class="test-note">@L["Test mode: no real charge is made. Use card 4242 4242 4242 4242, any future expiry and any CVC."]</div>
+            <div class="field"><label>@L["Card Number"]</label><input type="text" name="Input.CardNumber" inputmode="numeric" autocomplete="off" maxlength="23" placeholder="1234 1234 1234 1234" /></div>
+            <div class="row3">
+              <div class="field"><label>@L["Expiration Date"]</label><input type="text" name="Input.CardExpiry" autocomplete="off" maxlength="7" placeholder="MM / YY" /></div>
+              <div class="field"><label>CVC</label><input type="text" name="Input.CardCvc" inputmode="numeric" autocomplete="off" maxlength="4" placeholder="CVC" /></div>
+              <div class="field"><label>@L["Name on Card"]</label><input type="text" name="Input.CardHolder" maxlength="150" placeholder="John Smith" /></div>
+            </div>
+          </div>
+        }
+        else if (!Model.PayPalEnabled) { <div class="alert info">@L["Online card payment is not available yet. Please choose Bank Transfer."]</div> }
+        @if (Model.PayPalEnabled)
+        {
+          <div id="ppbox" class="alert info">@L["After you click Subscribe, you will be taken to PayPal to pay. No PayPal account is needed — choose “Pay with Debit or Credit Card”. Your card details are entered on PayPal only and never stored by Inticoo."]</div>
+        }
+      </div>
+
+      <div class="reg-sec" id="sec6">
+        <h2><i>6</i> @L["Review & Confirm"]</h2><div class="sub">@L["Please review your information and complete the payment to activate your Inticoo account."]</div>
+        <label style="display:flex;gap:10px;align-items:flex-start;margin-bottom:16px"><input type="checkbox" name="Input.AcceptTerms" value="true" /> <span>@L["I have read and agree to the"] <a href="/terms" target="_blank">@L["Terms of Service"]</a> @L["and"] <a href="/privacy" target="_blank">@L["Privacy Policy"]</a>.</span></label>
+        <button class="btn lg block" type="submit" disabled="@Model.Closed">@Icons.Svg("lock", 18) @L["Subscribe & Create Account"]</button>
+      </div>
+    </div>
+
+    <aside class="summary" id="summary">
+      <h3>@L["Order Summary"]</h3>
+      <div class="li"><span>@L["Selected Plan"]</span><b id="s-plan">-</b></div>
+      <div class="li"><span>@L["Billing Cycle"]</span><b id="s-cycle">-</b></div>
+      <div class="li"><span>@L["Users"]</span><b id="s-users">-</b></div>
+      <div class="li"><span>@L["Cloud Storage"]</span><b id="s-gb">-</b></div>
+      <div class="total"><span>@L["Total (USD)"]</span><span id="s-total">-</span></div>
+      <div class="hint muted" style="font-size:.78rem">@L["Taxes, if applicable, are added on the invoice."]</div>
+      <div style="margin-top:14px;display:flex;gap:10px;font-size:.78rem;color:var(--muted)"><span>@Icons.Svg("lock", 16) @L["Secure Payment"]</span><span>@Icons.Svg("globe", 16) @L["Global Access"]</span></div>
+    </aside>
+  </div>
+  </form>
+</div>
+<script src="/js/site.js?v=1"></script>
+<script src="/js/register.js?v=1"></script>
+</body>
+</html>

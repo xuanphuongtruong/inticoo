@@ -1,0 +1,72 @@
+@* Chọn ngôn ngữ — đổi tức thì, không reload.
+   Variant="light": menu thả xuống (màn Login). Variant="dark": dải nút gọn (sidebar).
+   SaveToAccount=true: lưu lựa chọn vào tài khoản đang đăng nhập (PUT api/me/language). *@
+@inherits LocalizedComponentBase
+@inject HttpClient Http
+
+@if (Variant == "dark")
+{
+    <div class="lang-picker lang-dark" role="group" aria-label="@T("Common.Language")">
+        @foreach (var lang in LanguageService.Supported)
+        {
+            var l = lang;
+            var active = l.Code == L.CurrentCode;
+            <button type="button" class="lang-btn @(active ? "active" : "")" aria-pressed="@(active ? "true" : "false")"
+                    title="@l.Name" @onclick="() => Select(l.Code)">
+                <span class="lang-code">@ShortLabel(l)</span>
+            </button>
+        }
+    </div>
+}
+else
+{
+    <div class="lang-dd">
+        <button type="button" class="lang-dd-btn" aria-haspopup="listbox" aria-expanded="@(_open ? "true" : "false")"
+                title="@T("Common.Language")" @onclick="() => _open = !_open">
+            <svg class="lang-globe" viewBox="0 0 24 24" aria-hidden="true">
+                <circle cx="12" cy="12" r="9" /><path d="M3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9s-1.3 6.4-3.8 9c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z" />
+            </svg>
+            <span>@L.Current.Name</span>
+            <svg class="lang-caret" viewBox="0 0 20 20" aria-hidden="true"><path d="M5 8l5 5 5-5" /></svg>
+        </button>
+        @if (_open)
+        {
+            <div class="lang-dd-backdrop" @onclick="() => _open = false"></div>
+            <ul class="lang-dd-menu" role="listbox">
+                @foreach (var lang in LanguageService.Supported)
+                {
+                    var l = lang;
+                    var active = l.Code == L.CurrentCode;
+                    <li role="option" aria-selected="@(active ? "true" : "false")"
+                        class="lang-dd-item @(active ? "active" : "")" @onclick="() => Select(l.Code)">
+                        <span class="lang-code">@ShortLabel(l)</span>
+                        <span>@l.Name</span>
+                    </li>
+                }
+            </ul>
+        }
+    </div>
+}
+
+@code {
+    [Parameter] public string Variant { get; set; } = "light";
+    [Parameter] public bool SaveToAccount { get; set; }
+    /// <summary>Gọi sau khi người dùng chủ động chọn ngôn ngữ (màn Login dùng để biết có gửi kèm khi đăng nhập).</summary>
+    [Parameter] public EventCallback<string> OnSelected { get; set; }
+
+    private bool _open;
+
+    private static string ShortLabel(LanguageService.LanguageInfo l) => l.Code == "zh" ? "中文" : l.Code.ToUpperInvariant();
+
+    private async Task Select(string code)
+    {
+        _open = false;
+        await L.SetLanguageAsync(code);
+        if (SaveToAccount)
+        {
+            try { await Http.PutAsJsonAsync("api/me/language", new { language = L.CurrentCode }); }
+            catch (Exception ex) { Console.WriteLine($"[i18n] Save language failed: {ex.Message}"); }
+        }
+        await OnSelected.InvokeAsync(L.CurrentCode);
+    }
+}

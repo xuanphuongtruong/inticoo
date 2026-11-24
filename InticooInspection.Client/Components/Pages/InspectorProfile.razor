@@ -1,5 +1,5 @@
-@page "/inspectors"
-@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Admin")]
+﻿@page "/inspectors"
+@attribute [Microsoft.AspNetCore.Authorization.Authorize]
 @using System.Net.Http.Json
 @using System.Net.Http.Headers
 @using Microsoft.AspNetCore.Components.Forms
@@ -10,61 +10,140 @@
 @using InticooInspection.Client.Helpers
 @inject WaitingService Waiting
 @inject IJSRuntime JS
+@inject PageAccessService PageAccess
 @using InticooInspection.Client.Shared
+@inherits LocalizedComponentBase
 
-<PageTitle>Inspector Profile - Inticoo</PageTitle>
+<PageTitle>@T("InspectorProfile.InspectorProfileInticoo")</PageTitle>
 
-<div class="top-bar">
+<div class="lp-head">
     <div class="title-block">
-        <h1 class="page-title">Inspector Profile</h1>
-        <span class="page-sub">Manage inspector profiles and details</span>
+        <h1 class="page-title">@T("InspectorProfile.InspectorProfile")</h1>
+        <span class="page-sub">@T("InspectorProfile.ManageInspectorProfilesAndDetails")</span>
     </div>
-    <div class="tb-divider"></div>
+</div>
+<div class="top-bar lp-filters @(_fOpen ? "fopen" : "")">
     <div class="search-wrap">
         <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5">
             <circle cx="9" cy="9" r="5.5"/><path d="M15 15l-2.5-2.5" stroke-linecap="round"/>
         </svg>
-        <input class="search-input" type="text" placeholder="Search by name, inspector ID, email, mobile..."
+        <input class="search-input" type="text" placeholder="@T("InspectorProfile.SearchByNameInspectorIDEmail")"
                @bind="_search" @bind:event="oninput" @onkeyup="OnSearchKey" />
     </div>
-    <span class="total-count">@_total inspectors</span>
-    <ImportExcelButton ApiBase="api/users" OnImported="() => LoadPage(_page)" />
-    <button class="btn-new" @onclick="async () => await OpenCreate()">
-        <svg width="13" height="13" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M10 4v12M4 10h12"/></svg>
-        New Inspector
-    </button>
+    <button type="button" class="lp-filter-toggle @(_fOpen ? "on" : "")" @onclick="() => _fOpen = !_fOpen" aria-label="@T("Common.Filters")"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5h18l-7 8v6l-4 2v-8z"/></svg></button>
+    <div class="lp-selects">
+        <select class="filter-select" value="@_statusFilter" @onchange="OnStatusFilter" title="@T("InspectorProfile.FilterByStatus")">
+            <option value="">@T("Common.AllStatus")</option>
+            <option value="true">@T("Common.Active")</option>
+            <option value="false">@T("Common.Inactive")</option>
+        </select>
+        <select class="filter-select" @bind="_category" @bind:after="() => LoadPage(1)">
+            <option value="">@T("Common.AllCategories")</option>
+            @foreach (var c in _catOpts) { <option value="@c">@TE("Opt", c)</option> }
+        </select>
+        <select class="filter-select" @bind="_country" @bind:after="() => LoadPage(1)">
+            <option value="">@T("Common.AllCountries")</option>
+            @foreach (var c in _countryOpts) { <option value="@c">@c</option> }
+        </select>
+        <button type="button" class="lp-btn-reset" @onclick="ClearFilters">@T("Common.Clear")</button>
+    </div>
+    <span class="total-count">@T("InspectorProfile.Inspectors", _total)</span>
+    @if (PageAccess.IsAdmin)
+    {
+        <ImportExcelButton ApiBase="api/users" OnImported="() => LoadPage(_page)" />
+        <button class="btn-new" @onclick="async () => await OpenCreate()">
+            <svg width="13" height="13" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M10 4v12M4 10h12"/></svg>
+            @T("InspectorProfile.NewInspector")
+        </button>
+    }
+</div>
+
+<div class="m-kpis">
+    <div class="m-kpi"><span class="m-kpi-ico k-blue"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M16 4.5a3.5 3.5 0 0 1 0 7M18 14a6 6 0 0 1 3.5 5.5"/></svg></span><b>@(_cntActive + _cntInactive)</b><small>@T("Customers.KpiTotal")</small></div>
+    <div class="m-kpi"><span class="m-kpi-ico k-green"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M8 12l3 3 5-6"/></svg></span><b>@(_cntActive)</b><small>@T("Common.Active")</small></div>
+    <div class="m-kpi"><span class="m-kpi-ico k-orange"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M10 9v6M14 9v6"/></svg></span><b class="red">@(_cntInactive)</b><small>@T("Common.Inactive")</small></div>
+    <div class="m-kpi lp-kpi-extra"><span class="m-kpi-ico k-blue"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M20 12l-8 8-9-9V3h8z"/><circle cx="7.5" cy="7.5" r="1.2"/></svg></span><b>@_catOpts.Count</b><small>@T("Vendors.Categories")</small></div>
+</div>
+<div class="m-chips">
+    <button type="button" class="@(_statusFilter == "" ? "on" : "")" @onclick='() => SetStatusChip("")'>@T("Customers.ChipAll") (@(_cntActive + _cntInactive))</button>
+    <button type="button" class="@(_statusFilter == "true" ? "on" : "")" @onclick='() => SetStatusChip("true")'>@T("Common.Active") (@_cntActive)</button>
+    <button type="button" class="@(_statusFilter == "false" ? "on" : "")" @onclick='() => SetStatusChip("false")'>@T("Common.Inactive") (@_cntInactive)</button>
 </div>
 
 @if (_loading)
 {
-    <div class="loading-wrap"><div class="spinner"></div><span>Loading...</span></div>
+    <div class="loading-wrap"><div class="spinner"></div><span>@T("Common.Loading")</span></div>
 }
 else if (_users.Count == 0)
 {
-    <div class="empty-state"><p>No inspectors found.</p></div>
+    <div class="empty-state"><p>@T("InspectorProfile.NoInspectorsFound")</p></div>
 }
 else
 {
+    <div class="m-cards">
+        @foreach (var mu in _users)
+        {
+            var u = mu;
+            var uname = string.IsNullOrEmpty(u.FullName) ? u.Username : u.FullName;
+            <div class="m-card">
+                <div class="m-card-top">
+                    @if (!string.IsNullOrEmpty(u.PhotoUrl))
+                    {
+                        <img class="m-thumb round" src="@MediaUrl.Resolve(u.PhotoUrl, Http.BaseAddress?.ToString())" alt="@uname" />
+                    }
+                    else
+                    {
+                        <div class="m-thumb round m-initials">@GetInitials(uname)</div>
+                    }
+                    <div class="m-card-main">
+                        <div class="m-card-head">
+                            <div class="m-card-name">@uname</div>
+                            <span class="m-status @(u.IsActive ? "ok" : "off")">@(u.IsActive ? T("Common.Active") : T("Common.Inactive"))</span>
+                        </div>
+                        <div class="m-card-code">@(string.IsNullOrEmpty(u.InspectorId) ? "—" : u.InspectorId)</div>
+                    </div>
+                </div>
+                @if (!string.IsNullOrEmpty(u.Category))
+                {
+                    <span class="m-cat">@TE("Opt", u.Category)</span>
+                }
+                <div class="m-card-rows">
+                    @if (!string.IsNullOrEmpty(u.City) || !string.IsNullOrEmpty(u.Country))
+                    {
+                        <div><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 21s7-6 7-11a7 7 0 0 0-14 0c0 5 7 11 7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>@string.Join(", ", new[] { u.City, u.Country }.Where(x => !string.IsNullOrEmpty(x)))</div>
+                    }
+                    @if (!string.IsNullOrEmpty(u.Mobile))
+                    {
+                        <div><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2z"/></svg>@u.Mobile</div>
+                    }
+                    <div><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>@L.Date(u.CreatedAt, "d MMM yyyy")</div>
+                </div>
+                <div class="m-card-actions">
+                    <button type="button" class="m-btn-outline" @onclick="() => OpenDetail(u)">@T("Common.View")</button>
+                    @if (PageAccess.IsAdmin)
+                    {
+                        <button type="button" class="m-btn-fill" @onclick="async () => await OpenEdit(u)">@T("Common.Edit")</button>
+                    }
+                </div>
+            </div>
+        }
+    </div>
+
     <div class="table-wrap">
         <table class="ptable">
             <thead>
-                <tr class="thead-top">
-                    <th rowspan="2" class="tc th-y th-no">No</th>
-                    <th rowspan="2" class="tc th-y">Profile Photo</th>
-                    <th rowspan="2" class="tc th-y">Inspector Name</th>
-                    <th rowspan="2" class="tc th-y">Inspector ID</th>
-                    <th rowspan="2" class="tc th-y">Category</th>
-                    <th colspan="2" class="tc th-y">Home Address</th>
-                    <th rowspan="2" class="tc th-y">Mobile</th>
-                    <th rowspan="2" class="tc th-y">Date Joined</th>
-                    <th rowspan="2" class="tc th-y">Status</th>
-                    <th rowspan="2" class="tc th-y">Personal Profile</th>
-                    <th rowspan="2" class="tc th-y">Full Detail</th>
-                    <th rowspan="2" class="tc th-y">Actions</th>
-                </tr>
-                <tr class="thead-sub">
-                    <th class="tc th-y">City</th>
-                    <th class="tc th-y th-country">Country</th>
+                <tr>
+                    <th class="tc th-y th-chk"><input type="checkbox" checked="@(_users.Count > 0 && _users.All(x => _sel.Contains(x.Id)))" @onchange="e => ToggleAll((bool)(e.Value ?? false))" /></th>
+                    <th class="tc th-y th-no">No</th>
+                    <th class="tc th-y">@T("InspectorProfile.ProfilePhoto")</th>
+                    <th class="tc th-y">@T("Common.InspectorName")</th>
+                    <th class="tc th-y">@T("Common.InspectorID")</th>
+                    <th class="tc th-y">@T("Common.Category")</th>
+                    <th class="tc th-y">@T("InspectorProfile.Location")</th>
+                    <th class="tc th-y">@T("Common.Mobile")</th>
+                    <th class="tc th-y">@T("InspectorProfile.DateJoined")</th>
+                    <th class="tc th-y">@T("Common.Status")</th>
+                    <th class="tc th-y">@T("Common.Actions")</th>
                 </tr>
             </thead>
             <tbody>
@@ -74,6 +153,7 @@ else
                     var u = user;
                     rowNo++;
                     <tr class="table-row @(rowNo % 2 == 0 ? "tr-alt" : "")">
+                        <td class="tc"><input type="checkbox" checked="@_sel.Contains(u.Id)" @onchange="e => ToggleOne(u.Id, (bool)(e.Value ?? false))" /></td>
                         <td class="td-c td-no">@rowNo</td>
                         <td class="tc">
                             @if (!string.IsNullOrEmpty(u.PhotoUrl))
@@ -97,42 +177,34 @@ else
                         <td class="tc">
                             @if (!string.IsNullOrEmpty(u.Category))
                             {
-                                <span class="cat-badge">@u.Category</span>
+                                <span class="cat-badge">@TE("Opt", u.Category)</span>
                             }
                             else { <span class="dim">—</span> }
                         </td>
-                        <td class="tc dim sm">@(string.IsNullOrEmpty(u.City)    ? "—" : u.City)</td>
-                        <td class="tc dim sm td-country">@(string.IsNullOrEmpty(u.Country) ? "—" : u.Country)</td>
+                        <td class="tc dim sm">@(string.Join(", ", new[] { u.City, u.Country }.Where(x => !string.IsNullOrEmpty(x))) is { Length: > 0 } loc ? loc : "—")</td>
                         <td class="tc dim sm">@(string.IsNullOrEmpty(u.Mobile)  ? "—" : u.Mobile)</td>
-                        <td class="td-c dim sm">@u.CreatedAt.ToString("dd/MMM/yyyy")</td>
+                        <td class="td-c dim sm">@L.Date(u.CreatedAt, "dd/MMM/yyyy")</td>
                         <td class="tc">
                             <button class="status-toggle @(u.IsActive ? "s-active" : "s-inactive")"
+                                    disabled="@(!PageAccess.IsAdmin)"
                                     @onclick="() => ToggleActive(u)">
-                                @(u.IsActive ? "Active" : "Inactive")
-                            </button>
-                        </td>
-                        <td class="tc">
-                            @if (!string.IsNullOrEmpty(u.CvUrl))
-                            {
-                                var fullCvUrl = MediaUrl.Resolve(u.CvUrl, Http.BaseAddress?.ToString());
-                                <a class="cv-link" href="@fullCvUrl" target="_blank">&#128196; CV</a>
-                            }
-                            else { <span class="dim sm">—</span> }
-                        </td>
-                        <td class="tc">
-                            <button class="action-btn view" @onclick="() => OpenDetail(u)" title="View Full Detail">
-                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-                                View
+                                @(u.IsActive ? T("Common.Active") : T("Common.Inactive"))
                             </button>
                         </td>
                         <td class="tc">
                             <div class="action-btns">
-                                <button class="bico bedit" @onclick="async () => await OpenEdit(u)" title="Edit">
-                                    <svg width="13" height="13" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 2l4 4-10 10H4v-4L14 2z" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                                <button class="bico bview" @onclick="() => OpenDetail(u)" title="@T("InspectorProfile.ViewFullDetail")">
+                                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
                                 </button>
-                                <button class="bico bdel" @onclick="() => ConfirmDelete(u)" title="Delete">
-                                    <svg width="13" height="13" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 6h14M8 6V4h4v2M5 6l1 11h8l1-11" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                                </button>
+                                @if (PageAccess.IsAdmin)
+                                {
+                                    <button class="bico bedit" @onclick="async () => await OpenEdit(u)" title="@T("Common.Edit")">
+                                        <svg width="13" height="13" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 2l4 4-10 10H4v-4L14 2z" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                                    </button>
+                                    <button class="bico bdel" @onclick="() => ConfirmDelete(u)" title="@T("Common.Delete")">
+                                        <svg width="13" height="13" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 6h14M8 6V4h4v2M5 6l1 11h8l1-11" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                                    </button>
+                                }
                             </div>
                         </td>
                     </tr>
@@ -141,14 +213,7 @@ else
         </table>
     </div>
 
-    @if (_total > _pageSize)
-    {
-        <div class="pagination">
-            <button class="page-btn" disabled="@(_page == 1)" @onclick="PrevPage">&#8592; Prev</button>
-            <span class="page-info">Page @_page of @TotalPages()</span>
-            <button class="page-btn" disabled="@(_page >= TotalPages())" @onclick="NextPage">Next &#8594;</button>
-        </div>
-    }
+    <ListPager Total="_total" Page="_page" PageSize="_pageSize" Noun="@T("Pager.Inspectors")" OnPage="LoadPage" OnPageSize="SetPageSize" />
 }
 
 @* ── Create / Edit Modal ── *@
@@ -157,7 +222,7 @@ else
     <div class="modal-overlay" @onclick="CloseModal">
         <div class="modal-card" @onclick:stopPropagation="true">
             <div class="modal-header">
-                <h2>@(_editId == null ? "New Inspector" : "Edit Inspector")</h2>
+                <h2>@(_editId == null ? T("InspectorProfile.NewInspector") : T("InspectorProfile.EditInspector"))</h2>
                 <button class="modal-close" @onclick="CloseModal">&#x2715;</button>
             </div>
 
@@ -166,47 +231,42 @@ else
                 <div class="error-alert">@_formError</div>
             }
 
+            <div class="pf-cols">
+            <div class="pf-card2">
             @* ── Status ── *@
             <div class="frow">
                 <div class="fcell">
-                    <label class="flabel">Status</label>
-                    <label class="check-label" style="margin-top:6px;">
-                        <input type="checkbox" @bind="_formIsActive" />
-                        <span>@(_formIsActive ? "Active" : "Inactive")</span>
-                    </label>
-                </div>
-                <div class="fcell">
-                    <label class="flabel">Login Account</label>
+                    <label class="flabel">@T("Common.LoginAccount")</label>
                     <label class="check-label" style="margin-top:6px;">
                         <input type="checkbox" @bind="_formShowInLoginAccount" />
-                        <span>Show in Login Account</span>
+                        <span>@T("InspectorProfile.ShowInLoginAccount")</span>
                     </label>
                 </div>
             </div>
 
             @* ── Section: Inspector Details ── *@
-            <div class="fsection-title">Inspector Details</div>
+            <div class="fsection-title">@T("InspectorProfile.InspectorDetails")</div>
             <div class="frow">
                 <div class="fcell">
-                    <label class="flabel">Inspector ID</label>
+                    <label class="flabel">@T("Common.InspectorID")</label>
                     <input class="form-input" type="text" readonly
                            value="@_formInspectorId"
-                           placeholder="Auto-generated" />
+                           placeholder="@T("InspectorProfile.AutoGenerated")" />
                 </div>
                 <div class="fcell">
-                    <label class="flabel">Short Name</label>
-                    <input class="form-input" type="text" placeholder="Enter short name"
+                    <label class="flabel">@T("Common.ShortName")</label>
+                    <input class="form-input" type="text" placeholder="@T("InspectorProfile.EnterShortName")"
                            @bind="_formShortName" @bind:event="oninput" />
                 </div>
             </div>
             <div class="frow">
                 <div class="fcell">
-                    <label class="flabel">Full Name <span class="req">*</span></label>
-                    <input class="form-input" type="text" placeholder="Enter full name"
+                    <label class="flabel">@T("InspectorProfile.FullName") <span class="req">*</span></label>
+                    <input class="form-input" type="text" placeholder="@T("InspectorProfile.EnterFullName")"
                            @bind="_formFullName" @bind:event="oninput" />
                 </div>
                 <div class="fcell">
-                    <label class="flabel">Date of Birth</label>
+                    <label class="flabel">@T("InspectorProfile.DateOfBirth")</label>
                     <div class="dob-wrap">
                         <input class="form-input dob-text"
                                type="text"
@@ -216,7 +276,7 @@ else
                                value="@_formDateOfBirthText"
                                @oninput="OnDobTextInput"
                                @onblur="OnDobTextBlur" />
-                        <button type="button" class="dob-icon-btn" title="Pick date"
+                        <button type="button" class="dob-icon-btn" title="@T("InspectorProfile.PickDate")"
                                 @onclick="OpenDobPicker">
                             <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
                                  stroke="currentColor" stroke-width="2"
@@ -237,26 +297,26 @@ else
             </div>
             <div class="frow">
                 <div class="fcell">
-                    <label class="flabel">Gender</label>
+                    <label class="flabel">@T("InspectorProfile.Gender")</label>
                     <div class="btype-group">
                         @foreach (var g in new[] { "Male", "Female", "Other" })
                         {
                             var gv = g;
                             <label class="btype-label @(_formGender == gv ? "btype-active" : "")"
-                                   @onclick="() => _formGender = gv">@gv</label>
+                                   @onclick="() => _formGender = gv">@TE("Opt", gv)</label>
                         }
                     </div>
                 </div>
                 <div class="fcell">
-                    <label class="flabel">Nationality</label>
+                    <label class="flabel">@T("InspectorProfile.Nationality")</label>
                     @if (_loadingCountries)
                     {
-                        <div class="form-input" style="color:#9baac8;font-style:italic;">Loading...</div>
+                        <div class="form-input" style="color:#9baac8;font-style:italic;">@T("Common.Loading")</div>
                     }
                     else
                     {
                         <select class="form-input" @bind="_formNationality">
-                            <option value="">-- Select Nationality --</option>
+                            <option value="">@T("InspectorProfile.SelectNationality")</option>
                             @foreach (var c in _countries)
                             {
                                 <option value="@c.Name">@c.Name</option>
@@ -267,116 +327,116 @@ else
             </div>
             <div class="frow">
                 <div class="fcell">
-                    <label class="flabel">Type of Identification</label>
+                    <label class="flabel">@T("InspectorProfile.TypeOfIdentification")</label>
                     <div class="frow-inline" style="gap:8px; display:flex;">
                         <div class="btype-group" style="flex:0 0 auto;">
                             @foreach (var t in new[] { "ID", "Passport" })
                             {
                                 var tv = t;
                                 <label class="btype-label @(_formIdType == tv ? "btype-active" : "")"
-                                       @onclick="() => _formIdType = tv">@tv</label>
+                                       @onclick="() => _formIdType = tv">@TE("Opt", tv)</label>
                             }
                         </div>
-                        <input class="form-input" type="text" placeholder="Number"
+                        <input class="form-input" type="text" placeholder="@T("InspectorProfile.Number")"
                                style="flex:1;"
                                @bind="_formIdNumber" @bind:event="oninput" />
                     </div>
                 </div>
                 <div class="fcell">
-                    <label class="flabel">Category</label>
+                    <label class="flabel">@T("Common.Category")</label>
                     <select class="form-input" @bind="_formCategory">
-                        <option value="">-- Select Category --</option>
-                        <option value="Furniture">Furniture</option>
-                        <option value="Housewares">Housewares</option>
-                        <option value="Appliances">Appliances</option>
-                        <option value="Electronics">Electronics</option>
-                        <option value="Tools &amp; Hardware">Tools &amp; Hardware</option>
-                        <option value="Sporting Goods">Sporting Goods</option>
-                        <option value="Toys">Toys</option>
-                        <option value="Automotive">Automotive</option>
-                        <option value="Home Improvement">Home Improvement</option>
-                        <option value="Garden &amp; Outdoor">Garden &amp; Outdoor</option>
-                        <option value="Musical Instruments">Musical Instruments</option>
-                        <option value="Office Equipment">Office Equipment</option>
-                        <option value="Others">Others</option>
+                        <option value="">@T("InspectorProfile.SelectCategory")</option>
+                        @foreach (var c in Taxonomy.MainCategories) { <option value="@c">@TE("Opt", c)</option> }
                     </select>
                 </div>
             </div>
             <div class="frow">
                 <div class="fcell">
-                    <label class="flabel">Inspection Start Year</label>
-                    <input class="form-input" type="number" placeholder="e.g. 2015" min="1990" max="2099"
+                    <label class="flabel">@T("InspectorProfile.InspectionStartYear")</label>
+                    <input class="form-input" type="number" placeholder="@T("InspectorProfile.EG2015")" min="1990" max="2099"
                            value="@_formInspectionStartYear"
                            @onchange="e => _formInspectionStartYear = int.TryParse(e.Value?.ToString(), out var y) ? y : null" />
                 </div>
                 <div class="fcell">
-                    <label class="flabel">Mobile</label>
-                    <input class="form-input" type="tel" placeholder="Enter mobile number"
-                           @bind="_formMobile" @bind:event="oninput" />
+                    <label class="flabel">@T("Common.Mobile")</label>
+                    <div class="ip-phone">
+                        <select class="form-input ip-dial" value="@(CountryDialCodes.CurrentCode(_formMobile) ?? "")"
+                                @onchange="e => _formMobile = CountryDialCodes.ApplyCode(_formMobile, e.Value?.ToString())">
+                            <option value="">+?</option>
+                            @foreach (var dc in CountryDialCodes.All())
+                            {
+                                <option value="@dc.Code">@dc.Label</option>
+                            }
+                        </select>
+                        <input class="form-input" type="tel" placeholder="@T("Common.EnterMobileNumber")"
+                               @bind="_formMobile" @bind:event="oninput" />
+                    </div>
                 </div>
             </div>
             <div class="frow">
                 <div class="fcell fcell-full">
                     <label class="flabel">Email</label>
-                    <input class="form-input" type="email" placeholder="Enter email"
+                    <input class="form-input" type="email" placeholder="@T("InspectorProfile.EnterEmail")"
                            @bind="_formEmail" @bind:event="oninput" />
                 </div>
             </div>
             <div class="frow">
                 <div class="fcell fcell-full">
-                    <label class="flabel">Language</label>
+                    <label class="flabel">@T("Common.Language")</label>
                     <div class="btype-group" style="flex-wrap:wrap;">
-                        @foreach (var lang in new[] { "English","Chinese","Vietnamese","Indonesian","Thai","Filipino","Malay","Hindi","Arabic","Bengali","Russian","Japanese","Korean" })
+                        @foreach (var lang in Taxonomy.Languages)
                         {
                             var lv = lang;
                             <label class="btype-label @(_formLanguages.Contains(lv) ? "btype-active" : "")"
-                                   @onclick="() => ToggleLanguage(lv)">@lv</label>
+                                   @onclick="() => ToggleLanguage(lv)">@(_formLanguages.Contains(lv) ? "✓ " : "")@TE("Opt", lv)</label>
                         }
                     </div>
                 </div>
             </div>
 
+            </div>
+            <div class="pf-card2">
             @* ── Section: Inspector Address ── *@
-            <div class="fsection-title">Inspector Address</div>
+            <div class="fsection-title">@T("InspectorProfile.InspectorAddress")</div>
             <div class="frow">
                 <div class="fcell fcell-full">
-                    <label class="flabel">Address 1</label>
-                    <input class="form-input" type="text" placeholder="Street address line 1"
+                    <label class="flabel">@T("Common.Address1")</label>
+                    <input class="form-input" type="text" placeholder="@T("Common.StreetAddressLine1")"
                            @bind="_formAddress1" @bind:event="oninput" />
                 </div>
             </div>
             <div class="frow">
                 <div class="fcell fcell-full">
-                    <label class="flabel">Address 2</label>
-                    <input class="form-input" type="text" placeholder="Street address line 2 (optional)"
+                    <label class="flabel">@T("Common.Address2")</label>
+                    <input class="form-input" type="text" placeholder="@T("InspectorProfile.StreetAddressLine2Optional")"
                            @bind="_formAddress2" @bind:event="oninput" />
                 </div>
             </div>
             <div class="frow">
                 <div class="fcell">
-                    <label class="flabel">City</label>
-                    <input class="form-input" type="text" placeholder="Enter city"
+                    <label class="flabel">@T("Common.City")</label>
+                    <input class="form-input" type="text" placeholder="@T("Common.EnterCity")"
                            @bind="_formCity" @bind:event="oninput" />
                 </div>
                 <div class="fcell">
-                    <label class="flabel">State / Province</label>
-                    <input class="form-input" type="text" placeholder="State or province"
+                    <label class="flabel">@T("Common.StateProvince")</label>
+                    <input class="form-input" type="text" placeholder="@T("InspectorProfile.StateOrProvince")"
                            @bind="_formState" @bind:event="oninput" />
                 </div>
             </div>
             <div class="frow">
                 <div class="fcell">
-                    <label class="flabel">Country</label>
+                    <label class="flabel">@T("Common.Country")</label>
                     @if (_loadingCountries)
                     {
-                        <div class="form-input" style="color:#9baac8;font-style:italic;">Loading...</div>
+                        <div class="form-input" style="color:#9baac8;font-style:italic;">@T("Common.Loading")</div>
                     }
                     else
                     {
                         <select class="form-input"
                                 value="@_formCountry"
                                 @onchange="OnCountryChanged">
-                            <option value="">-- Select Country --</option>
+                            <option value="">@T("Common.SelectCountry")</option>
                             @foreach (var c in _countries)
                             {
                                 <option value="@c.Name">@c.Name</option>
@@ -385,17 +445,22 @@ else
                     }
                 </div>
                 <div class="fcell">
-                    <label class="flabel">Postal / ZIP</label>
-                    <input class="form-input" type="text" placeholder="Postal code"
+                    <label class="flabel">@T("Common.PostalZIP")</label>
+                    <input class="form-input" type="text" placeholder="@T("InspectorProfile.PostalCode2")"
                            @bind="_formPostalCode" @bind:event="oninput" />
                 </div>
             </div>
 
+            </div>
+            </div>
+
+            <div class="pf-cols">
+            <div class="pf-card2">
             @* ── Section: Profile Photo ── *@
             <div class="fsection-title">
-                Profile Photo
+                @T("InspectorProfile.ProfilePhoto")
                 @if (_editId == null) { <span class="req">*</span> }
-                else { <span class="label-hint">(leave blank to keep existing)</span> }
+                else { <span class="label-hint">@T("InspectorProfile.LeaveBlankToKeepExisting")</span> }
             </div>
             <div class="frow">
                 <div class="fcell fcell-full">
@@ -415,10 +480,10 @@ else
                         {
                             var fullPhotoUrl = MediaUrl.Resolve(_existingPhotoUrl, Http.BaseAddress?.ToString());
                             <div class="photo-existing-wrap">
-                                <img class="photo-existing-thumb" src="@fullPhotoUrl" alt="Profile Photo" />
+                                <img class="photo-existing-thumb" src="@fullPhotoUrl" alt="@T("InspectorProfile.ProfilePhoto")" />
                                 <div class="photo-preview-info">
-                                    <span class="photo-file-name">Current photo on file</span>
-                                    <label class="cv-replace-btn" for="photoFileInput">Replace</label>
+                                    <span class="photo-file-name">@T("InspectorProfile.CurrentPhotoOnFile")</span>
+                                    <label class="cv-replace-btn" for="photoFileInput">@T("InspectorProfile.Replace")</label>
                                 </div>
                             </div>
                         }
@@ -426,8 +491,8 @@ else
                         {
                             <div class="photo-placeholder">
                                 <span class="photo-upload-icon">&#128247;</span>
-                                <span class="photo-upload-text">Drag &amp; drop or <label class="cv-browse-link" for="photoFileInput">browse</label></span>
-                                <span class="photo-upload-hint">JPG, PNG, WEBP — max 5 MB</span>
+                                <span class="photo-upload-text">@T("InspectorProfile.DragDropOr") <label class="cv-browse-link" for="photoFileInput">@T("InspectorProfile.Browse")</label></span>
+                                <span class="photo-upload-hint">@T("InspectorProfile.JPGPNGWEBPMax5MB")</span>
                             </div>
                         }
                         <InputFile id="photoFileInput" OnChange="OnPhotoFileSelected" accept=".jpg,.jpeg,.png,.webp"
@@ -440,11 +505,13 @@ else
                 </div>
             </div>
 
+            </div>
+            <div class="pf-card2">
             @* ── Section: Personal Profile / CV ── *@
             <div class="fsection-title">
-                Personal Profile (CV)
+                @T("InspectorProfile.PersonalProfileCV")
                 @if (_editId == null) { <span class="req">*</span> }
-                else { <span class="label-hint">(leave blank to keep existing)</span> }
+                else { <span class="label-hint">@T("InspectorProfile.LeaveBlankToKeepExisting")</span> }
             </div>
             <div class="form-group">
                 <div class="cv-upload-box @(_cvDragOver ? "drag-over" : "")"
@@ -471,18 +538,18 @@ else
                         <div class="cv-existing">
                             <span class="cv-file-icon">&#128196;</span>
                             <div class="cv-file-info">
-                                <span class="cv-file-name">Current CV on file</span>
-                                <a class="cv-view-link" href="@fullExistingUrl" target="_blank">View &#8599;</a>
+                                <span class="cv-file-name">@T("InspectorProfile.CurrentCVOnFile")</span>
+                                <a class="cv-view-link" href="@fullExistingUrl" target="_blank">@T("InspectorProfile.View")</a>
                             </div>
-                            <label class="cv-replace-btn" for="cvFileInput">Replace</label>
+                            <label class="cv-replace-btn" for="cvFileInput">@T("InspectorProfile.Replace")</label>
                         </div>
                     }
                     else
                     {
                         <div class="cv-placeholder">
                             <span class="cv-upload-icon">&#8613;</span>
-                            <span class="cv-upload-text">Drag &amp; drop or <label class="cv-browse-link" for="cvFileInput">browse</label></span>
-                            <span class="cv-upload-hint">PDF, DOC, DOCX — max 10 MB</span>
+                            <span class="cv-upload-text">@T("InspectorProfile.DragDropOr") <label class="cv-browse-link" for="cvFileInput">@T("InspectorProfile.Browse")</label></span>
+                            <span class="cv-upload-hint">@T("InspectorProfile.PDFDOCDOCXMax10MB")</span>
                         </div>
                     }
 
@@ -495,11 +562,21 @@ else
                 }
             </div>
 
+            @* ── Account Status: cùng vị trí (cuối form) ở Customer/Vendor/Inspector/Product ── *@
+            <div class="fsection-title" style="margin-top:16px;">@T("Common.AccountStatus")</div>
+            <div class="btype-group" style="padding:8px 0 4px;">
+                    <label class="btype-label @(_formIsActive ? "btype-active" : "")" @onclick="() => _formIsActive = true">@T("Common.Active")</label>
+                    <label class="btype-label @(!_formIsActive ? "btype-active" : "")" @onclick="() => _formIsActive = false">@T("Common.Inactive")</label>
+                    </div>
+
+            </div>
+            </div>
+
             <div class="modal-footer">
-                <button class="btn-cancel" @onclick="CloseModal">Cancel</button>
+                <button class="btn-cancel" @onclick="CloseModal">@T("Common.Cancel")</button>
                 <button class="btn-submit" @onclick="SaveInspector" disabled="@_saving">
                     @if (_saving) { <span class="spinner"></span> }
-                    else { <span>@(_editId == null ? "Create Inspector" : "Save Changes")</span> }
+                    else { <span>@(_editId == null ? T("InspectorProfile.CreateInspector") : T("InspectorProfile.SaveChanges"))</span> }
                 </button>
             </div>
         </div>
@@ -511,12 +588,12 @@ else
     <div class="modal-overlay" @onclick="() => _deleteUser = null">
         <div class="modal-card confirm-card" @onclick:stopPropagation="true">
             <div class="confirm-icon">&#9888;</div>
-            <h2>Delete Inspector</h2>
-            <p>Are you sure you want to delete <strong>@(string.IsNullOrEmpty(_deleteUser.FullName) ? _deleteUser.Username : _deleteUser.FullName)</strong>?<br/>This action cannot be undone.</p>
+            <h2>@T("InspectorProfile.DeleteInspector")</h2>
+            <p>@T("InspectorProfile.AreYouSureYouWantTo") <strong>@(string.IsNullOrEmpty(_deleteUser.FullName) ? _deleteUser.Username : _deleteUser.FullName)</strong>?<br/>@T("InspectorProfile.ThisActionCannotBeUndone")</p>
             <div class="modal-footer">
-                <button class="btn-cancel" @onclick="() => _deleteUser = null">Cancel</button>
+                <button class="btn-cancel" @onclick="() => _deleteUser = null">@T("Common.Cancel")</button>
                 <button class="btn-delete" @onclick="DeleteInspector" disabled="@_saving">
-                    @if (_saving) { <span class="spinner"></span> } else { <span>Delete</span> }
+                    @if (_saving) { <span class="spinner"></span> } else { <span>@T("Common.Delete")</span> }
                 </button>
             </div>
         </div>
@@ -528,76 +605,78 @@ else
 {
     var d = _detailUser;
     <div class="modal-overlay" @onclick="CloseDetail">
-        <div class="modal-card" @onclick:stopPropagation="true">
+        <div class="modal-card modal-detail" @onclick:stopPropagation="true">
             <div class="modal-header">
-                <h2>Inspector Full Detail</h2>
+                <h2>@T("InspectorProfile.InspectorFullDetail")</h2>
                 <button class="modal-close" @onclick="CloseDetail">&#x2715;</button>
             </div>
 
-            <div class="detail-grid">
-                <div class="detail-section">
-                    <div class="detail-section-title">Identity</div>
-                    <div class="detail-row"><span>Inspector ID</span><span>@(string.IsNullOrEmpty(d.InspectorId) ? "—" : d.InspectorId)</span></div>
-                    <div class="detail-row"><span>Full Name</span><span>@(string.IsNullOrEmpty(d.FullName) ? d.Username : d.FullName)</span></div>
-                    <div class="detail-row"><span>Short Name</span><span>@(string.IsNullOrEmpty(d.ShortName) ? "—" : d.ShortName)</span></div>
-                    <div class="detail-row"><span>Date of Birth</span><span>@(d.DateOfBirth.HasValue ? d.DateOfBirth.Value.ToString("dd/MM/yyyy") : "—")</span></div>
-                    <div class="detail-row"><span>Gender</span><span>@(string.IsNullOrEmpty(d.Gender) ? "—" : d.Gender)</span></div>
-                    <div class="detail-row"><span>Nationality</span><span>@(string.IsNullOrEmpty(d.Nationality) ? "—" : d.Nationality)</span></div>
-                    <div class="detail-row"><span>@(string.IsNullOrEmpty(d.IdType) ? "ID" : d.IdType)</span><span>@(string.IsNullOrEmpty(d.IdNumber) ? "—" : d.IdNumber)</span></div>
+            <div class="vc-grid">
+                <div class="vc-col">
+                    <ViewSection Title="@T("InspectorProfile.Identity")" Icon="building">
+                        <ViewRow Label="@T("Common.InspectorID")" Value="@d.InspectorId" />
+                        <ViewRow Label="@T("InspectorProfile.FullName")" Value="@(string.IsNullOrEmpty(d.FullName) ? d.Username : d.FullName)" />
+                        <ViewRow Label="@T("Common.ShortName")" Value="@d.ShortName" />
+                        <ViewRow Label="@T("InspectorProfile.DateOfBirth")" Value="@(d.DateOfBirth.HasValue ? d.DateOfBirth.Value.ToString("dd/MM/yyyy") : null)" />
+                        <ViewRow Label="@T("InspectorProfile.Gender")" Value="@d.Gender" />
+                        <ViewRow Label="@T("InspectorProfile.Nationality")" Value="@d.Nationality" />
+                        <ViewRow Label="@(string.IsNullOrEmpty(d.IdType) ? "ID" : d.IdType)" Value="@d.IdNumber" />
+                    </ViewSection>
+                </div>
+                <div class="vc-col">
+                    <ViewSection Title="@T("InspectorProfile.Professional")" Icon="briefcase">
+                        <ViewRow Label="@T("Common.Category")" Value="@d.Category" />
+                        <ViewRow Label="@T("InspectorProfile.StartYear")" Value="@d.InspectionStartYear?.ToString()" />
+                        <ViewRow Label="@T("Common.Language")" Value="@d.Language" />
+                        <ViewRow Label="@T("Common.Status")" Value="@(d.IsActive ? T("Common.Active") : T("Common.Inactive"))" />
+                        <ViewRow Label="@T("InspectorProfile.DateJoined")" Value="@d.CreatedAt.ToString("dd/MM/yyyy")" />
+                    </ViewSection>
+                    <ViewSection Title="@T("InspectorProfile.Contact")" Icon="user">
+                        <ViewRow Label="@T("Common.Mobile")" Value="@d.Mobile" />
+                        <ViewRow Label="Email" Value="@d.Email" />
+                    </ViewSection>
                 </div>
 
-                <div class="detail-section">
-                    <div class="detail-section-title">Professional</div>
-                    <div class="detail-row"><span>Category</span><span>@(string.IsNullOrEmpty(d.Category) ? "—" : d.Category)</span></div>
-                    <div class="detail-row"><span>Start Year</span><span>@(d.InspectionStartYear?.ToString() ?? "—")</span></div>
-                    <div class="detail-row"><span>Language</span><span>@(string.IsNullOrEmpty(d.Language) ? "—" : d.Language)</span></div>
-                    <div class="detail-row"><span>Status</span><span>@(d.IsActive ? "Active" : "Inactive")</span></div>
-                    <div class="detail-row"><span>Date Joined</span><span>@d.CreatedAt.ToString("dd/MM/yyyy")</span></div>
-                </div>
-
-                <div class="detail-section">
-                    <div class="detail-section-title">Contact</div>
-                    <div class="detail-row"><span>Mobile</span><span>@(string.IsNullOrEmpty(d.Mobile) ? "—" : d.Mobile)</span></div>
-                    <div class="detail-row"><span>Email</span><span>@(string.IsNullOrEmpty(d.Email) ? "—" : d.Email)</span></div>
-                </div>
-
-                <div class="detail-section">
-                    <div class="detail-section-title">Home Address</div>
-                    <div class="detail-row"><span>Address 1</span><span>@(string.IsNullOrEmpty(d.Address1) ? "—" : d.Address1)</span></div>
-                    <div class="detail-row"><span>Address 2</span><span>@(string.IsNullOrEmpty(d.Address2) ? "—" : d.Address2)</span></div>
-                    <div class="detail-row"><span>City</span><span>@(string.IsNullOrEmpty(d.City) ? "—" : d.City)</span></div>
-                    <div class="detail-row"><span>State / Province</span><span>@(string.IsNullOrEmpty(d.State) ? "—" : d.State)</span></div>
-                    <div class="detail-row"><span>Country</span><span>@(string.IsNullOrEmpty(d.Country) ? "—" : d.Country)</span></div>
-                    <div class="detail-row"><span>Postal Code</span><span>@(string.IsNullOrEmpty(d.PostalCode) ? "—" : d.PostalCode)</span></div>
-                </div>
+                <ViewSection Title="@T("InspectorProfile.HomeAddress")" Icon="pin" Class="vc-wide">
+                    <ViewRow Label="@T("Common.Address1")" Value="@d.Address1" />
+                    <ViewRow Label="@T("Common.Address2")" Value="@d.Address2" />
+                    <ViewRow Label="@T("Common.City")" Value="@d.City" />
+                    <ViewRow Label="@T("Common.StateProvince")" Value="@d.State" />
+                    <ViewRow Label="@T("Common.Country")" Value="@d.Country" />
+                    <ViewRow Label="@T("InspectorProfile.PostalCode")" Value="@d.PostalCode" />
+                </ViewSection>
 
                 @if (!string.IsNullOrEmpty(d.CvUrl) || !string.IsNullOrEmpty(d.PhotoUrl))
                 {
-                    <div class="detail-section">
-                        <div class="detail-section-title">Attachments</div>
+                    <ViewSection Title="@T("InspectorProfile.Attachments")" Icon="doc" Class="vc-wide">
                         @if (!string.IsNullOrEmpty(d.PhotoUrl))
                         {
-                            var fullPhoto = MediaUrl.Resolve(d.PhotoUrl, Http.BaseAddress?.ToString());
-                            <div class="detail-row"><span>Profile Photo</span><span><a class="detail-link" href="@fullPhoto" target="_blank">View photo &#8599;</a></span></div>
+                            <ViewRow Label="@T("InspectorProfile.ProfilePhoto")" Value="@T("InspectorProfile.ViewPhoto")" Href="@MediaUrl.Resolve(d.PhotoUrl, Http.BaseAddress?.ToString())" />
                         }
                         @if (!string.IsNullOrEmpty(d.CvUrl))
                         {
-                            var fullCv = MediaUrl.Resolve(d.CvUrl, Http.BaseAddress?.ToString());
-                            <div class="detail-row"><span>CV</span><span><a class="detail-link" href="@fullCv" target="_blank">Open CV &#8599;</a></span></div>
+                            <ViewRow Label="@T("InspectorProfile.CV")" Value="@T("InspectorProfile.OpenCV")" Href="@MediaUrl.Resolve(d.CvUrl, Http.BaseAddress?.ToString())" />
                         }
-                    </div>
+                    </ViewSection>
                 }
             </div>
 
             <div class="modal-footer">
-                <button class="btn-cancel" @onclick="CloseDetail">Close</button>
-                <button class="btn-submit" @onclick="async () => { var u = d; CloseDetail(); await OpenEdit(u); }">Edit</button>
+                <button class="btn-cancel" @onclick="CloseDetail">@T("Common.Close")</button>
+                @if (PageAccess.IsAdmin)
+                {
+                    <button class="btn-submit" @onclick="async () => { var u = d; CloseDetail(); await OpenEdit(u); }">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                        @T("Common.Edit")
+                    </button>
+                }
             </div>
         </div>
     </div>
 }
 
 @code {
+    private bool _fOpen;
     private const string INSPECTOR_ROLE = "Inspector";
     // Default login credentials when creating a new Inspector profile.
     // Since Inspector is managed as a profile (no login UI), the account is
@@ -608,7 +687,34 @@ else
     private List<UserDto> _users = new();
     private bool   _loading = true;
     private string _search  = "";
-    private int    _page = 1, _pageSize = 20, _total = 0;
+    private string _statusFilter = "";   // "" = tất cả, "true" = Active, "false" = Inactive
+
+    private int _cntActive, _cntInactive;
+    private async Task SetStatusChip(string v) { _statusFilter = v; await LoadPage(1); }
+    private async Task LoadCounts()
+    {
+        try
+        {
+            var a = await Http.GetFromJsonAsync<UserPageResult>($"api/users?page=1&pageSize=1&roles={INSPECTOR_ROLE}&isActive=true");
+            var i = await Http.GetFromJsonAsync<UserPageResult>($"api/users?page=1&pageSize=1&roles={INSPECTOR_ROLE}&isActive=false");
+            _cntActive = a?.Total ?? 0; _cntInactive = i?.Total ?? 0;
+        }
+        catch { }
+    }
+
+    private async Task OnStatusFilter(ChangeEventArgs e)
+    {
+        _statusFilter = e.Value?.ToString() ?? "";
+        await LoadPage(1);
+    }
+    private int    _page = 1, _pageSize = 10, _total = 0;
+    private string _category = "", _country = "";
+    private List<string> _catOpts = new(), _countryOpts = new();
+    private readonly HashSet<string> _sel = new();
+    private void ToggleAll(bool on) { foreach (var x in _users) { if (on) _sel.Add(x.Id); else _sel.Remove(x.Id); } }
+    private void ToggleOne(string id, bool on) { if (on) _sel.Add(id); else _sel.Remove(id); }
+    private async Task SetPageSize(int n) { _pageSize = n; await LoadPage(1); }
+    private async Task ClearFilters() { _search = _statusFilter = _category = _country = ""; await LoadPage(1); }
 
     // Modal state
     private bool    _showModal    = false;
@@ -657,6 +763,13 @@ else
     protected override async Task OnInitializedAsync()
     {
         await SetAuthHeader();
+        await PageAccess.EnsureLoadedAsync();
+        // Page Access guard: Admin luon duoc vao, role khac phai co "Directory"
+        if (!PageAccess.HasAccess("Directory"))
+        {
+            Navigation.NavigateTo("/", replace: true);
+            return;
+        }
         await Task.WhenAll(LoadPage(1), LoadCountries());
     }
 
@@ -679,9 +792,12 @@ else
             // Filter: only Inspector role
             var url = $"api/users?page={page}&pageSize={_pageSize}" +
                       $"&search={Uri.EscapeDataString(_search)}" +
-                      $"&roles={INSPECTOR_ROLE}";
+                      $"&roles={INSPECTOR_ROLE}" +
+                      (_statusFilter == "" ? "" : $"&isActive={_statusFilter}") +
+                      $"&category={Uri.EscapeDataString(_category)}&country={Uri.EscapeDataString(_country)}";
             var result = await Http.GetFromJsonAsync<UserPageResult>(url);
-            if (result != null) { _users = result.Items; _total = result.Total; }
+            if (result != null) { _users = result.Items; _total = result.Total; _catOpts = result.Categories; _countryOpts = result.Countries; }
+            await LoadCounts();
         }
         catch { }
         finally { _loading = false; }
@@ -887,8 +1003,8 @@ else
     {
         var allowed = new[] { ".pdf", ".doc", ".docx" };
         var ext = System.IO.Path.GetExtension(file.Name).ToLowerInvariant();
-        if (!allowed.Contains(ext)) { _cvError = "Only PDF, DOC or DOCX files are allowed."; return false; }
-        if (file.Size > MaxCvBytes) { _cvError = "File size must not exceed 10 MB."; return false; }
+        if (!allowed.Contains(ext)) { _cvError = T("InspectorProfile.OnlyPDFDOCOrDOCXFiles"); return false; }
+        if (file.Size > MaxCvBytes) { _cvError = T("InspectorProfile.FileSizeMustNotExceed10"); return false; }
         return true;
     }
 
@@ -903,11 +1019,11 @@ else
             fileContent.Headers.ContentType = new MediaTypeHeaderValue(_cvFile.ContentType);
             content.Add(fileContent, "file", _cvFile.Name);
             var response = await Http.PostAsync("api/files/upload-cv", content);
-            if (!response.IsSuccessStatusCode) { _formError = "CV upload failed. Please try again."; return null; }
+            if (!response.IsSuccessStatusCode) { _formError = T("InspectorProfile.CVUploadFailedPleaseTryAgain"); return null; }
             var result = await response.Content.ReadFromJsonAsync<UploadResult>();
             return result?.Url;
         }
-        catch { _formError = "CV upload error. Please try again."; return null; }
+        catch { _formError = T("InspectorProfile.CVUploadErrorPleaseTryAgain"); return null; }
     }
 
     // ── Photo ──────────────────────────────────────────────────────────────────
@@ -924,8 +1040,8 @@ else
     {
         var allowed = new[] { ".jpg", ".jpeg", ".png", ".webp" };
         var ext = System.IO.Path.GetExtension(file.Name).ToLowerInvariant();
-        if (!allowed.Contains(ext)) { _photoError = "Only JPG, PNG or WEBP files are allowed."; return false; }
-        if (file.Size > MaxPhotoBytes) { _photoError = "Photo size must not exceed 5 MB."; return false; }
+        if (!allowed.Contains(ext)) { _photoError = T("InspectorProfile.OnlyJPGPNGOrWEBPFiles"); return false; }
+        if (file.Size > MaxPhotoBytes) { _photoError = T("InspectorProfile.PhotoSizeMustNotExceed5"); return false; }
         return true;
     }
 
@@ -940,11 +1056,11 @@ else
             fileContent.Headers.ContentType = new MediaTypeHeaderValue(_photoFile.ContentType);
             content.Add(fileContent, "file", _photoFile.Name);
             var response = await Http.PostAsync("api/files/upload-photo", content);
-            if (!response.IsSuccessStatusCode) { _formError = "Photo upload failed. Please try again."; return null; }
+            if (!response.IsSuccessStatusCode) { _formError = T("InspectorProfile.PhotoUploadFailedPleaseTryAgain"); return null; }
             var result = await response.Content.ReadFromJsonAsync<UploadResult>();
             return result?.Url;
         }
-        catch { _formError = "Photo upload error. Please try again."; return null; }
+        catch { _formError = T("InspectorProfile.PhotoUploadErrorPleaseTryAgain"); return null; }
     }
 
     private string FormatFileSize(long bytes)
@@ -959,29 +1075,29 @@ else
     private async Task SaveInspector()
     {
         _formError = ""; _cvError = "";
-        if (string.IsNullOrWhiteSpace(_formFullName)) { _formError = "Full Name is required."; return; }
-        if (_editId == null && _cvFile == null)       { _cvError   = "CV / Resume is required when creating a new inspector."; return; }
+        if (string.IsNullOrWhiteSpace(_formFullName)) { _formError = T("InspectorProfile.FullNameIsRequired"); return; }
+        if (_editId == null && _cvFile == null)       { _cvError   = T("InspectorProfile.CVResumeIsRequiredWhenCreating"); return; }
 
         _saving = true;
-        Waiting.Show(_editId == null ? "Creating inspector..." : "Saving inspector...");
+        Waiting.Show(_editId == null ? T("InspectorProfile.CreatingInspector") : T("InspectorProfile.SavingInspector"));
         try
         {
             string? cvUrl = _existingCvUrl;
             if (_cvFile != null)
             {
-                Waiting.Show("Uploading CV...");
+                Waiting.Show(T("InspectorProfile.UploadingCV"));
                 cvUrl = await UploadCvAsync();
                 if (cvUrl == null) { _saving = false; Waiting.Hide(); return; }
-                Waiting.Show(_editId == null ? "Creating inspector..." : "Saving inspector...");
+                Waiting.Show(_editId == null ? T("InspectorProfile.CreatingInspector") : T("InspectorProfile.SavingInspector"));
             }
 
             string? photoUrl = _existingPhotoUrl;
             if (_photoFile != null)
             {
-                Waiting.Show("Uploading photo...");
+                Waiting.Show(T("InspectorProfile.UploadingPhoto"));
                 photoUrl = await UploadPhotoAsync();
                 if (photoUrl == null) { _saving = false; Waiting.Hide(); return; }
-                Waiting.Show(_editId == null ? "Creating inspector..." : "Saving inspector...");
+                Waiting.Show(_editId == null ? T("InspectorProfile.CreatingInspector") : T("InspectorProfile.SavingInspector"));
             }
 
             HttpResponseMessage response;
@@ -1059,10 +1175,10 @@ else
             else
             {
                 var err = await response.Content.ReadFromJsonAsync<ErrorResponse>();
-                _formError = err?.Message ?? "An error occurred.";
+                _formError = TA(err?.Message) ?? T("InspectorProfile.ErrorOccurred");
             }
         }
-        catch { _formError = "Connection error."; }
+        catch { _formError = T("InspectorProfile.ConnectionError"); }
         finally { _saving = false; Waiting.Hide(); }
     }
 
@@ -1078,7 +1194,7 @@ else
     {
         if (_deleteUser == null) return;
         _saving = true;
-        Waiting.Show("Deleting inspector...");
+        Waiting.Show(T("InspectorProfile.DeletingInspector"));
         var response = await Http.DeleteAsync($"api/users/{_deleteUser.Id}");
         _saving = false;
         Waiting.Hide();
@@ -1129,7 +1245,7 @@ else
         public string Region { get; set; } = "";
     }
 
-    private class UserPageResult { public int Total { get; set; } public List<UserDto> Items { get; set; } = new(); }
+    private class UserPageResult { public int Total { get; set; } public List<string> Categories { get; set; } = new(); public List<string> Countries { get; set; } = new(); public List<UserDto> Items { get; set; } = new(); }
     private class ErrorResponse  { public string? Message { get; set; } }
     private class UploadResult   { public string? Url     { get; set; } }
 }
@@ -1146,6 +1262,7 @@ else
     .search-wrap svg { color:rgba(255,255,255,.4); flex-shrink:0; }
     .search-input { flex:1; background:none; border:none; outline:none; color:#fff; font-size:13px; font-family:"DM Sans",sans-serif; }
     .search-input::placeholder { color:rgba(255,255,255,.35); }
+    .status-filter { flex-shrink:0; border:1px solid rgba(255,255,255,.25); border-radius:8px; padding:8px 10px; font-size:13px; font-weight:600; font-family:"DM Sans",sans-serif; color:#1a2d5a; background:#fff; cursor:pointer; min-width:120px; }
     .total-count { font-size:12px; color:rgba(255,255,255,.4); white-space:nowrap; flex-shrink:0; }
     .btn-new { display:flex; align-items:center; gap:6px; padding:8px 16px; background:#1e90d6; color:#fff; border:none; border-radius:8px; font-size:13px; font-weight:600; cursor:pointer; white-space:nowrap; flex-shrink:0; font-family:"DM Sans",sans-serif; transition:background .2s,transform .1s; }
     .btn-new:hover { background:#1565c0; transform:translateY(-1px); }
@@ -1207,7 +1324,7 @@ else
 
     /* Modal */
     .modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,.55); backdrop-filter:blur(4px); display:flex; align-items:center; justify-content:center; z-index:1000; padding:20px; }
-    .modal-card { background:#fff; border-radius:14px; padding:24px 28px; width:100%; max-width:720px; max-height:92vh; overflow-y:auto; box-shadow:0 20px 60px rgba(0,0,0,.3); color:#1a2d5a; }
+    .modal-card { background:#fff; border-radius:14px; padding:28px 32px; width:90vw; max-width:1200px; max-height:92vh; overflow-y:auto; box-shadow:0 20px 60px rgba(0,0,0,.3); color:#1a2d5a; }
     .modal-card.confirm-card { max-width:420px; text-align:center; }
     .modal-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:18px; border-bottom:1px solid #e4eaf4; padding-bottom:12px; }
     .modal-header h2 { font-family:"Sora",sans-serif; font-size:18px; font-weight:700; margin:0; color:#1a2d5a; }
@@ -1334,4 +1451,10 @@ else
     .detail-link  { color:#1e90d6; font-size:13px; text-decoration:none; white-space:nowrap; }
     .detail-link:hover { text-decoration:underline; }
     @@media (max-width:700px) { .detail-grid { grid-template-columns:1fr; } .detail-section.col-2 { grid-column:1; } }
+        /* Màn chi tiết toàn trang — giống Customer Information: nền trắng, nút Close/Edit nằm cuối nội dung */
+        .modal-overlay:has(.modal-detail) { align-items:stretch; padding:0; }
+        .modal-card.modal-detail { background:#fff; width:100vw !important; max-width:100vw !important; height:100dvh; max-height:100dvh !important; border-radius:0 !important; border:none; padding:16px 14px calc(16px + env(safe-area-inset-bottom)); overflow-y:auto; overscroll-behavior:contain; -webkit-overflow-scrolling:touch; box-shadow:none; }
+        .modal-card.modal-detail .modal-header h2 { font-size:20px; }
+    @@media (max-width:600px) {
+    }
 </style>

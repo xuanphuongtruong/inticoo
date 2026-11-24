@@ -1,0 +1,22 @@
+@page
+@model StorageModel
+@{ ViewData["Title"] = "Storage"; ViewData["Sub"] = "Storage used by each company against the quota of its plan."; }
+<div class="kpis">
+  <div class="kpi"><span class="ic b">@Icons.Svg("cloud", 24)</span><div><small>Total Storage Used</small><strong>@AdminUi.Num(Model.TotalUsed) GB</strong><div class="sub">of @AdminUi.Num(Model.TotalQuota) GB allocated</div></div></div>
+  <div class="kpi"><span class="ic a">@Icons.Svg("alert", 24)</span><div><small>Companies above 80%</small><strong>@Model.Over80</strong></div></div>
+  <div class="kpi"><span class="ic g">@Icons.Svg("shield", 24)</span><div><small>Companies with own database</small><strong>@Model.Provisioned</strong><div class="sub">of @Model.Rows.Count</div></div></div>
+</div>
+<div class="panel">
+  <div style="display:flex;justify-content:space-between;align-items:center"><h3>Storage by Company</h3>
+    <form method="post" asp-page-handler="Refresh"><button class="btn">@Icons.Svg("download", 15) Measure database sizes</button></form></div>
+  <div class="tbl-wrap"><table class="t"><thead><tr><th>Company</th><th>Plan</th><th>Database</th><th class="num">Used</th><th class="num">Quota</th><th style="width:220px">Usage</th><th>Measured</th></tr></thead><tbody>
+  @foreach (var r in Model.Rows)
+  {
+    var pct = r.QuotaGb == 0 ? 0 : r.C.StorageUsedGb / r.QuotaGb * 100;
+    <tr><td><a href="/admin/companies?id=@r.C.Id">@r.C.Name</a></td><td>@r.PlanName</td><td>@(r.C.DatabaseName ?? "-")</td><td class="num">@AdminUi.Num(r.C.StorageUsedGb) GB</td><td class="num">@r.QuotaGb GB</td>
+      <td><div style="display:flex;gap:8px;align-items:center"><div class="bar"><i style="width:@AdminUi.Num(Math.Min(100, pct))%;background:@(pct >= 90 ? "#ef4444" : pct >= 80 ? "#f59e0b" : "#1666f0")"></i></div><span>@AdminUi.Num(pct)%</span></div></td>
+      <td>@AdminUi.D(r.C.StorageMeasuredAt)</td></tr>
+  }
+  @if (Model.Rows.Count == 0) { <tr><td colspan="7" class="muted" style="padding:20px;text-align:center">No companies yet.</td></tr> }
+  </tbody></table></div>
+</div>

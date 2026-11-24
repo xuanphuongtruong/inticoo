@@ -1,0 +1,43 @@
+@* 3 thẻ gói giá (trang Home). Giá, số user, dung lượng, module lấy từ DB (Super Admin › Settings › Subscription Plans). *@
+@model List<Plan>
+@{
+    var ordered = Model.OrderBy(p => p.SortOrder).ToList();
+}
+<div class="plans" id="plans">
+@for (var i = 0; i < ordered.Count; i++)
+{
+    var p = ordered[i];
+    var prev = i > 0 ? ordered[i - 1] : null;
+    var prevCodes = prev?.Modules.Select(m => m.Module!.Code).ToHashSet() ?? new HashSet<string>();
+    var added = p.Modules.Select(m => m.Module!).Where(m => !prevCodes.Contains(m.Code)).OrderBy(m => m.SortOrder).ToList();
+    var save = p.MonthlyPrice > 0 ? (int)Math.Round((1 - p.AnnualPrice / (p.MonthlyPrice * 12)) * 100) : 0;
+    var isLast = i == ordered.Count - 1 && ordered.Count > 1;
+    <div class="plan @(p.IsPopular ? "pop" : "") @(isLast ? "pro" : "")">
+        @if (p.IsPopular) { <span class="pop-bar">@L["Most Popular"]</span> }
+        <div class="ph"><span class="ic">@Icons.Svg(Ui.PlanIcon(p.Code))</span><div><h3>@p.Name</h3><small>@L[p.Tagline]</small></div></div>
+        <div class="price">US$ @p.MonthlyPrice.ToString("N0") <small>/ @L["month"]</small></div>
+        <div class="yr">@L["or"] US$ @p.AnnualPrice.ToString("N0") / @L["year"] @if (save > 0) { <span class="save">@L["Save"] @save%</span> }</div>
+        <ul class="ticks">
+            @if (!string.IsNullOrWhiteSpace(p.Features))
+            {
+                // Super Admin › Settings › Subscription Plans: mỗi dòng 1 ý, {users}/{storage} lấy từ số của gói, * = tô nổi bật
+                foreach (var raw in p.Features.Split('\n').Select(x => x.Trim()).Where(x => x.Length > 0))
+                {
+                    var hl = raw.StartsWith('*'); var line = hl ? raw[1..].Trim() : raw;
+                    var text = L[line].Replace("{users}", p.MaxUsers.ToString("N0")).Replace("{storage}", p.StorageGb.ToString("N0"));
+                    <li class="@(hl ? "hl" : "")"><span>@text</span></li>
+                }
+            }
+            else
+            {
+                if (prev != null) { <li>@L.F("Everything in {0}", prev.Name)</li> }
+                foreach (var m in (prev == null ? p.Modules.Select(x => x.Module!).OrderBy(x => x.SortOrder).ToList() : added)) { <li>@L[m.Name]</li> }
+                <li>@L.F("Up to {0} users", p.MaxUsers)</li>
+                <li>@L.F("{0} GB cloud storage", p.StorageGb)</li>
+                <li>@L["Multi-language (EN/CN/VI/MS)"]</li>
+            }
+        </ul>
+        <a class="btn @(p.IsPopular ? "" : "ghost") block" href="/register?plan=@p.Code">@L["Register & Subscribe"] →</a>
+    </div>
+}
+</div>

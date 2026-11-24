@@ -1,0 +1,64 @@
+@page
+@model PaymentsModel
+@{
+    ViewData["Title"] = "Payments"; ViewData["Sub"] = "Track and manage all customer payments, transactions and billing activities.";
+    var req = ViewContext.HttpContext.Request;
+    string Tab(string? s) => AdminUi.Qs(req, ("status", s), ("page", null), ("id", null));
+    var cur = Model.Status ?? ""; var sel = Model.Sel;
+    string Share(int n) => Model.TotalN == 0 ? "0%" : Math.Round(100.0 * n / Model.TotalN, 1) + "% of total";
+}
+<div class="kpis">
+  <div class="kpi"><span class="ic g">@Icons.Svg("dollar", 24)</span><div><small>Total Payments (USD)</small><strong>@AdminUi.Money0(Model.TotalPaid)</strong><div class="sub">this month @AdminUi.Money0(Model.ThisMonthPaid) @AdminUi.Delta(Model.ThisMonthPaid, Model.LastMonthPaid) · last month @AdminUi.Money0(Model.LastMonthPaid)</div></div></div>
+  <div class="kpi"><span class="ic b">@Icons.Svg("card", 24)</span><div><small>Successful Payments</small><strong>@Model.N("Paid")</strong><div class="sub">@Share(Model.N("Paid"))</div></div></div>
+  <div class="kpi"><span class="ic a">@Icons.Svg("clock", 24)</span><div><small>Pending Payments</small><strong>@Model.N("Pending")</strong><div class="sub">@Share(Model.N("Pending"))</div></div></div>
+  <div class="kpi"><span class="ic r">@Icons.Svg("x", 24)</span><div><small>Failed Payments</small><strong>@Model.N("Failed")</strong><div class="sub">@Share(Model.N("Failed"))</div></div></div>
+</div>
+<div class="split">
+<div class="panel">
+  <div class="tabs">
+    <a class="@(cur == "" ? "on" : "")" href="@Tab(null)">All Payments (@Model.TotalN)</a>
+    <a class="@(cur == "Paid" ? "on" : "")" href="@Tab("Paid")">Successful (@Model.N("Paid"))</a><a class="@(cur == "Pending" ? "on" : "")" href="@Tab("Pending")">Pending (@Model.N("Pending"))</a>
+    <a class="@(cur == "Failed" ? "on" : "")" href="@Tab("Failed")">Failed (@Model.N("Failed"))</a><a class="@(cur == "Refunded" ? "on" : "")" href="@Tab("Refunded")">Refunded (@Model.N("Refunded"))</a>
+  </div>
+  <form class="filters" method="get">
+    <div><label>Search</label><input type="search" name="q" value="@Model.Q" placeholder="Search company, invoice no., transaction ID..." maxlength="100" /></div>
+    <div><label>Payment Method</label><select name="method" data-autosubmit><option value="">All Methods</option>@foreach (var m in Model.Methods) { <option value="@m" selected="@(Model.Method == m)">@m</option> }</select></div>
+    <div><label>From</label><input type="date" name="from" value="@Model.From?.ToString("yyyy-MM-dd")" /></div><div><label>To</label><input type="date" name="to" value="@Model.To?.ToString("yyyy-MM-dd")" /></div>
+    @if (!string.IsNullOrEmpty(Model.Status)) { <input type="hidden" name="status" value="@Model.Status" /> }
+    <button class="btn">Filter</button><a class="btn" href="/payments">Reset</a>
+    <a class="btn" href="@AdminUi.Qs(req, ("handler", "Export"))">@Icons.Svg("download", 16) Export</a>
+  </form>
+  <div class="tbl-wrap"><table class="t">
+    <thead><tr><th>Date &amp; Time</th><th>Transaction ID</th><th>Company</th><th>Invoice No.</th><th class="num">Amount (USD)</th><th>Method</th><th>Status</th><th></th></tr></thead><tbody>
+    @foreach (var p in Model.Rows)
+    {
+      <tr class="@(sel?.Id == p.Id ? "sel" : "")"><td>@AdminUi.DT(p.CreatedAt)</td><td><a href="@AdminUi.Qs(req, ("id", p.Id.ToString()))">@p.TransactionId</a></td>
+        <td><div class="co">@AdminUi.Flag(p.Company!.CountryCode)<span>@p.Company.Name</span></div></td>
+        <td><a href="/invoices?id=@p.InvoiceId">@p.Invoice?.Number</a></td><td class="num">@AdminUi.Money(p.Amount)</td><td>@p.Method @if (p.Provider != "") { <span class="muted">· @p.Provider</span> }</td><td>@AdminUi.Pill(p.Status)</td>
+        <td><a class="btn sm" href="@AdminUi.Qs(req, ("id", p.Id.ToString()))">@Icons.Svg("eye", 15)</a></td></tr>
+    }
+    @if (Model.Rows.Count == 0) { <tr><td colspan="8" class="muted" style="padding:24px;text-align:center">No payments match the filters.</td></tr> }
+    </tbody></table></div>
+  <partial name="_Pager" model="Model.Pager" />
+</div>
+<div class="panel detail">
+@if (sel == null) { <p class="muted">Select a payment.</p> }
+else
+{
+  <div style="display:flex;justify-content:space-between;align-items:center"><h2>Payment Details</h2>@AdminUi.Pill(sel.Status)</div>
+  <dl class="dl"><dt>Transaction ID</dt><dd><b>@sel.TransactionId</b></dd><dt>Invoice No.</dt><dd><a href="/invoices?id=@sel.InvoiceId">@sel.Invoice?.Number</a></dd><dt>Company</dt><dd>@sel.Company?.Name</dd>
+    <dt>Amount (USD)</dt><dd>@AdminUi.Money(sel.Amount)</dd><dt>Payment Method</dt><dd>@sel.Method @(sel.Provider != "" ? "(" + sel.Provider + ")" : "")</dd><dt>Payment Date</dt><dd>@AdminUi.DT(sel.CreatedAt)</dd>
+    <dt>Status</dt><dd>@AdminUi.Pill(sel.Status)</dd><dt>Billing Cycle</dt><dd>@sel.Invoice?.BillingCycle</dd><dt>Plan</dt><dd>@sel.Invoice?.PlanName</dd>
+    @if (sel.CardLast4 != null) { <dt>Card Holder</dt><dd>@sel.CardHolder</dd><dt>Card Brand</dt><dd>@sel.CardBrand **** **** **** @sel.CardLast4</dd> }
+    @if (sel.FailureReason != null) { <dt>Failure</dt><dd style="color:#b91c1c">@sel.FailureReason</dd> }</dl>
+  <h4>Payment Timeline</h4>
+  <ul class="tl">@foreach (var e in sel.Events.OrderBy(e => e.At).ThenBy(e => e.Id)) { <li><span>@e.Name</span><em>@AdminUi.DT(e.At)</em></li> }</ul>
+  <div class="acts">
+    <a class="btn blk" target="_blank" href="/invoiceview?id=@sel.InvoiceId">@Icons.Svg("doc", 15) View Invoice</a>
+    <a class="btn blk" target="_blank" href="/invoiceview?id=@sel.InvoiceId&receipt=1">@Icons.Svg("receipt", 15) Receipt</a>
+    @if (sel.Status == PaymentStatus.Pending) { <form method="post" asp-page-handler="Confirm" data-confirm="Confirm this payment was received?"><input type="hidden" name="id" value="@sel.Id" /><button class="btn pri blk">@Icons.Svg("check", 15) Confirm Payment</button></form> }
+    @if (sel.Status == PaymentStatus.Paid) { <form method="post" asp-page-handler="Refund" data-confirm="Refund this payment? This marks the invoice as Refunded."><input type="hidden" name="id" value="@sel.Id" /><button class="btn dng blk">@Icons.Svg("trash", 15) Refund Payment</button></form> }
+  </div>
+}
+</div>
+</div>

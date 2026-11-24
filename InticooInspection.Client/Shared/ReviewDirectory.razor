@@ -1,0 +1,242 @@
+@* Danh sách chọn đối tượng để xem Performance Review (Inspector Reviews / Vendor Reviews).
+   Giao diện nền sáng: bộ lọc Search · Status · Country · Category, thẻ thống kê, lưới thẻ. *@
+@inject HttpClient Http
+@inherits LocalizedComponentBase
+
+<div class="rd-page">
+    <div class="rd-head">
+        <h1 class="rd-title">@Title</h1>
+        <p class="rd-sub">@Subtitle</p>
+    </div>
+
+    @if (Loading)
+    {
+        <div class="rd-loading"><div class="rd-spinner"></div> @T("Common.Loading")</div>
+    }
+    else
+    {
+        <div class="rd-top">
+            <div class="rd-filters">
+                <div class="rd-f rd-f-search">
+                    <label>&nbsp;</label>
+                    <div class="rd-search">
+                        <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="9" cy="9" r="6"/><path d="M15 15l3 3" stroke-linecap="round"/></svg>
+                        <input placeholder="@SearchPlaceholder" @bind="_search" @bind:event="oninput" />
+                    </div>
+                </div>
+                <div class="rd-f">
+                    <label>@T("Common.Status")</label>
+                    <select class="rd-sel" @bind="_status">
+                        <option value="">@T("Common.AllStatus")</option>
+                        <option value="active">@T("Common.Active")</option>
+                        <option value="inactive">@T("Common.Inactive")</option>
+                    </select>
+                </div>
+                <div class="rd-f">
+                    <label>@T("Common.Country")</label>
+                    <select class="rd-sel" @bind="_country">
+                        <option value="">@T("ReviewDirectory.AllCountries")</option>
+                        @foreach (var c in Items.Select(i => i.Country).Where(c => !string.IsNullOrWhiteSpace(c)).Distinct(StringComparer.OrdinalIgnoreCase).OrderBy(c => c))
+                        { <option value="@c">@TE("Opt", c)</option> }
+                    </select>
+                </div>
+                <div class="rd-f">
+                    <label>@T("Common.Category")</label>
+                    <select class="rd-sel" @bind="_category">
+                        <option value="">@T("Common.AllCategories")</option>
+                        @foreach (var c in Items.Select(i => i.Category).Where(c => !string.IsNullOrWhiteSpace(c)).Distinct(StringComparer.OrdinalIgnoreCase).OrderBy(c => c))
+                        { <option value="@c">@TE("Opt", c)</option> }
+                    </select>
+                </div>
+                <div class="rd-f rd-f-btn">
+                    <label>&nbsp;</label>
+                    <button class="rd-reset" @onclick="Reset">
+                        <svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3.5 10a6.5 6.5 0 1 0 2-4.7M3.5 3v3.5H7"/></svg>
+                        @T("ReviewDirectory.Reset")
+                    </button>
+                </div>
+            </div>
+
+            <div class="rd-stats">
+                <div class="rd-stat">
+                    <span class="rd-stat-ico blue"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.8-3.6 3.3-5.5 6.5-5.5s5.7 1.9 6.5 5.5M16 4.8a3.5 3.5 0 0 1 0 6.4M18.5 14.8c1.6.8 2.6 2.5 3 5.2"/></svg></span>
+                    <div><div class="rd-stat-lbl">@T("ReviewDirectory.Total", EntityPlural)</div><div class="rd-stat-val">@Items.Count</div></div>
+                </div>
+                <div class="rd-stat">
+                    <span class="rd-stat-ico green"><i></i></span>
+                    <div><div class="rd-stat-lbl">@T("Common.Active")</div><div class="rd-stat-val">@Items.Count(i => i.Active)</div></div>
+                </div>
+                <div class="rd-stat">
+                    <span class="rd-stat-ico red"><i></i></span>
+                    <div><div class="rd-stat-lbl">@T("Common.Inactive")</div><div class="rd-stat-val">@Items.Count(i => !i.Active)</div></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="rd-grid">
+            @foreach (var it in Filtered)
+            {
+                var item = it;
+                var flag = CountryFlag.Url(item.Country);
+                <div class="rd-card" @onclick="() => OnSelect.InvokeAsync(item.Code)">
+                    @if (!string.IsNullOrEmpty(item.PhotoUrl))
+                    {
+                        <img class="rd-avatar" src="@MediaUrl.Resolve(item.PhotoUrl, Http.BaseAddress?.ToString())" alt="" loading="lazy" />
+                    }
+                    else
+                    {
+                        <div class="rd-avatar">@Initials(item.Name)</div>
+                    }
+                    <div class="rd-info">
+                        <div class="rd-name-row">
+                            <span class="rd-name" title="@item.Name">@item.Name</span>
+                            <span class="rd-badge @(item.Active ? "on" : "off")"><i></i>@(item.Active ? T("Common.Active") : T("Common.Inactive"))</span>
+                        </div>
+                        <div class="rd-id">@item.Code</div>
+                        @if (!string.IsNullOrEmpty(item.Country))
+                        {
+                            <div class="rd-meta">
+                                @if (flag != "") { <img class="rd-flag" src="@flag" alt="" loading="lazy" /> }
+                                else { <svg class="rd-mico" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9s-1.3 6.4-3.8 9c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z"/></svg> }
+                                <span>@item.Country</span>
+                            </div>
+                        }
+                        @if (!string.IsNullOrEmpty(item.Category))
+                        {
+                            <div class="rd-meta">
+                                <svg class="rd-mico cat" width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M3 6.5A1.5 1.5 0 0 1 4.5 5h5l2 2h8A1.5 1.5 0 0 1 21 8.5v9a1.5 1.5 0 0 1-1.5 1.5h-15A1.5 1.5 0 0 1 3 17.5z"/></svg>
+                                <span>@TE("Opt", item.Category)</span>
+                            </div>
+                        }
+                    </div>
+                    <svg class="rd-arrow" width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 4l6 6-6 6" stroke-linecap="round"/></svg>
+                </div>
+            }
+            @if (!Filtered.Any())
+            {
+                <div class="rd-empty">@T("ReviewDirectory.NoFound", EntityPlural.ToLower())</div>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    public record Item(string Code, string Name, string? Country, string? Category, bool Active, string? PhotoUrl = null);
+
+    [Parameter] public string Title { get; set; } = "";
+    [Parameter] public string Subtitle { get; set; } = "";
+    [Parameter] public string EntityPlural { get; set; } = "Items";
+    [Parameter] public string SearchPlaceholder { get; set; } = "Search...";
+    [Parameter] public bool Loading { get; set; }
+    [Parameter] public List<Item> Items { get; set; } = new();
+    [Parameter] public EventCallback<string> OnSelect { get; set; }
+
+    string _search = "", _status = "", _country = "", _category = "";
+
+    IEnumerable<Item> Filtered => Items.Where(i =>
+        (string.IsNullOrWhiteSpace(_search)
+            || i.Name.Contains(_search, StringComparison.OrdinalIgnoreCase)
+            || i.Code.Contains(_search, StringComparison.OrdinalIgnoreCase)
+            || (i.Country ?? "").Contains(_search, StringComparison.OrdinalIgnoreCase))
+        && (_status == "" || (_status == "active") == i.Active)
+        && (_country == "" || string.Equals(i.Country, _country, StringComparison.OrdinalIgnoreCase))
+        && (_category == "" || string.Equals(i.Category, _category, StringComparison.OrdinalIgnoreCase)));
+
+    void Reset() { _search = _status = _country = _category = ""; }
+
+    static string Initials(string name)
+    {
+        var w = name.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        return w.Length == 0 ? "?" : string.Concat(w.Take(2).Select(x => char.ToUpperInvariant(x[0])));
+    }
+}
+
+<style>
+    /* Nền sáng phủ hết vùng nội dung (bù lại padding của .main-content) */
+    .rd-page { margin:-28px; padding:26px 28px 32px; min-height:calc(100vh - 44px); background:#f3f6fb; color:#1a2d5a; font-family:"DM Sans", sans-serif; }
+    .rd-head { margin-bottom:16px; }
+    .rd-title { font-size:26px; font-weight:800; color:#0f2552; margin:0 0 2px; letter-spacing:-.01em; }
+    .rd-sub { font-size:13.5px; color:#64748b; margin:0; }
+    .rd-loading { display:flex; align-items:center; justify-content:center; gap:10px; padding:60px; color:#64748b; }
+    .rd-spinner { width:20px; height:20px; border:3px solid #dbeafe; border-top-color:#1d4ed8; border-radius:50%; animation:rdspin .7s linear infinite; }
+    @@keyframes rdspin { to { transform:rotate(360deg); } }
+
+    .rd-top { display:flex; gap:14px; margin-bottom:16px; align-items:stretch; }
+    .rd-filters { flex:1; min-width:0; display:flex; gap:12px; align-items:flex-end; background:#fff; border:1px solid #e5eaf2; border-radius:12px; padding:12px 14px; box-shadow:0 1px 4px rgba(15,40,90,.05); }
+    .rd-f { display:flex; flex-direction:column; gap:4px; min-width:0; }
+    .rd-f label { font-size:12px; font-weight:600; color:#334155; }
+    .rd-f-search { flex:1 1 260px; }
+    .rd-search { display:flex; align-items:center; gap:8px; height:40px; padding:0 12px; border:1px solid #dbe3ef; border-radius:9px; color:#94a3b8; background:#fff; }
+    .rd-search input { flex:1; min-width:0; border:none; outline:none; font-size:14px; font-family:inherit; color:#1a2d5a; background:transparent; }
+    /* select tự vẽ mũi tên: đồng đều Safari / Chrome / Android */
+    .rd-sel { height:40px; min-width:150px; padding:0 30px 0 12px; border:1px solid #dbe3ef; border-radius:9px; font-size:14px; font-family:inherit; color:#1a2d5a; cursor:pointer; outline:none;
+        -webkit-appearance:none; appearance:none;
+        background:#fff url("data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%231a2d5a' stroke-width='1.5' fill='none'/%3E%3C/svg%3E") no-repeat right 12px center; }
+    .rd-sel:focus, .rd-search:focus-within { border-color:#3b82f6; box-shadow:0 0 0 3px rgba(59,130,246,.12); }
+    .rd-reset { height:40px; display:inline-flex; align-items:center; gap:6px; padding:0 14px; border:1px solid #dbe3ef; border-radius:9px; background:#fff; color:#334155; font-size:14px; font-weight:600; font-family:inherit; cursor:pointer; }
+    .rd-reset:hover { background:#f1f5f9; }
+
+    .rd-stats { display:flex; gap:10px; background:#fff; border:1px solid #e5eaf2; border-radius:12px; padding:10px; box-shadow:0 1px 4px rgba(15,40,90,.05); }
+    .rd-stat { display:flex; align-items:center; gap:10px; padding:8px 14px; border:1px solid #eef2f7; border-radius:10px; min-width:130px; background:#fbfcfe; }
+    .rd-stat-ico { width:38px; height:38px; border-radius:10px; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+    .rd-stat-ico.blue { background:#eff6ff; color:#1d4ed8; }
+    .rd-stat-ico.green { background:#ecfdf5; } .rd-stat-ico.green i { width:14px; height:14px; border-radius:50%; background:#16a34a; box-shadow:0 0 0 4px #bbf7d0; }
+    .rd-stat-ico.red { background:#fef2f2; } .rd-stat-ico.red i { width:14px; height:14px; border-radius:50%; background:#dc2626; box-shadow:0 0 0 4px #fecaca; }
+    .rd-stat-lbl { font-size:12px; color:#64748b; font-weight:600; white-space:nowrap; }
+    .rd-stat-val { font-size:22px; font-weight:800; color:#0f2552; line-height:1.1; }
+
+    .rd-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(250px, 1fr)); gap:12px; }
+    .rd-card { display:flex; align-items:center; gap:12px; background:#fff; border:1px solid #e5eaf2; border-radius:12px; padding:14px; cursor:pointer; min-width:0;
+        box-shadow:0 1px 4px rgba(15,40,90,.05); transition:box-shadow .15s, border-color .15s, transform .15s; }
+    .rd-card:hover { border-color:#bfdbfe; box-shadow:0 6px 18px rgba(15,40,90,.1); transform:translateY(-1px); }
+    .rd-avatar { width:50px; height:50px; border-radius:10px; flex-shrink:0; object-fit:cover; background:linear-gradient(135deg,#0f2552,#1d4ed8); color:#fff;
+        display:flex; align-items:center; justify-content:center; font-size:17px; font-weight:700; }
+    .rd-info { flex:1; min-width:0; }
+    .rd-name-row { display:flex; align-items:flex-start; gap:6px; min-width:0; }
+    /* Tên dài: tối đa 2 dòng rồi mới "…" */
+    .rd-name { flex:1; min-width:0; font-size:13.5px; font-weight:700; color:#0f2552; text-transform:uppercase; line-height:1.3;
+        display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; overflow-wrap:anywhere; }
+    .rd-badge { flex-shrink:0; display:inline-flex; align-items:center; gap:5px; font-size:11px; font-weight:600; padding:3px 9px; border-radius:20px; }
+    .rd-badge i { width:7px; height:7px; border-radius:50%; }
+    .rd-badge.on { background:#ecfdf5; color:#15803d; } .rd-badge.on i { background:#16a34a; }
+    .rd-badge.off { background:#fef2f2; color:#b91c1c; } .rd-badge.off i { background:#dc2626; }
+    .rd-id { font-size:12px; color:#64748b; margin-top:2px; }
+    .rd-meta { display:flex; align-items:center; gap:6px; font-size:12px; color:#64748b; margin-top:3px; min-width:0; }
+    .rd-meta span { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .rd-flag { width:16px; height:11px; object-fit:cover; border-radius:2px; box-shadow:0 0 0 1px rgba(0,0,0,.08); flex-shrink:0; }
+    .rd-mico { flex-shrink:0; color:#94a3b8; } .rd-mico.cat { color:#f59e0b; }
+    .rd-arrow { flex-shrink:0; color:#94a3b8; }
+    .rd-empty { grid-column:1 / -1; text-align:center; padding:40px; color:#94a3b8; }
+
+    @@media (max-width:1280px) {
+        .rd-top { flex-direction:column; }
+        .rd-stats { align-self:stretch; }
+        .rd-stat { flex:1; min-width:0; }
+    }
+    @@media (max-width:900px) {
+        .rd-page { margin:-20px -16px; padding:18px 16px 28px; }
+        .rd-filters { flex-wrap:wrap; }
+        .rd-f { flex:1 1 140px; }
+        .rd-f-search { flex:1 1 100%; }
+        .rd-f-search label { display:none; }
+        .rd-f-btn { flex:0 0 auto; }
+        .rd-sel { min-width:0; width:100%; }
+    }
+    @@media (max-width:480px) {
+        .rd-page { margin:-16px -12px; padding:16px 12px 24px; }
+        .rd-title { font-size:22px; }
+        .rd-filters { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:8px; padding:10px; }
+        .rd-f-search { grid-column:1 / -1; }
+        .rd-f label { font-size:11px; }
+        .rd-f-btn label { display:block; }
+        .rd-reset { width:100%; justify-content:center; }
+        .rd-sel, .rd-search input, .rd-reset { font-size:16px; } /* 16px: iOS Safari không tự phóng to khi chạm */
+        .rd-stats { gap:6px; padding:6px; }
+        .rd-stat { padding:6px 8px; gap:6px; flex-direction:column; align-items:flex-start; }
+        .rd-stat-ico { width:30px; height:30px; }
+        .rd-stat-lbl { font-size:11px; white-space:normal; }
+        .rd-stat-val { font-size:19px; }
+        .rd-grid { grid-template-columns:minmax(0,1fr); gap:8px; }
+        .rd-card { padding:12px; }
+    }
+</style>

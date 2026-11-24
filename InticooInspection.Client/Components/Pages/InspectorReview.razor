@@ -5,16 +5,17 @@
 @inject HttpClient Http
 @inject NavigationManager Navigation
 @inject PageAccessService PageAccess
+@inherits LocalizedComponentBase
 
-<PageTitle>Inspector Performance - Inticoo</PageTitle>
+<PageTitle>@T("InspectorReview.InspectorPerformanceInticoo")</PageTitle>
 
 @if (_loading)
 {
-    <div class="ip-loading"><div class="ip-spinner"></div> Loading...</div>
+    <div class="ip-loading"><div class="ip-spinner"></div> @T("Common.Loading")</div>
 }
 else if (_error != null)
 {
-    <div class="ip-error">⚠ @_error <button @onclick="Load" style="margin-left:8px;cursor:pointer;">Retry</button></div>
+    <div class="ip-error">⚠ @_error <button @onclick="Load" style="margin-left:8px;cursor:pointer;">@T("Common.Retry")</button></div>
 }
 else if (_data != null)
 {
@@ -22,17 +23,19 @@ else if (_data != null)
 
     <!-- ══ HEADER ══ -->
     <div class="ip-header">
-        <button class="ip-back" @onclick='() => Navigation.NavigateTo("/inspector-reviews")'>
+        <button class="ip-back no-print" @onclick='() => Navigation.NavigateTo("/inspector-reviews")'>
             <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 4l-6 6 6 6" stroke-linecap="round"/></svg>
         </button>
         <div class="ip-header-center">
-            <h1 class="ip-title">Inspector Performance Overview</h1>
-            <p class="ip-sub">Monthly &amp; Yearly Inspection Metrics</p>
+            <h1 class="ip-title">@T("InspectorReview.InspectorPerformanceOverview")</h1>
+            <p class="ip-sub">@T("InspectorReview.MonthlyYearlyInspectionMetrics")</p>
         </div>
         <div class="ip-controls">
+            <span class="print-only ip-print-period">@MonthName(_month) @_year</span>
+            <PrintReportButton />
             <select class="ip-select" value="@_month" @onchange="OnMonthChange">
                 @for (int m = 1; m <= 12; m++) { var mn = m;
-                    <option value="@mn">@System.Globalization.CultureInfo.CurrentCulture.DateTimeFormat.GetMonthName(mn)</option> }
+                    <option value="@mn">@L.MonthName(mn)</option> }
             </select>
             <select class="ip-select" value="@_year" @onchange="OnYearChange">
                 @for (int y = DateTime.Now.Year; y >= DateTime.Now.Year - 5; y--) { var yn = y;
@@ -43,174 +46,92 @@ else if (_data != null)
 
     <!-- ══ INFO BAR ══ -->
     <div class="ip-infobar">
-        <div class="ip-infobar-f"><span class="ip-lbl">Inspector Name :</span><span class="ip-val">@_inspectorName</span></div>
-        <div class="ip-infobar-f"><span class="ip-lbl">Inspector ID &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; :</span><span class="ip-val">@InspectorId</span></div>
+        <div class="ip-infobar-f"><span class="ip-lbl">@T("InspectorReview.InspectorName")</span><span class="ip-val">@_inspectorName</span></div>
+        <div class="ip-infobar-f"><span class="ip-lbl">@T("InspectorReview.InspectorID")</span><span class="ip-val">@InspectorId</span></div>
+    </div>
+
+    <!-- ══ KPI CARDS (năm đang chọn, so với năm trước) ══ -->
+    <div class="ip-kpis">
+        @KpiCard(T("InspectorReview.TotalInspection"), _data.YearTotal, _data.PrevTotal, "#1d4ed8")
+        @KpiCard(T("InspectorReview.PpiInspections"), _data.YearPpt, _data.PrevPpt, "#3b82f6")
+        @KpiCard(T("InspectorReview.DpiInspections"), _data.YearDpi, _data.PrevDpi, "#f59e0b")
+        @KpiCard(T("InspectorReview.PsiInspections"), _data.YearPst, _data.PrevPst, "#dc2626")
+        @KpiCard(T("InspectorReview.ClcInspections"), _data.YearClc, _data.PrevClc, "#8b5cf6")
     </div>
 
     <!-- ══ MONTHLY BAR CHART ══ -->
-    <div class="ip-section-title">Total Inspection (Monthly)</div>
-    <div class="ip-card">
-        <div class="ip-legend-row">
-            <span class="ip-leg"><span class="ip-dot" style="background:#1d4ed8;"></span>Pre-Production Inspection</span>
-            <span class="ip-leg"><span class="ip-dot" style="background:#f59e0b;"></span>During Production Inspection</span>
-            <span class="ip-leg"><span class="ip-dot" style="background:#dc2626;"></span>Pre-Shipment Inspection</span>
-        </div>
-        @{
-            var months = new[]{"JAN","FEB","MAR","APR","MAY","JUN","JUL","AUG","SEP","OCT","NOV","DEC"};
-            var maxM = _data.MonthlyData.Max(m => m.Ppt + m.Dpi + m.Pst);
-            if (maxM == 0) maxM = 1;
-        }
-        <div class="ip-barchart">
-            @foreach (var m in _data.MonthlyData)
-            {
-                var tot = m.Ppt + m.Dpi + m.Pst;
-                var hp  = (double)tot / maxM * 160;
-                <div class="ip-bar-col">
-                    @if (tot > 0)
-                    {
-                        <div class="ip-bar-val">@tot</div>
-                        <div class="ip-bar-stack" style="height:@((int)hp)px;">
-                            @if (m.Ppt > 0) { <div style="height:@((int)((double)m.Ppt/tot*100))%;background:#1d4ed8;"></div> }
-                            @if (m.Dpi > 0) { <div style="height:@((int)((double)m.Dpi/tot*100))%;background:#f59e0b;"></div> }
-                            @if (m.Pst > 0) { <div style="height:@((int)((double)m.Pst/tot*100))%;background:#dc2626;"></div> }
-                        </div>
-                    }
-                    else
-                    {
-                        <div class="ip-bar-val" style="opacity:0">0</div>
-                        <div class="ip-bar-empty"></div>
-                    }
-                    <div class="ip-bar-lbl">@months[m.Month - 1]</div>
-                </div>
-            }
-        </div>
+    <div class="ip-section-title">@T("InspectorReview.TotalInspectionMonthly", _data.TargetYear)</div>
+    <div class="ip-card print-avoid-break">
+        <StackedBars Labels="StackedBars.MonthLabels" Height="170"
+                     Series="@(new() {
+                         new(T("InspectorReview.PreProductionInspection"),    "#1d4ed8", _data.MonthlyData.OrderBy(m => m.Month).Select(m => m.Ppt).ToList()),
+                         new(T("InspectorReview.DuringProductionInspection"), "#f59e0b", _data.MonthlyData.OrderBy(m => m.Month).Select(m => m.Dpi).ToList()),
+                         new(T("InspectorReview.PreShipmentInspection"),      "#dc2626", _data.MonthlyData.OrderBy(m => m.Month).Select(m => m.Pst).ToList()),
+                         new(T("InspectorReview.ContainerLoadingCheck"),      "#8b5cf6", _data.MonthlyData.OrderBy(m => m.Month).Select(m => m.Clc).ToList()) })" />
     </div>
 
     <!-- ══ YEARLY HORIZONTAL BAR ══ -->
-    <div class="ip-section-title">Total Inspection for Year — @_data.TargetYear</div>
-    <div class="ip-card">
-        @{ var maxY = Math.Max(1, Math.Max(_data.YearPpt, Math.Max(_data.YearDpi, _data.YearPst))); }
+    <div class="ip-section-title">@T("InspectorReview.TotalInspectionForYear", _data.TargetYear) <span class="ip-sub-inline">@T("InspectorReview.Total", _data.YearTotal)</span></div>
+    <div class="ip-card print-avoid-break">
+        @{ var maxY = Math.Max(1, Math.Max(Math.Max(_data.YearPpt, _data.YearClc), Math.Max(_data.YearDpi, _data.YearPst))); }
         <div class="ip-hbar-row">
-            <span class="ip-hbar-lbl">Pre-Shipment Inspection</span>
-            <div class="ip-hbar-track"><div class="ip-hbar-fill" style="width:@((double)_data.YearPst/maxY*100)%;background:#dc2626;"></div></div>
+            <span class="ip-hbar-lbl">@T("InspectorReview.PreShipmentInspection")</span>
+            <div class="ip-hbar-track"><div class="ip-hbar-fill" style="width:@Pc(_data.YearPst, maxY)%;background:#dc2626;"></div></div>
             <span class="ip-hbar-num">@_data.YearPst</span>
         </div>
         <div class="ip-hbar-row">
-            <span class="ip-hbar-lbl">During Production Inspection</span>
-            <div class="ip-hbar-track"><div class="ip-hbar-fill" style="width:@((double)_data.YearDpi/maxY*100)%;background:#f59e0b;"></div></div>
+            <span class="ip-hbar-lbl">@T("InspectorReview.DuringProductionInspection")</span>
+            <div class="ip-hbar-track"><div class="ip-hbar-fill" style="width:@Pc(_data.YearDpi, maxY)%;background:#f59e0b;"></div></div>
             <span class="ip-hbar-num">@_data.YearDpi</span>
         </div>
         <div class="ip-hbar-row">
-            <span class="ip-hbar-lbl">Pre-Production Inspection</span>
-            <div class="ip-hbar-track"><div class="ip-hbar-fill" style="width:@((double)_data.YearPpt/maxY*100)%;background:#1d4ed8;"></div></div>
+            <span class="ip-hbar-lbl">@T("InspectorReview.PreProductionInspection")</span>
+            <div class="ip-hbar-track"><div class="ip-hbar-fill" style="width:@Pc(_data.YearPpt, maxY)%;background:#1d4ed8;"></div></div>
             <span class="ip-hbar-num">@_data.YearPpt</span>
+        </div>
+        <div class="ip-hbar-row">
+            <span class="ip-hbar-lbl">@T("InspectorReview.ContainerLoadingCheck")</span>
+            <div class="ip-hbar-track"><div class="ip-hbar-fill" style="width:@Pc(_data.YearClc, maxY)%;background:#8b5cf6;"></div></div>
+            <span class="ip-hbar-num">@_data.YearClc</span>
         </div>
     </div>
 
-    <!-- ══ AVG DURATION + ON-TIME RATE ══ -->
-    <div class="ip-row">
-
-        <!-- Average Inspection Duration -->
-        <div style="flex:1;">
-            <div class="ip-section-title">Average Inspection Duration</div>
-            <div class="ip-card">
-                <div class="ip-dur-label">Hours</div>
-                @{
-                    var maxDur = Math.Max(0.1, Math.Max(_data.AvgDurationPst, Math.Max(_data.AvgDurationDpi, _data.AvgDurationPpt)));
-                    var durItems = new[]{
-                        ("Pre Production", Math.Round(_data.AvgDurationPpt, 0), "#1d4ed8"),
-                        ("During Production", Math.Round(_data.AvgDurationDpi, 0), "#f59e0b"),
-                        ("Pre Shipment", Math.Round(_data.AvgDurationPst, 0), "#dc2626"),
-                    };
-                }
-                <div class="ip-dur-chart">
-                    @foreach (var (label, val, color) in durItems)
-                    {
-                        var barH = (double)val / maxDur * 140;
-                        <div class="ip-dur-col">
-                            <div class="ip-dur-val">@val</div>
-                            <div class="ip-dur-bar" style="height:@((int)Math.Max(4, barH))px;background:@color;"></div>
-                            <div class="ip-dur-lbl">@label</div>
-                        </div>
-                    }
-                </div>
+    <!-- ══ ON-TIME RATE (tháng đang chọn) ══ -->
+    <div class="ip-section-title">@T("InspectorReview.OnTimeInspectionRate", MonthName(_data.TargetMonth), _data.TargetYear)</div>
+    <div class="ip-card print-avoid-break" style="display:flex;flex-direction:column;gap:16px;">
+        @if (_data.OnTimeKnown == 0)
+        {
+            <div class="ip-empty">@T("InspectorReview.NoCompletedInspectionIn", MonthName(_data.TargetMonth), _data.TargetYear)</div>
+        }
+        else
+        {
+            <div class="ip-ontime-row">
+                <span class="ip-ontime-lbl" style="color:#1d4ed8;">@T("InspectorReview.OnTime")</span>
+                <div class="ip-ontime-track"><div class="ip-ontime-fill" style="width:@Inv(_data.OnTimeRate)%;background:#1d4ed8;"></div></div>
+                <span class="ip-ontime-pct">@_data.OnTimeRate% <small>(@_data.OnTimeCount)</small></span>
             </div>
-        </div>
-
-        <!-- On-Time Inspection Rate -->
-        <div style="flex:1;">
-            <div class="ip-section-title">On-Time Inspection Rate</div>
-            <div class="ip-card" style="display:flex;flex-direction:column;gap:16px;">
-                <div class="ip-ontime-row">
-                    <span class="ip-ontime-lbl" style="color:#1d4ed8;">On Time</span>
-                    <div class="ip-ontime-track">
-                        <div class="ip-ontime-fill" style="width:@_data.OnTimeRate%;background:#1d4ed8;"></div>
-                    </div>
-                    <span class="ip-ontime-pct">@_data.OnTimeRate%</span>
-                </div>
-                <div class="ip-ontime-row">
-                    <span class="ip-ontime-lbl" style="color:#f59e0b;">Delayed</span>
-                    <div class="ip-ontime-track">
-                        <div class="ip-ontime-fill" style="width:@_data.DelayedRate%;background:#f59e0b;"></div>
-                    </div>
-                    <span class="ip-ontime-pct">@_data.DelayedRate%</span>
-                </div>
+            <div class="ip-ontime-row">
+                <span class="ip-ontime-lbl" style="color:#f59e0b;">@T("InspectorReview.Delayed")</span>
+                <div class="ip-ontime-track"><div class="ip-ontime-fill" style="width:@Inv(_data.DelayedRate)%;background:#f59e0b;"></div></div>
+                <span class="ip-ontime-pct">@_data.DelayedRate% <small>(@_data.DelayedCount)</small></span>
             </div>
-        </div>
-
+        }
+        <div class="ip-note">@T("InspectorReview.OnTimeQCReportCompletedWithin", _data.TargetYear) <strong>@(_data.OnTimeYearRate.HasValue ? _data.OnTimeYearRate + "%" : "—")</strong></div>
     </div>
 
     <!-- ══ PST RESULT THIS YEAR + PST MONTHLY ══ -->
     <div class="ip-row">
 
-        <!-- PST Pass/Fail Pie — full year -->
+        <!-- PST Pass/Fail donut — full year -->
         <div style="flex:1;">
-            <div class="ip-section-title">Pre Shipment Inspection Result<br/><small>This Year @_data.TargetYear</small></div>
-            <div class="ip-card">
+            <div class="ip-section-title">@T("InspectorReview.PreShipmentInspectionResult")<br/><small>@T("InspectorReview.ThisYear", _data.TargetYear)</small></div>
+            <div class="ip-card print-avoid-break">
                 <div class="ip-pie-wrap">
-                    @{
-                        var pstTotal  = _data.PstByMonth.Sum(m => m.Passed + m.Failed);
-                        var pstPassed = _data.PstByMonth.Sum(m => m.Passed);
-                        var pstFailed = _data.PstByMonth.Sum(m => m.Failed);
-                        var pstPassR  = pstTotal > 0 ? Math.Round((double)pstPassed / pstTotal * 100, 1) : 0;
-                        var pstFailR  = pstTotal > 0 ? Math.Round((double)pstFailed / pstTotal * 100, 1) : 0;
-                        var passDash  = pstPassR / 100.0 * 251.2;
-                        var failDash  = pstFailR / 100.0 * 251.2;
-                    }
-                    <svg viewBox="0 0 100 100" class="ip-pie">
-                        @if (pstPassR < 100 && pstFailR < 100)
-                        {
-                            <circle cx="50" cy="50" r="40" fill="none" stroke="#e5e7eb" stroke-width="22"/>
-                        }
-                        @if (pstPassR >= 100)
-                        {
-                            <circle cx="50" cy="50" r="40" fill="none" stroke="#22c55e" stroke-width="22"/>
-                        }
-                        else if (pstFailR >= 100)
-                        {
-                            <circle cx="50" cy="50" r="40" fill="none" stroke="#ef4444" stroke-width="22"/>
-                        }
-                        else
-                        {
-                            @if (pstPassR > 0)
-                            {
-                                <circle cx="50" cy="50" r="40" fill="none" stroke="#22c55e" stroke-width="22"
-                                        stroke-dasharray="@passDash.ToString("F1") 251.2"
-                                        stroke-dashoffset="62.8" transform="rotate(-90 50 50)"/>
-                            }
-                            @if (pstFailR > 0)
-                            {
-                                <circle cx="50" cy="50" r="40" fill="none" stroke="#ef4444" stroke-width="22"
-                                        stroke-dasharray="@failDash.ToString("F1") 251.2"
-                                        stroke-dashoffset="@((62.8 - passDash).ToString("F1"))" transform="rotate(-90 50 50)"/>
-                            }
-                        }
-                        <text x="50" y="46" text-anchor="middle" font-size="9" font-weight="bold" fill="#16a34a">Passed</text>
-                        <text x="50" y="58" text-anchor="middle" font-size="11" font-weight="bold" fill="#16a34a">@pstPassR%</text>
-                    </svg>
+                    <Donut CssClass="ip-pie" Title="@T("InspectorReview.Passed")" Value="@($"{_data.PstPassRate}%")"
+                           Segments="@(new() { new(_data.PstPassed, "#22c55e"), new(_data.PstFailed, "#ef4444") })" />
                     <div class="ip-pie-legend">
-                        <div class="ip-leg-row"><span class="ip-dot" style="background:#22c55e;"></span> Pass Rate: <strong style="color:#16a34a;">@pstPassR%</strong></div>
-                        <div class="ip-leg-row"><span class="ip-dot" style="background:#ef4444;"></span> Fail Rate: <strong style="color:#dc2626;">@pstFailR%</strong></div>
+                        <div class="ip-leg-row"><span class="ip-dot" style="background:#22c55e;"></span> @T("InspectorReview.PassRate") <strong style="color:#16a34a;">@_data.PstPassRate%</strong> (@_data.PstPassed)</div>
+                        <div class="ip-leg-row"><span class="ip-dot" style="background:#ef4444;"></span> @T("InspectorReview.FailRate") <strong style="color:#dc2626;">@_data.PstFailRate%</strong> (@_data.PstFailed)</div>
                     </div>
                 </div>
             </div>
@@ -218,32 +139,31 @@ else if (_data != null)
 
         <!-- PST Monthly horizontal bar (Passed / Failed) -->
         <div style="flex:1.4;">
-            <div class="ip-section-title">Pre Shipment Inspection Result (Monthly)</div>
-            <div class="ip-card">
+            <div class="ip-section-title">@T("InspectorReview.PreShipmentInspectionResultMonthly")</div>
+            <div class="ip-card print-avoid-break">
                 <div class="ip-pst-legend">
-                    <span class="ip-leg"><span class="ip-dot" style="background:#1d4ed8;"></span>Passed</span>
-                    <span class="ip-leg"><span class="ip-dot" style="background:#ef4444;"></span>Failed</span>
+                    <span class="ip-leg"><span class="ip-dot" style="background:#1d4ed8;"></span>@T("InspectorReview.Passed")</span>
+                    <span class="ip-leg"><span class="ip-dot" style="background:#ef4444;"></span>@T("Common.Failed")</span>
                 </div>
                 @{
-                    var maxPst = _data.PstByMonth.Max(m => m.Passed + m.Failed);
-                    if (maxPst == 0) maxPst = 1;
+                    var months = new[]{"JAN","FEB","MAR","APR","MAY","JUN","JUL","AUG","SEP","OCT","NOV","DEC"};
+                    var maxPst = Math.Max(1, _data.PstByMonth.Max(m => m.Passed + m.Failed));
                 }
                 <div class="ip-pst-chart">
                     @foreach (var pm in _data.PstByMonth.OrderByDescending(m => m.Month))
                     {
-                        var tot2 = pm.Passed + pm.Failed;
                         <div class="ip-pst-row">
                             <div class="ip-pst-lbl">@months[pm.Month - 1]</div>
                             <div class="ip-pst-bar-wrap">
-                                @if (tot2 > 0)
+                                @if (pm.Passed > 0)
                                 {
-                                    <div class="ip-pst-bar" style="width:@((double)pm.Passed/maxPst*100)%;background:#1d4ed8;"></div>
-                                    @if (pm.Passed > 0) { <span class="ip-pst-bar-val" style="color:#1d4ed8;">@pm.Passed</span> }
-                                    @if (pm.Failed > 0)
-                                    {
-                                        <div class="ip-pst-bar" style="width:@((double)pm.Failed/maxPst*100)%;background:#ef4444;margin-left:2px;"></div>
-                                        <span class="ip-pst-bar-val" style="color:#ef4444;">@pm.Failed</span>
-                                    }
+                                    <div class="ip-pst-bar" style="width:@Pc(pm.Passed, maxPst)%;background:#1d4ed8;"></div>
+                                    <span class="ip-pst-bar-val" style="color:#1d4ed8;">@pm.Passed</span>
+                                }
+                                @if (pm.Failed > 0)
+                                {
+                                    <div class="ip-pst-bar" style="width:@Pc(pm.Failed, maxPst)%;background:#ef4444;margin-left:2px;"></div>
+                                    <span class="ip-pst-bar-val" style="color:#ef4444;">@pm.Failed</span>
                                 }
                             </div>
                         </div>
@@ -252,6 +172,128 @@ else if (_data != null)
             </div>
         </div>
 
+    </div>
+
+    <!-- ══ CLC RESULT THIS YEAR + CLC MONTHLY ══ -->
+    <div class="ip-row">
+        <div style="flex:1;">
+            <div class="ip-section-title">@T("InspectorReview.ContainerLoadingCheckResult")<br/><small>@T("InspectorReview.ThisYear", _data.TargetYear)</small></div>
+            <div class="ip-card print-avoid-break">
+                <div class="ip-pie-wrap">
+                    <Donut CssClass="ip-pie" Title="@T("InspectorReview.Passed")" Value="@($"{_data.ClcPassRate}%")"
+                           Segments="@(new() { new(_data.ClcPassed, "#22c55e"), new(_data.ClcFailed, "#ef4444"), new(_data.ClcHeld, "#f59e0b") })" />
+                    <div class="ip-pie-legend">
+                        <div class="ip-leg-row"><span class="ip-dot" style="background:#22c55e;"></span> @T("InspectorReview.PassRate") <strong style="color:#16a34a;">@_data.ClcPassRate%</strong> (@_data.ClcPassed)</div>
+                        <div class="ip-leg-row"><span class="ip-dot" style="background:#ef4444;"></span> @T("InspectorReview.FailRate") <strong style="color:#dc2626;">@_data.ClcFailRate%</strong> (@_data.ClcFailed)</div>
+                        <div class="ip-leg-row"><span class="ip-dot" style="background:#f59e0b;"></span> @T("InspectorReview.HoldRate") <strong style="color:#d97706;">@_data.ClcHoldRate%</strong> (@_data.ClcHeld)</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div style="flex:1.4;">
+            <div class="ip-section-title">@T("InspectorReview.ContainerLoadingCheckResultMonthly")</div>
+            <div class="ip-card print-avoid-break">
+                <div class="ip-pst-legend">
+                    <span class="ip-leg"><span class="ip-dot" style="background:#1d4ed8;"></span>@T("InspectorReview.Passed")</span>
+                    <span class="ip-leg"><span class="ip-dot" style="background:#ef4444;"></span>@T("Common.Failed")</span>
+                    <span class="ip-leg"><span class="ip-dot" style="background:#f59e0b;"></span>@T("InspectorReview.Hold")</span>
+                </div>
+                @{
+                    var clcMonths = new[]{"JAN","FEB","MAR","APR","MAY","JUN","JUL","AUG","SEP","OCT","NOV","DEC"};
+                    var maxClc = Math.Max(1, _data.ClcByMonth.Count == 0 ? 0 : _data.ClcByMonth.Max(m => m.Passed + m.Failed + m.Held));
+                }
+                <div class="ip-pst-chart">
+                    @foreach (var pm in _data.ClcByMonth.OrderByDescending(m => m.Month))
+                    {
+                        <div class="ip-pst-row">
+                            <div class="ip-pst-lbl">@clcMonths[pm.Month - 1]</div>
+                            <div class="ip-pst-bar-wrap">
+                                @if (pm.Passed > 0)
+                                {
+                                    <div class="ip-pst-bar" style="width:@Pc(pm.Passed, maxClc)%;background:#1d4ed8;"></div>
+                                    <span class="ip-pst-bar-val" style="color:#1d4ed8;">@pm.Passed</span>
+                                }
+                                @if (pm.Failed > 0)
+                                {
+                                    <div class="ip-pst-bar" style="width:@Pc(pm.Failed, maxClc)%;background:#ef4444;margin-left:2px;"></div>
+                                    <span class="ip-pst-bar-val" style="color:#ef4444;">@pm.Failed</span>
+                                }
+                                @if (pm.Held > 0)
+                                {
+                                    <div class="ip-pst-bar" style="width:@Pc(pm.Held, maxClc)%;background:#f59e0b;margin-left:2px;"></div>
+                                    <span class="ip-pst-bar-val" style="color:#d97706;">@pm.Held</span>
+                                }
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ══ LATEST INSPECTIONS ══ -->
+    <div class="ip-section-title">@T("InspectorReview.LatestInspections")</div>
+    <div class="ip-card print-avoid-break" style="overflow-x:auto;">
+        <table class="ip-kpi">
+            <thead><tr><th>@T("Common.Date")</th><th>@T("Dashboard.Stage")</th><th>@T("Common.Customer")</th><th>@T("Common.Vendor")</th><th>@T("Common.Result")</th></tr></thead>
+            <tbody>
+                @foreach (var l in _data.Latest)
+                {
+                    var row = l;
+                    <tr style="cursor:pointer" @onclick="() => OpenLatest(row)">
+                        <td>@L.Date(row.Date, "yyyy-MM-dd")</td>
+                        <td><span class="ip-stage ip-stage-@row.Type.ToLower()">@row.Type</span></td>
+                        <td>@row.Customer</td><td>@row.Vendor</td>
+                        <td><span class="ip-res ip-res-@row.Result.ToLower()">@LatestResult(row.Result)</span></td>
+                    </tr>
+                }
+                @if (_data.Latest.Count == 0) { <tr><td colspan="5" style="text-align:center;color:#94a3b8">—</td></tr> }
+            </tbody>
+        </table>
+    </div>
+
+    <!-- ══ ANNUAL INSPECTION PERFORMANCE ══ -->
+    <div class="ip-section-title">@T("InspectorReview.AnnualInspectionPerformance")</div>
+    <div class="ip-card print-avoid-break" style="overflow-x:auto;">
+        <table class="ip-kpi">
+            <thead>
+                <tr>
+                    <th>@T("InspectorReview.KPI")</th>
+                    @foreach (var a in _data.Annual) { <th>@a.Year</th> }
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>@T("InspectorReview.TotalInspection")</td>
+                    @foreach (var a in _data.Annual) { <td>@(a.TotalInspection > 0 ? a.TotalInspection.ToString("N0") : "—")</td> }
+                </tr>
+                <tr>
+                    <td>@T("InspectorReview.PpiInspections")</td>
+                    @foreach (var a in _data.Annual) { <td>@(a.Ppi > 0 ? a.Ppi.ToString("N0") : "—")</td> }
+                </tr>
+                <tr>
+                    <td>@T("InspectorReview.DpiInspections")</td>
+                    @foreach (var a in _data.Annual) { <td>@(a.Dpi > 0 ? a.Dpi.ToString("N0") : "—")</td> }
+                </tr>
+                <tr>
+                    <td>@T("InspectorReview.PsiInspections")</td>
+                    @foreach (var a in _data.Annual) { <td>@(a.Psi > 0 ? a.Psi.ToString("N0") : "—")</td> }
+                </tr>
+                <tr>
+                    <td>@T("InspectorReview.ClcInspections")</td>
+                    @foreach (var a in _data.Annual) { <td>@(a.Clc > 0 ? a.Clc.ToString("N0") : "—")</td> }
+                </tr>
+                <tr>
+                    <td>@T("InspectorReview.TotalDefectDetectionRate")</td>
+                    @foreach (var a in _data.Annual) { <td>@(a.DefectDetectionRate.HasValue ? $"{a.DefectDetectionRate:0.##}%" : "—")</td> }
+                </tr>
+                <tr>
+                    <td>@T("InspectorReview.AnnualOnTimeInspectionAchievement")</td>
+                    @foreach (var a in _data.Annual) { <td>@(a.OnTimeRate.HasValue ? $"{a.OnTimeRate:0.#}%" : "—")</td> }
+                </tr>
+            </tbody>
+        </table>
+        <div class="ip-note">@T("InspectorReview.DefectDetectionRateTotalDefectsFound")</div>
     </div>
 
 </div>
@@ -313,21 +355,54 @@ else if (_data != null)
         public int    TargetYear     { get; set; }
         public int    TargetMonth    { get; set; }
         public int    YearTotal      { get; set; }
-        public int    YearPassed     { get; set; }
-        public int    YearFailed     { get; set; }
-        public double YearPassRate   { get; set; }
-        public double YearFailRate   { get; set; }
+        public int    MonthTotal     { get; set; }
         public int    YearPpt        { get; set; }
         public int    YearDpi        { get; set; }
         public int    YearPst        { get; set; }
-        public double AvgDurationPst { get; set; }
-        public double AvgDurationDpi { get; set; }
-        public double AvgDurationPpt { get; set; }
+        public int    YearClc        { get; set; }
+        public int    ClcPassed      { get; set; }
+        public int    ClcFailed      { get; set; }
+        public double ClcPassRate    { get; set; }
+        public double ClcFailRate    { get; set; }
+        public double ClcHoldRate    { get; set; }
+        public int    ClcHeld        { get; set; }
+        public int    PrevTotal      { get; set; }
+        public int    PrevPpt        { get; set; }
+        public int    PrevDpi        { get; set; }
+        public int    PrevPst        { get; set; }
+        public int    PrevClc        { get; set; }
+        public List<LatestDto> Latest { get; set; } = new();
+        public List<PstMonthDto> ClcByMonth { get; set; } = new();
+        public int    PstPassed      { get; set; }
+        public int    PstFailed      { get; set; }
+        public double PstPassRate    { get; set; }
+        public double PstFailRate    { get; set; }
+        public int    OnTimeCount    { get; set; }
+        public int    DelayedCount   { get; set; }
+        public int    OnTimeKnown    { get; set; }
         public double OnTimeRate     { get; set; }
         public double DelayedRate    { get; set; }
+        public double? OnTimeYearRate { get; set; }
         public List<MonthTypeDto>  MonthlyData { get; set; } = new();
         public List<PstMonthDto>   PstByMonth  { get; set; } = new();
+        public List<AnnualDto>     Annual      { get; set; } = new();
     }
+
+    class AnnualDto
+    {
+        public int     Year                { get; set; }
+        public int     TotalInspection     { get; set; }
+        public int     Ppi                 { get; set; }
+        public int     Dpi                 { get; set; }
+        public int     Psi                 { get; set; }
+        public int     Clc                 { get; set; }
+        public double? DefectDetectionRate { get; set; }
+        public double? OnTimeRate          { get; set; }
+    }
+
+    static string Pc(double v, double max) => (max > 0 ? v / max * 100 : 0).ToString("0.##", System.Globalization.CultureInfo.InvariantCulture);
+    static string Inv(double v) => v.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture);
+    string MonthName(int m) => L.MonthName(m);
 
     class MonthTypeDto
     {
@@ -335,17 +410,58 @@ else if (_data != null)
         public int Ppt   { get; set; }
         public int Dpi   { get; set; }
         public int Pst   { get; set; }
+        public int Clc   { get; set; }
     }
+
+    class LatestDto
+    {
+        public int? ClcId { get; set; } public DateTime Date { get; set; } public string Type { get; set; } = "";
+        public string Customer { get; set; } = ""; public string Vendor { get; set; } = "";
+        public string? JobNumber { get; set; } public string Result { get; set; } = "";
+    }
+
+    void OpenLatest(LatestDto l)
+    {
+        if (l.ClcId.HasValue) Navigation.NavigateTo($"/clc/{l.ClcId}/report");
+        else if (!string.IsNullOrEmpty(l.JobNumber)) Navigation.NavigateTo("/inspection-report/" + l.JobNumber);
+    }
+
+    string LatestResult(string r) => r switch
+    {
+        "PASS" => T("Clc.Pass"), "FAIL" => T("Clc.Fail"), "HOLD" => T("Clc.Hold"), "PENDING" => T("Clc.StatusPending"), _ => r
+    };
+
+    RenderFragment KpiCard(string label, int value, int prev, string color) => @<text>
+        <div class="ip-kpi-card" style="border-top:3px solid @color">
+            <div class="ip-kpi-lbl">@label</div>
+            <div class="ip-kpi-val">@value.ToString("N0")</div>
+            <div class="ip-kpi-delta">@KpiDelta(value, prev)</div>
+        </div>
+    </text>;
+
+    string KpiDelta(int value, int prev) =>
+        prev <= 0 ? (value > 0 ? T("InspectorReview.NewThisYear") : "—")
+                  : $"{(value >= prev ? "▲" : "▼")} {Math.Abs((value - prev) * 100.0 / prev):0}% {T("InspectorReview.VsLastYear", _data!.TargetYear - 1)}";
 
     class PstMonthDto
     {
         public int Month  { get; set; }
         public int Passed { get; set; }
         public int Failed { get; set; }
+        public int Held   { get; set; }
     }
 }
 
 <style>
+    .ip-kpis { display:grid; grid-template-columns:repeat(5, minmax(0,1fr)); gap:10px; margin:12px 0; }
+    .ip-kpi-card { background:#fff; border-radius:12px; padding:10px 14px; color:#1a2d5a; box-shadow:0 2px 10px rgba(0,0,0,.1); }
+    .ip-kpi-lbl { font-size:12px; font-weight:700; color:#51638a; } .ip-kpi-val { font-size:26px; font-weight:800; line-height:1.2; }
+    .ip-kpi-delta { font-size:11.5px; color:#6b7c9c; }
+    .ip-stage { display:inline-block; padding:2px 9px; border-radius:6px; font-size:11.5px; font-weight:800; background:#e5e7eb; color:#374151; }
+    .ip-stage-ppi { background:#dbeafe; color:#1e40af; } .ip-stage-dpi { background:#fef3c7; color:#92400e; } .ip-stage-psi { background:#fee2e2; color:#b91c1c; } .ip-stage-clc { background:#ede9fe; color:#5b21b6; }
+    .ip-res { display:inline-block; padding:2px 10px; border-radius:99px; font-size:11.5px; font-weight:800; background:#e5e7eb; color:#374151; }
+    .ip-res-pass { background:#dcfce7; color:#15803d; } .ip-res-fail { background:#fee2e2; color:#b91c1c; } .ip-res-hold { background:#fef3c7; color:#92400e; }
+    @@media (max-width:760px) { .ip-kpis { grid-template-columns:repeat(2, minmax(0,1fr)); } }
     .ip-page { max-width: 100%; margin: 0 auto; font-family: "DM Sans", sans-serif; color: #1a2d5a; }
     .ip-loading { display:flex;align-items:center;gap:10px;padding:60px;justify-content:center;color:#ffffff; }
     .ip-spinner { width:22px;height:22px;border:3px solid rgba(255,255,255,0.3);border-top-color:#ffffff;border-radius:50%;animation:ipspin .7s linear infinite; }
@@ -426,7 +542,40 @@ else if (_data != null)
 
     @@media (max-width:700px) {
         .ip-row { flex-direction:column; }
-        .ip-hbar-lbl { width:120px;font-size:10.5px; }
-        .ip-header { flex-wrap:wrap; }
+        .ip-row > div { width:100%; min-width:0; }
+        .ip-hbar-lbl { width:100px;font-size:10.5px; }
+        .ip-header { display:grid; grid-template-columns:34px minmax(0,1fr) 34px; gap:8px 10px; }
+        .ip-header-center { min-width:0; }
+        .ip-title { font-size:18px; line-height:1.25; }
+        .ip-sub { font-size:11.5px; }
+        .ip-controls { grid-column:1 / -1; display:grid; grid-template-columns:auto minmax(0,1fr) minmax(0,88px); gap:8px; width:100%; }
+        .ip-controls .ip-select, .ip-controls .prb-btn { width:100%; min-width:0; height:38px; }
+        .ip-select { -webkit-appearance:none; appearance:none; padding-right:26px;
+            background:#fff url("data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%231a2d5a' stroke-width='1.5' fill='none'/%3E%3C/svg%3E") no-repeat right 10px center; }
+        .ip-card { min-width:0; padding:16px 12px; }
+        .ip-infobar { padding:10px 14px; }
+        .ip-val { overflow-wrap:anywhere; }
+        .ip-ontime-lbl { width:64px; font-size:13px; }
+        .ip-ontime-pct { width:76px; font-size:13px; }
+        .ip-kpi { font-size:12px; }
+        .ip-kpi th, .ip-kpi td { padding:7px 8px; }
+        .ip-kpi td:first-child { min-width:120px; }
     }
+    @@media print {
+        .ip-card { min-width:0 !important; }
+        .ip-row { break-inside:avoid; }
+    }
+
+    .ip-sub-inline { font-size:12px; font-weight:500; color:rgba(255,255,255,.75); }
+    .ip-empty { font-size:13px; color:#9ca3af; text-align:center; padding:8px; }
+    .ip-note  { font-size:11.5px; color:#6b7280; margin-top:6px; }
+    .ip-ontime-pct small { font-size:11px; color:#6b7280; font-weight:600; }
+    .ip-ontime-pct { width:90px; }
+    .ip-print-period { color:#fff; font-weight:700; font-size:13px; align-self:center; }
+    .ip-kpi { width:100%; border-collapse:collapse; font-size:13px; }
+    .ip-kpi th { background:#1a2d5a; color:#fff; font-weight:700; padding:9px 12px; text-align:center; border:1px solid #1a2d5a; }
+    .ip-kpi th:first-child, .ip-kpi td:first-child { text-align:left; }
+    .ip-kpi td { padding:9px 12px; border:1px solid #e5e7eb; text-align:center; color:#1a2d5a; font-weight:600; }
+    .ip-kpi td:first-child { font-weight:500; color:#374151; }
+    .ip-kpi tbody tr:nth-child(even) td { background:#f8fafc; }
 </style>

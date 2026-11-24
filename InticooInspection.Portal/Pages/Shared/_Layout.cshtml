@@ -1,0 +1,82 @@
+@inject Microsoft.Extensions.Configuration.IConfiguration Cfg
+@{
+    var path = Context.Request.Path.Value?.ToLowerInvariant() ?? "/";
+    string On(string p) => (p == "/" ? path == "/" : path.StartsWith(p)) ? "on" : "";
+    var appUrl = Cfg["Portal:AppUrl"] ?? "#";
+    var meta = LocalizationStore.Meta[L.Lang];
+    string LangUrl(string l)
+    {
+        var q = Context.Request.Query.Where(kv => kv.Key != "lang").Select(kv => $"{Uri.EscapeDataString(kv.Key)}={Uri.EscapeDataString(kv.Value.ToString())}").ToList();
+        q.Add("lang=" + l);
+        return Context.Request.Path + "?" + string.Join("&", q);
+    }
+    var title = ViewData["Title"] is string t && t.Length > 0 ? t + " — Inticoo" : "Inticoo — " + L["Simple Inspections. Better Quality."];
+}
+<!doctype html>
+<html lang="@(L.Lang == "zh" ? "zh-Hans" : L.Lang)">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>@title</title>
+    <meta name="description" content="@(ViewData["Desc"] ?? L["A powerful inspection platform to manage product inspections, loading container checks, suppliers, CAPA and quality data."])" />
+    <link rel="icon" href="/img/favicon.png" />
+    <link rel="stylesheet" href="/css/site.css?v=1" />
+</head>
+<body>
+<header class="site-header">
+    <div class="wrap">
+        <a class="brand" href="/"><b>Inticoo</b><small>QUALITY BEYOND BORDERS</small></a>
+        <nav class="nav" id="nav">
+            <a href="/" class="@On("/")">@L["Home"]</a>
+            <a href="/features" class="@On("/features")">@L["Features"]</a>
+            <a href="/pricing" class="@On("/pricing")">@L["Pricing"]</a>
+            <a href="/resources" class="@On("/resources")">@L["Resources"]</a>
+            <a href="/about" class="@On("/about")">@L["About Us"]</a>
+            <a href="/contact" class="@On("/contact")">@L["Contact Us"]</a>
+        </nav>
+        <div class="hdr-actions">
+            <details class="lang">
+                <summary>@Icons.Svg("globe", 18) @meta.Native</summary>
+                <div class="lang-menu">
+                    @foreach (var l in LocalizationStore.Supported)
+                    {
+                        var m = LocalizationStore.Meta[l];
+                        <a href="@LangUrl(l)" class="@(l == L.Lang ? "on" : "")"><em>@m.Flag</em> @m.Native</a>
+                    }
+                </div>
+            </details>
+            <a class="btn ghost" href="@appUrl" rel="noopener">@L["Login"]</a>
+            <a class="btn" href="/register">@L["Register & Subscribe"]</a>
+            <button class="burger" id="burger" aria-label="Menu">☰</button>
+        </div>
+    </div>
+</header>
+
+@RenderBody()
+
+<footer class="site-footer">
+    <div class="wrap">
+        <div class="cols">
+            <div>
+                <a class="brand" href="/"><b>Inticoo</b><small>QUALITY BEYOND BORDERS</small></a>
+                <p style="margin-top:14px;font-size:.88rem">@L["Quality inspection and supplier management for global supply chains."]</p>
+            </div>
+            <div><h4>@L["Product"]</h4><a href="/features">@L["Features"]</a><a href="/pricing">@L["Pricing"]</a><a href="/resources">@L["Resources"]</a><a href="/about">@L["About Us"]</a></div>
+            <div><h4>@L["Resources"]</h4><a href="/resources#guides">@L["Inspection Guides"]</a><a href="/resources#standards">@L["AQL Standards"]</a><a href="/resources#checklists">@L["Checklists"]</a><a href="/resources#learning">@L["Learning Center"]</a></div>
+            <div><h4>@L["Support"]</h4><a href="/resources#faq">@L["FAQs"]</a><a href="/contact">@L["Help Center"]</a><a href="/contact">@L["Contact Us"]</a></div>
+            <div>
+                <h4>@L["Contact Us"]</h4>
+                <p style="font-size:.88rem">Suite 8-2, Tower Block, Menara Milenium,<br />No. 8, Jalan Damanlela, Damansara Heights,<br />50490 Kuala Lumpur, Malaysia.</p>
+                <a href="mailto:info@inticoo.com">info@inticoo.com</a>
+            </div>
+        </div>
+        <div class="copy">
+            <span>© @DateTime.UtcNow.Year Inticoo Global Services. @L["All rights reserved."]</span>
+            <span><a href="/terms" style="display:inline">@L["Terms of Service"]</a> · <a href="/privacy" style="display:inline">@L["Privacy Policy"]</a></span>
+        </div>
+    </div>
+</footer>
+<script src="/js/site.js?v=1"></script>
+@await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>
