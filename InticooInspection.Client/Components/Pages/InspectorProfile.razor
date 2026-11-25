@@ -614,6 +614,7 @@ else
                 <button class="modal-close" @onclick="CloseDetail">&#x2715;</button>
             </div>
 
+            @* 2 cột cân nhau: trái = thông tin cá nhân + liên hệ + đính kèm, phải = nghề nghiệp + địa chỉ *@
             <div class="vc-grid">
                 <div class="vc-col">
                     <ViewSection Title="@T("InspectorProfile.Identity")" Icon="building">
@@ -625,6 +626,23 @@ else
                         <ViewRow Label="@T("InspectorProfile.Nationality")" Value="@d.Nationality" />
                         <ViewRow Label="@(string.IsNullOrEmpty(d.IdType) ? "ID" : d.IdType)" Value="@d.IdNumber" />
                     </ViewSection>
+                    <ViewSection Title="@T("InspectorProfile.Contact")" Icon="user">
+                        <ViewRow Label="@T("Common.Mobile")" Value="@d.Mobile" />
+                        <ViewRow Label="Email" Value="@d.Email" />
+                    </ViewSection>
+                    @if (!string.IsNullOrEmpty(d.CvUrl) || !string.IsNullOrEmpty(d.PhotoUrl))
+                    {
+                        <ViewSection Title="@T("InspectorProfile.Attachments")" Icon="doc">
+                            @if (!string.IsNullOrEmpty(d.PhotoUrl))
+                            {
+                                <ViewRow Label="@T("InspectorProfile.ProfilePhoto")" Value="@T("InspectorProfile.ViewPhoto")" Href="@MediaUrl.Resolve(d.PhotoUrl, Http.BaseAddress?.ToString())" />
+                            }
+                            @if (!string.IsNullOrEmpty(d.CvUrl))
+                            {
+                                <ViewRow Label="@T("InspectorProfile.CV")" Value="@T("InspectorProfile.OpenCV")" Href="@MediaUrl.Resolve(d.CvUrl, Http.BaseAddress?.ToString())" />
+                            }
+                        </ViewSection>
+                    }
                 </div>
                 <div class="vc-col">
                     <ViewSection Title="@T("InspectorProfile.Professional")" Icon="briefcase">
@@ -634,34 +652,15 @@ else
                         <ViewRow Label="@T("Common.Status")" Value="@(d.IsActive ? T("Common.Active") : T("Common.Inactive"))" />
                         <ViewRow Label="@T("InspectorProfile.DateJoined")" Value="@d.CreatedAt.ToString("dd/MM/yyyy")" />
                     </ViewSection>
-                    <ViewSection Title="@T("InspectorProfile.Contact")" Icon="user">
-                        <ViewRow Label="@T("Common.Mobile")" Value="@d.Mobile" />
-                        <ViewRow Label="Email" Value="@d.Email" />
+                    <ViewSection Title="@T("InspectorProfile.HomeAddress")" Icon="pin">
+                        <ViewRow Label="@T("Common.Address1")" Value="@d.Address1" />
+                        <ViewRow Label="@T("Common.Address2")" Value="@d.Address2" />
+                        <ViewRow Label="@T("Common.City")" Value="@d.City" />
+                        <ViewRow Label="@T("Common.StateProvince")" Value="@d.State" />
+                        <ViewRow Label="@T("Common.Country")" Value="@d.Country" />
+                        <ViewRow Label="@T("InspectorProfile.PostalCode")" Value="@d.PostalCode" />
                     </ViewSection>
                 </div>
-
-                <ViewSection Title="@T("InspectorProfile.HomeAddress")" Icon="pin" Class="vc-wide">
-                    <ViewRow Label="@T("Common.Address1")" Value="@d.Address1" />
-                    <ViewRow Label="@T("Common.Address2")" Value="@d.Address2" />
-                    <ViewRow Label="@T("Common.City")" Value="@d.City" />
-                    <ViewRow Label="@T("Common.StateProvince")" Value="@d.State" />
-                    <ViewRow Label="@T("Common.Country")" Value="@d.Country" />
-                    <ViewRow Label="@T("InspectorProfile.PostalCode")" Value="@d.PostalCode" />
-                </ViewSection>
-
-                @if (!string.IsNullOrEmpty(d.CvUrl) || !string.IsNullOrEmpty(d.PhotoUrl))
-                {
-                    <ViewSection Title="@T("InspectorProfile.Attachments")" Icon="doc" Class="vc-wide">
-                        @if (!string.IsNullOrEmpty(d.PhotoUrl))
-                        {
-                            <ViewRow Label="@T("InspectorProfile.ProfilePhoto")" Value="@T("InspectorProfile.ViewPhoto")" Href="@MediaUrl.Resolve(d.PhotoUrl, Http.BaseAddress?.ToString())" />
-                        }
-                        @if (!string.IsNullOrEmpty(d.CvUrl))
-                        {
-                            <ViewRow Label="@T("InspectorProfile.CV")" Value="@T("InspectorProfile.OpenCV")" Href="@MediaUrl.Resolve(d.CvUrl, Http.BaseAddress?.ToString())" />
-                        }
-                    </ViewSection>
-                }
             </div>
 
             <div class="modal-footer">
