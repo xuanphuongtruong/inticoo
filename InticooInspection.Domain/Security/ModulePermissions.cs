@@ -95,7 +95,7 @@ namespace InticooInspection.Domain.Security
             new ModuleDef(ModuleKeys.InspectionSummary,  "Inspection Summary",  PermLevel.Edit, Cud, true),
             new ModuleDef(ModuleKeys.PerformanceTest,    "Performance Test",    PermLevel.Edit, Cud, true),
             new ModuleDef(ModuleKeys.PerformanceReview,  "Performance Review",  PermLevel.View, Array.Empty<string>(), true),
-            new ModuleDef(ModuleKeys.Directory,          "Directory",           PermLevel.View, Array.Empty<string>(), true),
+            new ModuleDef(ModuleKeys.Directory,          "Directory",           PermLevel.Edit, Cud, true),   // Customer/Vendor/Product
             new ModuleDef(ModuleKeys.ReportsExport,      "Reports & Export",    PermLevel.Edit, new[] { PermAction.Export, PermAction.Download }, false),
         };
 
@@ -188,6 +188,8 @@ namespace InticooInspection.Domain.Security
                 {
                     p.Level = def.MaxLevel;
                     foreach (var f in def.Flags) p.SetFlag(f, true);
+                    // Directory trước đây chỉ có View (ghi chỉ Admin) → tài khoản cũ giữ View, Admin tự cấp Edit
+                    if (def.Key == ModuleKeys.Directory) { p.Level = PermLevel.View; p.Create = p.Edit = p.Delete = false; }
                 }
                 set.Modules[def.Key] = p;
             }

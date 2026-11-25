@@ -1,4 +1,4 @@
-using InticooInspection.Domain.Entities;
+﻿using InticooInspection.Domain.Entities;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -261,13 +261,35 @@ namespace InticooInspection.API.Controllers
           }
         }
 
+        /// <summary>Tài khoản chỉ có đúng role Inspector.</summary>
+        private async Task<bool> IsInspectorOnlyAsync(AppUser u)
+        {
+            var roles = await _userManager.GetRolesAsync(u);
+            return roles.Count == 1 && roles[0] == "Inspector";
+        }
+
+        /// <summary>
+        /// Sửa tài khoản: Admin sửa mọi tài khoản; người có quyền Directory → Edit chỉ được sửa tài khoản Inspector
+        /// (màn Inspector Profile) — không tạo mới / xoá / đổi role / đổi quyền / đổi mật khẩu.
+        /// </summary>
+        private async Task<IActionResult?> RequireInspectorEditAsync(AppUser target)
+        {
+            var ctx = await _access.GetAsync();
+            if (ctx == null) return Unauthorized(new { success = false, message = "Please sign in again." });
+            if (ctx.IsAdmin) return null;
+            if (ctx.Perms.Can(ModuleKeys.Directory, PermAction.Edit) && await IsInspectorOnlyAsync(target)) return null;
+            return StatusCode(403, new { success = false, message = "You do not have permission to perform this action." });
+        }
+
         // PUT api/users/{id}
         [HttpPut("{id}")]
         public async Task<IActionResult> Update(string id, [FromBody] UpdateUserRequest request)
 {
-    if (await _access.RequireAdminAsync() is { } denied) return denied;
     var user = await _userManager.FindByIdAsync(id);
     if (user == null) return NotFound();
+    if (await RequireInspectorEditAsync(user) is { } denied) return denied;
+    var isAdmin = (await _access.GetAsync())!.IsAdmin;
+    var targetIsInspector = await IsInspectorOnlyAsync(user);
     var previousEmail = user.Email ?? user.UserName;
 
     // Check trùng username (nếu có đổi)
@@ -293,11 +315,15 @@ namespace InticooInspection.API.Controllers
     if (request.Email      != null) user.Email      = request.Email;
     if (request.Mobile     != null) user.Mobile     = request.Mobile;
     if (request.Country    != null) user.Country    = request.Country;
-    if (request.CustomerId != null) user.CustomerId = request.CustomerId;
-    if (request.PageAccess != null) user.PageAccess = request.PageAccess;
-    if (request.Department != null) user.Department = request.Department;
-    if (request.Position   != null) user.Position   = request.Position;
-    ApplyAccess(user, request.ModulePermissions, request.CustomerIds);
+    // Trường bảo mật (quyền, phạm vi KH, phòng ban/chức vụ) chỉ Admin được đổi
+    if (isAdmin)
+    {
+        if (request.CustomerId != null) user.CustomerId = request.CustomerId;
+        if (request.PageAccess != null) user.PageAccess = request.PageAccess;
+        if (request.Department != null) user.Department = request.Department;
+        if (request.Position   != null) user.Position   = request.Position;
+        ApplyAccess(user, request.ModulePermissions, request.CustomerIds);
+    }
 
     // ShowInLoginAccount: chỉ form Inspector Profile gửi field này (nullable).
     // Form Users không gửi → giữ nguyên giá trị hiện tại, tránh vô tình ẩn account.
@@ -329,7 +355,7 @@ namespace InticooInspection.API.Controllers
         return BadRequest(new { success = false, message = string.Join(", ", result.Errors.Select(e => e.Description)) });
 
     // ── Đổi password nếu có ──
-    if (!string.IsNullOrWhiteSpace(request.NewPassword))
+    if (isAdmin && !string.IsNullOrWhiteSpace(request.NewPassword))
     {
         var token    = await _userManager.GeneratePasswordResetTokenAsync(user);
         var pwResult = await _userManager.ResetPasswordAsync(user, token, request.NewPassword);
@@ -339,7 +365,8 @@ namespace InticooInspection.API.Controllers
 
     // ── Cập nhật roles CHỈ khi client có gửi (Count > 0) ──
     // Nếu client gửi mảng rỗng → không đụng tới roles hiện tại.
-    if (request.Roles != null && request.Roles.Count > 0)
+    // Tài khoản Inspector giữ nguyên role Inspector (không đổi role); người không phải Admin không bao giờ đổi role.
+    if (isAdmin && !targetIsInspector && request.Roles != null && request.Roles.Count > 0)
     {
         var currentRoles = await _userManager.GetRolesAsync(user);
         await _userManager.RemoveFromRolesAsync(user, currentRoles);
@@ -357,9 +384,9 @@ namespace InticooInspection.API.Controllers
         [HttpPut("{id}/toggle-active")]
         public async Task<IActionResult> ToggleActive(string id)
         {
-            if (await _access.RequireAdminAsync() is { } denied) return denied;
             var user = await _userManager.FindByIdAsync(id);
             if (user == null) return NotFound();
+            if (await RequireInspectorEditAsync(user) is { } denied) return denied;
             if (!user.IsActive) await Limits.EnsureUsersAsync();   // bật lại → kiểm hạn mức gói
             user.IsActive = !user.IsActive;
             await _userManager.UpdateAsync(user);
@@ -795,7 +822,7 @@ namespace InticooInspection.API.Controllers
     public class UpdateUserRequest
     {
         public string   Username            { get; set; } = "";
-        public string   Email               { get; set; } = "";
+        public string?  Email               { get; set; }   // null = không gửi → giữ email cũ
         public string   FullName            { get; set; } = "";
         public string?  ShortName           { get; set; }
         public DateTime? DateOfBirth        { get; set; }

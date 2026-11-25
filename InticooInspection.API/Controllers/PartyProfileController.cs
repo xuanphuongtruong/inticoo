@@ -1,3 +1,4 @@
+﻿using InticooInspection.Domain.Security;
 using System.Text.RegularExpressions;
 using InticooInspection.API.Services;
 using InticooInspection.Domain.Entities;
@@ -77,7 +78,7 @@ namespace InticooInspection.API.Controllers
         [HttpPut("contacts")]
         public async Task<IActionResult> SaveContacts(string type, int id, [FromBody] List<ContactDto> contacts)
         {
-            if (await HttpContext.RequestServices.GetRequiredService<UserAccess>().RequireAdminAsync() is { } denied) return denied;
+            if (await HttpContext.RequestServices.GetRequiredService<UserAccess>().RequireAsync((ModuleKeys.Directory, PermAction.Create), (ModuleKeys.Directory, PermAction.Edit)) is { } denied) return denied;
             var pt = Norm(type);
             if (pt == null) return NotFound();
             if (!await PartyExistsAsync(pt, id)) return NotFound();
@@ -157,7 +158,7 @@ namespace InticooInspection.API.Controllers
         [HttpPut("report-settings")]
         public async Task<IActionResult> SaveReportSettings(string type, int id, [FromBody] List<ReportSettingDto> settings)
         {
-            if (await HttpContext.RequestServices.GetRequiredService<UserAccess>().RequireAdminAsync() is { } denied) return denied;
+            if (await HttpContext.RequestServices.GetRequiredService<UserAccess>().RequireAsync((ModuleKeys.Directory, PermAction.Create), (ModuleKeys.Directory, PermAction.Edit)) is { } denied) return denied;
             var pt = Norm(type);
             if (pt == null) return NotFound();
             if (!await PartyExistsAsync(pt, id)) return NotFound();

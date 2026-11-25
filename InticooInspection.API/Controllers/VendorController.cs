@@ -1,4 +1,4 @@
-using InticooInspection.Domain.Security;
+﻿using InticooInspection.Domain.Security;
 using InticooInspection.API.Services;
 using InticooInspection.Domain.Entities;
 using InticooInspection.Infrastructure.Data;
@@ -271,7 +271,7 @@ namespace InticooInspection.API.Controllers
         [HttpPost]
         public async Task<IActionResult> Create([FromBody] VendorRequest request)
         {
-            if (await HttpContext.RequestServices.GetRequiredService<UserAccess>().RequireAdminAsync() is { } denied) return denied;
+            if (await HttpContext.RequestServices.GetRequiredService<UserAccess>().RequireAsync((ModuleKeys.Directory, PermAction.Create)) is { } denied) return denied;
             if (string.IsNullOrWhiteSpace(request.Name))
                 return BadRequest(new { message = "Vendor name is required." });
 
@@ -299,7 +299,7 @@ namespace InticooInspection.API.Controllers
         [HttpPut("{id}")]
         public async Task<IActionResult> Update(int id, [FromBody] VendorRequest request)
         {
-            if (await HttpContext.RequestServices.GetRequiredService<UserAccess>().RequireAdminAsync() is { } denied) return denied;
+            if (await HttpContext.RequestServices.GetRequiredService<UserAccess>().RequireAsync((ModuleKeys.Directory, PermAction.Edit)) is { } denied) return denied;
             var vendor = await _db.Vendors.FindAsync(id);
             if (vendor == null) return NotFound();
             if (string.IsNullOrWhiteSpace(request.Code))  return BadRequest(new { message = "Vendor code is required." });
@@ -315,7 +315,7 @@ namespace InticooInspection.API.Controllers
         [HttpDelete("{id}")]
         public async Task<IActionResult> Delete(int id)
         {
-            if (await HttpContext.RequestServices.GetRequiredService<UserAccess>().RequireAdminAsync() is { } denied) return denied;
+            if (await HttpContext.RequestServices.GetRequiredService<UserAccess>().RequireAsync((ModuleKeys.Directory, PermAction.Delete)) is { } denied) return denied;
             var vendor = await _db.Vendors
                                   .Include(v => v.Attachments)
                                   .FirstOrDefaultAsync(v => v.Id == id);
@@ -338,7 +338,7 @@ namespace InticooInspection.API.Controllers
         [HttpPost("{id}/attachments")]
         public async Task<IActionResult> UploadAttachments(int id, List<IFormFile> files)
         {
-            if (await HttpContext.RequestServices.GetRequiredService<UserAccess>().RequireAdminAsync() is { } denied) return denied;
+            if (await HttpContext.RequestServices.GetRequiredService<UserAccess>().RequireAsync((ModuleKeys.Directory, PermAction.Create), (ModuleKeys.Directory, PermAction.Edit)) is { } denied) return denied;
             var vendor = await _db.Vendors
                                   .Include(v => v.Attachments)
                                   .FirstOrDefaultAsync(v => v.Id == id);
@@ -429,7 +429,7 @@ namespace InticooInspection.API.Controllers
         [HttpDelete("{id}/attachments/{attId}")]
         public async Task<IActionResult> DeleteAttachment(int id, int attId)
         {
-            if (await HttpContext.RequestServices.GetRequiredService<UserAccess>().RequireAdminAsync() is { } denied) return denied;
+            if (await HttpContext.RequestServices.GetRequiredService<UserAccess>().RequireAsync((ModuleKeys.Directory, PermAction.Create), (ModuleKeys.Directory, PermAction.Edit)) is { } denied) return denied;
             var att = await _db.Set<VendorAttachment>()
                                .FirstOrDefaultAsync(a => a.Id == attId && a.VendorId == id);
             if (att == null) return NotFound();
@@ -447,7 +447,7 @@ namespace InticooInspection.API.Controllers
         [HttpPost("{id}/upload")]
         public async Task<IActionResult> Upload(int id, IFormFile file)
         {
-            if (await HttpContext.RequestServices.GetRequiredService<UserAccess>().RequireAdminAsync() is { } denied) return denied;
+            if (await HttpContext.RequestServices.GetRequiredService<UserAccess>().RequireAsync((ModuleKeys.Directory, PermAction.Create), (ModuleKeys.Directory, PermAction.Edit)) is { } denied) return denied;
             var vendor = await _db.Vendors.FindAsync(id);
             if (vendor == null) return NotFound();
             if (file == null || file.Length == 0) return BadRequest(new { message = "No file uploaded." });
@@ -593,7 +593,7 @@ namespace InticooInspection.API.Controllers
         [HttpPost("{id}/factory-eval/files")]
         public async Task<IActionResult> UploadFactoryEvalFiles(int id, List<IFormFile> files)
         {
-            if (await HttpContext.RequestServices.GetRequiredService<UserAccess>().RequireAdminAsync() is { } denied) return denied;
+            if (await HttpContext.RequestServices.GetRequiredService<UserAccess>().RequireAsync((ModuleKeys.Directory, PermAction.Create), (ModuleKeys.Directory, PermAction.Edit)) is { } denied) return denied;
             var vendor = await _db.Vendors.Include(v => v.FactoryEvalFiles).FirstOrDefaultAsync(v => v.Id == id);
             if (vendor == null) return NotFound();
             if (files == null || files.Count == 0) return BadRequest(new { message = "No files uploaded." });
@@ -656,7 +656,7 @@ namespace InticooInspection.API.Controllers
         [HttpDelete("{id}/factory-eval/files/{fileId}")]
         public async Task<IActionResult> DeleteFactoryEvalFile(int id, int fileId)
         {
-            if (await HttpContext.RequestServices.GetRequiredService<UserAccess>().RequireAdminAsync() is { } denied) return denied;
+            if (await HttpContext.RequestServices.GetRequiredService<UserAccess>().RequireAsync((ModuleKeys.Directory, PermAction.Create), (ModuleKeys.Directory, PermAction.Edit)) is { } denied) return denied;
             var f = await _db.Set<VendorFactoryEvalFile>().FirstOrDefaultAsync(x => x.Id == fileId && x.VendorId == id);
             if (f == null) return NotFound();
             var path = Path.Combine(GetFactoryEvalDir(id), f.StoredName);
@@ -885,7 +885,7 @@ namespace InticooInspection.API.Controllers
         [RequestSizeLimit(20 * 1024 * 1024)]
         public async Task<IActionResult> Import(IFormFile file)
         {
-            if (await HttpContext.RequestServices.GetRequiredService<UserAccess>().RequireAdminAsync() is { } denied) return denied;
+            if (await HttpContext.RequestServices.GetRequiredService<UserAccess>().RequireAsync((ModuleKeys.Directory, PermAction.Create)) is { } denied) return denied;
             var validateError = ImportHelper.ValidateFile(file);
             if (validateError != null) return validateError;
 

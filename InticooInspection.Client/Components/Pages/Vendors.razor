@@ -57,13 +57,14 @@
         <button type="button" class="lp-btn-reset" @onclick="ClearFilters">@T("Common.Clear")</button>
     </div>
     <span class="total-count">@T("Vendors.Vendors", _total)</span>
-    <AuthorizeView Roles="Admin">
+    @if (DirCreate)
+    {
         <ImportExcelButton ApiBase="api/vendors" OnImported="() => LoadPage(_page)" />
         <button class="btn-new" @onclick="async () => await OpenCreate()">
             <svg width="13" height="13" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M10 4v12M4 10h12"/></svg>
             @T("Vendors.NewVendor")
         </button>
-    </AuthorizeView>
+    }
 </div>
 
 <div class="m-kpis">
@@ -125,7 +126,7 @@ else
                 </div>
                 <div class="m-card-actions">
                     <button type="button" class="m-btn-outline" @onclick="() => OpenDetail(item)">@T("Common.View")</button>
-                    @if (PageAccess.IsAdmin)
+                    @if (DirEdit)
                     {
                         <button type="button" class="m-btn-fill" @onclick="async () => await OpenEdit(item)">@T("Common.Edit")</button>
                     }
@@ -189,18 +190,18 @@ else
                             }
                             else
                             {
-                                <AuthorizeView Roles="Admin">
-                                    <Authorized>
+                                @if (DirEdit)
+                                {
                                         <label class="upload-inline-btn" title="@T("Vendors.UploadFactoryEvaluationFile")">
                                             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
                                             @T("Vendors.Upload")
                                             <InputFile OnChange="(e) => HandleInlineFactoryEvalUpload(e, item)" style="display:none" accept=".pdf,.jpg,.jpeg,.png,.xlsx,.docx" multiple />
                                         </label>
-                                    </Authorized>
-                                    <NotAuthorized>
+                                }
+                                else
+                                {
                                         <span class="muted">—</span>
-                                    </NotAuthorized>
-                                </AuthorizeView>
+                                }
                             }
                         </td>
                         <td class="tc">
@@ -211,11 +212,14 @@ else
                                 <button class="bico bview" @onclick="() => OpenDetail(item)" title="@T("Common.View")">
                                     <svg width="13" height="13" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 10s3.5-6 8-6 8 6 8 6-3.5 6-8 6-8-6-8-6Z"/><circle cx="10" cy="10" r="2.5"/></svg>
                                 </button>
-                                @if (PageAccess.IsAdmin)
+                                @if (DirEdit)
                                 {
                                     <button class="bico bedit" @onclick="async () => await OpenEdit(item)" title="@T("Common.Edit")">
                                         <svg width="13" height="13" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 2l4 4-10 10H4v-4L14 2z" stroke-linecap="round" stroke-linejoin="round"/></svg>
                                     </button>
+                                }
+                                @if (DirDelete)
+                                {
                                     <button class="bico bdel" @onclick="() => ConfirmDelete(item)" title="@T("Common.Delete")">
                                         <svg width="13" height="13" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 6h14M8 6V4h4v2M5 6l1 11h8l1-11" stroke-linecap="round" stroke-linejoin="round"/></svg>
                                     </button>
@@ -752,12 +756,13 @@ else
             </div>
             <div class="modal-footer">
                 <button class="btn-cancel" @onclick="() => _detailItem = null">@T("Common.Close")</button>
-                <AuthorizeView Roles="Admin">
+                @if (DirEdit)
+                {
                     <button class="btn-submit" @onclick="async () => { _detailItem = null; await OpenEdit(d); }">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                         @T("Common.Edit")
                     </button>
-                </AuthorizeView>
+                }
             </div>
         </div>
     </div>
@@ -782,6 +787,11 @@ else
 }
 
 @code {
+    // Quyền Directory theo Module Permissions (Admin luôn được): Create = thêm/import, Edit = sửa, Delete = xoá
+    private bool DirCreate => PageAccess.Can("Directory", "Create");
+    private bool DirEdit   => PageAccess.Can("Directory", "Edit");
+    private bool DirDelete => PageAccess.Can("Directory", "Delete");
+
     private bool _fOpen;
     private List<VendorDto> _vendors = new();
     private bool   _loading = true;

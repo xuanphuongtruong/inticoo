@@ -53,13 +53,14 @@
         <DateFilter @bind-Value="_dTo" @bind-Value:after="() => LoadPage(1)" Placeholder="@T("Common.EndDate")" />
         <button type="button" class="lp-btn-reset" @onclick="ClearFilters">@T("Common.Clear")</button>
     </div>
-    <AuthorizeView Roles="Admin">
+    @if (DirCreate)
+    {
         <ImportExcelButton ApiBase="api/customers" OnImported="() => LoadPage(_page)" />
         <button class="btn-new" @onclick="OpenCreate">
             <svg width="13" height="13" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M10 4v12M4 10h12"/></svg>
             @T("Customers.NewCustomer")
         </button>
-    </AuthorizeView>
+    }
 </div>
 
 <div class="m-kpis">
@@ -121,7 +122,7 @@ else
                 </div>
                 <div class="m-card-actions">
                     <button type="button" class="m-btn-outline" @onclick="() => OpenDetail(item)">@T("Common.View")</button>
-                    @if (PageAccess.IsAdmin)
+                    @if (DirEdit)
                     {
                         <button type="button" class="m-btn-fill" @onclick="() => OpenEdit(item)">@T("Common.Edit")</button>
                     }
@@ -191,11 +192,14 @@ else
                                 <button class="bico bview" @onclick="() => OpenDetail(item)" title="@T("Customers.ViewDetail")">
                                     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
                                 </button>
-                                @if (PageAccess.IsAdmin)
+                                @if (DirEdit)
                                 {
                                     <button class="bico bedit" @onclick="() => OpenEdit(item)" title="@T("Common.Edit")">
                                         <svg width="13" height="13" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 2l4 4-10 10H4v-4L14 2z" stroke-linecap="round" stroke-linejoin="round"/></svg>
                                     </button>
+                                }
+                                @if (DirDelete)
+                                {
                                     <button class="bico bdel" @onclick="() => ConfirmDelete(item)" title="@T("Common.Delete")">
                                         <svg width="13" height="13" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 6h14M8 6V4h4v2M5 6l1 11h8l1-11" stroke-linecap="round" stroke-linejoin="round"/></svg>
                                     </button>
@@ -537,12 +541,13 @@ else
 
             <div class="modal-footer">
                 <button class="btn-cancel" @onclick="() => _showDetail = false">@T("Common.Close")</button>
-                <AuthorizeView Roles="Admin">
+                @if (DirEdit)
+                {
                     <button class="btn-submit" @onclick="async () => { _showDetail = false; await OpenEdit(d); }">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                         @T("Common.Edit")
                     </button>
-                </AuthorizeView>
+                }
             </div>
         </div>
     </div>
@@ -630,6 +635,11 @@ else
 }
 
 @code {
+    // Quyền Directory theo Module Permissions (Admin luôn được): Create = thêm/import, Edit = sửa, Delete = xoá
+    private bool DirCreate => PageAccess.Can("Directory", "Create");
+    private bool DirEdit   => PageAccess.Can("Directory", "Edit");
+    private bool DirDelete => PageAccess.Can("Directory", "Delete");
+
     // Business Type chọn nhiều, lưu dạng "A, B"
     private static bool BtHas(string? v, string x) => (v ?? "").Split(',', StringSplitOptions.RemoveEmptyEntries).Any(p => p.Trim() == x);
     private static string BtToggle(string? v, string x)

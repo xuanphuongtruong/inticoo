@@ -224,7 +224,7 @@ else
                             </div>
                             <div class="uf-f">
                                 <label>@T("Users.Role") <i>*</i></label>
-                                <select class="uf-in uf-role @(_formRoles.FirstOrDefault()?.ToLower())" value="@(_formRoles.FirstOrDefault() ?? "")" @onchange="e => SelectRole(e.Value?.ToString() ?? string.Empty)">
+                                <select class="uf-in uf-role @(_formRoles.FirstOrDefault()?.ToLower())" value="@(_formRoles.FirstOrDefault() ?? "")" disabled="@_lockRole" @onchange="e => SelectRole(e.Value?.ToString() ?? string.Empty)">
                                     <option value="">@T("Users.SelectRole")</option>
                                     @foreach (var r in _roleOptions) { <option value="@r">@TE("Opt", r)</option> }
                                 </select>
@@ -391,7 +391,6 @@ else
                                             <td class="tl">
                                                 @if (d.Flags.Length == 0 || (d.FlagsNeedEdit && d.MaxLevel < PermLevel.Edit))
                                                 {
-                                                    <span class="uf-dash">-</span>
                                                     @if (d.MaxLevel < PermLevel.Edit) { <div class="uf-note">@T("Users.OnlyNoAccessOrViewOnly")</div> }
                                                 }
                                                 else
@@ -483,6 +482,7 @@ else
     private string  _formCustomerId = "";
     private bool    _formIsActive = true;
     private List<string> _formRoles = new();
+    private bool _lockRole;
     private List<string> _formPageAccess = new();
     private string  _formDepartment = "", _formPosition = "";
     private ModulePermissionSet _formPerms = new();
@@ -673,7 +673,7 @@ else
     {
         _formUsername = ""; _formFullName = ""; _formEmail = ""; _formPassword = "";
         _formMobile = ""; _formCountry = ""; _formCustomerId = "";
-        _formIsActive = true; _formRoles = new(); _formError = "";
+        _formIsActive = true; _formRoles = new(); _formError = ""; _lockRole = false;
         _formPageAccess = new();
         _formDepartment = ""; _formPosition = "";
         _formPerms = ModulePermissionSet.DefaultFor(null);
@@ -700,6 +700,7 @@ else
         _formPassword  = "";
         _formIsActive  = u.IsActive;
         _formRoles     = u.Roles.ToList();
+        _lockRole      = _formRoles.Count == 1 && _formRoles[0] == "Inspector";   // tài khoản Inspector: không đổi role
         _formPageAccess = string.IsNullOrWhiteSpace(u.PageAccess)
                           ? new()
                           : u.PageAccess.Split(',', StringSplitOptions.RemoveEmptyEntries)

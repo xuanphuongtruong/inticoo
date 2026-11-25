@@ -1,0 +1,59 @@
+/* Badge trạng thái Active / Inactive / Suspended dùng chung cho MỌI màn hình
+   (Customers, Vendors, Products, Users, Inspector Profile, Performance Test Master, popup xem chi tiết).
+   Tiền tố "html body" để thắng các khối <style> riêng trong từng trang .razor (nạp sau file này). */
+
+html body .status-badge,
+html body .status-toggle,
+html body .m-status,
+html body .ptm-toggle,
+html body .vc-badge {
+    display: inline-block;
+    padding: 3px 12px;
+    border-radius: 999px;
+    border: 1px solid transparent;
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 1.45;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+    white-space: nowrap;
+    vertical-align: middle;
+}
+
+/* ACTIVE — xanh lá */
+html body .status-badge.active,
+html body .status-badge.status-active,
+html body .status-toggle.s-active,
+html body .m-status.ok,
+html body .ptm-toggle.tog-on,
+html body .vc-badge:not(.off) {
+    background: #eaf3de;
+    color: #3b6d11;
+    border-color: #a9d17a;
+}
+
+/* INACTIVE — đỏ */
+html body .status-badge.inactive,
+html body .status-badge.status-inactive,
+html body .status-toggle.s-inactive,
+html body .m-status.off,
+html body .ptm-toggle.tog-off,
+html body .vc-badge.off {
+    background: #fef2f2;
+    color: #dc2626;
+    border-color: #f5a3a3;
+}
+
+/* SUSPENDED (Vendor) — cam */
+html body .status-badge.suspended,
+html body .status-badge.status-suspended {
+    background: #fffbeb;
+    color: #b45309;
+    border-color: #fcd34d;
+}
+
+/* Nút bấm đổi trạng thái (Users, Inspector, Performance Test) giữ cùng kiểu, chỉ thêm con trỏ + hover */
+html body button.status-toggle,
+html body button.ptm-toggle { cursor: pointer; transition: filter .15s; }
+html body button.status-toggle:hover,
+html body button.ptm-toggle:hover { filter: brightness(.95); }

@@ -1,4 +1,4 @@
-using InticooInspection.Domain.Security;
+﻿using InticooInspection.Domain.Security;
 using InticooInspection.API.Services;
 using InticooInspection.Domain.Entities;
 using InticooInspection.Infrastructure.Data;
@@ -46,7 +46,7 @@ namespace InticooInspection.API.Controllers
         [HttpPost]
         public async Task<IActionResult> UploadFiles(int customerId, List<IFormFile> files)
         {
-            if (await HttpContext.RequestServices.GetRequiredService<UserAccess>().RequireAdminAsync() is { } denied) return denied;
+            if (await HttpContext.RequestServices.GetRequiredService<UserAccess>().RequireAsync((ModuleKeys.Directory, PermAction.Create), (ModuleKeys.Directory, PermAction.Edit)) is { } denied) return denied;
             var customer = await _db.Customers.FindAsync(customerId);
             if (customer == null) return NotFound();
 
@@ -110,7 +110,7 @@ namespace InticooInspection.API.Controllers
         [HttpDelete("{fileId}")]
         public async Task<IActionResult> DeleteFile(int customerId, int fileId)
         {
-            if (await HttpContext.RequestServices.GetRequiredService<UserAccess>().RequireAdminAsync() is { } denied) return denied;
+            if (await HttpContext.RequestServices.GetRequiredService<UserAccess>().RequireAsync((ModuleKeys.Directory, PermAction.Create), (ModuleKeys.Directory, PermAction.Edit)) is { } denied) return denied;
             var file = await _db.CustomerFiles
                 .FirstOrDefaultAsync(f => f.Id == fileId && f.CustomerId == customerId);
 

@@ -107,7 +107,7 @@ namespace InticooInspection.API.Controllers
         [HttpPost]
         public async Task<IActionResult> Create([FromBody] CustomerRequest request)
         {
-            if (await HttpContext.RequestServices.GetRequiredService<UserAccess>().RequireAdminAsync() is { } denied) return denied;
+            if (await HttpContext.RequestServices.GetRequiredService<UserAccess>().RequireAsync((ModuleKeys.Directory, PermAction.Create)) is { } denied) return denied;
             if (string.IsNullOrWhiteSpace(request.CompanyName))
                 return BadRequest(new { message = "Company name is required." });
 
@@ -173,7 +173,7 @@ namespace InticooInspection.API.Controllers
         [HttpPut("{id}")]
         public async Task<IActionResult> Update(int id, [FromBody] CustomerRequest request)
         {
-            if (await HttpContext.RequestServices.GetRequiredService<UserAccess>().RequireAdminAsync() is { } denied) return denied;
+            if (await HttpContext.RequestServices.GetRequiredService<UserAccess>().RequireAsync((ModuleKeys.Directory, PermAction.Edit)) is { } denied) return denied;
             var customer = await _db.Customers.FindAsync(id);
             if (customer == null) return NotFound();
 
@@ -226,7 +226,7 @@ namespace InticooInspection.API.Controllers
         [HttpDelete("{id}")]
         public async Task<IActionResult> Delete(int id)
         {
-            if (await HttpContext.RequestServices.GetRequiredService<UserAccess>().RequireAdminAsync() is { } denied) return denied;
+            if (await HttpContext.RequestServices.GetRequiredService<UserAccess>().RequireAsync((ModuleKeys.Directory, PermAction.Delete)) is { } denied) return denied;
             var customer = await _db.Customers.FindAsync(id);
             if (customer == null) return NotFound();
             _db.Customers.Remove(customer);
@@ -249,7 +249,7 @@ namespace InticooInspection.API.Controllers
         [RequestSizeLimit(20 * 1024 * 1024)]
         public async Task<IActionResult> Import(IFormFile file)
         {
-            if (await HttpContext.RequestServices.GetRequiredService<UserAccess>().RequireAdminAsync() is { } denied) return denied;
+            if (await HttpContext.RequestServices.GetRequiredService<UserAccess>().RequireAsync((ModuleKeys.Directory, PermAction.Create)) is { } denied) return denied;
             var validateError = ImportHelper.ValidateFile(file);
             if (validateError != null) return validateError;
 

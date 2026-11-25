@@ -238,7 +238,7 @@ namespace InticooInspection.API.Controllers
         [HttpPost]
         public async Task<IActionResult> Create([FromBody] ProductRequest req)
         {
-            if (await HttpContext.RequestServices.GetRequiredService<UserAccess>().RequireAdminAsync() is { } denied) return denied;
+            if (await HttpContext.RequestServices.GetRequiredService<UserAccess>().RequireAsync((ModuleKeys.Directory, PermAction.Create)) is { } denied) return denied;
             if (string.IsNullOrWhiteSpace(req.ProductName))
                 return BadRequest(new { message = "Product name is required." });
 
@@ -300,7 +300,7 @@ namespace InticooInspection.API.Controllers
         [HttpPut("{id}")]
         public async Task<IActionResult> Update(int id, [FromBody] ProductRequest req)
         {
-            if (await HttpContext.RequestServices.GetRequiredService<UserAccess>().RequireAsync((ModuleKeys.JobRequest, PermAction.Create), (ModuleKeys.JobRequest, PermAction.Edit)) is { } denied) return denied;
+            if (await HttpContext.RequestServices.GetRequiredService<UserAccess>().RequireAsync((ModuleKeys.JobRequest, PermAction.Create), (ModuleKeys.JobRequest, PermAction.Edit), (ModuleKeys.Directory, PermAction.Edit)) is { } denied) return denied;
             var product = await _db.Products.FindAsync(id);
             if (product == null) return NotFound();
             if (string.IsNullOrWhiteSpace(req.ProductName))
@@ -390,7 +390,7 @@ namespace InticooInspection.API.Controllers
         [HttpDelete("{id}")]
         public async Task<IActionResult> Delete(int id)
         {
-            if (await HttpContext.RequestServices.GetRequiredService<UserAccess>().RequireAdminAsync() is { } denied) return denied;
+            if (await HttpContext.RequestServices.GetRequiredService<UserAccess>().RequireAsync((ModuleKeys.Directory, PermAction.Delete)) is { } denied) return denied;
             var product = await _db.Products.FindAsync(id);
             if (product == null) return NotFound();
             _db.Products.Remove(product);
@@ -422,7 +422,7 @@ namespace InticooInspection.API.Controllers
         [HttpPost("{id}/photo")]
         public async Task<IActionResult> UploadPhoto(int id, IFormFile file)
         {
-            if (await HttpContext.RequestServices.GetRequiredService<UserAccess>().RequireAdminAsync() is { } denied) return denied;
+            if (await HttpContext.RequestServices.GetRequiredService<UserAccess>().RequireAsync((ModuleKeys.Directory, PermAction.Create), (ModuleKeys.Directory, PermAction.Edit)) is { } denied) return denied;
             var product = await _db.Products.FindAsync(id);
             if (product == null) return NotFound();
             if (file == null || file.Length == 0)
@@ -495,7 +495,7 @@ namespace InticooInspection.API.Controllers
         [HttpPost("{id}/references/upload")]
         public async Task<IActionResult> UploadReferenceFile(int id, IFormFile file)
         {
-            if (await HttpContext.RequestServices.GetRequiredService<UserAccess>().RequireAdminAsync() is { } denied) return denied;
+            if (await HttpContext.RequestServices.GetRequiredService<UserAccess>().RequireAsync((ModuleKeys.Directory, PermAction.Create), (ModuleKeys.Directory, PermAction.Edit)) is { } denied) return denied;
             var product = await _db.Products.FindAsync(id);
             if (product == null) return NotFound();
             if (file == null || file.Length == 0)
@@ -535,7 +535,7 @@ namespace InticooInspection.API.Controllers
         [RequestSizeLimit(20 * 1024 * 1024)]
         public async Task<IActionResult> Import(IFormFile file)
         {
-            if (await HttpContext.RequestServices.GetRequiredService<UserAccess>().RequireAdminAsync() is { } denied) return denied;
+            if (await HttpContext.RequestServices.GetRequiredService<UserAccess>().RequireAsync((ModuleKeys.Directory, PermAction.Create)) is { } denied) return denied;
             var validateError = ImportHelper.ValidateFile(file);
             if (validateError != null) return validateError;
 
